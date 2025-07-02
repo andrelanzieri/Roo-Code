@@ -15,6 +15,7 @@ import type { CustomModesManager } from "../../core/config/CustomModesManager"
 
 import { RemoteConfigLoader } from "./RemoteConfigLoader"
 import { SimpleInstaller } from "./SimpleInstaller"
+import { safeReadJson } from "../../utils/safeReadJson"
 
 export interface MarketplaceItemsResponse {
 	organizationMcps: MarketplaceItem[]
@@ -272,8 +273,7 @@ export class MarketplaceManager {
 			// Check MCPs in .roo/mcp.json
 			const projectMcpPath = path.join(workspaceFolder.uri.fsPath, ".roo", "mcp.json")
 			try {
-				const content = await fs.readFile(projectMcpPath, "utf-8")
-				const data = JSON.parse(content)
+				const data = await safeReadJson(projectMcpPath)
 				if (data?.mcpServers && typeof data.mcpServers === "object") {
 					for (const serverName of Object.keys(data.mcpServers)) {
 						metadata[serverName] = {
@@ -317,8 +317,7 @@ export class MarketplaceManager {
 			// Check global MCPs
 			const globalMcpPath = path.join(globalSettingsPath, GlobalFileNames.mcpSettings)
 			try {
-				const content = await fs.readFile(globalMcpPath, "utf-8")
-				const data = JSON.parse(content)
+				const data = await safeReadJson(globalMcpPath)
 				if (data?.mcpServers && typeof data.mcpServers === "object") {
 					for (const serverName of Object.keys(data.mcpServers)) {
 						metadata[serverName] = {

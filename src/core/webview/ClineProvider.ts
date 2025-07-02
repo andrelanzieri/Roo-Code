@@ -82,6 +82,7 @@ import { t } from "../../i18n"
 import { buildApiHandler } from "../../api"
 import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "../../api/providers/fetchers/lmstudio"
 
+import { safeReadJson } from "../../utils/safeReadJson"
 import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { CustomModesManager } from "../config/CustomModesManager"
@@ -1457,10 +1458,9 @@ export class ClineProvider
 			const taskDirPath = await getTaskDirectoryPath(globalStoragePath, id)
 			const apiConversationHistoryFilePath = path.join(taskDirPath, GlobalFileNames.apiConversationHistory)
 			const uiMessagesFilePath = path.join(taskDirPath, GlobalFileNames.uiMessages)
-			const fileExists = await fileExistsAtPath(apiConversationHistoryFilePath)
 
-			if (fileExists) {
-				const apiConversationHistory = JSON.parse(await fs.readFile(apiConversationHistoryFilePath, "utf8"))
+			try {
+				const apiConversationHistory = await safeReadJson(apiConversationHistoryFilePath)
 
 				return {
 					historyItem,
@@ -1468,6 +1468,10 @@ export class ClineProvider
 					apiConversationHistoryFilePath,
 					uiMessagesFilePath,
 					apiConversationHistory,
+				}
+			} catch (error) {
+				if (error.code !== "ENOENT") {
+					console.error(`Failed to read API conversation history for task ${id}:`, error)
 				}
 			}
 		}

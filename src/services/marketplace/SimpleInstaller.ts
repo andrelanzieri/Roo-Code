@@ -6,6 +6,7 @@ import type { MarketplaceItem, MarketplaceItemType, InstallMarketplaceItemOption
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { ensureSettingsDirectoryExists } from "../../utils/globalContext"
 import type { CustomModesManager } from "../../core/config/CustomModesManager"
+import { safeReadJson } from "../../utils/safeReadJson"
 
 export interface InstallOptions extends InstallMarketplaceItemOptions {
 	target: "project" | "global"
@@ -229,8 +230,7 @@ export class SimpleInstaller {
 		// Read existing file or create new structure
 		let existingData: any = { mcpServers: {} }
 		try {
-			const existing = await fs.readFile(filePath, "utf-8")
-			existingData = JSON.parse(existing) || { mcpServers: {} }
+			existingData = (await safeReadJson(filePath)) || { mcpServers: {} }
 		} catch (error: any) {
 			if (error.code === "ENOENT") {
 				// File doesn't exist, use default structure
@@ -332,8 +332,7 @@ export class SimpleInstaller {
 		const filePath = await this.getMcpFilePath(target)
 
 		try {
-			const existing = await fs.readFile(filePath, "utf-8")
-			const existingData = JSON.parse(existing)
+			const existingData = await safeReadJson(filePath)
 
 			if (existingData?.mcpServers) {
 				// Parse the item content to get server names

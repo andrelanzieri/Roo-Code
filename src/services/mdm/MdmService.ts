@@ -4,7 +4,7 @@ import * as os from "os"
 import { z } from "zod"
 
 import { CloudService, getClerkBaseUrl, PRODUCTION_CLERK_BASE_URL } from "@roo-code/cloud"
-
+import { safeReadJson } from "../../utils/safeReadJson"
 import { t } from "../../i18n"
 
 // MDM Configuration Schema
@@ -120,19 +120,16 @@ export class MdmService {
 		const configPath = this.getMdmConfigPath()
 
 		try {
-			// Check if file exists
-			if (!fs.existsSync(configPath)) {
-				return null
-			}
-
-			// Read and parse the configuration file
-			const configContent = fs.readFileSync(configPath, "utf-8")
-			const parsedConfig = JSON.parse(configContent)
+			// Read and parse the configuration file using safeReadJson
+			const parsedConfig = await safeReadJson(configPath)
 
 			// Validate against schema
 			return mdmConfigSchema.parse(parsedConfig)
 		} catch (error) {
-			this.log(`[MDM] Error reading MDM config from ${configPath}:`, error)
+			// If file doesn't exist, return null
+			if ((error as any)?.code !== "ENOENT") {
+				this.log(`[MDM] Error reading MDM config from ${configPath}:`, error)
+			}
 			return null
 		}
 	}
