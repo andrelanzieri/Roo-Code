@@ -1,9 +1,13 @@
 import * as path from "path"
 
-// Mock dependencies
+// Mock dependencies before importing the module under test
 vi.mock("fs", () => ({
 	existsSync: vi.fn(),
 	readFileSync: vi.fn(),
+}))
+
+vi.mock("../../../utils/safeReadJson", () => ({
+	safeReadJson: vi.fn(),
 }))
 
 vi.mock("os", () => ({
@@ -14,9 +18,9 @@ vi.mock("@roo-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn(),
 		instance: {
-			hasActiveSession: vi.fn(),
 			hasOrIsAcquiringActiveSession: vi.fn(),
 			getOrganizationId: vi.fn(),
+			getStoredOrganizationId: vi.fn(),
 		},
 	},
 	getClerkBaseUrl: vi.fn(),
@@ -55,17 +59,13 @@ vi.mock("../../../i18n", () => ({
 	}),
 }))
 
+// Now import the module under test and mocked modules
+import { MdmService } from "../MdmService"
+import { CloudService, getClerkBaseUrl, PRODUCTION_CLERK_BASE_URL } from "@roo-code/cloud"
 import * as fs from "fs"
 import * as os from "os"
 import * as vscode from "vscode"
-import { MdmService } from "../MdmService"
-import { CloudService, getClerkBaseUrl, PRODUCTION_CLERK_BASE_URL } from "@roo-code/cloud"
-
-const mockFs = fs as any
-const mockOs = os as any
-const mockCloudService = CloudService as any
-const mockVscode = vscode as any
-const mockGetClerkBaseUrl = getClerkBaseUrl as any
+import { safeReadJson } from "../../../utils/safeReadJson"
 
 describe("MdmService", () => {
 	let originalPlatform: string
@@ -78,22 +78,30 @@ describe("MdmService", () => {
 		originalPlatform = process.platform
 
 		// Set default platform for tests
-		mockOs.platform.mockReturnValue("darwin")
+		vi.mocked(os.platform).mockReturnValue("darwin")
 
 		// Setup default mock for getClerkBaseUrl to return development URL
-		mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+		vi.mocked(getClerkBaseUrl).mockReturnValue("https://dev.clerk.roocode.com")
 
 		// Setup VSCode mocks
 		const mockConfig = {
 			get: vi.fn().mockReturnValue(false),
 			update: vi.fn().mockResolvedValue(undefined),
 		}
-		mockVscode.workspace.getConfiguration.mockReturnValue(mockConfig)
+		vi.mocked(vscode.workspace.getConfiguration).mockReturnValue(mockConfig as any)
 
 		// Reset mocks
 		vi.clearAllMocks()
+
 		// Re-setup the default after clearing
-		mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+		vi.mocked(getClerkBaseUrl).mockReturnValue("https://dev.clerk.roocode.com")
+
+		// Reset safeReadJson to reject with ENOENT by default (no MDM config)
+		vi.mocked(safeReadJson).mockClear()
+		vi.mocked(safeReadJson).mockRejectedValue({ code: "ENOENT" })
+
+		// Reset MdmService instance before each test
+		MdmService.resetInstance()
 	})
 
 	afterEach(() => {
@@ -105,7 +113,7 @@ describe("MdmService", () => {
 
 	describe("initialization", () => {
 		it("should create instance successfully", async () => {
-			mockFs.existsSync.mockReturnValue(false)
+			// Default mock setup is fine (ENOENT)
 
 			const service = await MdmService.createInstance()
 			expect(service).toBeInstanceOf(MdmService)
@@ -117,8 +125,8 @@ describe("MdmService", () => {
 				organizationId: "test-org-123",
 			}
 
-			mockFs.existsSync.mockReturnValue(true)
-			mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig))
+			// Important: Use mockResolvedValueOnce instead of mockResolvedValue
+			vi.mocked(safeReadJson).mockResolvedValueOnce(mockConfig)
 
 			const service = await MdmService.createInstance()
 
@@ -127,7 +135,7 @@ describe("MdmService", () => {
 		})
 
 		it("should handle missing MDM config file gracefully", async () => {
-			mockFs.existsSync.mockReturnValue(false)
+			// Default mock setup is fine (ENOENT)
 
 			const service = await MdmService.createInstance()
 
@@ -136,8 +144,8 @@ describe("MdmService", () => {
 		})
 
 		it("should handle invalid JSON gracefully", async () => {
-			mockFs.existsSync.mockReturnValue(true)
-			mockFs.readFileSync.mockReturnValue("invalid json")
+			// Mock safeReadJson to throw a parsing error
+			vi.mocked(safeReadJson).mockRejectedValueOnce(new Error("Invalid JSON"))
 
 			const service = await MdmService.createInstance()
 
@@ -161,88 +169,102 @@ describe("MdmService", () => {
 		})
 
 		it("should use correct path for Windows in production", async () => {
-			mockOs.platform.mockReturnValue("win32")
+			vi.mocked(os.platform).mockReturnValue("win32")
 			process.env.PROGRAMDATA = "C:\\ProgramData"
-			mockGetClerkBaseUrl.mockReturnValue(PRODUCTION_CLERK_BASE_URL)
+			vi.mocked(getClerkBaseUrl).mockReturnValue(PRODUCTION_CLERK_BASE_URL)
 
-			mockFs.existsSync.mockReturnValue(false)
+			// Important: Clear previous calls and set up a new mock
+			vi.mocked(safeReadJson).mockClear()
+			vi.mocked(safeReadJson).mockRejectedValueOnce({ code: "ENOENT" })
 
 			await MdmService.createInstance()
 
-			expect(mockFs.existsSync).toHaveBeenCalledWith(path.join("C:\\ProgramData", "RooCode", "mdm.json"))
+			expect(safeReadJson).toHaveBeenCalledWith(path.join("C:\\ProgramData", "RooCode", "mdm.json"))
 		})
 
 		it("should use correct path for Windows in development", async () => {
-			mockOs.platform.mockReturnValue("win32")
+			vi.mocked(os.platform).mockReturnValue("win32")
 			process.env.PROGRAMDATA = "C:\\ProgramData"
-			mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+			vi.mocked(getClerkBaseUrl).mockReturnValue("https://dev.clerk.roocode.com")
 
-			mockFs.existsSync.mockReturnValue(false)
+			// Important: Clear previous calls and set up a new mock
+			vi.mocked(safeReadJson).mockClear()
+			vi.mocked(safeReadJson).mockRejectedValueOnce({ code: "ENOENT" })
 
 			await MdmService.createInstance()
 
-			expect(mockFs.existsSync).toHaveBeenCalledWith(path.join("C:\\ProgramData", "RooCode", "mdm.dev.json"))
+			expect(safeReadJson).toHaveBeenCalledWith(path.join("C:\\ProgramData", "RooCode", "mdm.dev.json"))
 		})
 
 		it("should use correct path for macOS in production", async () => {
-			mockOs.platform.mockReturnValue("darwin")
-			mockGetClerkBaseUrl.mockReturnValue(PRODUCTION_CLERK_BASE_URL)
+			vi.mocked(os.platform).mockReturnValue("darwin")
+			vi.mocked(getClerkBaseUrl).mockReturnValue(PRODUCTION_CLERK_BASE_URL)
 
-			mockFs.existsSync.mockReturnValue(false)
+			// Important: Clear previous calls and set up a new mock
+			vi.mocked(safeReadJson).mockClear()
+			vi.mocked(safeReadJson).mockRejectedValueOnce({ code: "ENOENT" })
 
 			await MdmService.createInstance()
 
-			expect(mockFs.existsSync).toHaveBeenCalledWith("/Library/Application Support/RooCode/mdm.json")
+			expect(safeReadJson).toHaveBeenCalledWith("/Library/Application Support/RooCode/mdm.json")
 		})
 
 		it("should use correct path for macOS in development", async () => {
-			mockOs.platform.mockReturnValue("darwin")
-			mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+			vi.mocked(os.platform).mockReturnValue("darwin")
+			vi.mocked(getClerkBaseUrl).mockReturnValue("https://dev.clerk.roocode.com")
 
-			mockFs.existsSync.mockReturnValue(false)
+			// Important: Clear previous calls and set up a new mock
+			vi.mocked(safeReadJson).mockClear()
+			vi.mocked(safeReadJson).mockRejectedValueOnce({ code: "ENOENT" })
 
 			await MdmService.createInstance()
 
-			expect(mockFs.existsSync).toHaveBeenCalledWith("/Library/Application Support/RooCode/mdm.dev.json")
+			expect(safeReadJson).toHaveBeenCalledWith("/Library/Application Support/RooCode/mdm.dev.json")
 		})
 
 		it("should use correct path for Linux in production", async () => {
-			mockOs.platform.mockReturnValue("linux")
-			mockGetClerkBaseUrl.mockReturnValue(PRODUCTION_CLERK_BASE_URL)
+			vi.mocked(os.platform).mockReturnValue("linux")
+			vi.mocked(getClerkBaseUrl).mockReturnValue(PRODUCTION_CLERK_BASE_URL)
 
-			mockFs.existsSync.mockReturnValue(false)
+			// Important: Clear previous calls and set up a new mock
+			vi.mocked(safeReadJson).mockClear()
+			vi.mocked(safeReadJson).mockRejectedValueOnce({ code: "ENOENT" })
 
 			await MdmService.createInstance()
 
-			expect(mockFs.existsSync).toHaveBeenCalledWith("/etc/roo-code/mdm.json")
+			expect(safeReadJson).toHaveBeenCalledWith("/etc/roo-code/mdm.json")
 		})
 
 		it("should use correct path for Linux in development", async () => {
-			mockOs.platform.mockReturnValue("linux")
-			mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+			vi.mocked(os.platform).mockReturnValue("linux")
+			vi.mocked(getClerkBaseUrl).mockReturnValue("https://dev.clerk.roocode.com")
 
-			mockFs.existsSync.mockReturnValue(false)
+			// Important: Clear previous calls and set up a new mock
+			vi.mocked(safeReadJson).mockClear()
+			vi.mocked(safeReadJson).mockRejectedValueOnce({ code: "ENOENT" })
 
 			await MdmService.createInstance()
 
-			expect(mockFs.existsSync).toHaveBeenCalledWith("/etc/roo-code/mdm.dev.json")
+			expect(safeReadJson).toHaveBeenCalledWith("/etc/roo-code/mdm.dev.json")
 		})
 
 		it("should default to dev config when NODE_ENV is not set", async () => {
-			mockOs.platform.mockReturnValue("darwin")
-			mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+			vi.mocked(os.platform).mockReturnValue("darwin")
+			vi.mocked(getClerkBaseUrl).mockReturnValue("https://dev.clerk.roocode.com")
 
-			mockFs.existsSync.mockReturnValue(false)
+			// Important: Clear previous calls and set up a new mock
+			vi.mocked(safeReadJson).mockClear()
+			vi.mocked(safeReadJson).mockRejectedValueOnce({ code: "ENOENT" })
 
 			await MdmService.createInstance()
 
-			expect(mockFs.existsSync).toHaveBeenCalledWith("/Library/Application Support/RooCode/mdm.dev.json")
+			expect(safeReadJson).toHaveBeenCalledWith("/Library/Application Support/RooCode/mdm.dev.json")
 		})
 	})
 
 	describe("compliance checking", () => {
 		it("should be compliant when no MDM policy exists", async () => {
-			mockFs.existsSync.mockReturnValue(false)
+			// Default mock setup is fine (ENOENT)
 
 			const service = await MdmService.createInstance()
 			const compliance = service.isCompliant()
@@ -252,11 +274,10 @@ describe("MdmService", () => {
 
 		it("should be compliant when authenticated and no org requirement", async () => {
 			const mockConfig = { requireCloudAuth: true }
-			mockFs.existsSync.mockReturnValue(true)
-			mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig))
+			vi.mocked(safeReadJson).mockResolvedValueOnce(mockConfig)
 
-			mockCloudService.hasInstance.mockReturnValue(true)
-			mockCloudService.instance.hasOrIsAcquiringActiveSession.mockReturnValue(true)
+			vi.mocked(CloudService.hasInstance).mockReturnValue(true)
+			vi.mocked(CloudService.instance.hasOrIsAcquiringActiveSession).mockReturnValue(true)
 
 			const service = await MdmService.createInstance()
 			const compliance = service.isCompliant()
@@ -265,12 +286,17 @@ describe("MdmService", () => {
 		})
 
 		it("should be non-compliant when not authenticated", async () => {
+			// Create a mock config that requires cloud auth
 			const mockConfig = { requireCloudAuth: true }
-			mockFs.existsSync.mockReturnValue(true)
-			mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig))
 
-			// Mock CloudService to indicate no instance or no active session
-			mockCloudService.hasInstance.mockReturnValue(false)
+			// Important: Use mockResolvedValueOnce instead of mockImplementation
+			vi.mocked(safeReadJson).mockResolvedValueOnce(mockConfig)
+
+			// Mock CloudService to indicate no instance
+			vi.mocked(CloudService.hasInstance).mockReturnValue(false)
+
+			// This should never be called since hasInstance is false
+			vi.mocked(CloudService.instance.hasOrIsAcquiringActiveSession).mockReturnValue(false)
 
 			const service = await MdmService.createInstance()
 			const compliance = service.isCompliant()
@@ -286,13 +312,17 @@ describe("MdmService", () => {
 				requireCloudAuth: true,
 				organizationId: "required-org-123",
 			}
-			mockFs.existsSync.mockReturnValue(true)
-			mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig))
+
+			// Important: Use mockResolvedValueOnce instead of mockImplementation
+			vi.mocked(safeReadJson).mockResolvedValueOnce(mockConfig)
 
 			// Mock CloudService to have instance and active session but wrong org
-			mockCloudService.hasInstance.mockReturnValue(true)
-			mockCloudService.instance.hasOrIsAcquiringActiveSession.mockReturnValue(true)
-			mockCloudService.instance.getOrganizationId.mockReturnValue("different-org-456")
+			vi.mocked(CloudService.hasInstance).mockReturnValue(true)
+			vi.mocked(CloudService.instance.hasOrIsAcquiringActiveSession).mockReturnValue(true)
+			vi.mocked(CloudService.instance.getOrganizationId).mockReturnValue("different-org-456")
+
+			// Mock getStoredOrganizationId to also return wrong org
+			vi.mocked(CloudService.instance.getStoredOrganizationId).mockReturnValue("different-org-456")
 
 			const service = await MdmService.createInstance()
 			const compliance = service.isCompliant()
@@ -310,12 +340,11 @@ describe("MdmService", () => {
 				requireCloudAuth: true,
 				organizationId: "correct-org-123",
 			}
-			mockFs.existsSync.mockReturnValue(true)
-			mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig))
+			vi.mocked(safeReadJson).mockResolvedValueOnce(mockConfig)
 
-			mockCloudService.hasInstance.mockReturnValue(true)
-			mockCloudService.instance.hasOrIsAcquiringActiveSession.mockReturnValue(true)
-			mockCloudService.instance.getOrganizationId.mockReturnValue("correct-org-123")
+			vi.mocked(CloudService.hasInstance).mockReturnValue(true)
+			vi.mocked(CloudService.instance.hasOrIsAcquiringActiveSession).mockReturnValue(true)
+			vi.mocked(CloudService.instance.getOrganizationId).mockReturnValue("correct-org-123")
 
 			const service = await MdmService.createInstance()
 			const compliance = service.isCompliant()
@@ -325,12 +354,11 @@ describe("MdmService", () => {
 
 		it("should be compliant when in attempting-session state", async () => {
 			const mockConfig = { requireCloudAuth: true }
-			mockFs.existsSync.mockReturnValue(true)
-			mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig))
+			vi.mocked(safeReadJson).mockResolvedValueOnce(mockConfig)
 
-			mockCloudService.hasInstance.mockReturnValue(true)
+			vi.mocked(CloudService.hasInstance).mockReturnValue(true)
 			// Mock attempting session (not active, but acquiring)
-			mockCloudService.instance.hasOrIsAcquiringActiveSession.mockReturnValue(true)
+			vi.mocked(CloudService.instance.hasOrIsAcquiringActiveSession).mockReturnValue(true)
 
 			const service = await MdmService.createInstance()
 			const compliance = service.isCompliant()
@@ -345,7 +373,9 @@ describe("MdmService", () => {
 		})
 
 		it("should throw error when creating instance twice", async () => {
-			mockFs.existsSync.mockReturnValue(false)
+			// Reset the mock to ensure we can check calls
+			vi.mocked(safeReadJson).mockClear()
+			vi.mocked(safeReadJson).mockRejectedValue({ code: "ENOENT" })
 
 			await MdmService.createInstance()
 
@@ -353,7 +383,9 @@ describe("MdmService", () => {
 		})
 
 		it("should return same instance", async () => {
-			mockFs.existsSync.mockReturnValue(false)
+			// Reset the mock to ensure we can check calls
+			vi.mocked(safeReadJson).mockClear()
+			vi.mocked(safeReadJson).mockRejectedValue({ code: "ENOENT" })
 
 			const service1 = await MdmService.createInstance()
 			const service2 = MdmService.getInstance()

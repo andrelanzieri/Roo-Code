@@ -13,14 +13,17 @@ vi.mock("fs/promises", () => ({
 	__esModule: true,
 	default: {
 		readFile: vi.fn(),
+		access: vi.fn(),
 	},
 	readFile: vi.fn(),
+	access: vi.fn(),
 }))
 
 vi.mock("path", () => ({
 	join: vi.fn((...args: string[]) => args.join("/")),
 	isAbsolute: vi.fn((p: string) => p.startsWith("/")),
 	basename: vi.fn((p: string) => p.split("/").pop() || ""),
+	resolve: vi.fn((p: string) => p), // Add resolve function
 }))
 
 vi.mock("os", () => ({
@@ -29,6 +32,11 @@ vi.mock("os", () => ({
 
 vi.mock("../fs", () => ({
 	fileExistsAtPath: vi.fn(),
+}))
+
+// Mock proper-lockfile which is used by safeReadJson
+vi.mock("proper-lockfile", () => ({
+	lock: vi.fn().mockResolvedValue(() => Promise.resolve()),
 }))
 
 vi.mock("../../core/config/ProviderSettingsManager", async (importOriginal) => {
@@ -53,10 +61,19 @@ vi.mock("../../core/config/ProviderSettingsManager", async (importOriginal) => {
 vi.mock("../../core/config/ContextProxy")
 vi.mock("../../core/config/CustomModesManager")
 
+// Mock safeReadJson to avoid lockfile issues
+vi.mock("../../utils/safeReadJson", () => ({
+	safeReadJson: vi.fn(),
+}))
+vi.mock("../../utils/safeWriteJson", () => ({
+	safeWriteJson: vi.fn(),
+}))
+
 import { autoImportSettings } from "../autoImportSettings"
 import * as vscode from "vscode"
 import fsPromises from "fs/promises"
 import { fileExistsAtPath } from "../fs"
+import { safeReadJson } from "../../utils/safeReadJson"
 
 describe("autoImportSettings", () => {
 	let mockProviderSettingsManager: any
@@ -105,12 +122,13 @@ describe("autoImportSettings", () => {
 			postStateToWebview: vi.fn().mockResolvedValue({ success: true }),
 		}
 
-		// Reset fs mock
+		// Reset mocks
 		vi.mocked(fsPromises.readFile).mockReset()
 		vi.mocked(fileExistsAtPath).mockReset()
 		vi.mocked(vscode.workspace.getConfiguration).mockReset()
 		vi.mocked(vscode.window.showInformationMessage).mockReset()
 		vi.mocked(vscode.window.showWarningMessage).mockReset()
+		vi.mocked(safeReadJson).mockReset()
 	})
 
 	afterEach(() => {
@@ -167,7 +185,7 @@ describe("autoImportSettings", () => {
 		// Mock fileExistsAtPath to return true
 		vi.mocked(fileExistsAtPath).mockResolvedValue(true)
 
-		// Mock fs.readFile to return valid config
+		// Mock settings data
 		const mockSettings = {
 			providerProfiles: {
 				currentApiConfigName: "test-config",
@@ -183,7 +201,8 @@ describe("autoImportSettings", () => {
 			},
 		}
 
-		vi.mocked(fsPromises.readFile).mockResolvedValue(JSON.stringify(mockSettings) as any)
+		// Mock safeReadJson to return valid config
+		vi.mocked(safeReadJson).mockResolvedValue(mockSettings)
 
 		await autoImportSettings(mockOutputChannel, {
 			providerSettingsManager: mockProviderSettingsManager,
@@ -191,13 +210,16 @@ describe("autoImportSettings", () => {
 			customModesManager: mockCustomModesManager,
 		})
 
+		// Verify the correct log messages
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
 			"[AutoImport] Checking for settings file at: /absolute/path/to/config.json",
 		)
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
 			"[AutoImport] Successfully imported settings from /absolute/path/to/config.json",
 		)
-		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("info.auto_import_success")
+		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+			expect.stringContaining("info.auto_import_success"),
+		)
 		expect(mockProviderSettingsManager.import).toHaveBeenCalled()
 		expect(mockContextProxy.setValues).toHaveBeenCalled()
 	})
@@ -211,8 +233,8 @@ describe("autoImportSettings", () => {
 		// Mock fileExistsAtPath to return true
 		vi.mocked(fileExistsAtPath).mockResolvedValue(true)
 
-		// Mock fs.readFile to return invalid JSON
-		vi.mocked(fsPromises.readFile).mockResolvedValue("invalid json" as any)
+		// Mock safeReadJson to throw an error for invalid JSON
+		vi.mocked(safeReadJson).mockRejectedValue(new Error("Invalid JSON"))
 
 		await autoImportSettings(mockOutputChannel, {
 			providerSettingsManager: mockProviderSettingsManager,
@@ -220,8 +242,12 @@ describe("autoImportSettings", () => {
 			customModesManager: mockCustomModesManager,
 		})
 
+		// Check for the failure log message
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
-			expect.stringContaining("[AutoImport] Failed to import settings:"),
+			"[AutoImport] Checking for settings file at: /home/user/config.json",
+		)
+		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+			"[AutoImport] Failed to import settings: Invalid JSON",
 		)
 		expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
 			expect.stringContaining("warnings.auto_import_failed"),

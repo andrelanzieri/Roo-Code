@@ -1,4 +1,5 @@
 import fs from "fs/promises"
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest"
 
 import type { Mock } from "vitest"
 import type { ExtensionContext, Uri } from "vscode"
@@ -46,6 +47,13 @@ vi.mock("../../../utils/safeWriteJson", () => ({
 		// This avoids the complex file locking and temp file operations
 		const fs = await import("fs/promises")
 		return fs.writeFile(filePath, JSON.stringify(data), "utf8")
+	}),
+}))
+
+vi.mock("../../../utils/safeReadJson", () => ({
+	safeReadJson: vi.fn(async (filePath) => {
+		const content = await fs.readFile(filePath, "utf8")
+		return JSON.parse(content)
 	}),
 }))
 
