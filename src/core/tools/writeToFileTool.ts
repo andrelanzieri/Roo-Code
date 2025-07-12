@@ -13,6 +13,7 @@ import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { detectCodeOmission } from "../../integrations/editor/detect-omission"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 export async function writeToFileTool(
 	cline: Task,

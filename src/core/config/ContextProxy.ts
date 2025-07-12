@@ -18,6 +18,7 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { logger } from "../../utils/logging"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 type GlobalStateKey = keyof GlobalState
 type SecretStateKey = keyof SecretState
@@ -249,6 +250,11 @@ export class ContextProxy {
 	public async setValues(values: RooCodeSettings) {
 		const entries = Object.entries(values) as [RooCodeSettingsKey, unknown][]
 		await Promise.all(entries.map(([key, value]) => this.setValue(key, value)))
+
+		// Update FileEncodingService if fileEncodingMap was changed
+		if ("fileEncodingMap" in values) {
+			FileEncodingService.updateEncodingMap(values.fileEncodingMap || {})
+		}
 	}
 
 	/**

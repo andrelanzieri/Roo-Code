@@ -30,6 +30,7 @@ import { MdmService } from "./services/mdm/MdmService"
 import { migrateSettings } from "./utils/migrateSettings"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
+import { FileEncodingService } from "./utils/fileEncodingService"
 
 import {
 	handleUri,
@@ -98,6 +99,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	const contextProxy = await ContextProxy.getInstance(context)
+
+	// Initialize FileEncodingService with current settings
+	const globalSettings = contextProxy.getGlobalSettings()
+	FileEncodingService.updateEncodingMap(globalSettings.fileEncodingMap)
+
 	const codeIndexManager = CodeIndexManager.getInstance(context)
 
 	try {

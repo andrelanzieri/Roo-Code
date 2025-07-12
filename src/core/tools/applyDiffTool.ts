@@ -1,16 +1,15 @@
-import path from "path"
-import fs from "fs/promises"
-
-import { TelemetryService } from "@roo-code/telemetry"
-
-import { ClineSayTool } from "../../shared/ExtensionMessage"
+import * as fs from "fs/promises"
+import * as path from "path"
 import { getReadablePath } from "../../utils/path"
+import { ClineSayTool } from "../../shared/ExtensionMessage"
+import { TelemetryService } from "@roo-code/telemetry"
 import { Task } from "../task/Task"
-import { ToolUse, RemoveClosingTag, AskApproval, HandleError, PushToolResult } from "../../shared/tools"
+import { ToolUse, AskApproval, HandleError, PushToolResult, RemoveClosingTag } from "../../shared/tools"
 import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 export async function applyDiffToolLegacy(
 	cline: Task,
@@ -86,7 +85,9 @@ export async function applyDiffToolLegacy(
 				return
 			}
 
-			let originalContent: string | null = await fs.readFile(absolutePath, "utf-8")
+			// Use configured encoding for this file extension, default to utf-8
+			const encoding = FileEncodingService.getEncodingForFile(relPath)
+			let originalContent: string | null = await fs.readFile(absolutePath, encoding as BufferEncoding)
 
 			// Apply the diff to the original content
 			const diffResult = (await cline.diffStrategy?.applyDiff(

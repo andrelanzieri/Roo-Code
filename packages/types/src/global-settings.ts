@@ -110,6 +110,9 @@ export const globalSettingsSchema = z.object({
 	hasOpenedModeSelector: z.boolean().optional(),
 	lastModeExportPath: z.string().optional(),
 	lastModeImportPath: z.string().optional(),
+
+	// File encoding mapping - maps file extensions to character encodings
+	fileEncodingMap: z.record(z.string(), z.string()).optional(),
 })
 
 export type GlobalSettings = z.infer<typeof globalSettingsSchema>
@@ -240,6 +243,12 @@ export const EVALS_SETTINGS: RooCodeSettings = {
 	mode: "code",
 
 	customModes: [],
+
+	// Default file encoding mappings - can be overridden by user
+	fileEncodingMap: {
+		".prw": "win1252",
+		".tlpp": "win1252",
+	},
 }
 
 export const EVALS_TIMEOUT = 5 * 60 * 1_000

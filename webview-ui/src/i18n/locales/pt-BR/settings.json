@@ -28,6 +28,7 @@
 		"notifications": "Notificações",
 		"contextManagement": "Contexto",
 		"terminal": "Terminal",
+		"fileEncoding": "Encoding de Arquivos",
 		"prompts": "Prompts",
 		"experimental": "Experimental",
 		"language": "Idioma",
@@ -692,5 +693,40 @@
 		"useCustomArn": "Usar ARN personalizado..."
 	},
 	"includeMaxOutputTokens": "Incluir tokens máximos de saída",
-	"includeMaxOutputTokensDescription": "Enviar parâmetro de tokens máximos de saída nas solicitações de API. Alguns provedores podem não suportar isso."
+	"includeMaxOutputTokensDescription": "Enviar parâmetro de tokens máximos de saída nas solicitações de API. Alguns provedores podem não suportar isso.",
+	"fileEncoding": {
+		"description": "Configure encoding específico para diferentes extensões de arquivo. Isso é útil para arquivos legados que usam encodings diferentes do UTF-8 padrão, como arquivos .prw e .tlpp que frequentemente usam win1252.",
+		"currentMappings": "Mapeamentos Atuais",
+		"noMappings": "Nenhum mapeamento configurado",
+		"addMapping": "Adicionar Novo Mapeamento",
+		"extensionPlaceholder": "ex: .prw, .tlpp, .txt",
+		"addMappingTooltip": "Adicionar mapeamento de encoding",
+		"removeMapping": "Remover mapeamento",
+		"extensionHelp": "Digite a extensão com ou sem ponto (ex: .prw ou prw)",
+		"examples": "Exemplos Comuns",
+		"exampleAdvpl": "Arquivos AdvPL",
+		"exampleTlpp": "Arquivos TLPP",
+		"exampleLatin1": "Arquivos de texto em Latin-1",
+		"quickSetup": {
+			"title": "Configuração Rápida",
+			"advpl": {
+				"name": "Arquivos AdvPL/TOTVS",
+				"description": "Configurar .prw, .ch, .tlpp para Windows-1252"
+			},
+			"legacy": {
+				"name": "Arquivos de Texto Legados",
+				"description": "Configurar .txt, .dat, .log para Windows-1252"
+			},
+			"sql": {
+				"name": "Arquivos SQL/Database",
+				"description": "Configurar .sql, .ddl para Windows-1252"
+			},
+			"pascal": {
+				"name": "Arquivos Pascal/Delphi",
+				"description": "Configurar .pas, .dpr, .dpk para Windows-1252"
+			},
+			"apply": "Aplicar",
+			"tip": "Se você está vendo caracteres estranhos (ç, ã, õ) em arquivos antigos, provavelmente precisam de encoding Windows-1252. Use os botões acima para configuração rápida."
+		}
+	}
 }

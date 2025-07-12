@@ -227,6 +227,7 @@ export type ExtensionState = Pick<
 	| "codebaseIndexConfig"
 	| "codebaseIndexModels"
 	| "profileThresholds"
+	| "fileEncodingMap"
 > & {
 	version: string
 	clineMessages: ClineMessage[]

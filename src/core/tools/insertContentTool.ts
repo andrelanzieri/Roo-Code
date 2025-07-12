@@ -10,6 +10,7 @@ import { ClineSayTool } from "../../shared/ExtensionMessage"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath } from "../../utils/fs"
 import { insertGroups } from "../diff/insert-groups"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 export async function insertContentTool(
 	cline: Task,
@@ -90,12 +91,17 @@ export async function insertContentTool(
 				return
 			}
 		} else {
-			fileContent = await fs.readFile(absolutePath, "utf8")
+			//fileContent = await fs.readFile(absolutePath, "utf8")
+			// Read the file
+			// Use configured encoding for this file extension, default to utf-8
+			const encoding = FileEncodingService.getEncodingForFile(relPath)
+			fileContent = await fs.readFile(absolutePath, encoding as BufferEncoding)
 		}
 
 		cline.consecutiveMistakeCount = 0
 
 		cline.diffViewProvider.editType = fileExists ? "modify" : "create"
+
 		cline.diffViewProvider.originalContent = fileContent
 		const lines = fileExists ? fileContent.split("\n") : []
 

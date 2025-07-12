@@ -224,6 +224,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		},
 		codebaseIndexModels: { ollama: {}, openai: {} },
 		alwaysAllowUpdateTodoList: true,
+		fileEncodingMap: {},
 	})
 
 	const [didHydrateState, setDidHydrateState] = useState(false)

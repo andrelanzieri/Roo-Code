@@ -5,6 +5,7 @@ import mammoth from "mammoth"
 import fs from "fs/promises"
 import { isBinaryFile } from "isbinaryfile"
 import { extractTextFromXLSX } from "./extract-text-from-xlsx"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 async function extractTextFromPDF(filePath: string): Promise<string> {
 	const dataBuffer = await fs.readFile(filePath)
@@ -67,7 +68,61 @@ export async function extractTextFromFile(filePath: string): Promise<string> {
 	const isBinary = await isBinaryFile(filePath).catch(() => false)
 
 	if (!isBinary) {
-		return addLineNumbers(await fs.readFile(filePath, "utf8"))
+		// Use configured encoding for this file extension, default to utf8
+		const encoding = FileEncodingService.getEncodingForFile(filePath)
+
+		try {
+			// Read file with configured encoding
+			const buffer = await fs.readFile(filePath)
+			const content = buffer.toString(encoding as BufferEncoding)
+
+			// Detect potential encoding issues
+			const encodingIssues = FileEncodingService.detectEncodingIssues(buffer, encoding)
+
+			if (encodingIssues) {
+				// If issues are detected and using default UTF-8, try to suggest better encoding
+				if (encoding === "utf8") {
+					const suggestions = FileEncodingService.suggestEncodingForFile(filePath, buffer)
+					const configSuggestion = FileEncodingService.generateConfigSuggestion(filePath, encodingIssues)
+
+					// Add warning as comment at the beginning of the content
+					const warningComment = [
+						"// ⚠️  AVISO DE ENCODING DETECTADO ⚠️",
+						`// Problema: ${encodingIssues}`,
+						`// Sugestões de encoding: ${suggestions.join(", ")}`,
+						"//",
+						`// ${configSuggestion.replace(/\n/g, "\n// ")}`,
+						"//",
+						"// O conteúdo abaixo pode não estar sendo exibido corretamente:",
+						"",
+					].join("\n")
+
+					return addLineNumbers(warningComment + content)
+				} else {
+					// Just add a note if using custom encoding but still has issues
+					const note = `// Nota: Detectados possíveis problemas de encoding: ${encodingIssues}\n\n`
+					return addLineNumbers(note + content)
+				}
+			}
+
+			return addLineNumbers(content)
+		} catch (error) {
+			// If reading with configured encoding fails, try alternative approaches
+			if (encoding !== "utf8") {
+				// Fallback to UTF-8 if custom encoding fails
+				try {
+					const content = await fs.readFile(filePath, "utf8")
+					const note = `// Nota: Falha ao ler com encoding '${encoding}', usando UTF-8 como fallback\n\n`
+					return addLineNumbers(note + content)
+				} catch (fallbackError) {
+					throw new Error(
+						`Failed to read file with encoding '${encoding}' and UTF-8 fallback: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`,
+					)
+				}
+			} else {
+				throw new Error(`Failed to read file: ${error instanceof Error ? error.message : String(error)}`)
+			}
+		}
 	} else {
 		throw new Error(`Cannot read text for file type: ${fileExtension}`)
 	}

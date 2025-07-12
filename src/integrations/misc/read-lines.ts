@@ -7,6 +7,7 @@
  * Now you can read a range of lines from a file
  */
 import { createReadStream } from "fs"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 const outOfRangeError = (filepath: string, n: number) => {
 	return new RangeError(`Line with index ${n} does not exist in '${filepath}'. Note that line indexing is zero-based`)
@@ -52,8 +53,9 @@ export function readLines(filepath: string, endLine?: number, startLine?: number
 			)
 		}
 
-		// Set up stream
-		const input = createReadStream(filepath)
+		// Set up stream with proper encoding
+		const encoding = FileEncodingService.getEncodingForFile(filepath)
+		const input = createReadStream(filepath, { encoding: encoding as BufferEncoding })
 		let buffer = ""
 		let lineCount = 0
 		let result = ""
@@ -63,8 +65,8 @@ export function readLines(filepath: string, endLine?: number, startLine?: number
 
 		// Process data chunks directly
 		input.on("data", (chunk) => {
-			// Add chunk to buffer
-			buffer += chunk.toString()
+			// Add chunk to buffer (chunk is already a string due to encoding option)
+			buffer += chunk
 
 			let pos = 0
 			let nextNewline = buffer.indexOf("\n", pos)

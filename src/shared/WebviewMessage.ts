@@ -173,6 +173,7 @@ export interface WebviewMessage {
 		| "focusPanelRequest"
 		| "profileThresholds"
 		| "setHistoryPreviewCollapsed"
+		| "fileEncodingMap"
 		| "openExternal"
 		| "filterMarketplaceItems"
 		| "marketplaceButtonClicked"

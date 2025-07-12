@@ -11,6 +11,7 @@ import { formatResponse } from "../../core/prompts/responses"
 import { diagnosticsToProblemsString, getNewDiagnostics } from "../diagnostics"
 import { ClineSayTool } from "../../shared/ExtensionMessage"
 import { Task } from "../../core/task/Task"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 import { DecorationController } from "./DecorationController"
 
@@ -60,7 +61,9 @@ export class DiffViewProvider {
 		this.preDiagnostics = vscode.languages.getDiagnostics()
 
 		if (fileExists) {
-			this.originalContent = await fs.readFile(absolutePath, "utf-8")
+			// Use configured encoding for this file extension, default to utf-8
+			const encoding = FileEncodingService.getEncodingForFile(relPath)
+			this.originalContent = await fs.readFile(absolutePath, encoding as BufferEncoding)
 		} else {
 			this.originalContent = ""
 		}
@@ -71,7 +74,9 @@ export class DiffViewProvider {
 
 		// Make sure the file exists before we open it.
 		if (!fileExists) {
-			await fs.writeFile(absolutePath, "")
+			// Use configured encoding for this file extension, default to utf-8
+			const encoding = FileEncodingService.getEncodingForFile(relPath)
+			await fs.writeFile(absolutePath, "", encoding as BufferEncoding)
 		}
 
 		// If the file was already open, close it (must happen after showing the

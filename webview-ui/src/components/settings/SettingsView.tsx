@@ -22,6 +22,7 @@ import {
 	Globe,
 	Info,
 	MessageSquare,
+	FileText,
 	LucideIcon,
 } from "lucide-react"
 
@@ -60,6 +61,7 @@ import { CheckpointSettings } from "./CheckpointSettings"
 import { NotificationSettings } from "./NotificationSettings"
 import { ContextManagementSettings } from "./ContextManagementSettings"
 import { TerminalSettings } from "./TerminalSettings"
+import { FileEncodingSettings } from "./FileEncodingSettings"
 import { ExperimentalSettings } from "./ExperimentalSettings"
 import { LanguageSettings } from "./LanguageSettings"
 import { About } from "./About"
@@ -86,6 +88,7 @@ const sectionNames = [
 	"notifications",
 	"contextManagement",
 	"terminal",
+	"fileEncoding",
 	"prompts",
 	"experimental",
 	"language",
@@ -175,6 +178,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		alwaysAllowFollowupQuestions,
 		alwaysAllowUpdateTodoList,
 		followupAutoApproveTimeoutMs,
+		fileEncodingMap,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -321,6 +325,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
 			vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
 			vscode.postMessage({ type: "profileThresholds", values: profileThresholds })
+			vscode.postMessage({ type: "fileEncodingMap", values: fileEncodingMap || {} })
 			setChangeDetected(false)
 		}
 	}
@@ -397,6 +402,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "notifications", icon: Bell },
 			{ id: "contextManagement", icon: Database },
 			{ id: "terminal", icon: SquareTerminal },
+			{ id: "fileEncoding", icon: FileText },
 			{ id: "prompts", icon: MessageSquare },
 			{ id: "experimental", icon: FlaskConical },
 			{ id: "language", icon: Globe },
@@ -672,6 +678,14 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							terminalZshP10k={terminalZshP10k}
 							terminalZdotdir={terminalZdotdir}
 							terminalCompressProgressBar={terminalCompressProgressBar}
+							setCachedStateField={setCachedStateField}
+						/>
+					)}
+
+					{/* File Encoding Section */}
+					{activeTab === "fileEncoding" && (
+						<FileEncodingSettings
+							fileEncodingMap={fileEncodingMap}
 							setCachedStateField={setCachedStateField}
 						/>
 					)}

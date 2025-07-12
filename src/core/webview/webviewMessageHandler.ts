@@ -54,6 +54,7 @@ const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
 import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
 import { setPendingTodoList } from "../tools/updateTodoListTool"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 export const webviewMessageHandler = async (
 	provider: ClineProvider,
@@ -1243,6 +1244,12 @@ export const webviewMessageHandler = async (
 		case "maxConcurrentFileReads":
 			const valueToSave = message.value // Capture the value intended for saving
 			await updateGlobalState("maxConcurrentFileReads", valueToSave)
+			await provider.postStateToWebview()
+			break
+		case "fileEncodingMap":
+			await updateGlobalState("fileEncodingMap", message.values)
+			// Update FileEncodingService with the new mapping
+			FileEncodingService.updateEncodingMap(message.values || {})
 			await provider.postStateToWebview()
 			break
 		case "setHistoryPreviewCollapsed": // Add the new case handler

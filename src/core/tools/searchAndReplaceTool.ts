@@ -1,16 +1,15 @@
 // Core Node.js imports
-import path from "path"
-import fs from "fs/promises"
-import delay from "delay"
-
-// Internal imports
-import { Task } from "../task/Task"
-import { AskApproval, HandleError, PushToolResult, RemoveClosingTag, ToolUse } from "../../shared/tools"
-import { formatResponse } from "../prompts/responses"
+import * as fs from "fs/promises"
+import * as path from "path"
 import { ClineSayTool } from "../../shared/ExtensionMessage"
-import { getReadablePath } from "../../utils/path"
+import { Task } from "../task/Task"
+import { ToolUse, AskApproval, HandleError, PushToolResult, RemoveClosingTag } from "../../shared/tools"
+import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
+import { getReadablePath } from "../../utils/path"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
+import delay from "delay"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 /**
  * Tool for performing search and replace operations on files
@@ -146,7 +145,9 @@ export async function searchAndReplaceTool(
 		// Read and process file content
 		let fileContent: string
 		try {
-			fileContent = await fs.readFile(absolutePath, "utf-8")
+			// Use configured encoding for this file extension, default to utf-8
+			const encoding = FileEncodingService.getEncodingForFile(validRelPath)
+			fileContent = await fs.readFile(absolutePath, encoding as BufferEncoding)
 		} catch (error) {
 			cline.consecutiveMistakeCount++
 			cline.recordToolError("search_and_replace")
