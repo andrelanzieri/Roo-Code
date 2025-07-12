@@ -1,5 +1,15 @@
 # Roo Code Changelog
 
+## [3.23.6] - 2025-07-10
+
+- Grok 4
+
+## [3.23.5] - 2025-07-09
+
+- Fix: use decodeURIComponent in openFile (thanks @vivekfyi!)
+- Fix(embeddings): Translate error messages before sending to UI (thanks @daniel-lxs!)
+- Make account tab visible
+
 ## [3.23.4] - 2025-07-09
 
 - Update chat area icons for better discoverability & consistency
@@ -373,7 +383,7 @@
 - Fix vscode-material-icons in the filer picker
 - Fix global settings export
 - Respect user-configured terminal integration timeout (thanks @KJ7LNW)
-- Contex condensing enhancements (thanks @SannidhyaSah)
+- Context condensing enhancements (thanks @SannidhyaSah)
 
 ## [3.18.1] - 2025-05-22
 
@@ -885,7 +895,7 @@
 
 ## [3.10.1] - 2025-03-20
 
-- Make the suggested responses optional to not break overriden system prompts
+- Make the suggested responses optional to not break overridden system prompts
 
 ## [3.10.0] - 2025-03-20
 
