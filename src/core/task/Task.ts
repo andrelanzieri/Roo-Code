@@ -563,7 +563,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.clineMessages.push(message)
 		const provider = this.providerRef.deref()
 		// Send only the new message instead of the entire state
-		await provider?.postMessageToWebview({ type: "messageCreated", clineMessage: message })
+		if (provider) {
+			try {
+				await provider.postMessageToWebview({ type: "messageCreated", clineMessage: message })
+			} catch (error) {
+				// provider.postMessageToWebview already logs; leave as non-fatal
+			}
+		}
 		this.emit(RooCodeEventName.Message, { action: "created", message })
 		await this.saveClineMessages()
 
@@ -585,7 +591,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	private async updateClineMessage(message: ClineMessage) {
 		const provider = this.providerRef.deref()
-		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
+		if (provider) {
+			try {
+				await provider.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
+			} catch (error) {
+				// provider.postMessageToWebview already logs; leave as non-fatal
+			}
+		}
 		this.emit(RooCodeEventName.Message, { action: "updated", message })
 
 		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()

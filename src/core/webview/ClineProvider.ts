@@ -9,6 +9,9 @@ import axios from "axios"
 import pWaitFor from "p-wait-for"
 import * as vscode from "vscode"
 
+// Small delay used for incremental message delivery to the webview
+const INCREMENTAL_SEND_DELAY_MS = 10
+
 import {
 	type TaskProviderLike,
 	type TaskProviderEvents,
@@ -888,7 +891,15 @@ export class ClineProvider
 	}
 
 	public async postMessageToWebview(message: ExtensionMessage) {
-		await this.view?.webview.postMessage(message)
+		try {
+			await this.view?.webview.postMessage(message)
+		} catch (error) {
+			// Guard against unhandled promise rejections from webview messaging
+			const errMsg =
+				error instanceof Error ? error.message : typeof error === "string" ? error : JSON.stringify(error)
+			this.log(`[postMessageToWebview] failed to post message '${message.type}': ${errMsg}`)
+			// Non-fatal: continue without throwing to avoid crashing extension host
+		}
 	}
 
 	private async getHMRHtmlContent(webview: vscode.Webview): Promise<string> {
@@ -1564,7 +1575,7 @@ export class ClineProvider
 			for (const message of currentCline.clineMessages) {
 				await this.postMessageToWebview({ type: "messageCreated", clineMessage: message })
 				// Small delay to prevent overwhelming the webview
-				await delay(10)
+				await delay(INCREMENTAL_SEND_DELAY_MS)
 			}
 		} else {
 			// Normal state update for new tasks or tasks without messages
