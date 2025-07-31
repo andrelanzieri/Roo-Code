@@ -562,7 +562,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async addToClineMessages(message: ClineMessage) {
 		this.clineMessages.push(message)
 		const provider = this.providerRef.deref()
-		await provider?.postStateToWebview()
+		// Send only the new message instead of the entire state
+		await provider?.postMessageToWebview({ type: "messageCreated", clineMessage: message })
 		this.emit(RooCodeEventName.Message, { action: "created", message })
 		await this.saveClineMessages()
 
@@ -1171,6 +1172,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// This is important in case the user deletes messages without resuming
 		// the task first.
 		this.apiConversationHistory = await this.getSavedApiConversationHistory()
+
+		// Send initial state to webview (this will now handle incremental message loading)
+		await this.providerRef.deref()?.postStateToWebview()
 
 		const lastClineMessage = this.clineMessages
 			.slice()

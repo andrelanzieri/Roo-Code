@@ -1550,7 +1550,26 @@ export class ClineProvider
 
 	async postStateToWebview() {
 		const state = await this.getStateToPostToWebview()
-		this.postMessageToWebview({ type: "state", state })
+
+		// Check if we're loading an existing task with messages
+		const currentCline = this.getCurrentCline()
+		const hasExistingMessages = currentCline && currentCline.clineMessages.length > 0
+
+		if (hasExistingMessages) {
+			// Send state without messages first
+			const stateWithoutMessages = { ...state, clineMessages: [] }
+			await this.postMessageToWebview({ type: "state", state: stateWithoutMessages })
+
+			// Then send messages incrementally with a small delay for smooth rendering
+			for (const message of currentCline.clineMessages) {
+				await this.postMessageToWebview({ type: "messageCreated", clineMessage: message })
+				// Small delay to prevent overwhelming the webview
+				await delay(10)
+			}
+		} else {
+			// Normal state update for new tasks or tasks without messages
+			await this.postMessageToWebview({ type: "state", state })
+		}
 
 		// Check MDM compliance and send user to account tab if not compliant
 		if (!this.checkMdmCompliance()) {
