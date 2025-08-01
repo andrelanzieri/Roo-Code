@@ -1558,11 +1558,11 @@ export class ClineProvider
 
 	async postStateToWebview() {
 		const state = await this.getStateToPostToWebview()
-		await this.postMessageToWebview({ type: "state", state })
+		this.postMessageToWebview({ type: "state", state })
 
 		// Check MDM compliance and send user to account tab if not compliant
 		if (!this.checkMdmCompliance()) {
-			await this.postMessageToWebview({ type: "action", action: "accountButtonClicked" })
+			this.postMessageToWebview({ type: "action", action: "accountButtonClicked" })
 		}
 	}
 
