@@ -108,7 +108,7 @@
 	"stopTts": "Arrêter la synthèse vocale",
 	"typeMessage": "Écrivez un message...",
 	"typeTask": "Écrivez votre tâche ici...",
-	"addContext": "@ pour ajouter du contexte, / pour changer de mode",
+	"addContext": "@ pour ajouter du contexte, / pour les commandes",
 	"dragFiles": "maintenir Maj pour glisser des fichiers",
 	"dragFilesImages": "maintenir Maj pour glisser des fichiers/images",
 	"enhancePromptDescription": "Le bouton 'Améliorer la requête' aide à améliorer votre demande en fournissant un contexte supplémentaire, des clarifications ou des reformulations. Essayez de taper une demande ici et cliquez à nouveau sur le bouton pour voir comment cela fonctionne.",
@@ -116,7 +116,9 @@
 		"title": "Modes",
 		"marketplace": "Marketplace de Modes",
 		"settings": "Paramètres des Modes",
-		"description": "Personas spécialisés qui adaptent le comportement de Roo."
+		"description": "Personas spécialisés qui adaptent le comportement de Roo.",
+		"searchPlaceholder": "Rechercher des modes...",
+		"noResults": "Aucun résultat trouvé"
 	},
 	"errorReadingFile": "Erreur lors de la lecture du fichier :",
 	"noValidImages": "Aucune image valide n'a été traitée",
@@ -192,6 +194,22 @@
 		"didViewDefinitionsOutsideWorkspace": "Roo a vu les noms de définitions de code source utilisés dans ce répertoire (hors espace de travail) :"
 	},
 	"commandOutput": "Sortie de commande",
+	"commandExecution": {
+		"running": "En cours d'exécution",
+		"pid": "PID : {{pid}}",
+		"exited": "Terminé ({{exitCode}})",
+		"manageCommands": "Gérer les autorisations de commande",
+		"commandManagementDescription": "Gérer les autorisations de commande : Cliquez sur ✓ pour autoriser l'exécution automatique, ✗ pour refuser l'exécution. Les modèles peuvent être activés/désactivés ou supprimés des listes. <settingsLink>Voir tous les paramètres</settingsLink>",
+		"addToAllowed": "Ajouter à la liste autorisée",
+		"removeFromAllowed": "Retirer de la liste autorisée",
+		"addToDenied": "Ajouter à la liste refusée",
+		"removeFromDenied": "Retirer de la liste refusée",
+		"abortCommand": "Abandonner l'exécution de la commande",
+		"expandOutput": "Développer la sortie",
+		"collapseOutput": "Réduire la sortie",
+		"expandManagement": "Développer la section de gestion des commandes",
+		"collapseManagement": "Réduire la section de gestion des commandes"
+	},
 	"response": "Réponse",
 	"arguments": "Arguments",
 	"mcp": {
@@ -247,9 +265,9 @@
 		"title": "🎉 Roo Code {{version}} est sortie",
 		"description": "Roo Code {{version}} apporte de puissantes nouvelles fonctionnalités et des améliorations significatives pour améliorer ton flux de travail de développement.",
 		"whatsNew": "Quoi de neuf",
-		"feature1": "<bold>L'indexation de la base de code sort du statut expérimental</bold> : L'indexation complète de la base de code est maintenant stable et prête pour un usage en production avec une recherche améliorée et une meilleure compréhension du contexte.",
-		"feature2": "<bold>Nouvelle fonctionnalité de liste de tâches</bold> : Garde tes tâches sur la bonne voie avec une gestion intégrée des tâches qui t'aide à rester organisé et concentré sur tes objectifs de développement.",
-		"feature3": "<bold>Transitions Architecte vers Code améliorées</bold> : Transferts fluides de la planification en mode Architecte vers l'implémentation en mode Code.",
+		"feature1": "<bold>File d'Attente de Messages</bold> : Mettez en file d'attente plusieurs messages pendant que Roo travaille, vous permettant de continuer à planifier votre flux de travail sans interruption.",
+		"feature2": "<bold>Commandes Slash Personnalisées</bold> : Créez des commandes slash personnalisées pour un accès rapide aux prompts et flux de travail fréquemment utilisés, avec une gestion complète de l'interface utilisateur.",
+		"feature3": "<bold>Outils Gemini Améliorés</bold> : De nouvelles capacités de contexte d'URL et de fondation de recherche Google fournissent aux modèles Gemini des informations web en temps réel et des capacités de recherche améliorées.",
 		"hideButton": "Masquer l'annonce",
 		"detailsDiscussLinks": "Obtenez plus de détails et participez aux discussions sur <discordLink>Discord</discordLink> et <redditLink>Reddit</redditLink> 🚀"
 	},
@@ -296,6 +314,11 @@
 			"title": "Limite de requêtes auto-approuvées atteinte",
 			"description": "Roo a atteint la limite auto-approuvée de {{count}} requête(s) API. Souhaitez-vous réinitialiser le compteur et poursuivre la tâche ?",
 			"button": "Réinitialiser et continuer"
+		},
+		"autoApprovedCostLimitReached": {
+			"title": "Limite de coût en auto-approbation atteinte",
+			"description": "Roo a atteint la limite de coût auto-approuvée de ${{count}}. Souhaitez-vous réinitialiser le coût et poursuivre la tâche ?",
+			"button": "Réinitialiser et Continuer"
 		}
 	},
 	"codebaseSearch": {
@@ -323,7 +346,37 @@
 	"versionIndicator": {
 		"ariaLabel": "Version {{version}} - Cliquez pour voir les notes de version"
 	},
+	"rooCloudCTA": {
+		"title": "Roo Code Cloud arrive bientôt !",
+		"description": "Exécutez des agents distants dans le cloud, accédez à vos tâches de n'importe où, collaborez avec d'autres et bien plus encore.",
+		"joinWaitlist": "Rejoignez la liste d'attente pour obtenir un accès anticipé."
+	},
 	"editMessage": {
 		"placeholder": "Modifiez votre message..."
+	},
+	"command": {
+		"triggerDescription": "Déclencher la commande {{name}}"
+	},
+	"slashCommands": {
+		"tooltip": "Gérer les commandes slash",
+		"title": "Commandes Slash",
+		"description": "Créez des commandes slash personnalisées pour accéder rapidement aux prompts et flux de travail fréquemment utilisés. <DocsLink>Documentation</DocsLink>",
+		"globalCommands": "Commandes Globales",
+		"workspaceCommands": "Commandes de l'Espace de Travail",
+		"globalCommand": "Commande globale",
+		"editCommand": "Modifier la commande",
+		"deleteCommand": "Supprimer la commande",
+		"newGlobalCommandPlaceholder": "Nouvelle commande globale...",
+		"newWorkspaceCommandPlaceholder": "Nouvelle commande de l'espace de travail...",
+		"deleteDialog": {
+			"title": "Supprimer la commande",
+			"description": "Êtes-vous sûr de vouloir supprimer la commande \"{{name}}\" ? Cette action ne peut pas être annulée.",
+			"cancel": "Annuler",
+			"confirm": "Supprimer"
+		}
+	},
+	"queuedMessages": {
+		"title": "Messages en file d'attente :",
+		"clickToEdit": "Cliquez pour modifier le message"
 	}
 }

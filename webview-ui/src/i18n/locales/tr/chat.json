@@ -108,7 +108,7 @@
 	"stopTts": "Metin okumayı durdur",
 	"typeMessage": "Bir mesaj yazın...",
 	"typeTask": "Görevinizi buraya yazın...",
-	"addContext": "Bağlam eklemek için @, mod değiştirmek için /",
+	"addContext": "Bağlam eklemek için @, komutlar için /",
 	"dragFiles": "dosyaları sürüklemek için shift tuşuna basılı tutun",
 	"dragFilesImages": "dosyaları/resimleri sürüklemek için shift tuşuna basılı tutun",
 	"enhancePromptDescription": "'İstemi geliştir' düğmesi, ek bağlam, açıklama veya yeniden ifade sağlayarak isteğinizi iyileştirmeye yardımcı olur. Buraya bir istek yazıp düğmeye tekrar tıklayarak nasıl çalıştığını görebilirsiniz.",
@@ -116,7 +116,9 @@
 		"title": "Modlar",
 		"marketplace": "Mod Pazaryeri",
 		"settings": "Mod Ayarları",
-		"description": "Roo'nun davranışını özelleştiren uzmanlaşmış kişilikler."
+		"description": "Roo'nun davranışını özelleştiren uzmanlaşmış kişilikler.",
+		"searchPlaceholder": "Modları ara...",
+		"noResults": "Sonuç bulunamadı"
 	},
 	"errorReadingFile": "Dosya okuma hatası:",
 	"noValidImages": "Hiçbir geçerli resim işlenmedi",
@@ -192,6 +194,22 @@
 		"didViewDefinitionsOutsideWorkspace": "Roo bu dizinde (çalışma alanı dışında) kullanılan kaynak kod tanımlama isimlerini görüntüledi:"
 	},
 	"commandOutput": "Komut Çıktısı",
+	"commandExecution": {
+		"running": "Çalışıyor",
+		"pid": "PID: {{pid}}",
+		"exited": "Çıkıldı ({{exitCode}})",
+		"manageCommands": "Komut İzinlerini Yönet",
+		"commandManagementDescription": "Komut izinlerini yönetin: Otomatik yürütmeye izin vermek için ✓'e, yürütmeyi reddetmek için ✗'e tıklayın. Desenler açılıp kapatılabilir veya listelerden kaldırılabilir. <settingsLink>Tüm ayarları görüntüle</settingsLink>",
+		"addToAllowed": "İzin verilenler listesine ekle",
+		"removeFromAllowed": "İzin verilenler listesinden kaldır",
+		"addToDenied": "Reddedilenler listesine ekle",
+		"removeFromDenied": "Reddedilenler listesinden kaldır",
+		"abortCommand": "Komut yürütmeyi iptal et",
+		"expandOutput": "Çıktıyı genişlet",
+		"collapseOutput": "Çıktıyı daralt",
+		"expandManagement": "Komut yönetimi bölümünü genişlet",
+		"collapseManagement": "Komut yönetimi bölümünü daralt"
+	},
 	"response": "Yanıt",
 	"arguments": "Argümanlar",
 	"mcp": {
@@ -247,9 +265,9 @@
 		"title": "🎉 Roo Code {{version}} Yayınlandı",
 		"description": "Roo Code {{version}}, geliştirme iş akışınızı geliştirmek için güçlü yeni özellikler ve önemli iyileştirmeler getiriyor.",
 		"whatsNew": "Yenilikler",
-		"feature1": "<bold>Kod Tabanı İndeksleme Deneysel Aşamadan Mezun Oldu</bold>: Tam kod tabanı indeksleme artık kararlı ve geliştirilmiş arama ve bağlam anlayışı ile üretim kullanımına hazır.",
-		"feature2": "<bold>Yeni Yapılacaklar Listesi Özelliği</bold>: Görevlerinizi yolunda tutmak için entegre yapılacaklar yönetimi ile organize kalın ve geliştirme hedeflerinize odaklanın.",
-		"feature3": "<bold>Geliştirilmiş Mimar'dan Kod'a Geçişler</bold>: Mimar modunda planlamadan Kod modunda uygulamaya sorunsuz aktarımlar.",
+		"feature1": "<bold>Mesaj Kuyruğu</bold>: Roo çalışırken birden fazla mesajı kuyruğa alın, iş akışınızı kesintisiz olarak planlamaya devam etmenizi sağlar.",
+		"feature2": "<bold>Özel Slash Komutları</bold>: Sık kullanılan promptlara ve iş akışlarına hızlı erişim için kişiselleştirilmiş slash komutları oluşturun, tam UI yönetimi ile.",
+		"feature3": "<bold>Gelişmiş Gemini Araçları</bold>: Yeni URL bağlamı ve Google Arama temellendirilmesi yetenekleri, Gemini modellerine gerçek zamanlı web bilgileri ve gelişmiş araştırma yetenekleri sağlar.",
 		"hideButton": "Duyuruyu gizle",
 		"detailsDiscussLinks": "<discordLink>Discord</discordLink> ve <redditLink>Reddit</redditLink>'te daha fazla ayrıntı alın ve tartışmalara katılın 🚀"
 	},
@@ -296,6 +314,11 @@
 			"title": "Otomatik Onaylanan İstek Limiti Aşıldı",
 			"description": "Roo, {{count}} API isteği/istekleri için otomatik onaylanan limite ulaştı. Sayacı sıfırlamak ve göreve devam etmek istiyor musunuz?",
 			"button": "Sıfırla ve Devam Et"
+		},
+		"autoApprovedCostLimitReached": {
+			"title": "Otomatik Onaylanan Maliyet Sınırına Ulaşıldı",
+			"description": "Roo otomatik olarak onaylanmış ${{count}} maliyet sınırına ulaştı. Maliyeti sıfırlamak ve göreve devam etmek ister misiniz?",
+			"button": "Sıfırla ve Devam Et"
 		}
 	},
 	"codebaseSearch": {
@@ -323,7 +346,37 @@
 	"versionIndicator": {
 		"ariaLabel": "Sürüm {{version}} - Sürüm notlarını görüntülemek için tıklayın"
 	},
+	"rooCloudCTA": {
+		"title": "Roo Code Cloud yakında geliyor!",
+		"description": "Bulutta uzak ajanlar çalıştırın, görevlerinize her yerden erişin, başkalarıyla işbirliği yapın ve daha fazlası.",
+		"joinWaitlist": "Erken erişim için bekleme listesine katılın."
+	},
 	"editMessage": {
 		"placeholder": "Mesajını düzenle..."
+	},
+	"command": {
+		"triggerDescription": "{{name}} komutunu tetikle"
+	},
+	"slashCommands": {
+		"tooltip": "Eğik çizgi komutlarını yönet",
+		"title": "Eğik Çizgi Komutları",
+		"description": "Sık kullanılan komut istemleri ve iş akışlarına hızlı erişim için özel eğik çizgi komutları oluşturun. <DocsLink>Belgeler</DocsLink>",
+		"globalCommands": "Genel Komutlar",
+		"workspaceCommands": "Çalışma Alanı Komutları",
+		"globalCommand": "Genel komut",
+		"editCommand": "Komutu düzenle",
+		"deleteCommand": "Komutu sil",
+		"newGlobalCommandPlaceholder": "Yeni genel komut...",
+		"newWorkspaceCommandPlaceholder": "Yeni çalışma alanı komutu...",
+		"deleteDialog": {
+			"title": "Komutu Sil",
+			"description": "\"{{name}}\" komutunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+			"cancel": "İptal",
+			"confirm": "Sil"
+		}
+	},
+	"queuedMessages": {
+		"title": "Sıradaki Mesajlar:",
+		"clickToEdit": "Mesajı düzenlemek için tıkla"
 	}
 }

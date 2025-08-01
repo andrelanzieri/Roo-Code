@@ -6,6 +6,8 @@ import fs from "fs/promises"
 import { isBinaryFile } from "isbinaryfile"
 import { extractTextFromXLSX } from "./extract-text-from-xlsx"
 import { FileEncodingService } from "../../utils/fileEncodingService"
+import { countFileLines } from "./line-counter"
+import { readLines } from "./read-lines"
 
 async function extractTextFromPDF(filePath: string): Promise<string> {
 	const dataBuffer = await fs.readFile(filePath)
@@ -49,7 +51,27 @@ export function getSupportedBinaryFormats(): string[] {
 	return Object.keys(SUPPORTED_BINARY_FORMATS)
 }
 
-export async function extractTextFromFile(filePath: string): Promise<string> {
+/**
+ * Extracts text content from a file, with support for various formats including PDF, DOCX, XLSX, and plain text.
+ * For large text files, can limit the number of lines read to prevent context exhaustion.
+ *
+ * @param filePath - Path to the file to extract text from
+ * @param maxReadFileLine - Maximum number of lines to read from text files.
+ *                          Use UNLIMITED_LINES (-1) or undefined for no limit.
+ *                          Must be a positive integer or UNLIMITED_LINES.
+ * @returns Promise resolving to the extracted text content with line numbers
+ * @throws {Error} If file not found, unsupported format, or invalid parameters
+ */
+export async function extractTextFromFile(filePath: string, maxReadFileLine?: number): Promise<string> {
+	// Validate maxReadFileLine parameter
+	if (maxReadFileLine !== undefined && maxReadFileLine !== -1) {
+		if (!Number.isInteger(maxReadFileLine) || maxReadFileLine < 1) {
+			throw new Error(
+				`Invalid maxReadFileLine: ${maxReadFileLine}. Must be a positive integer or -1 for unlimited.`,
+			)
+		}
+	}
+
 	try {
 		await fs.access(filePath)
 	} catch (error) {
