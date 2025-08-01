@@ -1516,11 +1516,6 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("showRooIgnoredFiles", message.bool ?? false)
 			await provider.postStateToWebview()
 			break
-		case "filesChangedEnabled":
-			const filesChangedEnabled = message.bool ?? true
-			await updateGlobalState("filesChangedEnabled", filesChangedEnabled)
-			await provider.postStateToWebview()
-			break
 		case "hasOpenedModeSelector":
 			await updateGlobalState("hasOpenedModeSelector", message.bool ?? true)
 			await provider.postStateToWebview()
