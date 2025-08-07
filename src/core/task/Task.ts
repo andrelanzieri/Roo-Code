@@ -1489,8 +1489,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
-	public async abortTask(isAbandoned = false) {
-		// Aborting task
+public async abortTask(isAbandoned = false, skipSave = false) {
+		console.log(`[subtasks] aborting task ${this.taskId}.${this.instanceId}`)
 
 		// Will stop any autonomously running promises.
 		if (isAbandoned) {
@@ -1506,13 +1506,72 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			console.error(`Error during task ${this.taskId}.${this.instanceId} disposal:`, error)
 			// Don't rethrow - we want abort to always succeed
 		}
-		// Save the countdown message in the automatic retry or other content.
-		try {
-			// Save the countdown message in the automatic retry or other content.
-			await this.saveClineMessages()
-		} catch (error) {
-			console.error(`Error saving messages during abort for task ${this.taskId}.${this.instanceId}:`, error)
+
+		// Only save messages if not skipping (e.g., during user cancellation where messages are already saved)
+		if (!skipSave) {
+			try {
+				// Save the countdown message in the automatic retry or other content.
+				await this.saveClineMessages()
+			} catch (error) {
+				console.error(`Error saving messages during abort for task ${this.taskId}.${this.instanceId}:`, error)
+			}
 		}
+	}
+
+	/**
+	 * Reset the task to a resumable state without recreating the instance.
+	 * This is used when canceling a task to avoid unnecessary rerenders.
+	 */
+	public async resetToResumableState() {
+		console.log(`[subtasks] resetting task ${this.taskId}.${this.instanceId} to resumable state`)
+
+		// Reset abort flags
+		this.abort = false
+		this.abandoned = false
+
+		// Reset streaming state
+		this.isStreaming = false
+		this.isWaitingForFirstChunk = false
+		this.didFinishAbortingStream = true
+		this.didCompleteReadingStream = false
+
+		// Clear streaming content
+		this.currentStreamingContentIndex = 0
+		this.currentStreamingDidCheckpoint = false
+		this.assistantMessageContent = []
+		this.userMessageContent = []
+		this.userMessageContentReady = false
+		this.didRejectTool = false
+		this.didAlreadyUseTool = false
+		this.presentAssistantMessageLocked = false
+		this.presentAssistantMessageHasPendingUpdates = false
+
+		// Reset API state
+		this.consecutiveMistakeCount = 0
+
+		// Reset ask response state to allow new messages
+		this.askResponse = undefined
+		this.askResponseText = undefined
+		this.askResponseImages = undefined
+		this.blockingAsk = undefined
+
+		// Reset parser if exists
+		if (this.assistantMessageParser) {
+			this.assistantMessageParser.reset()
+		}
+
+		// Only reset diff view if it's actively editing
+		// This avoids unnecessary operations when diff view is not in use
+		if (this.diffViewProvider && this.diffViewProvider.isEditing) {
+			await this.diffViewProvider.reset()
+		}
+
+		// The task is now ready to be resumed
+		// The API request status has already been updated by abortStream
+		// We don't add the resume_task message here because ask() will add it
+
+		// Keep messages and history intact for resumption
+		// The task is now ready to be resumed without recreation
 	}
 
 	// Used when a sub-task is launched and the parent task is waiting for it to
@@ -1584,7 +1643,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const currentUserContent = currentItem.userContent
 			const currentIncludeFileDetails = currentItem.includeFileDetails
 
-			if (this.abort) {
+if (this.abort) {
 				throw new Error(`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`)
 			}
 
