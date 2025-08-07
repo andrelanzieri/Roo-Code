@@ -1282,8 +1282,27 @@ export class ClineProvider
 		// Just set the abort flag - the task will handle its own resumption
 		cline.abort = true
 
+		// Add a timeout safety net to ensure the task doesn't hang indefinitely
+		// If the task doesn't respond to cancellation within 30 seconds, force abort it
+		const timeoutMs = 30000 // 30 seconds
+		const timeoutPromise = new Promise<void>((resolve) => {
+			setTimeout(async () => {
+				// Check if the task is still in an aborted state
+				if (cline.abort && !cline.abandoned) {
+					console.log(
+						`[subtasks] task ${cline.taskId}.${cline.instanceId} did not respond to cancellation within ${timeoutMs}ms, forcing abort`,
+					)
+					// Force abandon the task to ensure cleanup
+					cline.abandoned = true
+					// Remove it from the stack
+					await this.removeClineFromStack()
+					resolve()
+				}
+			}, timeoutMs)
+		})
+
 		// The task's streaming loop will detect the abort flag and handle the resumption
-		// No need to wait or do anything else here
+		// The timeout ensures we don't wait indefinitely
 	}
 
 	async updateCustomInstructions(instructions?: string) {
