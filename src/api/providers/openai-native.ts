@@ -134,22 +134,47 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		// o1-preview and o1-mini only support user messages
 		const isOriginalO1 = model.id === "o1"
 		const { reasoning } = this.getModel()
+		const streamingEnabled = this.options.openAiNativeStreamingEnabled ?? true
 
-		const response = await this.client.chat.completions.create({
-			model: model.id,
-			messages: [
-				{
-					role: isOriginalO1 ? "developer" : "user",
-					content: isOriginalO1 ? `Formatting re-enabled\n${systemPrompt}` : systemPrompt,
-				},
-				...convertToOpenAiMessages(messages),
-			],
-			stream: true,
-			stream_options: { include_usage: true },
-			...(reasoning && reasoning),
-		})
+		if (streamingEnabled) {
+			const response = await this.client.chat.completions.create({
+				model: model.id,
+				messages: [
+					{
+						role: isOriginalO1 ? "developer" : "user",
+						content: isOriginalO1 ? `Formatting re-enabled\n${systemPrompt}` : systemPrompt,
+					},
+					...convertToOpenAiMessages(messages),
+				],
+				stream: true,
+				stream_options: { include_usage: true },
+				...(reasoning && reasoning),
+			})
 
-		yield* this.handleStreamResponse(response, model)
+			yield* this.handleStreamResponse(response, model)
+		} else {
+			// Non-streaming request
+			const response = await this.client.chat.completions.create({
+				model: model.id,
+				messages: [
+					{
+						role: isOriginalO1 ? "developer" : "user",
+						content: isOriginalO1 ? `Formatting re-enabled\n${systemPrompt}` : systemPrompt,
+					},
+					...convertToOpenAiMessages(messages),
+				],
+				...(reasoning && reasoning),
+			})
+
+			yield {
+				type: "text",
+				text: response.choices[0]?.message.content || "",
+			}
+
+			if (response.usage) {
+				yield* this.yieldUsage(model.info, response.usage)
+			}
+		}
 	}
 
 	private async *handleReasonerMessage(
@@ -159,22 +184,47 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		messages: Anthropic.Messages.MessageParam[],
 	): ApiStream {
 		const { reasoning } = this.getModel()
+		const streamingEnabled = this.options.openAiNativeStreamingEnabled ?? true
 
-		const stream = await this.client.chat.completions.create({
-			model: family,
-			messages: [
-				{
-					role: "developer",
-					content: `Formatting re-enabled\n${systemPrompt}`,
-				},
-				...convertToOpenAiMessages(messages),
-			],
-			stream: true,
-			stream_options: { include_usage: true },
-			...(reasoning && reasoning),
-		})
+		if (streamingEnabled) {
+			const stream = await this.client.chat.completions.create({
+				model: family,
+				messages: [
+					{
+						role: "developer",
+						content: `Formatting re-enabled\n${systemPrompt}`,
+					},
+					...convertToOpenAiMessages(messages),
+				],
+				stream: true,
+				stream_options: { include_usage: true },
+				...(reasoning && reasoning),
+			})
 
-		yield* this.handleStreamResponse(stream, model)
+			yield* this.handleStreamResponse(stream, model)
+		} else {
+			// Non-streaming request
+			const response = await this.client.chat.completions.create({
+				model: family,
+				messages: [
+					{
+						role: "developer",
+						content: `Formatting re-enabled\n${systemPrompt}`,
+					},
+					...convertToOpenAiMessages(messages),
+				],
+				...(reasoning && reasoning),
+			})
+
+			yield {
+				type: "text",
+				text: response.choices[0]?.message.content || "",
+			}
+
+			if (response.usage) {
+				yield* this.yieldUsage(model.info, response.usage)
+			}
+		}
 	}
 
 	private async *handleDefaultModelMessage(
@@ -183,34 +233,61 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		messages: Anthropic.Messages.MessageParam[],
 	): ApiStream {
 		const { reasoning, verbosity } = this.getModel()
+		const streamingEnabled = this.options.openAiNativeStreamingEnabled ?? true
 
-		// Prepare the request parameters
-		const params: any = {
-			model: model.id,
-			temperature: this.options.modelTemperature ?? OPENAI_NATIVE_DEFAULT_TEMPERATURE,
-			messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
-			stream: true,
-			stream_options: { include_usage: true },
-			...(reasoning && reasoning),
-		}
+		if (streamingEnabled) {
+			// Prepare the request parameters for streaming
+			const params: any = {
+				model: model.id,
+				temperature: this.options.modelTemperature ?? OPENAI_NATIVE_DEFAULT_TEMPERATURE,
+				messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
+				stream: true,
+				stream_options: { include_usage: true },
+				...(reasoning && reasoning),
+			}
 
-		// Add verbosity only if the model supports it
-		if (verbosity && model.info.supportsVerbosity) {
-			params.verbosity = verbosity
-		}
+			// Add verbosity only if the model supports it
+			if (verbosity && model.info.supportsVerbosity) {
+				params.verbosity = verbosity
+			}
 
-		const stream = await this.client.chat.completions.create(params)
+			const stream = await this.client.chat.completions.create(params)
 
-		if (typeof (stream as any)[Symbol.asyncIterator] !== "function") {
-			throw new Error(
-				"OpenAI SDK did not return an AsyncIterable for streaming response. Please check SDK version and usage.",
+			if (typeof (stream as any)[Symbol.asyncIterator] !== "function") {
+				throw new Error(
+					"OpenAI SDK did not return an AsyncIterable for streaming response. Please check SDK version and usage.",
+				)
+			}
+
+			yield* this.handleStreamResponse(
+				stream as unknown as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>,
+				model,
 			)
-		}
+		} else {
+			// Non-streaming request
+			const params: any = {
+				model: model.id,
+				temperature: this.options.modelTemperature ?? OPENAI_NATIVE_DEFAULT_TEMPERATURE,
+				messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
+				...(reasoning && reasoning),
+			}
 
-		yield* this.handleStreamResponse(
-			stream as unknown as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>,
-			model,
-		)
+			// Add verbosity only if the model supports it
+			if (verbosity && model.info.supportsVerbosity) {
+				params.verbosity = verbosity
+			}
+
+			const response = await this.client.chat.completions.create(params)
+
+			yield {
+				type: "text",
+				text: response.choices[0]?.message.content || "",
+			}
+
+			if (response.usage) {
+				yield* this.yieldUsage(model.info, response.usage)
+			}
+		}
 	}
 
 	private async *handleResponsesApiMessage(
@@ -221,6 +298,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	): ApiStream {
 		// Prefer the official SDK Responses API with streaming; fall back to fetch-based SSE if needed.
 		const { verbosity } = this.getModel()
+		const streamingEnabled = this.options.openAiNativeStreamingEnabled ?? true
 
 		// Both GPT-5 and Codex Mini use the same v1/responses endpoint format
 
@@ -296,8 +374,24 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			...(requestPreviousResponseId && { previous_response_id: requestPreviousResponseId }),
 		}
 
+		// Check if streaming is enabled
+		if (!streamingEnabled) {
+			// For non-streaming, we need to modify the request body
+			requestBody.stream = false
+			
+			// Make non-streaming request using the makeGpt5ResponsesAPIRequest method
+			// Note: The method signature expects the requestBody, not params
+			const responseIterator = this.makeGpt5ResponsesAPIRequest(requestBody, model, metadata)
+			
+			// Process the non-streaming response
+			for await (const chunk of responseIterator) {
+				yield chunk
+			}
+			return
+		}
+
 		try {
-			// Use the official SDK
+			// Use the official SDK for streaming
 			const stream = (await (this.client as any).responses.create(requestBody)) as AsyncIterable<any>
 
 			if (typeof (stream as any)[Symbol.asyncIterator] !== "function") {
