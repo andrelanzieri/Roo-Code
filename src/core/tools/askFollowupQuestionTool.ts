@@ -34,15 +34,18 @@ export async function askFollowupQuestionTool(
 			}
 
 			if (follow_up) {
-				// Define the actual structure returned by the XML parser
-				type ParsedSuggestion = string | { "#text": string; "@_mode"?: string }
+				// Define the actual structure returned by the XML parser for the new format
+				type ParsedSuggestion =
+					| string // For backward compatibility with old format or when stopNodes is used
+					| { "#text": string; "@_mode"?: string } // For backward compatibility with old format
 
 				let parsedSuggest: {
 					suggest: ParsedSuggestion[] | ParsedSuggestion
 				}
 
 				try {
-					parsedSuggest = parseXml(follow_up, ["suggest"]) as {
+					// Don't use stopNodes for suggest elements to allow proper parsing of nested structure
+					parsedSuggest = parseXml(follow_up) as {
 						suggest: ParsedSuggestion[] | ParsedSuggestion
 					}
 				} catch (error) {
@@ -58,17 +61,34 @@ export async function askFollowupQuestionTool(
 					: [parsedSuggest?.suggest].filter((sug): sug is ParsedSuggestion => sug !== undefined)
 
 				// Transform parsed XML to our Suggest format
-				const normalizedSuggest: Suggest[] = rawSuggestions.map((sug) => {
+				const normalizedSuggest: Suggest[] = rawSuggestions.map((sug: any) => {
 					if (typeof sug === "string") {
-						// Simple string suggestion (no mode attribute)
+						// Simple string suggestion (backward compatibility)
 						return { answer: sug }
-					} else {
-						// XML object with text content and optional mode attribute
-						const result: Suggest = { answer: sug["#text"] }
-						if (sug["@_mode"]) {
-							result.mode = sug["@_mode"]
+					} else if (sug && typeof sug === "object") {
+						// Check for new nested element format
+						if ("content" in sug) {
+							const result: Suggest = { answer: sug.content }
+							if (sug.mode) {
+								result.mode = sug.mode
+							}
+							return result
 						}
-						return result
+						// Old attribute format (backward compatibility)
+						else if ("#text" in sug) {
+							const result: Suggest = { answer: sug["#text"] }
+							if (sug["@_mode"]) {
+								result.mode = sug["@_mode"]
+							}
+							return result
+						}
+						// Fallback for any other object structure
+						else {
+							return { answer: JSON.stringify(sug) }
+						}
+					} else {
+						// Fallback for any unexpected type
+						return { answer: String(sug) }
 					}
 				})
 
