@@ -34,18 +34,19 @@ export async function askFollowupQuestionTool(
 			}
 
 			if (follow_up) {
-				// Define the actual structure returned by the XML parser for the new format
+				// Define the actual structure returned by the XML parser for both formats
 				type ParsedSuggestion =
 					| string // For backward compatibility with old format or when stopNodes is used
-					| { "#text": string; "@_mode"?: string } // For backward compatibility with old format
+					| { "#text": string; "@_mode"?: string } // For backward compatibility with old attribute format
+					| { content: string; mode?: string } // New nested element format
+					| { [key: string]: any } // Fallback for unexpected structures
 
 				let parsedSuggest: {
 					suggest: ParsedSuggestion[] | ParsedSuggestion
 				}
 
 				try {
-					// Don't use stopNodes for suggest elements to allow proper parsing of nested structure
-					parsedSuggest = parseXml(follow_up) as {
+					parsedSuggest = parseXml(follow_up, ["suggest"]) as {
 						suggest: ParsedSuggestion[] | ParsedSuggestion
 					}
 				} catch (error) {
@@ -61,12 +62,30 @@ export async function askFollowupQuestionTool(
 					: [parsedSuggest?.suggest].filter((sug): sug is ParsedSuggestion => sug !== undefined)
 
 				// Transform parsed XML to our Suggest format
-				const normalizedSuggest: Suggest[] = rawSuggestions.map((sug: any) => {
+				const normalizedSuggest: Suggest[] = rawSuggestions.map((sug: ParsedSuggestion) => {
 					if (typeof sug === "string") {
+						// Check if it's a string containing nested XML (new format with stopNodes)
+						if (sug.includes("<content>") || sug.includes("<mode>")) {
+							try {
+								// Parse the nested XML structure
+								const nestedParsed = parseXml(`<suggest>${sug}</suggest>`) as any
+								if (nestedParsed?.suggest) {
+									const nested = nestedParsed.suggest
+									const result: Suggest = { answer: nested.content || sug }
+									if (nested.mode) {
+										result.mode = nested.mode
+									}
+									return result
+								}
+							} catch {
+								// If parsing fails, treat as simple string
+								return { answer: sug }
+							}
+						}
 						// Simple string suggestion (backward compatibility)
 						return { answer: sug }
 					} else if (sug && typeof sug === "object") {
-						// Check for new nested element format
+						// Check for new nested element format (when not using stopNodes)
 						if ("content" in sug) {
 							const result: Suggest = { answer: sug.content }
 							if (sug.mode) {
