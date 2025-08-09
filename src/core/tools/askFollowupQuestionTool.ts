@@ -36,7 +36,10 @@ export async function askFollowupQuestionTool(
 			if (follow_up) {
 				// Define the actual structure returned by the XML parser for both formats
 				type ParsedSuggestion =
-					| string // For backward compatibility with old format or when stopNodes is used
+type ParsedSuggestion =
+  | string // For backward compatibility with old format
+  | { "#text": string; "@_mode"?: string } // Old attribute format
+  | { content: string; mode?: string } // New nested element format
 					| { "#text": string; "@_mode"?: string } // For backward compatibility with old attribute format
 					| { content: string; mode?: string } // New nested element format
 					| { [key: string]: any } // Fallback for unexpected structures
