@@ -17,6 +17,10 @@ export const historyItemSchema = z.object({
 	size: z.number().optional(),
 	workspace: z.string().optional(),
 	mode: z.string().optional(),
+	// Parent-child task relationship fields
+	parentTaskId: z.string().optional(),
+	childTaskIds: z.array(z.string()).optional(),
+	taskStatus: z.enum(["active", "paused", "completed"]).optional(),
 })
 
 export type HistoryItem = z.infer<typeof historyItemSchema>

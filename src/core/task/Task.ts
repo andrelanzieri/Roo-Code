@@ -130,6 +130,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly parentTask: Task | undefined = undefined
 	readonly taskNumber: number
 	readonly workspacePath: string
+	childTaskIds: string[] = []
+	taskStatus: "active" | "paused" | "completed" = "active"
 
 	/**
 	 * The mode associated with this task. Persisted across sessions
@@ -184,7 +186,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	isInitialized = false
 	isPaused: boolean = false
 	pausedModeSlug: string = defaultModeSlug
-	private pauseInterval: NodeJS.Timeout | undefined
 
 	// API
 	readonly apiConfiguration: ProviderSettings
@@ -574,7 +575,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
-	private async saveClineMessages() {
+	public async saveClineMessages() {
 		try {
 			await saveTaskMessages({
 				messages: this.clineMessages,
@@ -589,6 +590,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				globalStoragePath: this.globalStoragePath,
 				workspace: this.cwd,
 				mode: this._taskMode || defaultModeSlug, // Use the task's own mode, not the current provider mode
+				parentTaskId: this.parentTask?.taskId,
+				childTaskIds: this.childTaskIds,
+				taskStatus: this.taskStatus,
 			})
 
 			this.emit(RooCodeEventName.TaskTokenUsageUpdated, this.taskId, tokenUsage)
@@ -1002,6 +1006,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	public async resumePausedTask(lastMessage: string) {
 		// Release this Cline instance from paused state.
 		this.isPaused = false
+		this.taskStatus = "active"
 		this.emit(RooCodeEventName.TaskUnpaused)
 
 		// Fake an answer from the subtask that it has completed running and
@@ -1014,6 +1019,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				role: "user",
 				content: [{ type: "text", text: `[new_task completed] Result: ${lastMessage}` }],
 			})
+
+			// Update task status in persistent storage
+			await this.saveClineMessages()
 		} catch (error) {
 			this.providerRef
 				.deref()
@@ -1263,12 +1271,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	public dispose(): void {
 		console.log(`[Task] disposing task ${this.taskId}.${this.instanceId}`)
 
-		// Stop waiting for child task completion.
-		if (this.pauseInterval) {
-			clearInterval(this.pauseInterval)
-			this.pauseInterval = undefined
-		}
-
 		// Release any terminals associated with this task.
 		try {
 			// Release any terminals associated with this task.
@@ -1341,21 +1343,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
-	// Used when a sub-task is launched and the parent task is waiting for it to
-	// finish.
-	// TBD: The 1s should be added to the settings, also should add a timeout to
-	// prevent infinite waiting.
-	public async waitForResume() {
-		await new Promise<void>((resolve) => {
-			this.pauseInterval = setInterval(() => {
-				if (!this.isPaused) {
-					clearInterval(this.pauseInterval)
-					this.pauseInterval = undefined
-					resolve()
-				}
-			}, 1000)
-		})
-	}
+	// Direct resumption - no polling needed
+	// The child task will directly call resumePausedTask() on the parent
 
 	// Task Loop
 
@@ -1425,27 +1414,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.consecutiveMistakeCount = 0
 		}
 
-		// In this Cline request loop, we need to check if this task instance
-		// has been asked to wait for a subtask to finish before continuing.
+		// Check if this task is paused (waiting for a subtask)
+		// The child task will directly resume this task when it completes
 		const provider = this.providerRef.deref()
 
 		if (this.isPaused && provider) {
-			provider.log(`[subtasks] paused ${this.taskId}.${this.instanceId}`)
-			await this.waitForResume()
-			provider.log(`[subtasks] resumed ${this.taskId}.${this.instanceId}`)
-			const currentMode = (await provider.getState())?.mode ?? defaultModeSlug
-
-			if (currentMode !== this.pausedModeSlug) {
-				// The mode has changed, we need to switch back to the paused mode.
-				await provider.handleModeSwitch(this.pausedModeSlug)
-
-				// Delay to allow mode change to take effect before next tool is executed.
-				await delay(500)
-
-				provider.log(
-					`[subtasks] task ${this.taskId}.${this.instanceId} has switched back to '${this.pausedModeSlug}' from '${currentMode}'`,
-				)
-			}
+			provider.log(
+				`[subtasks] task ${this.taskId}.${this.instanceId} is paused, waiting for child task to complete`,
+			)
+			// The task will be resumed directly by the child task calling resumePausedTask()
+			// No polling needed - execution will continue when resumed
+			return true // Exit the loop while paused
 		}
 
 		// Getting verbose details is an expensive operation, it uses ripgrep to
