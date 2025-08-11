@@ -2235,6 +2235,15 @@ export class ClineProvider
 			})
 		}
 	}
+
+	// Compatibility methods for tests - these wrap the new persistent task management
+	async addClineToStack(task: Task): Promise<void> {
+		await this.activateTask(task)
+	}
+
+	async removeClineFromStack(): Promise<void> {
+		await this.deactivateCurrentTask()
+	}
 }
 
 class OrganizationAllowListViolationError extends Error {
