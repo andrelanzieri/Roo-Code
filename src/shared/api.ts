@@ -87,6 +87,17 @@ export const getModelMaxOutputTokens = ({
 		return settings.claudeCodeMaxOutputTokens || CLAUDE_CODE_DEFAULT_MAX_OUTPUT_TOKENS
 	}
 
+	// Special handling for GPT-5 models to prevent context window overflow
+	// Limit max output to 10k tokens as per https://github.com/cline/cline/issues/5474#issuecomment-3172109387
+	if (modelId.startsWith("gpt-5")) {
+		// Allow user override via settings, but cap at 10k
+		const userMaxTokens = settings?.modelMaxTokens
+		if (userMaxTokens) {
+			return Math.min(userMaxTokens, 10000)
+		}
+		return 10000
+	}
+
 	if (shouldUseReasoningBudget({ model, settings })) {
 		return settings?.modelMaxTokens || DEFAULT_HYBRID_REASONING_MODEL_MAX_TOKENS
 	}

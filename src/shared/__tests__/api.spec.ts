@@ -217,6 +217,121 @@ describe("getModelMaxOutputTokens", () => {
 
 		expect(getModelMaxOutputTokens({ modelId: "test", model, settings })).toBe(16_384)
 	})
+
+	describe("GPT-5 models token limit", () => {
+		test("should limit GPT-5 models to 10k max output tokens", () => {
+			const gpt5Model: ModelInfo = {
+				contextWindow: 400_000,
+				maxTokens: 128_000,
+				supportsPromptCache: true,
+			}
+
+			const result = getModelMaxOutputTokens({
+				modelId: "gpt-5-2025-08-07",
+				model: gpt5Model,
+				settings: {},
+				format: "openai",
+			})
+
+			expect(result).toBe(10_000)
+		})
+
+		test("should limit GPT-5-mini models to 10k max output tokens", () => {
+			const gpt5MiniModel: ModelInfo = {
+				contextWindow: 400_000,
+				maxTokens: 128_000,
+				supportsPromptCache: true,
+			}
+
+			const result = getModelMaxOutputTokens({
+				modelId: "gpt-5-mini-2025-08-07",
+				model: gpt5MiniModel,
+				settings: {},
+				format: "openai",
+			})
+
+			expect(result).toBe(10_000)
+		})
+
+		test("should limit GPT-5-nano models to 10k max output tokens", () => {
+			const gpt5NanoModel: ModelInfo = {
+				contextWindow: 400_000,
+				maxTokens: 128_000,
+				supportsPromptCache: true,
+			}
+
+			const result = getModelMaxOutputTokens({
+				modelId: "gpt-5-nano-2025-08-07",
+				model: gpt5NanoModel,
+				settings: {},
+				format: "openai",
+			})
+
+			expect(result).toBe(10_000)
+		})
+
+		test("should respect user override for GPT-5 models but cap at 10k", () => {
+			const gpt5Model: ModelInfo = {
+				contextWindow: 400_000,
+				maxTokens: 128_000,
+				supportsPromptCache: true,
+			}
+
+			// User tries to set 15k, should be capped at 10k
+			const settings: ProviderSettings = {
+				modelMaxTokens: 15_000,
+			}
+
+			const result = getModelMaxOutputTokens({
+				modelId: "gpt-5-2025-08-07",
+				model: gpt5Model,
+				settings,
+				format: "openai",
+			})
+
+			expect(result).toBe(10_000)
+		})
+
+		test("should allow user to set lower than 10k for GPT-5 models", () => {
+			const gpt5Model: ModelInfo = {
+				contextWindow: 400_000,
+				maxTokens: 128_000,
+				supportsPromptCache: true,
+			}
+
+			// User sets 5k, should be respected
+			const settings: ProviderSettings = {
+				modelMaxTokens: 5_000,
+			}
+
+			const result = getModelMaxOutputTokens({
+				modelId: "gpt-5-2025-08-07",
+				model: gpt5Model,
+				settings,
+				format: "openai",
+			})
+
+			expect(result).toBe(5_000)
+		})
+
+		test("should not affect non-GPT-5 models", () => {
+			const gpt4Model: ModelInfo = {
+				contextWindow: 128_000,
+				maxTokens: 16_384,
+				supportsPromptCache: true,
+			}
+
+			const result = getModelMaxOutputTokens({
+				modelId: "gpt-4o",
+				model: gpt4Model,
+				settings: {},
+				format: "openai",
+			})
+
+			// Should use model's maxTokens since it's within 20% of context window
+			expect(result).toBe(16_384)
+		})
+	})
 })
 
 describe("shouldUseReasoningBudget", () => {
