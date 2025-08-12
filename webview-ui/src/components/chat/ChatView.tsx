@@ -569,7 +569,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				text = text.trim()
 
 				if (text || images.length > 0) {
-					if (sendingDisabled && !fromQueue) {
+					// Queue messages when:
+					// 1. sendingDisabled is true (existing behavior)
+					// 2. OR when approval buttons are showing (enableButtons is true) to prevent auto-rejection
+					// This ensures that pressing Enter during manual approval doesn't immediately reject the request
+					if ((sendingDisabled || enableButtons) && !fromQueue) {
 						// Generate a more unique ID using timestamp + random component
 						const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 						setMessageQueue((prev: QueuedMessage[]) => [...prev, { id: messageId, text, images }])
@@ -627,17 +631,20 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				// but for now we'll just log it
 			}
 		},
-		[handleChatReset, markFollowUpAsAnswered, sendingDisabled], // messagesRef and clineAskRef are stable
+		[handleChatReset, markFollowUpAsAnswered, sendingDisabled, enableButtons], // messagesRef and clineAskRef are stable
 	)
 
 	useEffect(() => {
 		// Early return if conditions aren't met
 		// Also don't process queue if there's an API error (clineAsk === "api_req_failed")
+		// IMPORTANT: Don't process queue when there's a pending approval request (enableButtons is true)
+		// This prevents the queue from interfering with manual approval workflows
 		if (
 			sendingDisabled ||
 			messageQueue.length === 0 ||
 			isProcessingQueueRef.current ||
-			clineAsk === "api_req_failed"
+			clineAsk === "api_req_failed" ||
+			enableButtons // Don't process queue when approval buttons are shown
 		) {
 			return
 		}
@@ -682,7 +689,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		return () => {
 			isProcessingQueueRef.current = false
 		}
-	}, [sendingDisabled, messageQueue, handleSendMessage, clineAsk])
+	}, [sendingDisabled, messageQueue, handleSendMessage, clineAsk, enableButtons])
 
 	const handleSetChatBoxMessage = useCallback(
 		(text: string, images: string[]) => {
