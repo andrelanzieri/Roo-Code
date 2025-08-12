@@ -1663,11 +1663,32 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const iterator = stream[Symbol.asyncIterator]()
 				let item = await iterator.next()
 				while (!item.done) {
+					// Check for abort BEFORE processing the chunk and waiting for the next one
+					if (this.abort) {
+						console.log(`aborting stream, this.abandoned = ${this.abandoned}`)
+
+						if (!this.abandoned) {
+							// Only need to gracefully abort if this instance
+							// isn't abandoned (sometimes OpenRouter stream
+							// hangs, in which case this would affect future
+							// instances of Cline).
+							await abortStream("user_cancelled")
+						}
+
+						// Clean up the iterator if it has a return method
+						if (iterator.return) {
+							await iterator.return(undefined)
+						}
+
+						break // Aborts the stream.
+					}
+
 					const chunk = item.value
-					item = await iterator.next()
+
 					if (!chunk) {
 						// Sometimes chunk is undefined, no idea that can cause
 						// it, but this workaround seems to fix it.
+						item = await iterator.next()
 						continue
 					}
 
@@ -1707,20 +1728,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						}
 					}
 
-					if (this.abort) {
-						console.log(`aborting stream, this.abandoned = ${this.abandoned}`)
-
-						if (!this.abandoned) {
-							// Only need to gracefully abort if this instance
-							// isn't abandoned (sometimes OpenRouter stream
-							// hangs, in which case this would affect future
-							// instances of Cline).
-							await abortStream("user_cancelled")
-						}
-
-						break // Aborts the stream.
-					}
-
 					if (this.didRejectTool) {
 						// `userContent` has a tool rejection, so interrupt the
 						// assistant's response to present the user's feedback.
@@ -1737,6 +1744,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							"\n\n[Response interrupted by a tool use result. Only one tool may be used at a time and should be placed at the end of the message.]"
 						break
 					}
+
+					// Get next item at the end, after all checks
+					item = await iterator.next()
 				}
 
 				// Create a copy of current token values to avoid race conditions
@@ -1815,6 +1825,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 						// Use the same iterator that the main loop was using
 						while (!item.done) {
+							// Check for abort first
+							if (this.abort) {
+								console.log(`[Background Usage Collection] Aborting due to task cancellation`)
+								// Clean up the iterator before breaking
+								if (iterator.return) {
+									await iterator.return(undefined)
+								}
+								break
+							}
+
 							// Check for timeout
 							if (Date.now() - startTime > timeoutMs) {
 								console.warn(
