@@ -94,6 +94,8 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 
 			let lastUsageMetadata: GenerateContentResponseUsageMetadata | undefined
 			let pendingGroundingMetadata: GroundingMetadata | undefined
+			let hasTextContent = false
+			let hasReasoningContent = false
 
 			for await (const chunk of result) {
 				// Process candidates and their parts to separate thoughts from content
@@ -110,11 +112,13 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 								// This is a thinking/reasoning part
 								if (part.text) {
 									yield { type: "reasoning", text: part.text }
+									hasReasoningContent = true
 								}
 							} else {
 								// This is regular content
 								if (part.text) {
 									yield { type: "text", text: part.text }
+									hasTextContent = true
 								}
 							}
 						}
@@ -124,11 +128,18 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 				// Fallback to the original text property if no candidates structure
 				else if (chunk.text) {
 					yield { type: "text", text: chunk.text }
+					hasTextContent = true
 				}
 
 				if (chunk.usageMetadata) {
 					lastUsageMetadata = chunk.usageMetadata
 				}
+			}
+
+			// If we only got reasoning content but no text content, yield a minimal text response
+			// This prevents the "no assistant messages" error for Gemini 2.5 Pro with reasoning
+			if (hasReasoningContent && !hasTextContent) {
+				yield { type: "text", text: "[Thinking process completed]" }
 			}
 
 			if (pendingGroundingMetadata) {
@@ -201,7 +212,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 
 	async completePrompt(prompt: string): Promise<string> {
 		try {
-			const { id: model } = this.getModel()
+			const { id: model, reasoning: thinkingConfig } = this.getModel()
 
 			const tools: GenerateContentConfig["tools"] = []
 			if (this.options.enableUrlContext) {
@@ -215,6 +226,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 					? { baseUrl: this.options.googleGeminiBaseUrl }
 					: undefined,
 				temperature: this.options.modelTemperature ?? 0,
+				thinkingConfig,
 				...(tools.length > 0 ? { tools } : {}),
 			}
 
@@ -225,6 +237,15 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			})
 
 			let text = result.text ?? ""
+
+			// Handle case where model only returns reasoning/thinking content
+			// This can happen with Gemini 2.5 Pro when reasoning is enabled
+			if (!text && result.candidates?.[0]?.content?.parts) {
+				const hasThoughts = result.candidates[0].content.parts.some((part: any) => part.thought)
+				if (hasThoughts) {
+					text = "[Thinking process completed]"
+				}
+			}
 
 			const candidate = result.candidates?.[0]
 			if (candidate?.groundingMetadata) {

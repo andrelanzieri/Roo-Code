@@ -90,6 +90,95 @@ describe("GeminiHandler", () => {
 			)
 		})
 
+		it("should handle reasoning-only responses for Gemini 2.5 Pro", async () => {
+			// Mock a response with only reasoning/thinking content
+			;(handler["client"].models.generateContentStream as any).mockResolvedValue({
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						candidates: [
+							{
+								content: {
+									parts: [
+										{
+											thought: true,
+											text: "Let me think about this problem step by step...",
+										},
+									],
+								},
+							},
+						],
+					}
+					yield { usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 20, thoughtsTokenCount: 15 } }
+				},
+			})
+
+			const stream = handler.createMessage(systemPrompt, mockMessages)
+			const chunks = []
+
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Should have reasoning chunk, text chunk (fallback), and usage
+			expect(chunks.length).toBe(3)
+			expect(chunks[0]).toEqual({ type: "reasoning", text: "Let me think about this problem step by step..." })
+			expect(chunks[1]).toEqual({ type: "text", text: "[Thinking process completed]" })
+			expect(chunks[2]).toEqual({
+				type: "usage",
+				inputTokens: 10,
+				outputTokens: 20,
+				cacheReadTokens: undefined,
+				reasoningTokens: 15,
+				totalCost: undefined,
+			})
+		})
+
+		it("should handle mixed reasoning and text content", async () => {
+			// Mock a response with both reasoning and text content
+			;(handler["client"].models.generateContentStream as any).mockResolvedValue({
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						candidates: [
+							{
+								content: {
+									parts: [
+										{
+											thought: true,
+											text: "Analyzing the request...",
+										},
+										{
+											text: "Here is my response",
+										},
+									],
+								},
+							},
+						],
+					}
+					yield { usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 25 } }
+				},
+			})
+
+			const stream = handler.createMessage(systemPrompt, mockMessages)
+			const chunks = []
+
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Should have reasoning, text, and usage chunks (no fallback text needed)
+			expect(chunks.length).toBe(3)
+			expect(chunks[0]).toEqual({ type: "reasoning", text: "Analyzing the request..." })
+			expect(chunks[1]).toEqual({ type: "text", text: "Here is my response" })
+			expect(chunks[2]).toEqual({
+				type: "usage",
+				inputTokens: 10,
+				outputTokens: 25,
+				cacheReadTokens: undefined,
+				reasoningTokens: undefined,
+				totalCost: undefined,
+			})
+		})
+
 		it("should handle API errors", async () => {
 			const mockError = new Error("Gemini API error")
 			;(handler["client"].models.generateContentStream as any).mockRejectedValue(mockError)
@@ -142,6 +231,28 @@ describe("GeminiHandler", () => {
 
 			const result = await handler.completePrompt("Test prompt")
 			expect(result).toBe("")
+		})
+
+		it("should handle reasoning-only response in completePrompt", async () => {
+			// Mock a response with only reasoning/thinking content and no text
+			;(handler["client"].models.generateContent as any).mockResolvedValue({
+				text: "",
+				candidates: [
+					{
+						content: {
+							parts: [
+								{
+									thought: true,
+									text: "Let me analyze this request...",
+								},
+							],
+						},
+					},
+				],
+			})
+
+			const result = await handler.completePrompt("Test prompt")
+			expect(result).toBe("[Thinking process completed]")
 		})
 	})
 
