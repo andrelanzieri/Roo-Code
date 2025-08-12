@@ -77,7 +77,7 @@ export async function newTaskToolWithValidation(
 			}
 
 			// Get validation configuration from state
-			const state = await provider.getState()
+			const state = (await provider.getState()) as any // Type assertion for proof-of-concept
 			const validationConfig = {
 				enabled: state.subtaskValidationEnabled ?? false,
 				validationApiConfigId: state.subtaskValidationApiConfigId,
