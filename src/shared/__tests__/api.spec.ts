@@ -358,7 +358,34 @@ describe("getModelMaxOutputTokens", () => {
 			})
 		})
 
-		test("should not match invalid GPT-5 model names", () => {
+		test("should match any model starting with 'gpt-5'", () => {
+			const gpt5Model: ModelInfo = {
+				contextWindow: 400_000,
+				maxTokens: 128_000,
+				supportsPromptCache: true,
+			}
+
+			// With startsWith, these will ALL be treated as GPT-5 models
+			const gpt5ModelIds = [
+				"gpt-5-turbo", // Now matches
+				"gpt-5-", // Now matches
+				"gpt-5-mini-turbo", // Now matches
+				"gpt-5-anything", // Now matches
+			]
+
+			gpt5ModelIds.forEach((modelId) => {
+				const result = getModelMaxOutputTokens({
+					modelId,
+					model: gpt5Model,
+					settings: {},
+					format: "openai",
+				})
+				// Should be limited to GPT5_MAX_OUTPUT_TOKENS
+				expect(result).toBe(GPT5_MAX_OUTPUT_TOKENS)
+			})
+		})
+
+		test("should not match models that don't start with 'gpt-5'", () => {
 			const model: ModelInfo = {
 				contextWindow: 128_000,
 				maxTokens: 16_384,
@@ -366,14 +393,14 @@ describe("getModelMaxOutputTokens", () => {
 			}
 
 			// These should NOT be treated as GPT-5 models
-			const invalidModelIds = [
-				"gpt-5-turbo", // Invalid variant
-				"gpt-50", // Different number
-				"gpt-5-", // Incomplete
-				"gpt-5-mini-turbo", // Invalid variant combination
+			const nonGpt5ModelIds = [
+				"gpt-4o", // GPT-4 model
+				"gpt-6", // GPT-6 (hypothetical future model)
+				"claude-3-5-sonnet", // Different model family
+				"openai-gpt-5", // Doesn't start with "gpt-5"
 			]
 
-			invalidModelIds.forEach((modelId) => {
+			nonGpt5ModelIds.forEach((modelId) => {
 				const result = getModelMaxOutputTokens({
 					modelId,
 					model,

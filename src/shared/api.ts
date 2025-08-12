@@ -98,7 +98,7 @@ export const getModelMaxOutputTokens = ({
 
 	// Special handling for GPT-5 models to prevent context window overflow
 	// GPT-5 models include: gpt-5, gpt-5-mini, gpt-5-nano, and dated variants
-	const isGpt5Model = /^gpt-5(-mini|-nano)?(-\d{4}-\d{2}-\d{2})?$/i.test(modelId)
+	const isGpt5Model = modelId.startsWith("gpt-5")
 	if (isGpt5Model) {
 		// Allow user override via settings, but cap at GPT5_MAX_OUTPUT_TOKENS
 		const userMaxTokens = settings?.modelMaxTokens
