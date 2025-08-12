@@ -99,7 +99,7 @@ export async function parseMentions(
 	supportsImages: boolean = false,
 	maxImageFileSize: number = DEFAULT_MAX_IMAGE_FILE_SIZE_MB,
 	maxTotalImageSize: number = DEFAULT_MAX_TOTAL_IMAGE_SIZE_MB,
-): Promise<{ text: string; images: string[] }> {
+): Promise<string | { text: string; images: string[] }> {
 	const mentions: Set<string> = new Set()
 	const validCommands: Map<string, Command> = new Map()
 	const imageDataUrls: string[] = []
@@ -327,6 +327,11 @@ export async function parseMentions(
 		}
 	}
 
+	// Maintain backward compatibility: if no images were found, return just the string
+	// Otherwise, return the new format with text and images
+	if (imageDataUrls.length === 0) {
+		return parsedText
+	}
 	return { text: parsedText, images: imageDataUrls }
 }
 

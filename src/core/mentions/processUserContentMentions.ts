@@ -69,6 +69,15 @@ export async function processUserContentMentions({
 						maxTotalImageSize,
 					)
 
+					// Handle backward compatibility - result can be string or object
+					if (typeof result === "string") {
+						// No images found, just return the text block with updated text
+						return {
+							...block,
+							text: result,
+						}
+					}
+
 					// If there are images, we need to add them as separate image blocks
 					const blocks: Anthropic.Messages.ContentBlockParam[] = [
 						{
@@ -116,10 +125,13 @@ export async function processUserContentMentions({
 							maxTotalImageSize,
 						)
 
+						// Handle backward compatibility - result can be string or object
+						const textContent = typeof result === "string" ? result : result.text
+
 						// For tool_result, we can only return text content, not images
 						return {
 							...block,
-							content: result.text,
+							content: textContent,
 						}
 					}
 
@@ -143,10 +155,13 @@ export async function processUserContentMentions({
 									maxTotalImageSize,
 								)
 
+								// Handle backward compatibility - result can be string or object
+								const textContent = typeof result === "string" ? result : result.text
+
 								// For tool_result content blocks, we can only return text
 								return {
 									...contentBlock,
-									text: result.text,
+									text: textContent,
 								}
 							}
 
@@ -163,7 +178,10 @@ export async function processUserContentMentions({
 			return block
 		}),
 	).then((results) => {
-		// Flatten any arrays that were returned (when images were added)
+		// Flatten any arrays that were returned (when images were added).
+		// This is necessary because when we process image mentions, we return an array
+		// containing both the text block and separate image blocks. The flat() method
+		// ensures all blocks are at the same level in the final array.
 		return results.flat()
 	})
 }

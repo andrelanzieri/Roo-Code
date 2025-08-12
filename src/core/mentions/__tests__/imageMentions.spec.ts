@@ -140,11 +140,15 @@ describe("Image Mentions", () => {
 				20,
 			)
 
-			expect(result.images).toHaveLength(2)
-			expect(result.images[0]).toBe(mockImageDataUrl1)
-			expect(result.images[1]).toBe(mockImageDataUrl2)
-			expect(result.text).toContain("'image1.png' (see below for image)")
-			expect(result.text).toContain("'image2.jpg' (see below for image)")
+			// Type guard for TypeScript
+			expect(typeof result).toBe("object")
+			if (typeof result === "object") {
+				expect(result.images).toHaveLength(2)
+				expect(result.images[0]).toBe(mockImageDataUrl1)
+				expect(result.images[1]).toBe(mockImageDataUrl2)
+				expect(result.text).toContain("'image1.png' (see below for image)")
+				expect(result.text).toContain("'image2.jpg' (see below for image)")
+			}
 		})
 
 		it("should handle image size limit exceeded", async () => {
@@ -177,8 +181,11 @@ describe("Image Mentions", () => {
 				20,
 			)
 
-			expect(result.images).toHaveLength(0)
-			expect(result.text).toContain("Image file is too large (10 MB). Maximum allowed size is 5 MB.")
+			// When validation fails, we still get an object but with no images
+			expect(typeof result).toBe("string")
+			if (typeof result === "string") {
+				expect(result).toContain("Image file is too large (10 MB). Maximum allowed size is 5 MB.")
+			}
 		})
 
 		it("should handle model that doesn't support images", async () => {
@@ -210,8 +217,11 @@ describe("Image Mentions", () => {
 				20,
 			)
 
-			expect(result.images).toHaveLength(0)
-			expect(result.text).toContain("Image file detected but current model does not support images")
+			// When model doesn't support images, result should be a string
+			expect(typeof result).toBe("string")
+			if (typeof result === "string") {
+				expect(result).toContain("Image file detected but current model does not support images")
+			}
 		})
 
 		it("should handle mixed content with images and regular files", async () => {
@@ -263,12 +273,16 @@ describe("Image Mentions", () => {
 				20,
 			)
 
-			expect(result.images).toHaveLength(1)
-			expect(result.images[0]).toBe(mockImageDataUrl)
-			expect(result.text).toContain("'image.png' (see below for image)")
-			// The script.js file will have an error because we're not fully mocking the file system
-			// but that's okay for this test - we're mainly testing that images and non-images are handled differently
-			expect(result.text).toContain("script.js")
+			// Type guard for TypeScript
+			expect(typeof result).toBe("object")
+			if (typeof result === "object") {
+				expect(result.images).toHaveLength(1)
+				expect(result.images[0]).toBe(mockImageDataUrl)
+				expect(result.text).toContain("'image.png' (see below for image)")
+				// The script.js file will have an error because we're not fully mocking the file system
+				// but that's okay for this test - we're mainly testing that images and non-images are handled differently
+				expect(result.text).toContain("script.js")
+			}
 		})
 
 		it("should respect .rooignore for image files", async () => {
@@ -299,8 +313,11 @@ describe("Image Mentions", () => {
 				20,
 			)
 
-			expect(result.images).toHaveLength(0)
-			expect(result.text).toContain("(Image ignored-image.png is ignored by .rooignore)")
+			// When image is ignored, result should be a string
+			expect(typeof result).toBe("string")
+			if (typeof result === "string") {
+				expect(result).toContain("(Image ignored-image.png is ignored by .rooignore)")
+			}
 		})
 
 		it("should handle total memory limit for multiple images", async () => {
@@ -348,8 +365,159 @@ describe("Image Mentions", () => {
 				20, // maxTotalImageSize
 			)
 
-			expect(result.images).toHaveLength(1)
-			expect(result.text).toContain("Image skipped to avoid size limit")
+			// Type guard for TypeScript
+			expect(typeof result).toBe("object")
+			if (typeof result === "object") {
+				expect(result.images).toHaveLength(1)
+				expect(result.text).toContain("Image skipped to avoid size limit")
+			}
+		})
+
+		it("should handle SVG image format", async () => {
+			const mockSvgDataUrl =
+				"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjwvc3ZnPg=="
+
+			vi.mocked(imageHelpers.isSupportedImageFormat).mockImplementation((ext) => ext === ".svg")
+			vi.mocked(imageHelpers.validateImageForProcessing).mockResolvedValue({
+				isValid: true,
+				sizeInMB: 0.1,
+			})
+
+			vi.mocked(imageHelpers.processImageFile).mockResolvedValue({
+				dataUrl: mockSvgDataUrl,
+				buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+				sizeInKB: 100,
+				sizeInMB: 0.1,
+				notice: "Image (100 KB)",
+			})
+
+			vi.mocked(fs.stat).mockResolvedValue({
+				isFile: () => true,
+				isDirectory: () => false,
+				size: 102400,
+			} as any)
+
+			const result = await parseMentions(
+				"Check @/logo.svg",
+				"/workspace",
+				mockUrlContentFetcher,
+				undefined,
+				undefined,
+				true,
+				true,
+				50,
+				undefined,
+				true,
+				5,
+				20,
+			)
+
+			// Type guard for TypeScript
+			expect(typeof result).toBe("object")
+			if (typeof result === "object") {
+				expect(result).toHaveProperty("images")
+				expect(result.images).toHaveLength(1)
+				expect(result.images[0]).toBe(mockSvgDataUrl)
+				expect(result.text).toContain("'logo.svg' (see below for image)")
+			}
+		})
+
+		it("should handle WebP image format", async () => {
+			const mockWebpDataUrl =
+				"data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAQAcJaQAA3AA/v3AgAA="
+
+			vi.mocked(imageHelpers.isSupportedImageFormat).mockImplementation((ext) => ext === ".webp")
+			vi.mocked(imageHelpers.validateImageForProcessing).mockResolvedValue({
+				isValid: true,
+				sizeInMB: 0.2,
+			})
+
+			vi.mocked(imageHelpers.processImageFile).mockResolvedValue({
+				dataUrl: mockWebpDataUrl,
+				buffer: Buffer.from("webp data"),
+				sizeInKB: 200,
+				sizeInMB: 0.2,
+				notice: "Image (200 KB)",
+			})
+
+			vi.mocked(fs.stat).mockResolvedValue({
+				isFile: () => true,
+				isDirectory: () => false,
+				size: 204800,
+			} as any)
+
+			const result = await parseMentions(
+				"Check @/photo.webp",
+				"/workspace",
+				mockUrlContentFetcher,
+				undefined,
+				undefined,
+				true,
+				true,
+				50,
+				undefined,
+				true,
+				5,
+				20,
+			)
+
+			// Type guard for TypeScript
+			expect(typeof result).toBe("object")
+			if (typeof result === "object") {
+				expect(result).toHaveProperty("images")
+				expect(result.images).toHaveLength(1)
+				expect(result.images[0]).toBe(mockWebpDataUrl)
+				expect(result.text).toContain("'photo.webp' (see below for image)")
+			}
+		})
+
+		it("should handle AVIF image format", async () => {
+			const mockAvifDataUrl =
+				"data:image/avif;base64,AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAADybWV0YQAAAAAAAAAoaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAGxpYmF2aWYAAAAADnBpdG0AAAAAAAEAAAAeaWxvYwAAAABEAAABAAEAAAABAAABGgAAAB0AAAAoaWluZgAAAAAAAQAAABppbmZlAgAAAAABAABhdjAxQ29sb3IAAAAAamlwcnAAAABLaXBjbwAAABRpc3BlAAAAAAAAAAEAAAABAAAAEHBpeGkAAAAAAwgICAAAAAxhdjFDgQ0MAAAAABNjb2xybmNseAACAAIABoAAAAAXaXBtYQAAAAAAAAABAAEEAQKDBAAAACVtZGF0EgAKCBgANogQEAwgMg=="
+
+			vi.mocked(imageHelpers.isSupportedImageFormat).mockImplementation((ext) => ext === ".avif")
+			vi.mocked(imageHelpers.validateImageForProcessing).mockResolvedValue({
+				isValid: true,
+				sizeInMB: 0.3,
+			})
+
+			vi.mocked(imageHelpers.processImageFile).mockResolvedValue({
+				dataUrl: mockAvifDataUrl,
+				buffer: Buffer.from("avif data"),
+				sizeInKB: 300,
+				sizeInMB: 0.3,
+				notice: "Image (300 KB)",
+			})
+
+			vi.mocked(fs.stat).mockResolvedValue({
+				isFile: () => true,
+				isDirectory: () => false,
+				size: 307200,
+			} as any)
+
+			const result = await parseMentions(
+				"Check @/modern.avif",
+				"/workspace",
+				mockUrlContentFetcher,
+				undefined,
+				undefined,
+				true,
+				true,
+				50,
+				undefined,
+				true,
+				5,
+				20,
+			)
+
+			// Type guard for TypeScript
+			expect(typeof result).toBe("object")
+			if (typeof result === "object") {
+				expect(result).toHaveProperty("images")
+				expect(result.images).toHaveLength(1)
+				expect(result.images[0]).toBe(mockAvifDataUrl)
+				expect(result.text).toContain("'modern.avif' (see below for image)")
+			}
 		})
 	})
 })
