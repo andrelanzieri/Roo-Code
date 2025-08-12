@@ -86,11 +86,15 @@ describe("Image Mentions", () => {
 				20, // maxTotalImageSize
 			)
 
-			expect(result.text).toContain("'test/image.png' (see below for image)")
-			expect(result.text).toContain('<image_content path="test/image.png">')
-			expect(result.text).toContain("Image (500 KB)")
-			expect(result.images).toHaveLength(1)
-			expect(result.images[0]).toBe(mockImageDataUrl)
+			// Type guard for TypeScript
+			expect(typeof result).toBe("object")
+			if (typeof result === "object") {
+				expect(result.text).toContain("'test/image.png' (see below for image)")
+				expect(result.text).toContain('<image_content path="test/image.png">')
+				expect(result.text).toContain("Image (500 KB)")
+				expect(result.images).toHaveLength(1)
+				expect(result.images[0]).toBe(mockImageDataUrl)
+			}
 		})
 
 		it("should handle multiple image mentions", async () => {
