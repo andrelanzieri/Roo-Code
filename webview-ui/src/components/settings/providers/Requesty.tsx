@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react"
+import { Checkbox } from "vscrui"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { type ProviderSettings, type OrganizationAllowList, requestyDefaultModelId } from "@roo-code/types"
@@ -34,6 +35,7 @@ export const Requesty = ({
 	const { t } = useAppTranslation()
 
 	const [didRefetch, setDidRefetch] = useState<boolean>()
+	const [requestyBaseUrlSelected, setRequestyBaseUrlSelected] = useState(!!apiConfiguration?.requestyBaseUrl)
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -72,6 +74,28 @@ export const Requesty = ({
 					{t("settings:providers.getRequestyApiKey")}
 				</VSCodeButtonLink>
 			)}
+			<div>
+				<Checkbox
+					checked={requestyBaseUrlSelected}
+					onChange={(checked: boolean) => {
+						setRequestyBaseUrlSelected(checked)
+
+						if (!checked) {
+							setApiConfigurationField("requestyBaseUrl", "")
+						}
+					}}>
+					{t("settings:providers.useCustomBaseUrl")}
+				</Checkbox>
+				{requestyBaseUrlSelected && (
+					<VSCodeTextField
+						value={apiConfiguration?.requestyBaseUrl || ""}
+						type="url"
+						onInput={handleInputChange("requestyBaseUrl")}
+						placeholder="Default: https://router.requesty.ai/v1"
+						className="w-full mt-1"
+					/>
+				)}
+			</div>
 			<Button
 				variant="outline"
 				onClick={() => {

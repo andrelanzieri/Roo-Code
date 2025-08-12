@@ -227,6 +227,7 @@ const unboundSchema = baseProviderSettingsSchema.extend({
 const requestySchema = baseProviderSettingsSchema.extend({
 	requestyApiKey: z.string().optional(),
 	requestyModelId: z.string().optional(),
+	requestyBaseUrl: z.string().optional(),
 })
 
 const humanRelaySchema = baseProviderSettingsSchema

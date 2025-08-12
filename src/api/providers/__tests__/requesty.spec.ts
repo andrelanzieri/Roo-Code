@@ -65,6 +65,25 @@ describe("RequestyHandler", () => {
 		})
 	})
 
+	it("initializes with custom base URL when provided", () => {
+		const customOptions: ApiHandlerOptions = {
+			...mockOptions,
+			requestyBaseUrl: "https://custom.requesty.ai/v1",
+		}
+		const handler = new RequestyHandler(customOptions)
+		expect(handler).toBeInstanceOf(RequestyHandler)
+
+		expect(OpenAI).toHaveBeenCalledWith({
+			baseURL: "https://custom.requesty.ai/v1",
+			apiKey: customOptions.requestyApiKey,
+			defaultHeaders: {
+				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Cline",
+				"X-Title": "Roo Code",
+				"User-Agent": `RooCode/${Package.version}`,
+			},
+		})
+	})
+
 	describe("fetchModel", () => {
 		it("returns correct model info when options are provided", async () => {
 			const handler = new RequestyHandler(mockOptions)
