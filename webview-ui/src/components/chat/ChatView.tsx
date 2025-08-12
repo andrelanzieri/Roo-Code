@@ -465,26 +465,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 	}, [])
 
-	useEffect(() => {
-		const prev = prevExpandedRowsRef.current
-		let wasAnyRowExpandedByUser = false
-		if (prev) {
-			// Check if any row transitioned from false/undefined to true
-			for (const [tsKey, isExpanded] of Object.entries(expandedRows)) {
-				const ts = Number(tsKey)
-				if (isExpanded && !(prev[ts] ?? false)) {
-					wasAnyRowExpandedByUser = true
-					break
-				}
-			}
-		}
-
-		if (wasAnyRowExpandedByUser) {
-			disableAutoScrollRef.current = true
-		}
-		prevExpandedRowsRef.current = expandedRows // Store current state for next comparison
-	}, [expandedRows])
-
 	const isStreaming = useMemo(() => {
 		// Checking clineAsk isn't enough since messages effect may be called
 		// again for a tool for example, set clineAsk to its value, and if the
@@ -528,6 +508,27 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 		return false
 	}, [modifiedMessages, clineAsk, enableButtons, primaryButtonText])
+
+	useEffect(() => {
+		const prev = prevExpandedRowsRef.current
+		let wasAnyRowExpandedByUser = false
+		if (prev) {
+			// Check if any row transitioned from false/undefined to true
+			for (const [tsKey, isExpanded] of Object.entries(expandedRows)) {
+				const ts = Number(tsKey)
+				if (isExpanded && !(prev[ts] ?? false)) {
+					wasAnyRowExpandedByUser = true
+					break
+				}
+			}
+		}
+
+		// Don't disable auto-scroll during streaming even if rows are expanded
+		if (wasAnyRowExpandedByUser && !isStreaming) {
+			disableAutoScrollRef.current = true
+		}
+		prevExpandedRowsRef.current = expandedRows // Store current state for next comparison
+	}, [expandedRows, isStreaming])
 
 	const markFollowUpAsAnswered = useCallback(() => {
 		const lastFollowUpMessage = messagesRef.current.findLast((msg: ClineMessage) => msg.ask === "followup")
@@ -1390,7 +1391,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	useEffect(() => {
 		let timer: ReturnType<typeof setTimeout> | undefined
-		if (!disableAutoScrollRef.current) {
+		// Always scroll to bottom during streaming unless user explicitly scrolled up
+		if (!disableAutoScrollRef.current || isStreaming) {
 			timer = setTimeout(() => scrollToBottomSmooth(), 50)
 		}
 		return () => {
@@ -1398,18 +1400,23 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				clearTimeout(timer)
 			}
 		}
-	}, [groupedMessages.length, scrollToBottomSmooth])
+	}, [groupedMessages.length, scrollToBottomSmooth, isStreaming])
 
-	const handleWheel = useCallback((event: Event) => {
-		const wheelEvent = event as WheelEvent
+	const handleWheel = useCallback(
+		(event: Event) => {
+			const wheelEvent = event as WheelEvent
 
-		if (wheelEvent.deltaY && wheelEvent.deltaY < 0) {
-			if (scrollContainerRef.current?.contains(wheelEvent.target as Node)) {
-				// User scrolled up
-				disableAutoScrollRef.current = true
+			if (wheelEvent.deltaY && wheelEvent.deltaY < 0) {
+				if (scrollContainerRef.current?.contains(wheelEvent.target as Node)) {
+					// User scrolled up - but don't disable during streaming if we're near bottom
+					if (!isStreaming || !isAtBottom) {
+						disableAutoScrollRef.current = true
+					}
+				}
 			}
-		}
-	}, [])
+		},
+		[isStreaming, isAtBottom],
+	)
 
 	useEvent("wheel", handleWheel, window, { passive: true }) // passive improves scrolling performance
 
@@ -1876,6 +1883,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							atBottomStateChange={(isAtBottom: boolean) => {
 								setIsAtBottom(isAtBottom)
 								if (isAtBottom) {
+									disableAutoScrollRef.current = false
+								}
+								// During streaming, always keep auto-scroll enabled unless user explicitly scrolled
+								if (isStreaming && isAtBottom) {
 									disableAutoScrollRef.current = false
 								}
 								setShowScrollToBottom(disableAutoScrollRef.current && !isAtBottom)
