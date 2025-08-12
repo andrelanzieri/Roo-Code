@@ -149,6 +149,10 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setMaxDiagnosticMessages: (value: number) => void
 	includeTaskHistoryInEnhance?: boolean
 	setIncludeTaskHistoryInEnhance: (value: boolean) => void
+	otelEnabled?: boolean
+	setOtelEnabled: (value: boolean) => void
+	otelEndpoints?: Array<{ url: string; headers?: Record<string, string>; enabled: boolean }>
+	setOtelEndpoints: (value: Array<{ url: string; headers?: Record<string, string>; enabled: boolean }>) => void
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -269,6 +273,10 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		global: {},
 	})
 	const [includeTaskHistoryInEnhance, setIncludeTaskHistoryInEnhance] = useState(false)
+	const [otelEnabled, setOtelEnabled] = useState(false)
+	const [otelEndpoints, setOtelEndpoints] = useState<
+		Array<{ url: string; headers?: Record<string, string>; enabled: boolean }>
+	>([])
 
 	const setListApiConfigMeta = useCallback(
 		(value: ProviderSettingsEntry[]) => setState((prevState) => ({ ...prevState, listApiConfigMeta: value })),
@@ -305,6 +313,13 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					// Update includeTaskHistoryInEnhance if present in state message
 					if ((newState as any).includeTaskHistoryInEnhance !== undefined) {
 						setIncludeTaskHistoryInEnhance((newState as any).includeTaskHistoryInEnhance)
+					}
+					// Update OTEL settings if present in state message
+					if ((newState as any).otelEnabled !== undefined) {
+						setOtelEnabled((newState as any).otelEnabled)
+					}
+					if ((newState as any).otelEndpoints !== undefined) {
+						setOtelEndpoints((newState as any).otelEndpoints)
 					}
 					// Handle marketplace data if present in state message
 					if (newState.marketplaceItems !== undefined) {
@@ -522,6 +537,10 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		},
 		includeTaskHistoryInEnhance,
 		setIncludeTaskHistoryInEnhance,
+		otelEnabled,
+		setOtelEnabled,
+		otelEndpoints,
+		setOtelEndpoints,
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

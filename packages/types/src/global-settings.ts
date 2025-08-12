@@ -143,6 +143,18 @@ export const globalSettingsSchema = z.object({
 
 	remoteControlEnabled: z.boolean().optional(),
 
+	// OpenTelemetry configuration
+	otelEnabled: z.boolean().optional(),
+	otelEndpoints: z
+		.array(
+			z.object({
+				url: z.string(),
+				headers: z.record(z.string(), z.string()).optional(),
+				enabled: z.boolean(),
+			}),
+		)
+		.optional(),
+
 	mode: z.string().optional(),
 	modeApiConfigs: z.record(z.string(), z.string()).optional(),
 	customModes: z.array(modeConfigSchema).optional(),

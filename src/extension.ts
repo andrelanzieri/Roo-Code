@@ -13,7 +13,7 @@ try {
 }
 
 import { CloudService, UnifiedBridgeService } from "@roo-code/cloud"
-import { TelemetryService, PostHogTelemetryClient } from "@roo-code/telemetry"
+import { TelemetryService, PostHogTelemetryClient, OpenTelemetryClient } from "@roo-code/telemetry"
 
 import "./utils/path" // Necessary to have access to String.prototype.toPosix.
 import { createOutputChannelLogger, createDualLogger } from "./utils/outputChannelLogger"
@@ -93,6 +93,26 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	const contextProxy = await ContextProxy.getInstance(context)
+
+	// Initialize OpenTelemetry client if enabled
+	const otelClient = new OpenTelemetryClient()
+	try {
+		const otelEnabled = contextProxy.getValue("otelEnabled") ?? false
+		const otelEndpoints = contextProxy.getValue("otelEndpoints") ?? []
+
+		if (otelEnabled && otelEndpoints.length > 0) {
+			await otelClient.initialize(otelEndpoints)
+			telemetryService.register(otelClient)
+			outputChannel.appendLine(
+				`[OpenTelemetry] Initialized with ${otelEndpoints.filter((e) => e.enabled).length} endpoints`,
+			)
+		}
+	} catch (error) {
+		console.warn("Failed to initialize OpenTelemetryClient:", error)
+		outputChannel.appendLine(
+			`[OpenTelemetry] Failed to initialize: ${error instanceof Error ? error.message : String(error)}`,
+		)
+	}
 
 	// Initialize code index managers for all workspace folders
 	const codeIndexManagers: CodeIndexManager[] = []

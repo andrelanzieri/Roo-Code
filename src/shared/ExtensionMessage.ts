@@ -121,6 +121,8 @@ export interface ExtensionMessage {
 		| "showEditMessageDialog"
 		| "commands"
 		| "insertTextIntoTextarea"
+		| "otelEnabled"
+		| "otelEndpoints"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -195,6 +197,8 @@ export interface ExtensionMessage {
 	messageTs?: number
 	context?: string
 	commands?: Command[]
+	bool?: boolean
+	endpoints?: Array<{ url: string; headers?: Record<string, string>; enabled: boolean }>
 }
 
 export type ExtensionState = Pick<
@@ -272,6 +276,8 @@ export type ExtensionState = Pick<
 	| "includeDiagnosticMessages"
 	| "maxDiagnosticMessages"
 	| "remoteControlEnabled"
+	| "otelEnabled"
+	| "otelEndpoints"
 > & {
 	version: string
 	clineMessages: ClineMessage[]

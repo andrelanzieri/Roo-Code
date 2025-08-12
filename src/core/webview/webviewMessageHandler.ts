@@ -2611,5 +2611,13 @@ export const webviewMessageHandler = async (
 			}
 			break
 		}
+		case "otelEnabled":
+			await updateGlobalState("otelEnabled", message.bool ?? false)
+			await provider.postStateToWebview()
+			break
+		case "otelEndpoints":
+			await updateGlobalState("otelEndpoints", message.endpoints ?? [])
+			await provider.postStateToWebview()
+			break
 	}
 }

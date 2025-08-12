@@ -211,6 +211,8 @@ export interface WebviewMessage {
 		| "deleteCommand"
 		| "createCommand"
 		| "insertTextIntoTextarea"
+		| "otelEnabled"
+		| "otelEndpoints"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account"
@@ -254,6 +256,7 @@ export interface WebviewMessage {
 	visibility?: ShareVisibility // For share visibility
 	hasContent?: boolean // For checkRulesDirectoryResult
 	checkOnly?: boolean // For deleteCustomMode check
+	endpoints?: Array<{ url: string; headers?: Record<string, string>; enabled: boolean }> // For otelEndpoints
 	codeIndexSettings?: {
 		// Global state settings
 		codebaseIndexEnabled: boolean
