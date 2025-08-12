@@ -108,7 +108,19 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			if (deepseekReasoner) {
 				convertedMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
 			} else if (ark || enabledLegacyFormat) {
-				convertedMessages = [systemMessage, ...convertToSimpleMessages(messages)]
+				// For legacy format, we still need to preserve images for proper API functionality
+				// Only use simple format for text-only messages
+				const hasImages = messages.some(
+					(msg) => Array.isArray(msg.content) && msg.content.some((part) => part.type === "image"),
+				)
+
+				if (hasImages) {
+					// Use full OpenAI format to preserve images
+					convertedMessages = [systemMessage, ...convertToOpenAiMessages(messages)]
+				} else {
+					// Use simple format for text-only messages
+					convertedMessages = [systemMessage, ...convertToSimpleMessages(messages)]
+				}
 			} else {
 				if (modelInfo.supportsPromptCache) {
 					systemMessage = {
@@ -222,7 +234,21 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				messages: deepseekReasoner
 					? convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
 					: enabledLegacyFormat
-						? [systemMessage, ...convertToSimpleMessages(messages)]
+						? (() => {
+								// For legacy format, check if there are images
+								const hasImages = messages.some(
+									(msg) =>
+										Array.isArray(msg.content) && msg.content.some((part) => part.type === "image"),
+								)
+
+								if (hasImages) {
+									// Use full OpenAI format to preserve images
+									return [systemMessage, ...convertToOpenAiMessages(messages)]
+								} else {
+									// Use simple format for text-only messages
+									return [systemMessage, ...convertToSimpleMessages(messages)]
+								}
+							})()
 						: [systemMessage, ...convertToOpenAiMessages(messages)],
 			}
 
