@@ -275,6 +275,28 @@ describe("ChutesHandler", () => {
 		)
 	})
 
+	it("should return openai/gpt-oss-120b model with correct configuration", () => {
+		const testModelId: ChutesModelId = "openai/gpt-oss-120b"
+		const handlerWithModel = new ChutesHandler({
+			apiModelId: testModelId,
+			chutesApiKey: "test-chutes-api-key",
+		})
+		const model = handlerWithModel.getModel()
+		expect(model.id).toBe(testModelId)
+		expect(model.info).toEqual(
+			expect.objectContaining({
+				maxTokens: 32768,
+				contextWindow: 131072,
+				supportsImages: false,
+				supportsPromptCache: false,
+				inputPrice: 0,
+				outputPrice: 0,
+				description: "OpenAI GPT OSS 120B model - latest open source coding model.",
+				temperature: 0.5, // Default temperature for non-DeepSeek models
+			}),
+		)
+	})
+
 	it("completePrompt method should return text from Chutes API", async () => {
 		const expectedResponse = "This is a test response from Chutes"
 		mockCreate.mockResolvedValueOnce({ choices: [{ message: { content: expectedResponse } }] })

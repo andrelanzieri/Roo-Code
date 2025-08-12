@@ -29,6 +29,7 @@ export type ChutesModelId =
 	| "zai-org/GLM-4.5-Air"
 	| "zai-org/GLM-4.5-FP8"
 	| "moonshotai/Kimi-K2-Instruct-75k"
+	| "openai/gpt-oss-120b"
 
 export const chutesDefaultModelId: ChutesModelId = "deepseek-ai/DeepSeek-R1-0528"
 
@@ -277,5 +278,14 @@ export const chutesModels = {
 		inputPrice: 0.1481,
 		outputPrice: 0.5926,
 		description: "Moonshot AI Kimi K2 Instruct model with 75k context window.",
+	},
+	"openai/gpt-oss-120b": {
+		maxTokens: 32768,
+		contextWindow: 131072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		description: "OpenAI GPT OSS 120B model - latest open source coding model.",
 	},
 } as const satisfies Record<string, ModelInfo>
