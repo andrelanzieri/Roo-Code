@@ -24,6 +24,7 @@ import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { getApiRequestTimeout } from "./utils/timeout-config"
+import { createAxiosFetchAdapter, shouldUseAxiosForProxy } from "./utils/axios-fetch-adapter"
 
 // TODO: Rename this to OpenAICompatibleHandler. Also, I think the
 // `OpenAINativeHandler` can subclass from this, since it's obviously
@@ -49,6 +50,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 		const timeout = getApiRequestTimeout()
 
+		// Determine if we should use axios for proxy support
+		const useAxiosForProxy = this.options.openAiUseAxiosForProxy ?? shouldUseAxiosForProxy()
+		const customFetch = createAxiosFetchAdapter(useAxiosForProxy)
+
 		if (isAzureAiInference) {
 			// Azure AI Inference Service (e.g., for DeepSeek) uses a different path structure
 			this.client = new OpenAI({
@@ -57,6 +62,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				defaultHeaders: headers,
 				defaultQuery: { "api-version": this.options.azureApiVersion || "2024-05-01-preview" },
 				timeout,
+				fetch: customFetch,
 			})
 		} else if (isAzureOpenAi) {
 			// Azure API shape slightly differs from the core API shape:
@@ -67,6 +73,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
 				defaultHeaders: headers,
 				timeout,
+				fetch: customFetch,
 			})
 		} else {
 			this.client = new OpenAI({
@@ -74,6 +81,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				apiKey,
 				defaultHeaders: headers,
 				timeout,
+				fetch: customFetch,
 			})
 		}
 	}

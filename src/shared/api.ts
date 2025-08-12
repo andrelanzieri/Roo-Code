@@ -14,6 +14,14 @@ export type ApiHandlerOptions = Omit<ProviderSettings, "apiProvider"> & {
 	 * Defaults to true; set to false to disable summaries.
 	 */
 	enableGpt5ReasoningSummary?: boolean
+
+	/**
+	 * When true, uses axios instead of native fetch for OpenAI API calls.
+	 * This can help with proxy configurations where VSCode's patched fetch
+	 * doesn't work correctly (e.g., SOCKS5 proxies).
+	 * Defaults to auto-detection based on proxy environment variables.
+	 */
+	openAiUseAxiosForProxy?: boolean
 }
 
 // RouterName
