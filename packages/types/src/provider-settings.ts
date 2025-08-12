@@ -155,6 +155,7 @@ const openAiSchema = baseProviderSettingsSchema.extend({
 	openAiStreamingEnabled: z.boolean().optional(),
 	openAiHostHeader: z.string().optional(), // Keep temporarily for backward compatibility during migration.
 	openAiHeaders: z.record(z.string(), z.string()).optional(),
+	openAiAuthMode: z.enum(["apiKey", "chatgpt"]).optional(), // New: Authentication mode
 })
 
 const ollamaSchema = baseProviderSettingsSchema.extend({

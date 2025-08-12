@@ -29,17 +29,47 @@ import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from ".
 // compatible with the OpenAI API. We can also rename it to `OpenAIHandler`.
 export class OpenAiHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
-	private client: OpenAI
+	private client!: OpenAI // Using definite assignment assertion since we initialize it
+	private apiKeyPromise?: Promise<string>
 
 	constructor(options: ApiHandlerOptions) {
 		super()
 		this.options = options
 
+		// Initialize the client asynchronously if using ChatGPT auth
+		if (this.options.openAiAuthMode === "chatgpt") {
+			this.apiKeyPromise = this.getApiKeyFromChatGpt()
+			this.apiKeyPromise
+				.then((apiKey) => {
+					this.initializeClient(apiKey)
+				})
+				.catch((error) => {
+					console.error("Failed to get API key from ChatGPT:", error)
+				})
+		} else {
+			// Initialize immediately for regular API key mode
+			this.initializeClient(this.options.openAiApiKey ?? "not-provided")
+		}
+	}
+
+	private async getApiKeyFromChatGpt(): Promise<string> {
+		// Lazy import to avoid circular dependencies
+		const { getCredentialsManager } = await import("../../core/auth/chatgpt-credentials-manager")
+		const credentialsManager = getCredentialsManager()
+		const apiKey = await credentialsManager.getApiKey()
+
+		if (!apiKey) {
+			throw new Error("No API key found for ChatGPT authentication. Please sign in with your ChatGPT account.")
+		}
+
+		return apiKey
+	}
+
+	private initializeClient(apiKey: string): void {
 		const baseURL = this.options.openAiBaseUrl ?? "https://api.openai.com/v1"
-		const apiKey = this.options.openAiApiKey ?? "not-provided"
 		const isAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
 		const urlHost = this._getUrlHost(this.options.openAiBaseUrl)
-		const isAzureOpenAi = urlHost === "azure.com" || urlHost.endsWith(".azure.com") || options.openAiUseAzure
+		const isAzureOpenAi = urlHost === "azure.com" || urlHost.endsWith(".azure.com") || this.options.openAiUseAzure
 
 		const headers = {
 			...DEFAULT_HEADERS,
@@ -77,6 +107,14 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
+		// Ensure client is initialized for ChatGPT auth mode
+		if (this.apiKeyPromise) {
+			await this.apiKeyPromise
+		}
+
+		if (!this.client) {
+			throw new Error("OpenAI client not initialized")
+		}
 		const { info: modelInfo, reasoning } = this.getModel()
 		const modelUrl = this.options.openAiBaseUrl ?? ""
 		const modelId = this.options.openAiModelId ?? ""
@@ -256,6 +294,14 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	async completePrompt(prompt: string): Promise<string> {
 		try {
+			// Ensure client is initialized for ChatGPT auth mode
+			if (this.apiKeyPromise) {
+				await this.apiKeyPromise
+			}
+
+			if (!this.client) {
+				throw new Error("OpenAI client not initialized")
+			}
 			const isAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
 			const model = this.getModel()
 			const modelInfo = model.info
