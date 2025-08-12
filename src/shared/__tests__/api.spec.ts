@@ -1,5 +1,10 @@
 import { describe, test, expect } from "vitest"
-import { getModelMaxOutputTokens, shouldUseReasoningBudget, shouldUseReasoningEffort } from "../api"
+import {
+	getModelMaxOutputTokens,
+	shouldUseReasoningBudget,
+	shouldUseReasoningEffort,
+	GPT5_MAX_OUTPUT_TOKENS,
+} from "../api"
 import type { ModelInfo, ProviderSettings } from "@roo-code/types"
 import { CLAUDE_CODE_DEFAULT_MAX_OUTPUT_TOKENS, ANTHROPIC_DEFAULT_MAX_TOKENS } from "@roo-code/types"
 
@@ -233,7 +238,7 @@ describe("getModelMaxOutputTokens", () => {
 				format: "openai",
 			})
 
-			expect(result).toBe(10_000)
+			expect(result).toBe(GPT5_MAX_OUTPUT_TOKENS)
 		})
 
 		test("should limit GPT-5-mini models to 10k max output tokens", () => {
@@ -250,7 +255,7 @@ describe("getModelMaxOutputTokens", () => {
 				format: "openai",
 			})
 
-			expect(result).toBe(10_000)
+			expect(result).toBe(GPT5_MAX_OUTPUT_TOKENS)
 		})
 
 		test("should limit GPT-5-nano models to 10k max output tokens", () => {
@@ -267,17 +272,17 @@ describe("getModelMaxOutputTokens", () => {
 				format: "openai",
 			})
 
-			expect(result).toBe(10_000)
+			expect(result).toBe(GPT5_MAX_OUTPUT_TOKENS)
 		})
 
-		test("should respect user override for GPT-5 models but cap at 10k", () => {
+		test("should respect user override for GPT-5 models but cap at GPT5_MAX_OUTPUT_TOKENS", () => {
 			const gpt5Model: ModelInfo = {
 				contextWindow: 400_000,
 				maxTokens: 128_000,
 				supportsPromptCache: true,
 			}
 
-			// User tries to set 15k, should be capped at 10k
+			// User tries to set 15k, should be capped at GPT5_MAX_OUTPUT_TOKENS
 			const settings: ProviderSettings = {
 				modelMaxTokens: 15_000,
 			}
@@ -289,10 +294,10 @@ describe("getModelMaxOutputTokens", () => {
 				format: "openai",
 			})
 
-			expect(result).toBe(10_000)
+			expect(result).toBe(GPT5_MAX_OUTPUT_TOKENS)
 		})
 
-		test("should allow user to set lower than 10k for GPT-5 models", () => {
+		test("should allow user to set lower than GPT5_MAX_OUTPUT_TOKENS for GPT-5 models", () => {
 			const gpt5Model: ModelInfo = {
 				contextWindow: 400_000,
 				maxTokens: 128_000,
@@ -330,6 +335,54 @@ describe("getModelMaxOutputTokens", () => {
 
 			// Should use model's maxTokens since it's within 20% of context window
 			expect(result).toBe(16_384)
+		})
+
+		test("should handle GPT-5 models with date suffixes", () => {
+			const gpt5Model: ModelInfo = {
+				contextWindow: 400_000,
+				maxTokens: 128_000,
+				supportsPromptCache: true,
+			}
+
+			// Test various date-suffixed GPT-5 models
+			const modelIds = ["gpt-5-2025-08-07", "gpt-5-mini-2025-08-07", "gpt-5-nano-2025-08-07"]
+
+			modelIds.forEach((modelId) => {
+				const result = getModelMaxOutputTokens({
+					modelId,
+					model: gpt5Model,
+					settings: {},
+					format: "openai",
+				})
+				expect(result).toBe(GPT5_MAX_OUTPUT_TOKENS)
+			})
+		})
+
+		test("should not match invalid GPT-5 model names", () => {
+			const model: ModelInfo = {
+				contextWindow: 128_000,
+				maxTokens: 16_384,
+				supportsPromptCache: true,
+			}
+
+			// These should NOT be treated as GPT-5 models
+			const invalidModelIds = [
+				"gpt-5-turbo", // Invalid variant
+				"gpt-50", // Different number
+				"gpt-5-", // Incomplete
+				"gpt-5-mini-turbo", // Invalid variant combination
+			]
+
+			invalidModelIds.forEach((modelId) => {
+				const result = getModelMaxOutputTokens({
+					modelId,
+					model,
+					settings: {},
+					format: "openai",
+				})
+				// Should use model's maxTokens since it's within 20% of context window
+				expect(result).toBe(16_384)
+			})
 		})
 	})
 })

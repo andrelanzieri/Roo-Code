@@ -69,6 +69,15 @@ export const DEFAULT_HYBRID_REASONING_MODEL_MAX_TOKENS = 16_384
 export const DEFAULT_HYBRID_REASONING_MODEL_THINKING_TOKENS = 8_192
 export const GEMINI_25_PRO_MIN_THINKING_TOKENS = 128
 
+// GPT-5 specific constants
+/**
+ * Maximum output tokens for GPT-5 models to prevent context window overflow.
+ * When input approaches the 272k limit, the model's 128k max output can exceed
+ * the total 400k context window, causing API errors.
+ * @see https://github.com/cline/cline/issues/5474#issuecomment-3172109387
+ */
+export const GPT5_MAX_OUTPUT_TOKENS = 10_000
+
 // Max Tokens
 
 export const getModelMaxOutputTokens = ({
@@ -88,14 +97,15 @@ export const getModelMaxOutputTokens = ({
 	}
 
 	// Special handling for GPT-5 models to prevent context window overflow
-	// Limit max output to 10k tokens as per https://github.com/cline/cline/issues/5474#issuecomment-3172109387
-	if (modelId.startsWith("gpt-5")) {
-		// Allow user override via settings, but cap at 10k
+	// GPT-5 models include: gpt-5, gpt-5-mini, gpt-5-nano, and dated variants
+	const isGpt5Model = /^gpt-5(-mini|-nano)?(-\d{4}-\d{2}-\d{2})?$/i.test(modelId)
+	if (isGpt5Model) {
+		// Allow user override via settings, but cap at GPT5_MAX_OUTPUT_TOKENS
 		const userMaxTokens = settings?.modelMaxTokens
 		if (userMaxTokens) {
-			return Math.min(userMaxTokens, 10000)
+			return Math.min(userMaxTokens, GPT5_MAX_OUTPUT_TOKENS)
 		}
-		return 10000
+		return GPT5_MAX_OUTPUT_TOKENS
 	}
 
 	if (shouldUseReasoningBudget({ model, settings })) {
