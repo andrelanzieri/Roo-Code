@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
-import { useDeepCompareEffect, useEvent, useMount } from "react-use"
+import { useDeepCompareEffect, useEvent, useMount, useWindowSize } from "react-use"
 import debounce from "debounce"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import removeMd from "remove-markdown"
@@ -1743,6 +1743,22 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 	}, [handleKeyDown])
 
+	// Use window size to calculate dynamic viewport
+	const { height: windowHeight } = useWindowSize()
+
+	// Calculate dynamic bottom viewport based on window height
+	// For smaller screens (< 800px), use a smaller viewport to prevent jumping
+	// For larger screens, use a larger viewport for smoother scrolling
+	const dynamicBottomViewport = useMemo(() => {
+		if (!windowHeight) return 1000 // Default fallback
+
+		// Scale the bottom viewport based on window height
+		// Minimum of 500px for very small screens, maximum of 2000px for large screens
+		const scaledViewport = Math.min(2000, Math.max(500, windowHeight * 0.8))
+
+		return Math.round(scaledViewport)
+	}, [windowHeight])
+
 	useImperativeHandle(ref, () => ({
 		acceptInput: () => {
 			if (enableButtons && primaryButtonText) {
@@ -1870,7 +1886,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							ref={virtuosoRef}
 							key={task.ts}
 							className="scrollable grow overflow-y-scroll mb-1"
-							increaseViewportBy={{ top: 3_000, bottom: 1000 }}
+							increaseViewportBy={{ top: 3_000, bottom: dynamicBottomViewport }}
 							data={groupedMessages}
 							itemContent={itemContent}
 							atBottomStateChange={(isAtBottom: boolean) => {
