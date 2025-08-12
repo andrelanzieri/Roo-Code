@@ -155,6 +155,14 @@ export const globalSettingsSchema = z.object({
 	hasOpenedModeSelector: z.boolean().optional(),
 	lastModeExportPath: z.string().optional(),
 	lastModeImportPath: z.string().optional(),
+
+	// Subtask validation configuration
+	subtaskValidationEnabled: z.boolean().optional(),
+	subtaskValidationApiConfigId: z.string().optional(),
+	subtaskValidationMaxRetries: z.number().optional(),
+	subtaskValidationAutoRevert: z.boolean().optional(),
+	subtaskValidationIncludeFullContext: z.boolean().optional(),
+	subtaskValidationCustomPrompt: z.string().optional(),
 })
 
 export type GlobalSettings = z.infer<typeof globalSettingsSchema>
