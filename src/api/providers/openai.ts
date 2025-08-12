@@ -1,6 +1,5 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI, { AzureOpenAI } from "openai"
-import axios from "axios"
 
 import {
 	type ModelInfo,
@@ -423,7 +422,6 @@ export async function getOpenAiModels(baseUrl?: string, apiKey?: string, openAiH
 			return []
 		}
 
-		const config: Record<string, any> = {}
 		const headers: Record<string, string> = {
 			...DEFAULT_HEADERS,
 			...(openAiHeaders || {}),
@@ -433,12 +431,19 @@ export async function getOpenAiModels(baseUrl?: string, apiKey?: string, openAiH
 			headers["Authorization"] = `Bearer ${apiKey}`
 		}
 
-		if (Object.keys(headers).length > 0) {
-			config["headers"] = headers
+		// Use fetch instead of axios to respect VSCode's proxy settings
+		// This matches how the OpenAI SDK makes requests internally
+		const response = await fetch(`${trimmedBaseUrl}/models`, {
+			method: "GET",
+			headers: headers,
+		})
+
+		if (!response.ok) {
+			return []
 		}
 
-		const response = await axios.get(`${trimmedBaseUrl}/models`, config)
-		const modelsArray = response.data?.data?.map((model: any) => model.id) || []
+		const data = await response.json()
+		const modelsArray = data?.data?.map((model: any) => model.id) || []
 		return [...new Set<string>(modelsArray)]
 	} catch (error) {
 		return []

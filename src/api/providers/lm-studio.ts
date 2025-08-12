@@ -1,6 +1,5 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
-import axios from "axios"
 
 import { type ModelInfo, openAiModelInfoSaneDefaults, LMSTUDIO_DEFAULT_TEMPERATURE } from "@roo-code/types"
 
@@ -177,8 +176,20 @@ export async function getLmStudioModels(baseUrl = "http://localhost:1234") {
 			return []
 		}
 
-		const response = await axios.get(`${baseUrl}/v1/models`)
-		const modelsArray = response.data?.data?.map((model: any) => model.id) || []
+		// Use fetch instead of axios to respect VSCode's proxy settings
+		const response = await fetch(`${baseUrl}/v1/models`, {
+			method: "GET",
+			headers: {
+				"Content-Type": "application/json",
+			},
+		})
+
+		if (!response.ok) {
+			return []
+		}
+
+		const data = await response.json()
+		const modelsArray = data?.data?.map((model: any) => model.id) || []
 		return [...new Set<string>(modelsArray)]
 	} catch (error) {
 		return []

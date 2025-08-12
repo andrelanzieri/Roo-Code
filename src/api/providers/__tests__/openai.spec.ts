@@ -6,7 +6,6 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import { openAiModelInfoSaneDefaults } from "@roo-code/types"
 import { Package } from "../../../shared/package"
-import axios from "axios"
 
 const mockCreate = vitest.fn()
 
@@ -69,12 +68,9 @@ vitest.mock("openai", () => {
 	}
 })
 
-// Mock axios for getOpenAiModels tests
-vitest.mock("axios", () => ({
-	default: {
-		get: vitest.fn(),
-	},
-}))
+// Mock fetch for getOpenAiModels tests
+const mockFetch = vitest.fn()
+global.fetch = mockFetch
 
 describe("OpenAiHandler", () => {
 	let handler: OpenAiHandler
@@ -787,80 +783,84 @@ describe("OpenAiHandler", () => {
 
 describe("getOpenAiModels", () => {
 	beforeEach(() => {
-		vi.mocked(axios.get).mockClear()
+		mockFetch.mockClear()
 	})
 
 	it("should return empty array when baseUrl is not provided", async () => {
 		const result = await getOpenAiModels(undefined, "test-key")
 		expect(result).toEqual([])
-		expect(axios.get).not.toHaveBeenCalled()
+		expect(mockFetch).not.toHaveBeenCalled()
 	})
 
 	it("should return empty array when baseUrl is empty string", async () => {
 		const result = await getOpenAiModels("", "test-key")
 		expect(result).toEqual([])
-		expect(axios.get).not.toHaveBeenCalled()
+		expect(mockFetch).not.toHaveBeenCalled()
 	})
 
 	it("should trim whitespace from baseUrl", async () => {
-		const mockResponse = {
-			data: {
-				data: [{ id: "gpt-4" }, { id: "gpt-3.5-turbo" }],
-			},
+		const mockResponseData = {
+			data: [{ id: "gpt-4" }, { id: "gpt-3.5-turbo" }],
 		}
-		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => mockResponseData,
+		})
 
 		const result = await getOpenAiModels("  https://api.openai.com/v1  ", "test-key")
 
-		expect(axios.get).toHaveBeenCalledWith("https://api.openai.com/v1/models", expect.any(Object))
+		expect(mockFetch).toHaveBeenCalledWith("https://api.openai.com/v1/models", expect.any(Object))
 		expect(result).toEqual(["gpt-4", "gpt-3.5-turbo"])
 	})
 
 	it("should handle baseUrl with trailing spaces", async () => {
-		const mockResponse = {
-			data: {
-				data: [{ id: "model-1" }, { id: "model-2" }],
-			},
+		const mockResponseData = {
+			data: [{ id: "model-1" }, { id: "model-2" }],
 		}
-		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => mockResponseData,
+		})
 
 		const result = await getOpenAiModels("https://api.example.com/v1 ", "test-key")
 
-		expect(axios.get).toHaveBeenCalledWith("https://api.example.com/v1/models", expect.any(Object))
+		expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/v1/models", expect.any(Object))
 		expect(result).toEqual(["model-1", "model-2"])
 	})
 
 	it("should handle baseUrl with leading spaces", async () => {
-		const mockResponse = {
-			data: {
-				data: [{ id: "model-1" }],
-			},
+		const mockResponseData = {
+			data: [{ id: "model-1" }],
 		}
-		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => mockResponseData,
+		})
 
 		const result = await getOpenAiModels(" https://api.example.com/v1", "test-key")
 
-		expect(axios.get).toHaveBeenCalledWith("https://api.example.com/v1/models", expect.any(Object))
+		expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/v1/models", expect.any(Object))
 		expect(result).toEqual(["model-1"])
 	})
 
 	it("should return empty array for invalid URL after trimming", async () => {
 		const result = await getOpenAiModels("   not-a-valid-url   ", "test-key")
 		expect(result).toEqual([])
-		expect(axios.get).not.toHaveBeenCalled()
+		expect(mockFetch).not.toHaveBeenCalled()
 	})
 
 	it("should include authorization header when apiKey is provided", async () => {
-		const mockResponse = {
-			data: {
-				data: [{ id: "model-1" }],
-			},
+		const mockResponseData = {
+			data: [{ id: "model-1" }],
 		}
-		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => mockResponseData,
+		})
 
 		await getOpenAiModels("https://api.example.com/v1", "test-api-key")
 
-		expect(axios.get).toHaveBeenCalledWith(
+		expect(mockFetch).toHaveBeenCalledWith(
 			"https://api.example.com/v1/models",
 			expect.objectContaining({
 				headers: expect.objectContaining({
@@ -871,12 +871,13 @@ describe("getOpenAiModels", () => {
 	})
 
 	it("should include custom headers when provided", async () => {
-		const mockResponse = {
-			data: {
-				data: [{ id: "model-1" }],
-			},
+		const mockResponseData = {
+			data: [{ id: "model-1" }],
 		}
-		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => mockResponseData,
+		})
 
 		const customHeaders = {
 			"X-Custom-Header": "custom-value",
@@ -884,7 +885,7 @@ describe("getOpenAiModels", () => {
 
 		await getOpenAiModels("https://api.example.com/v1", "test-key", customHeaders)
 
-		expect(axios.get).toHaveBeenCalledWith(
+		expect(mockFetch).toHaveBeenCalledWith(
 			"https://api.example.com/v1/models",
 			expect.objectContaining({
 				headers: expect.objectContaining({
@@ -896,7 +897,18 @@ describe("getOpenAiModels", () => {
 	})
 
 	it("should handle API errors gracefully", async () => {
-		vi.mocked(axios.get).mockRejectedValueOnce(new Error("Network error"))
+		mockFetch.mockRejectedValueOnce(new Error("Network error"))
+
+		const result = await getOpenAiModels("https://api.example.com/v1", "test-key")
+
+		expect(result).toEqual([])
+	})
+
+	it("should handle non-ok response", async () => {
+		mockFetch.mockResolvedValueOnce({
+			ok: false,
+			status: 401,
+		})
 
 		const result = await getOpenAiModels("https://api.example.com/v1", "test-key")
 
@@ -904,7 +916,10 @@ describe("getOpenAiModels", () => {
 	})
 
 	it("should handle malformed response data", async () => {
-		vi.mocked(axios.get).mockResolvedValueOnce({ data: null })
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => null,
+		})
 
 		const result = await getOpenAiModels("https://api.example.com/v1", "test-key")
 
@@ -912,12 +927,13 @@ describe("getOpenAiModels", () => {
 	})
 
 	it("should deduplicate model IDs", async () => {
-		const mockResponse = {
-			data: {
-				data: [{ id: "gpt-4" }, { id: "gpt-4" }, { id: "gpt-3.5-turbo" }, { id: "gpt-4" }],
-			},
+		const mockResponseData = {
+			data: [{ id: "gpt-4" }, { id: "gpt-4" }, { id: "gpt-3.5-turbo" }, { id: "gpt-4" }],
 		}
-		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: async () => mockResponseData,
+		})
 
 		const result = await getOpenAiModels("https://api.example.com/v1", "test-key")
 
