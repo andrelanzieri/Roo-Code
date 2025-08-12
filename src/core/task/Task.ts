@@ -2019,10 +2019,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// If there's no assistant_responses, that means we got no text
 				// or tool_use content blocks from API which we should assume is
 				// an error.
-				await this.say(
-					"error",
-					"Unexpected API Response: The language model did not provide any assistant messages. This may indicate an issue with the API or the model's output.",
-				)
+				const modelId = getModelId(this.apiConfiguration)
+				const isGeminiModel = modelId?.includes("gemini") ?? false
+
+				let errorMessage = "Unexpected API Response: The language model did not provide any assistant messages."
+
+				if (isGeminiModel) {
+					errorMessage +=
+						" This can occur with Gemini models when they are in 'thinking' mode but don't produce any actual response content. The model may need to be prompted again or the request may need to be retried."
+				} else {
+					errorMessage += " This may indicate an issue with the API or the model's output."
+				}
+
+				await this.say("error", errorMessage)
 
 				await this.addToApiConversationHistory({
 					role: "assistant",

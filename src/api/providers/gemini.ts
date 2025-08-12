@@ -94,6 +94,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 
 			let lastUsageMetadata: GenerateContentResponseUsageMetadata | undefined
 			let pendingGroundingMetadata: GroundingMetadata | undefined
+			let hasYieldedContent = false // Track if we've yielded any actual content
 
 			for await (const chunk of result) {
 				// Process candidates and their parts to separate thoughts from content
@@ -115,6 +116,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 								// This is regular content
 								if (part.text) {
 									yield { type: "text", text: part.text }
+									hasYieldedContent = true
 								}
 							}
 						}
@@ -124,11 +126,18 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 				// Fallback to the original text property if no candidates structure
 				else if (chunk.text) {
 					yield { type: "text", text: chunk.text }
+					hasYieldedContent = true
 				}
 
 				if (chunk.usageMetadata) {
 					lastUsageMetadata = chunk.usageMetadata
 				}
+			}
+
+			// If we only got reasoning content and no actual text, yield an empty text chunk
+			// This ensures the assistant message won't be empty
+			if (!hasYieldedContent) {
+				yield { type: "text", text: "" }
 			}
 
 			if (pendingGroundingMetadata) {
