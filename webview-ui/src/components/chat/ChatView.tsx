@@ -181,8 +181,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
 	const everVisibleMessagesTsRef = useRef<LRUCache<number, boolean>>(
 		new LRUCache({
-			max: 100,
-			ttl: 1000 * 60 * 5,
+			max: 200,
+			ttl: 1000 * 60 * 10,
 		}),
 	)
 	const autoApproveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -897,11 +897,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useMount(() => textAreaRef.current?.focus())
 
 	const visibleMessages = useMemo(() => {
+		// Use a more conservative approach for message filtering to prevent jumping
+		// Only apply the 500 message limit for very long conversations
 		const currentMessageCount = modifiedMessages.length
-		const startIndex = Math.max(0, currentMessageCount - 500)
-		const recentMessages = modifiedMessages.slice(startIndex)
+		const shouldLimitMessages = currentMessageCount > 1000
+		const startIndex = shouldLimitMessages ? Math.max(0, currentMessageCount - 750) : 0
+		const messagesToProcess = modifiedMessages.slice(startIndex)
 
-		const newVisibleMessages = recentMessages.filter((message: ClineMessage) => {
+		const newVisibleMessages = messagesToProcess.filter((message: ClineMessage) => {
 			if (everVisibleMessagesTsRef.current.has(message.ts)) {
 				const alwaysHiddenOnceProcessedAsk: ClineAsk[] = [
 					"api_req_failed",
@@ -954,7 +957,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			return true
 		})
 
-		const viewportStart = Math.max(0, newVisibleMessages.length - 100)
+		// Track visible messages more conservatively to avoid cache thrashing
+		// Only track messages that are actually in the current viewport
+		const viewportWindow = Math.min(200, newVisibleMessages.length)
+		const viewportStart = Math.max(0, newVisibleMessages.length - viewportWindow)
 		newVisibleMessages
 			.slice(viewportStart)
 			.forEach((msg: ClineMessage) => everVisibleMessagesTsRef.current.set(msg.ts, true))
@@ -1870,7 +1876,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							ref={virtuosoRef}
 							key={task.ts}
 							className="scrollable grow overflow-y-scroll mb-1"
-							increaseViewportBy={{ top: 3_000, bottom: 1000 }}
+							increaseViewportBy={{ top: 1500, bottom: 1500 }}
 							data={groupedMessages}
 							itemContent={itemContent}
 							atBottomStateChange={(isAtBottom: boolean) => {
