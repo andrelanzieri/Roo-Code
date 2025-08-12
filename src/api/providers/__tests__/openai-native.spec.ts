@@ -634,7 +634,8 @@ describe("OpenAiNativeHandler", () => {
 			expect(body1).toContain('"effort":"medium"')
 			expect(body1).toContain('"summary":"auto"')
 			expect(body1).toContain('"verbosity":"medium"')
-			expect(body1).toContain('"temperature":1')
+			// GPT-5 no longer supports temperature parameter
+			expect(body1).not.toContain('"temperature"')
 			expect(body1).toContain('"max_output_tokens"')
 
 			// Verify the streamed content
@@ -856,7 +857,8 @@ describe("OpenAiNativeHandler", () => {
 			expect(body2).toContain('"effort":"low"')
 			expect(body2).toContain('"summary":"auto"')
 			expect(body2).toContain('"verbosity":"medium"')
-			expect(body2).toContain('"temperature":1')
+			// GPT-5 no longer supports temperature parameter
+			expect(body2).not.toContain('"temperature"')
 			expect(body2).toContain('"max_output_tokens"')
 
 			// Clean up
@@ -906,7 +908,8 @@ describe("OpenAiNativeHandler", () => {
 			expect(body3).toContain('"effort":"minimal"')
 			expect(body3).toContain('"summary":"auto"')
 			expect(body3).toContain('"verbosity":"high"')
-			expect(body3).toContain('"temperature":1')
+			// GPT-5 no longer supports temperature parameter
+			expect(body3).not.toContain('"temperature"')
 			expect(body3).toContain('"max_output_tokens"')
 
 			// Clean up

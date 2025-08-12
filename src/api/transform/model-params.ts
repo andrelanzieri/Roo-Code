@@ -142,9 +142,9 @@ export function getModelParams({
 			reasoning: getAnthropicReasoning({ model, reasoningBudget, reasoningEffort, settings }),
 		}
 	} else if (format === "openai") {
-		// Special case for o1 and o3-mini, which don't support temperature.
+		// Special case for o1, o3-mini, and GPT-5 models, which don't support temperature.
 		// TODO: Add a `supportsTemperature` field to the model info.
-		if (modelId.startsWith("o1") || modelId.startsWith("o3-mini")) {
+		if (modelId.startsWith("o1") || modelId.startsWith("o3-mini") || modelId.startsWith("gpt-5")) {
 			params.temperature = undefined
 		}
 

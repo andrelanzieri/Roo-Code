@@ -273,7 +273,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			stream: boolean
 			reasoning?: { effort: ReasoningEffortWithMinimal; summary?: "auto" }
 			text?: { verbosity: VerbosityLevel }
-			temperature?: number
+			// temperature parameter removed - GPT-5 no longer supports it
 			max_output_tokens?: number
 			previous_response_id?: string
 		}
@@ -289,7 +289,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				},
 			}),
 			text: { verbosity: (verbosity || "medium") as VerbosityLevel },
-			temperature: this.options.modelTemperature ?? GPT5_DEFAULT_TEMPERATURE,
+			// GPT-5 no longer supports temperature parameter
 			// Explicitly include the calculated max output tokens for GPT‑5.
 			// Use the per-request reserved output computed by Roo (params.maxTokens from getModelParams).
 			...(model.maxTokens ? { max_output_tokens: model.maxTokens } : {}),
