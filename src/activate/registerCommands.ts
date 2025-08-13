@@ -19,13 +19,40 @@ import { t } from "../i18n"
 
 /**
  * Helper to get the visible ClineProvider instance or log if not found.
+ * Shows user-friendly error message when provider is not available.
  */
-export function getVisibleProviderOrLog(outputChannel: vscode.OutputChannel): ClineProvider | undefined {
-	const visibleProvider = ClineProvider.getVisibleInstance()
+export async function getVisibleProviderOrLog(outputChannel: vscode.OutputChannel): Promise<ClineProvider | undefined> {
+	let visibleProvider = ClineProvider.getVisibleInstance()
+
+	// If no visible provider, try to activate the sidebar view first
 	if (!visibleProvider) {
-		outputChannel.appendLine("Cannot find any visible Roo Code instances.")
+		outputChannel.appendLine("No visible Roo Code instance found, attempting to activate sidebar view...")
+
+		try {
+			// Try to focus the sidebar view which should trigger provider creation
+			await vscode.commands.executeCommand(`${Package.name}.SidebarProvider.focus`)
+
+			// Wait a bit for the view to initialize
+			await new Promise((resolve) => setTimeout(resolve, 500))
+
+			// Try to get the provider again
+			visibleProvider = ClineProvider.getVisibleInstance()
+		} catch (error) {
+			outputChannel.appendLine(`Failed to activate sidebar view: ${error}`)
+		}
+	}
+
+	if (!visibleProvider) {
+		outputChannel.appendLine("Cannot find any visible Roo Code instances after activation attempt.")
+		// Show user-friendly error message only if not in test environment
+		if (typeof vscode.window.showErrorMessage === "function") {
+			vscode.window.showErrorMessage(
+				"Roo Code is still initializing. Please wait a moment and try again, or restart VS Code if the issue persists.",
+			)
+		}
 		return undefined
 	}
+
 	return visibleProvider
 }
 
@@ -74,8 +101,8 @@ export const registerCommands = (options: RegisterCommandOptions) => {
 
 const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOptions): Record<CommandId, any> => ({
 	activationCompleted: () => {},
-	accountButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+	accountButtonClicked: async () => {
+		const visibleProvider = await getVisibleProviderOrLog(outputChannel)
 
 		if (!visibleProvider) {
 			return
@@ -86,7 +113,7 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		visibleProvider.postMessageToWebview({ type: "action", action: "accountButtonClicked" })
 	},
 	plusButtonClicked: async () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = await getVisibleProviderOrLog(outputChannel)
 
 		if (!visibleProvider) {
 			return
@@ -101,8 +128,8 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		// This ensures the focus happens after the view has switched
 		await visibleProvider.postMessageToWebview({ type: "action", action: "focusInput" })
 	},
-	mcpButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+	mcpButtonClicked: async () => {
+		const visibleProvider = await getVisibleProviderOrLog(outputChannel)
 
 		if (!visibleProvider) {
 			return
@@ -112,8 +139,8 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 
 		visibleProvider.postMessageToWebview({ type: "action", action: "mcpButtonClicked" })
 	},
-	promptsButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+	promptsButtonClicked: async () => {
+		const visibleProvider = await getVisibleProviderOrLog(outputChannel)
 
 		if (!visibleProvider) {
 			return
@@ -129,8 +156,8 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		return openClineInNewTab({ context, outputChannel })
 	},
 	openInNewTab: () => openClineInNewTab({ context, outputChannel }),
-	settingsButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+	settingsButtonClicked: async () => {
+		const visibleProvider = await getVisibleProviderOrLog(outputChannel)
 
 		if (!visibleProvider) {
 			return
@@ -142,8 +169,8 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		// Also explicitly post the visibility message to trigger scroll reliably
 		visibleProvider.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
 	},
-	historyButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+	historyButtonClicked: async () => {
+		const visibleProvider = await getVisibleProviderOrLog(outputChannel)
 
 		if (!visibleProvider) {
 			return
@@ -153,8 +180,8 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 
 		visibleProvider.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
 	},
-	marketplaceButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+	marketplaceButtonClicked: async () => {
+		const visibleProvider = await getVisibleProviderOrLog(outputChannel)
 		if (!visibleProvider) return
 		visibleProvider.postMessageToWebview({ type: "action", action: "marketplaceButtonClicked" })
 	},
@@ -178,7 +205,7 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		await promptForCustomStoragePath()
 	},
 	importSettings: async (filePath?: string) => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+		const visibleProvider = await getVisibleProviderOrLog(outputChannel)
 		if (!visibleProvider) {
 			return
 		}
@@ -212,8 +239,8 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 			outputChannel.appendLine(`Error focusing panel: ${error}`)
 		}
 	},
-	acceptInput: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
+	acceptInput: async () => {
+		const visibleProvider = await getVisibleProviderOrLog(outputChannel)
 
 		if (!visibleProvider) {
 			return

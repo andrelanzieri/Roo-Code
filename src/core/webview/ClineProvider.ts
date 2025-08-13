@@ -469,15 +469,26 @@ export class ClineProvider
 
 		// If no visible provider, try to show the sidebar view
 		if (!visibleProvider) {
-			await vscode.commands.executeCommand(`${Package.name}.SidebarProvider.focus`)
-			// Wait briefly for the view to become visible
-			await delay(100)
-			visibleProvider = ClineProvider.getVisibleInstance()
+			try {
+				await vscode.commands.executeCommand(`${Package.name}.SidebarProvider.focus`)
+				// Wait a bit longer for the view to become visible and initialize
+				await delay(500)
+				visibleProvider = ClineProvider.getVisibleInstance()
+
+				// If still not visible, wait a bit more as initialization might be slow
+				if (!visibleProvider) {
+					await delay(500)
+					visibleProvider = ClineProvider.getVisibleInstance()
+				}
+			} catch (error) {
+				console.error(`Failed to activate Roo Code sidebar: ${error}`)
+			}
 		}
 
-		// If still no visible provider, return
+		// If still no visible provider, return undefined
 		if (!visibleProvider) {
-			return
+			console.warn("Could not get or create a visible ClineProvider instance")
+			return undefined
 		}
 
 		return visibleProvider
