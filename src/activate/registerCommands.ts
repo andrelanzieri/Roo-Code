@@ -129,6 +129,7 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		return openClineInNewTab({ context, outputChannel })
 	},
 	openInNewTab: () => openClineInNewTab({ context, outputChannel }),
+	openInThisTab: () => openClineInThisTab({ context, outputChannel }),
 	settingsButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
 
@@ -295,6 +296,71 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 	// Lock the editor group so clicking on files doesn't open them over the panel.
 	await delay(100)
 	await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
+
+	return tabProvider
+}
+
+export const openClineInThisTab = async ({ context, outputChannel }: Omit<RegisterCommandOptions, "provider">) => {
+	const contextProxy = await ContextProxy.getInstance(context)
+	const codeIndexManager = CodeIndexManager.getInstance(context)
+
+	// Get the existing MDM service instance to ensure consistent policy enforcement
+	let mdmService: MdmService | undefined
+	try {
+		mdmService = MdmService.getInstance()
+	} catch (error) {
+		// MDM service not initialized, which is fine - extension can work without it
+		mdmService = undefined
+	}
+
+	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy, mdmService)
+
+	// Get the active text editor's view column, or use the first column if no editor is active
+	const activeColumn = vscode.window.activeTextEditor?.viewColumn || vscode.ViewColumn.One
+
+	// Create the webview panel in the current tab/column
+	const newPanel = vscode.window.createWebviewPanel(
+		ClineProvider.tabPanelId,
+		"Roo Code",
+		{ viewColumn: activeColumn, preserveFocus: false },
+		{
+			enableScripts: true,
+			retainContextWhenHidden: true,
+			localResourceRoots: [context.extensionUri],
+		},
+	)
+
+	// Save as tab type panel
+	setPanel(newPanel, "tab")
+
+	// Set the icon
+	newPanel.iconPath = {
+		light: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_light.png"),
+		dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_dark.png"),
+	}
+
+	await tabProvider.resolveWebviewView(newPanel)
+
+	// Add listener for visibility changes to notify webview
+	newPanel.onDidChangeViewState(
+		(e) => {
+			const panel = e.webviewPanel
+			if (panel.visible) {
+				panel.webview.postMessage({ type: "action", action: "didBecomeVisible" })
+			}
+		},
+		null,
+		context.subscriptions,
+	)
+
+	// Handle panel closing events
+	newPanel.onDidDispose(
+		() => {
+			setPanel(undefined, "tab")
+		},
+		null,
+		context.subscriptions,
+	)
 
 	return tabProvider
 }
