@@ -182,8 +182,8 @@ describe("OpenAICompatibleEmbedder - Global Rate Limiting", () => {
 			usage: { prompt_tokens: 10, total_tokens: 15 },
 		})
 
-		// Trigger the updateGlobalRateLimitState method
-		await (embedder as any).updateGlobalRateLimitState(rateLimitError)
+		// Trigger the updateGlobalRateLimitState method with attempt number
+		await (embedder as any).updateGlobalRateLimitState(rateLimitError, 0)
 
 		// Should reset to 1 since more than 60 seconds passed
 		expect(state.consecutiveRateLimitErrors).toBe(1)
@@ -199,12 +199,8 @@ describe("OpenAICompatibleEmbedder - Global Rate Limiting", () => {
 		const rateLimitError = new Error("Rate limit exceeded") as any
 		rateLimitError.status = 429
 
-		// Trigger the updateGlobalRateLimitState method
-		await (embedder as any).updateGlobalRateLimitState(rateLimitError)
-
-		// Calculate the expected delay
-		const now = Date.now()
-		const delay = state.rateLimitResetTime - now
+		// Trigger the updateGlobalRateLimitState method with attempt number
+		const delay = await (embedder as any).updateGlobalRateLimitState(rateLimitError, 0)
 
 		// Should be capped at 5 minutes (300000ms)
 		expect(delay).toBeLessThanOrEqual(300000)
