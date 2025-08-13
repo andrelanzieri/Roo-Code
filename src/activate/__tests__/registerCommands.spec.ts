@@ -13,6 +13,9 @@ vi.mock("vscode", () => ({
 		QuickFix: { value: "quickfix" },
 		RefactorRewrite: { value: "refactor.rewrite" },
 	},
+	commands: {
+		executeCommand: vi.fn().mockResolvedValue(undefined),
+	},
 	window: {
 		createTextEditorDecorationType: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 	},
@@ -62,6 +65,12 @@ describe("getVisibleProviderOrLog", () => {
 		const result = await getVisibleProviderOrLog(mockOutputChannel)
 
 		expect(result).toBeUndefined()
-		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("Cannot find any visible Roo Code instances.")
+		// The function now logs multiple messages during the retry process
+		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+			"No visible Roo Code instance found, attempting to activate sidebar view...",
+		)
+		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+			"Cannot find any visible Roo Code instances after activation attempt.",
+		)
 	})
 })
