@@ -95,7 +95,8 @@
 		"gemini": {
 			"generate_stream": "Gemini 生成上下文流错误：{{error}}",
 			"generate_complete_prompt": "Gemini 完成错误：{{error}}",
-			"sources": "来源："
+			"sources": "来源：",
+			"empty_response": "Gemini API 返回空响应：{{error}}"
 		},
 		"cerebras": {
 			"authenticationFailed": "Cerebras API 身份验证失败。请检查你的 API 密钥是否有效且未过期。",

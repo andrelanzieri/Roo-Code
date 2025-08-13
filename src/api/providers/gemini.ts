@@ -94,6 +94,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 
 			let lastUsageMetadata: GenerateContentResponseUsageMetadata | undefined
 			let pendingGroundingMetadata: GroundingMetadata | undefined
+			let hasYieldedContent = false // Track if we've yielded any text content
 
 			for await (const chunk of result) {
 				// Process candidates and their parts to separate thoughts from content
@@ -115,6 +116,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 								// This is regular content
 								if (part.text) {
 									yield { type: "text", text: part.text }
+									hasYieldedContent = true
 								}
 							}
 						}
@@ -124,11 +126,25 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 				// Fallback to the original text property if no candidates structure
 				else if (chunk.text) {
 					yield { type: "text", text: chunk.text }
+					hasYieldedContent = true
 				}
 
 				if (chunk.usageMetadata) {
 					lastUsageMetadata = chunk.usageMetadata
 				}
+			}
+
+			// Check if we got an empty response
+			if (!hasYieldedContent) {
+				// Log the issue for debugging
+				console.warn("Gemini API returned empty response, no text content was generated")
+
+				// Throw a specific error that can be caught and retried
+				throw new Error(
+					t("common:errors.gemini.empty_response", {
+						error: "The Gemini API did not return any text content. This may be a temporary issue.",
+					}),
+				)
 			}
 
 			if (pendingGroundingMetadata) {

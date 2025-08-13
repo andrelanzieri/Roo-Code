@@ -90,6 +90,24 @@ describe("GeminiHandler", () => {
 			)
 		})
 
+		it("should handle empty response from API", async () => {
+			// Setup the mock to return an async generator with no text content
+			;(handler["client"].models.generateContentStream as any).mockResolvedValue({
+				[Symbol.asyncIterator]: async function* () {
+					// Yield only usage metadata, no text content
+					yield { usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 0 } }
+				},
+			})
+
+			const stream = handler.createMessage(systemPrompt, mockMessages)
+
+			await expect(async () => {
+				for await (const _chunk of stream) {
+					// Should throw before yielding any chunks
+				}
+			}).rejects.toThrow(t("common:errors.gemini.generate_stream"))
+		})
+
 		it("should handle API errors", async () => {
 			const mockError = new Error("Gemini API error")
 			;(handler["client"].models.generateContentStream as any).mockRejectedValue(mockError)
