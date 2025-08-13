@@ -897,8 +897,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useMount(() => textAreaRef.current?.focus())
 
 	const visibleMessages = useMemo(() => {
-		// Remove the 500-message limit to prevent array index shifting
-		// Virtuoso handles virtualization efficiently for large lists
 		const newVisibleMessages = modifiedMessages.filter((message: ClineMessage) => {
 			if (everVisibleMessagesTsRef.current.has(message.ts)) {
 				const alwaysHiddenOnceProcessedAsk: ClineAsk[] = [
