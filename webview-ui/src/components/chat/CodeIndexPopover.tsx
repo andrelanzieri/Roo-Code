@@ -600,7 +600,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 						<div className="mt-4">
 							<button
 								onClick={() => setIsSetupSettingsOpen(!isSetupSettingsOpen)}
-								className="flex items-center text-xs text-vscode-foreground hover:text-vscode-textLink-foreground focus:outline-none"
+								className="flex items-center text-xs text-vscode-foreground hover:text-vscode-textLink-foreground focus:outline-none cursor-pointer"
 								aria-expanded={isSetupSettingsOpen}>
 								<span
 									className={`codicon codicon-${isSetupSettingsOpen ? "chevron-down" : "chevron-right"} mr-1`}></span>
@@ -613,7 +613,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 								<div className="mt-4 space-y-4">
 									{/* Embedder Provider Section */}
 									<div className="space-y-2">
-										<label className="text-sm font-medium">
+										<label className="text-sm font-medium mb-1 block">
 											{t("settings:codeIndex.embedderProviderLabel")}
 										</label>
 										<Select
@@ -650,7 +650,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 									{currentSettings.codebaseIndexEmbedderProvider === "openai" && (
 										<>
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.openAiKeyLabel")}
 												</label>
 												<VSCodeTextField
@@ -672,7 +672,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 											</div>
 
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.modelLabel")}
 												</label>
 												<VSCodeDropdown
@@ -715,7 +715,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 									{currentSettings.codebaseIndexEmbedderProvider === "ollama" && (
 										<>
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.ollamaBaseUrlLabel")}
 												</label>
 												<VSCodeTextField
@@ -746,7 +746,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 											</div>
 
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.modelLabel")}
 												</label>
 												<VSCodeTextField
@@ -767,7 +767,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 											</div>
 
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.modelDimensionLabel")}
 												</label>
 												<VSCodeTextField
@@ -799,7 +799,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 									{currentSettings.codebaseIndexEmbedderProvider === "openai-compatible" && (
 										<>
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.openAiCompatibleBaseUrlLabel")}
 												</label>
 												<VSCodeTextField
@@ -826,7 +826,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 											</div>
 
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.openAiCompatibleApiKeyLabel")}
 												</label>
 												<VSCodeTextField
@@ -854,7 +854,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 											</div>
 
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.modelLabel")}
 												</label>
 												<VSCodeTextField
@@ -875,7 +875,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 											</div>
 
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.modelDimensionLabel")}
 												</label>
 												<VSCodeTextField
@@ -907,7 +907,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 									{currentSettings.codebaseIndexEmbedderProvider === "gemini" && (
 										<>
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.geminiApiKeyLabel")}
 												</label>
 												<VSCodeTextField
@@ -929,7 +929,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 											</div>
 
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.modelLabel")}
 												</label>
 												<VSCodeDropdown
@@ -972,7 +972,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 									{currentSettings.codebaseIndexEmbedderProvider === "mistral" && (
 										<>
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.mistralApiKeyLabel")}
 												</label>
 												<VSCodeTextField
@@ -994,7 +994,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 											</div>
 
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
+												<label className="text-sm font-medium mb-1 block">
 													{t("settings:codeIndex.modelLabel")}
 												</label>
 												<VSCodeDropdown
@@ -1036,7 +1036,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 
 									{/* Qdrant Settings */}
 									<div className="space-y-2">
-										<label className="text-sm font-medium">
+										<label className="text-sm font-medium mb-1 block">
 											{t("settings:codeIndex.qdrantUrlLabel")}
 										</label>
 										<VSCodeTextField
@@ -1064,7 +1064,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 									</div>
 
 									<div className="space-y-2">
-										<label className="text-sm font-medium">
+										<label className="text-sm font-medium mb-1 block">
 											{t("settings:codeIndex.qdrantApiKeyLabel")}
 										</label>
 										<VSCodeTextField
@@ -1090,7 +1090,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 						<div className="mt-4">
 							<button
 								onClick={() => setIsAdvancedSettingsOpen(!isAdvancedSettingsOpen)}
-								className="flex items-center text-xs text-vscode-foreground hover:text-vscode-textLink-foreground focus:outline-none"
+								className="flex items-center text-xs text-vscode-foreground hover:text-vscode-textLink-foreground focus:outline-none cursor-pointer"
 								aria-expanded={isAdvancedSettingsOpen}>
 								<span
 									className={`codicon codicon-${isAdvancedSettingsOpen ? "chevron-down" : "chevron-right"} mr-1`}></span>
@@ -1103,7 +1103,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 								<div className="mt-4 space-y-4">
 									{/* Search Score Threshold Slider */}
 									<div className="space-y-2">
-										<div className="flex items-center gap-2">
+										<div className="flex items-center gap-2 mb-1">
 											<label className="text-sm font-medium">
 												{t("settings:codeIndex.searchMinScoreLabel")}
 											</label>
@@ -1149,7 +1149,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 
 									{/* Maximum Search Results Slider */}
 									<div className="space-y-2">
-										<div className="flex items-center gap-2">
+										<div className="flex items-center gap-2 mb-1">
 											<label className="text-sm font-medium">
 												{t("settings:codeIndex.searchMaxResultsLabel")}
 											</label>
