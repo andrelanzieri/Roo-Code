@@ -9,6 +9,7 @@ import delay from "delay"
 import pWaitFor from "p-wait-for"
 import { serializeError } from "serialize-error"
 
+import { detectProxyConfigurationIssue, formatProxyErrorMessage } from "../../api/providers/utils/proxy-detection"
 import {
 	type TaskLike,
 	type TaskEvents,
@@ -2221,10 +2222,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 				return
 			} else {
-				const { response } = await this.ask(
-					"api_req_failed",
-					error.message ?? JSON.stringify(serializeError(error), null, 2),
-				)
+				const { response } = await this.ask("api_req_failed", formatProxyErrorMessage(error))
 
 				if (response !== "yesButtonClicked") {
 					// This will never happen since if noButtonClicked, we will
