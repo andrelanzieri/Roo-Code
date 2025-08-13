@@ -57,7 +57,23 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			this.options.enableGpt5ReasoningSummary = true
 		}
 		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
-		this.client = new OpenAI({ baseURL: this.options.openAiNativeBaseUrl, apiKey })
+
+		// Handle base URL - append /v1 if it's a plain URL without a path
+		let baseURL = this.options.openAiNativeBaseUrl
+		if (baseURL && !baseURL.includes("/v1")) {
+			// Check if it's a URL without any path (just protocol://host:port)
+			try {
+				const url = new URL(baseURL)
+				// If the pathname is just '/', append /v1
+				if (url.pathname === "/") {
+					baseURL = baseURL.replace(/\/$/, "") + "/v1"
+				}
+			} catch {
+				// If URL parsing fails, leave it as is
+			}
+		}
+
+		this.client = new OpenAI({ baseURL, apiKey })
 	}
 
 	private normalizeGpt5Usage(usage: any, model: OpenAiNativeModel): ApiStreamUsageChunk | undefined {

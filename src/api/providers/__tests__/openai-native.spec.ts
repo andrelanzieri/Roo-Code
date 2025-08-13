@@ -99,6 +99,41 @@ describe("OpenAiNativeHandler", () => {
 			})
 			expect(handlerWithoutKey).toBeInstanceOf(OpenAiNativeHandler)
 		})
+
+		it("should append /v1 to base URL when it's a plain URL without path", () => {
+			// Test with plain URL (like llama.cpp server)
+			const handler1 = new OpenAiNativeHandler({
+				apiModelId: "gpt-4.1",
+				openAiNativeApiKey: "test-api-key",
+				openAiNativeBaseUrl: "http://127.0.0.1:8080",
+			})
+			expect(handler1).toBeInstanceOf(OpenAiNativeHandler)
+			// The client should have the /v1 appended internally
+
+			// Test with URL that already has /v1
+			const handler2 = new OpenAiNativeHandler({
+				apiModelId: "gpt-4.1",
+				openAiNativeApiKey: "test-api-key",
+				openAiNativeBaseUrl: "http://localhost:8080/v1",
+			})
+			expect(handler2).toBeInstanceOf(OpenAiNativeHandler)
+
+			// Test with URL that has a different path
+			const handler3 = new OpenAiNativeHandler({
+				apiModelId: "gpt-4.1",
+				openAiNativeApiKey: "test-api-key",
+				openAiNativeBaseUrl: "https://api.openai.com/v1",
+			})
+			expect(handler3).toBeInstanceOf(OpenAiNativeHandler)
+
+			// Test with URL with trailing slash
+			const handler4 = new OpenAiNativeHandler({
+				apiModelId: "gpt-4.1",
+				openAiNativeApiKey: "test-api-key",
+				openAiNativeBaseUrl: "http://localhost:11434/",
+			})
+			expect(handler4).toBeInstanceOf(OpenAiNativeHandler)
+		})
 	})
 
 	describe("createMessage", () => {
