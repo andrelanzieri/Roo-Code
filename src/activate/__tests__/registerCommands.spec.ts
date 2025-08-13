@@ -46,20 +46,20 @@ describe("getVisibleProviderOrLog", () => {
 		vi.clearAllMocks()
 	})
 
-	it("returns the visible provider if found", () => {
+	it("returns the visible provider if found", async () => {
 		const mockProvider = {} as ClineProvider
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(mockProvider)
 
-		const result = getVisibleProviderOrLog(mockOutputChannel)
+		const result = await getVisibleProviderOrLog(mockOutputChannel)
 
 		expect(result).toBe(mockProvider)
 		expect(mockOutputChannel.appendLine).not.toHaveBeenCalled()
 	})
 
-	it("logs and returns undefined if no provider found", () => {
+	it("logs and returns undefined if no provider found", async () => {
 		;(ClineProvider.getVisibleInstance as Mock).mockReturnValue(undefined)
 
-		const result = getVisibleProviderOrLog(mockOutputChannel)
+		const result = await getVisibleProviderOrLog(mockOutputChannel)
 
 		expect(result).toBeUndefined()
 		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("Cannot find any visible Roo Code instances.")
