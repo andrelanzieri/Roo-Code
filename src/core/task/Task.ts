@@ -741,7 +741,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.handleWebviewAskResponse("messageResponse", text, images)
 	}
 
-	handleWebviewAskResponse(askResponse: ClineAskResponse, text?: string, images?: string[]) {
+	async handleWebviewAskResponse(askResponse: ClineAskResponse, text?: string, images?: string[]) {
+		// Save checkpoint immediately when user submits a message
+		// This allows users to easily revert to the state right before they typed their message
+		if (this.enableCheckpoints && askResponse === "messageResponse") {
+			try {
+				await this.checkpointSave(true)
+			} catch (error) {
+				console.error(
+					`[Task#handleWebviewAskResponse] Error saving checkpoint before user message: ${error.message}`,
+					error,
+				)
+				// Don't block the user message if checkpoint fails
+			}
+		}
+
 		this.askResponse = askResponse
 		this.askResponseText = text
 		this.askResponseImages = images
@@ -1533,17 +1547,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// results.
 		const finalUserContent = [...parsedUserContent, { type: "text" as const, text: environmentDetails }]
 
-		// Save checkpoint before adding user message to conversation history
-		if (this.enableCheckpoints) {
-			try {
-				await this.checkpointSave(true)
-			} catch (error) {
-				console.error(
-					`[Task#recursivelyMakeClineRequests] Error saving checkpoint before user message: ${error.message}`,
-					error,
-				)
-			}
-		}
+		// Note: Checkpoint is now saved in handleWebviewAskResponse when user submits a message,
+		// not here before the API request. This allows users to easily revert to the state
+		// right before they typed their message.
 
 		await this.addToApiConversationHistory({ role: "user", content: finalUserContent })
 		TelemetryService.instance.captureConversationMessage(this.taskId, "user")

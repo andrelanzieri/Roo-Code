@@ -1615,7 +1615,7 @@ describe("Cline", () => {
 		})
 
 		describe("Checkpoint before user messages", () => {
-			it("should save checkpoint before adding user message to conversation history", async () => {
+			it("should save checkpoint when user submits a message via handleWebviewAskResponse", async () => {
 				const task = new Task({
 					provider: mockProvider,
 					apiConfiguration: mockApiConfig,
@@ -1627,39 +1627,41 @@ describe("Cline", () => {
 				// Mock checkpointSave method
 				const checkpointSaveSpy = vi.spyOn(task, "checkpointSave").mockResolvedValue(undefined)
 
-				// Mock addToApiConversationHistory
-				const addToApiConversationHistorySpy = vi
-					.spyOn(task as any, "addToApiConversationHistory")
-					.mockResolvedValue(undefined)
+				// Call handleWebviewAskResponse with a user message
+				await task.handleWebviewAskResponse("messageResponse", "test user message", ["image.png"])
 
-				// Mock other required methods
-				vi.spyOn(task as any, "saveClineMessages").mockResolvedValue(undefined)
-				vi.spyOn(task.api, "createMessage").mockReturnValue({
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "response" }
-					},
-				} as any)
-
-				// Mock clineMessages to avoid errors
-				task.clineMessages = [
-					{
-						ts: Date.now(),
-						type: "say",
-						say: "api_req_started",
-						text: JSON.stringify({ request: "test" }),
-					},
-				]
-
-				// Call recursivelyMakeClineRequests which should trigger checkpoint save
-				await task.recursivelyMakeClineRequests([{ type: "text", text: "test user message" }])
-
-				// Verify checkpoint was saved before adding to conversation history
+				// Verify checkpoint was saved
 				expect(checkpointSaveSpy).toHaveBeenCalledWith(true)
-				expect(checkpointSaveSpy).toHaveBeenCalledBefore(addToApiConversationHistorySpy)
-				expect(addToApiConversationHistorySpy).toHaveBeenCalled()
+
+				// Verify the response was set
+				expect(task["askResponse"]).toBe("messageResponse")
+				expect(task["askResponseText"]).toBe("test user message")
+				expect(task["askResponseImages"]).toEqual(["image.png"])
 			})
 
-			it("should handle checkpoint save errors gracefully", async () => {
+			it("should not save checkpoint for non-messageResponse ask responses", async () => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "test task",
+					enableCheckpoints: true,
+					startTask: false,
+				})
+
+				// Mock checkpointSave method
+				const checkpointSaveSpy = vi.spyOn(task, "checkpointSave").mockResolvedValue(undefined)
+
+				// Call handleWebviewAskResponse with a non-message response
+				await task.handleWebviewAskResponse("yesButtonClicked", undefined, undefined)
+
+				// Verify checkpoint was NOT saved
+				expect(checkpointSaveSpy).not.toHaveBeenCalled()
+
+				// Verify the response was set
+				expect(task["askResponse"]).toBe("yesButtonClicked")
+			})
+
+			it("should handle checkpoint save errors gracefully in handleWebviewAskResponse", async () => {
 				const task = new Task({
 					provider: mockProvider,
 					apiConfiguration: mockApiConfig,
@@ -1675,31 +1677,8 @@ describe("Cline", () => {
 				// Mock console.error to verify error logging
 				const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
-				// Mock addToApiConversationHistory to verify it still gets called
-				const addToApiConversationHistorySpy = vi
-					.spyOn(task as any, "addToApiConversationHistory")
-					.mockResolvedValue(undefined)
-
-				// Mock other required methods
-				vi.spyOn(task as any, "saveClineMessages").mockResolvedValue(undefined)
-				vi.spyOn(task.api, "createMessage").mockReturnValue({
-					async *[Symbol.asyncIterator]() {
-						yield { type: "text", text: "response" }
-					},
-				} as any)
-
-				// Mock clineMessages
-				task.clineMessages = [
-					{
-						ts: Date.now(),
-						type: "say",
-						say: "api_req_started",
-						text: JSON.stringify({ request: "test" }),
-					},
-				]
-
-				// Call recursivelyMakeClineRequests
-				await task.recursivelyMakeClineRequests([{ type: "text", text: "test user message" }])
+				// Call handleWebviewAskResponse
+				await task.handleWebviewAskResponse("messageResponse", "test user message", ["image.png"])
 
 				// Verify checkpoint save was attempted
 				expect(checkpointSaveSpy).toHaveBeenCalledWith(true)
@@ -1710,8 +1689,10 @@ describe("Cline", () => {
 					checkpointError,
 				)
 
-				// Verify conversation history was still updated despite checkpoint error
-				expect(addToApiConversationHistorySpy).toHaveBeenCalled()
+				// Verify the response was still set despite checkpoint error
+				expect(task["askResponse"]).toBe("messageResponse")
+				expect(task["askResponseText"]).toBe("test user message")
+				expect(task["askResponseImages"]).toEqual(["image.png"])
 
 				// Restore console.error
 				consoleErrorSpy.mockRestore()
@@ -1723,6 +1704,30 @@ describe("Cline", () => {
 					apiConfiguration: mockApiConfig,
 					task: "test task",
 					enableCheckpoints: false,
+					startTask: false,
+				})
+
+				// Mock checkpointSave method
+				const checkpointSaveSpy = vi.spyOn(task, "checkpointSave").mockResolvedValue(undefined)
+
+				// Call handleWebviewAskResponse with a user message
+				await task.handleWebviewAskResponse("messageResponse", "test user message", ["image.png"])
+
+				// Verify checkpoint was NOT saved
+				expect(checkpointSaveSpy).not.toHaveBeenCalled()
+
+				// Verify the response was still set
+				expect(task["askResponse"]).toBe("messageResponse")
+				expect(task["askResponseText"]).toBe("test user message")
+				expect(task["askResponseImages"]).toEqual(["image.png"])
+			})
+
+			it("should not save checkpoint in recursivelyMakeClineRequests anymore", async () => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "test task",
+					enableCheckpoints: true,
 					startTask: false,
 				})
 
@@ -1751,7 +1756,8 @@ describe("Cline", () => {
 				// Call recursivelyMakeClineRequests
 				await task.recursivelyMakeClineRequests([{ type: "text", text: "test user message" }])
 
-				// Verify checkpoint was NOT saved
+				// Verify checkpoint was NOT saved in recursivelyMakeClineRequests
+				// (it should only be saved in handleWebviewAskResponse now)
 				expect(checkpointSaveSpy).not.toHaveBeenCalled()
 			})
 		})
