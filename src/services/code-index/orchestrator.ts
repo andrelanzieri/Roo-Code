@@ -127,7 +127,18 @@ export class CodeIndexOrchestrator {
 			const collectionCreated = await this.vectorStore.initialize()
 
 			if (collectionCreated) {
+				console.log("[CodeIndexOrchestrator] New collection created, clearing cache file")
 				await this.cacheManager.clearCacheFile()
+			} else {
+				console.log("[CodeIndexOrchestrator] Existing collection found and reused")
+				// Check if we have cached data
+				const cachedHashes = this.cacheManager.getAllHashes()
+				const cachedFileCount = Object.keys(cachedHashes).length
+				if (cachedFileCount > 0) {
+					console.log(
+						`[CodeIndexOrchestrator] Found ${cachedFileCount} files in cache, will skip unchanged files during scan`,
+					)
+				}
 			}
 
 			this.stateManager.setSystemState("Indexing", "Services ready. Starting workspace scan...")
@@ -164,6 +175,9 @@ export class CodeIndexOrchestrator {
 			}
 
 			const { stats } = result
+			console.log(
+				`[CodeIndexOrchestrator] Initial scan completed. Files processed: ${stats.processed}, Files skipped: ${stats.skipped}, Blocks indexed: ${cumulativeBlocksIndexed}`,
+			)
 
 			// Check if any blocks were actually indexed successfully
 			// If no blocks were indexed but blocks were found, it means all batches failed

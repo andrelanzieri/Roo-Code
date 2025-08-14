@@ -39,13 +39,27 @@ export class CacheManager implements ICacheManager {
 		try {
 			const cacheData = await vscode.workspace.fs.readFile(this.cachePath)
 			this.fileHashes = JSON.parse(cacheData.toString())
+			console.log(
+				`[CacheManager] Successfully loaded cache with ${Object.keys(this.fileHashes).length} file hashes from ${this.cachePath.fsPath}`,
+			)
 		} catch (error) {
+			// Check if the error is because the file doesn't exist (expected on first run)
+			const isFileNotFound =
+				error instanceof Error && (error.message.includes("FileNotFound") || error.message.includes("ENOENT"))
+
+			if (isFileNotFound) {
+				console.log(
+					`[CacheManager] Cache file not found at ${this.cachePath.fsPath}, starting with empty cache (this is normal on first run)`,
+				)
+			} else {
+				console.warn(`[CacheManager] Error loading cache from ${this.cachePath.fsPath}:`, error)
+				TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
+					error: error instanceof Error ? error.message : String(error),
+					stack: error instanceof Error ? error.stack : undefined,
+					location: "initialize",
+				})
+			}
 			this.fileHashes = {}
-			TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
-				error: error instanceof Error ? error.message : String(error),
-				stack: error instanceof Error ? error.stack : undefined,
-				location: "initialize",
-			})
 		}
 	}
 

@@ -117,6 +117,8 @@ export class CodeIndexManager {
 	 * @returns Object indicating if a restart is needed
 	 */
 	public async initialize(contextProxy: ContextProxy): Promise<{ requiresRestart: boolean }> {
+		console.log(`[CodeIndexManager] Initializing for workspace: ${this.workspacePath}`)
+
 		// 1. ConfigManager Initialization and Configuration Loading
 		if (!this._configManager) {
 			this._configManager = new CodeIndexConfigManager(contextProxy)
@@ -126,6 +128,7 @@ export class CodeIndexManager {
 
 		// 2. Check if feature is enabled
 		if (!this.isFeatureEnabled) {
+			console.log("[CodeIndexManager] Code indexing feature is disabled")
 			if (this._orchestrator) {
 				this._orchestrator.stopWatcher()
 			}
@@ -135,21 +138,28 @@ export class CodeIndexManager {
 		// 3. Check if workspace is available
 		const workspacePath = getWorkspacePath()
 		if (!workspacePath) {
+			console.log("[CodeIndexManager] No workspace folder open")
 			this._stateManager.setSystemState("Standby", "No workspace folder open")
 			return { requiresRestart }
 		}
 
 		// 4. CacheManager Initialization
 		if (!this._cacheManager) {
+			console.log("[CodeIndexManager] Initializing cache manager")
 			this._cacheManager = new CacheManager(this.context, this.workspacePath)
 			await this._cacheManager.initialize()
+		} else {
+			console.log("[CodeIndexManager] Cache manager already initialized")
 		}
 
 		// 4. Determine if Core Services Need Recreation
 		const needsServiceRecreation = !this._serviceFactory || requiresRestart
 
 		if (needsServiceRecreation) {
+			console.log(`[CodeIndexManager] Recreating services (requiresRestart: ${requiresRestart})`)
 			await this._recreateServices()
+		} else {
+			console.log("[CodeIndexManager] Services already exist, no recreation needed")
 		}
 
 		// 5. Handle Indexing Start/Restart
@@ -160,7 +170,10 @@ export class CodeIndexManager {
 			(needsServiceRecreation && (!this._orchestrator || this._orchestrator.state !== "Indexing"))
 
 		if (shouldStartOrRestartIndexing) {
+			console.log("[CodeIndexManager] Starting/restarting indexing process")
 			this._orchestrator?.startIndexing() // This method is async, but we don't await it here
+		} else {
+			console.log(`[CodeIndexManager] No indexing restart needed (current state: ${this._orchestrator?.state})`)
 		}
 
 		return { requiresRestart }

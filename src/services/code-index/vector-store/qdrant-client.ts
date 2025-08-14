@@ -147,10 +147,14 @@ export class QdrantVectorStore implements IVectorStore {
 	async initialize(): Promise<boolean> {
 		let created = false
 		try {
+			console.log(
+				`[QdrantVectorStore] Initializing collection ${this.collectionName} with vector size ${this.vectorSize}`,
+			)
 			const collectionInfo = await this.getCollectionInfo()
 
 			if (collectionInfo === null) {
 				// Collection info not retrieved (assume not found or inaccessible), create it
+				console.log(`[QdrantVectorStore] Collection ${this.collectionName} not found, creating new collection`)
 				await this.client.createCollection(this.collectionName, {
 					vectors: {
 						size: this.vectorSize,
@@ -158,6 +162,7 @@ export class QdrantVectorStore implements IVectorStore {
 					},
 				})
 				created = true
+				console.log(`[QdrantVectorStore] Successfully created new collection ${this.collectionName}`)
 			} else {
 				// Collection exists, check vector size
 				const vectorsConfig = collectionInfo.config?.params?.vectors
@@ -177,9 +182,15 @@ export class QdrantVectorStore implements IVectorStore {
 				}
 
 				if (existingVectorSize === this.vectorSize) {
+					console.log(
+						`[QdrantVectorStore] Found existing collection ${this.collectionName} with matching vector size ${existingVectorSize}. Reusing existing collection.`,
+					)
 					created = false // Exists and correct
 				} else {
 					// Exists but wrong vector size, recreate with enhanced error handling
+					console.log(
+						`[QdrantVectorStore] Found existing collection ${this.collectionName} with mismatched vector size (expected: ${this.vectorSize}, found: ${existingVectorSize})`,
+					)
 					created = await this._recreateCollectionWithNewDimension(existingVectorSize)
 				}
 			}
