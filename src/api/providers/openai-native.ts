@@ -612,13 +612,20 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		const url = `${baseUrl}/v1/responses`
 
 		try {
+			// Adjust headers based on streaming mode
+			const headers: Record<string, string> = {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${apiKey}`,
+			}
+
+			// Only add Accept: text/event-stream for streaming requests
+			if (requestBody.stream !== false) {
+				headers["Accept"] = "text/event-stream"
+			}
+
 			const response = await fetch(url, {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${apiKey}`,
-					Accept: "text/event-stream",
-				},
+				headers,
 				body: JSON.stringify(requestBody),
 			})
 
@@ -663,13 +670,19 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					this.resolveResponseId(undefined)
 
 					// Retry the request without the previous_response_id
+					const retryHeaders: Record<string, string> = {
+						"Content-Type": "application/json",
+						Authorization: `Bearer ${apiKey}`,
+					}
+
+					// Only add Accept: text/event-stream for streaming requests
+					if (retryRequestBody.stream !== false) {
+						retryHeaders["Accept"] = "text/event-stream"
+					}
+
 					const retryResponse = await fetch(url, {
 						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Bearer ${apiKey}`,
-							Accept: "text/event-stream",
-						},
+						headers: retryHeaders,
 						body: JSON.stringify(retryRequestBody),
 					})
 
@@ -678,12 +691,44 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 						throw new Error(`GPT-5 API retry failed (${retryResponse.status})`)
 					}
 
-					if (!retryResponse.body) {
-						throw new Error("GPT-5 Responses API error: No response body from retry request")
-					}
+					// Handle the successful retry response based on streaming mode
+					if (retryRequestBody.stream === false) {
+						// Handle non-streaming retry response
+						const retryData = await retryResponse.json()
+						const retryResponseData = retryData.response || retryData
 
-					// Handle the successful retry response
-					yield* this.handleGpt5StreamResponse(retryResponse.body, model)
+						// Extract text content from the response
+						if (retryResponseData.output && Array.isArray(retryResponseData.output)) {
+							for (const output of retryResponseData.output) {
+								if (output.type === "text" && output.content) {
+									for (const content of output.content) {
+										if (content.type === "text" && content.text) {
+											yield { type: "text", text: content.text }
+										}
+									}
+								}
+							}
+						}
+
+						// Yield usage information if available
+						if (retryResponseData.usage) {
+							const usageData = this.normalizeGpt5Usage(retryResponseData.usage, model)
+							if (usageData) {
+								yield usageData
+							}
+						}
+
+						// Store response ID for conversation continuity
+						if (retryResponseData.id) {
+							this.resolveResponseId(retryResponseData.id)
+						}
+					} else {
+						// Handle streaming retry response
+						if (!retryResponse.body) {
+							throw new Error("GPT-5 Responses API error: No response body from retry request")
+						}
+						yield* this.handleGpt5StreamResponse(retryResponse.body, model)
+					}
 					return
 				}
 
@@ -722,12 +767,46 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				throw new Error(errorMessage)
 			}
 
-			if (!response.body) {
-				throw new Error("GPT-5 Responses API error: No response body")
-			}
+			// Check if this is a non-streaming response
+			if (requestBody.stream === false) {
+				// Handle non-streaming response
+				const data = await response.json()
 
-			// Handle streaming response
-			yield* this.handleGpt5StreamResponse(response.body, model)
+				// Handle both response formats (wrapped and unwrapped)
+				const responseData = data.response || data
+
+				// Extract text content from the response
+				if (responseData.output && Array.isArray(responseData.output)) {
+					for (const output of responseData.output) {
+						if (output.type === "text" && output.content) {
+							for (const content of output.content) {
+								if (content.type === "text" && content.text) {
+									yield { type: "text", text: content.text }
+								}
+							}
+						}
+					}
+				}
+
+				// Yield usage information if available
+				if (responseData.usage) {
+					const usageData = this.normalizeGpt5Usage(responseData.usage, model)
+					if (usageData) {
+						yield usageData
+					}
+				}
+
+				// Store response ID for conversation continuity
+				if (responseData.id) {
+					this.resolveResponseId(responseData.id)
+				}
+			} else {
+				// Handle streaming response
+				if (!response.body) {
+					throw new Error("GPT-5 Responses API error: No response body")
+				}
+				yield* this.handleGpt5StreamResponse(response.body, model)
+			}
 		} catch (error) {
 			if (error instanceof Error) {
 				// Re-throw with the original error message if it's already formatted

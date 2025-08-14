@@ -2236,7 +2236,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 
 			// Should include verbosity in request
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
-			expect(requestBody.verbosity).toBe("high")
+			expect(requestBody.text.verbosity).toBe("high")
 			expect(requestBody.stream).toBe(false)
 
 			// Clean up
