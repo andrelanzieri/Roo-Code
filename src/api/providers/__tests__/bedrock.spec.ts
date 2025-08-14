@@ -635,11 +635,10 @@ describe("AwsBedrockHandler", () => {
 			expect(mockConverseStreamCommand).toHaveBeenCalled()
 			const commandArg = mockConverseStreamCommand.mock.calls[0][0] as any
 
-			// Should include anthropic_beta in additionalModelRequestFields
-			expect(commandArg.additionalModelRequestFields).toBeDefined()
-			expect(commandArg.additionalModelRequestFields.anthropic_beta).toEqual(["context-1m-2025-08-07"])
+			// Should include anthropic_beta at top level of payload
+			expect(commandArg.anthropic_beta).toEqual(["context-1m-2025-08-07"])
 			// Should not include anthropic_version since thinking is not enabled
-			expect(commandArg.additionalModelRequestFields.anthropic_version).toBeUndefined()
+			expect(commandArg.anthropic_version).toBeUndefined()
 		})
 
 		it("should not include anthropic_beta parameter when 1M context is disabled", async () => {
@@ -665,7 +664,9 @@ describe("AwsBedrockHandler", () => {
 			expect(mockConverseStreamCommand).toHaveBeenCalled()
 			const commandArg = mockConverseStreamCommand.mock.calls[0][0] as any
 
-			// Should not include anthropic_beta in additionalModelRequestFields
+			// Should not include anthropic_beta at top level
+			expect(commandArg.anthropic_beta).toBeUndefined()
+			// Should not include additionalModelRequestFields when no thinking is enabled
 			expect(commandArg.additionalModelRequestFields).toBeUndefined()
 		})
 
@@ -693,6 +694,7 @@ describe("AwsBedrockHandler", () => {
 			const commandArg = mockConverseStreamCommand.mock.calls[0][0] as any
 
 			// Should not include anthropic_beta for non-Sonnet 4 models
+			expect(commandArg.anthropic_beta).toBeUndefined()
 			expect(commandArg.additionalModelRequestFields).toBeUndefined()
 		})
 
@@ -740,11 +742,10 @@ describe("AwsBedrockHandler", () => {
 				mockConverseStreamCommand.mock.calls.length - 1
 			][0] as any
 
-			// Should include anthropic_beta in additionalModelRequestFields
-			expect(commandArg.additionalModelRequestFields).toBeDefined()
-			expect(commandArg.additionalModelRequestFields.anthropic_beta).toEqual(["context-1m-2025-08-07"])
+			// Should include anthropic_beta at top level of payload
+			expect(commandArg.anthropic_beta).toEqual(["context-1m-2025-08-07"])
 			// Should not include anthropic_version since thinking is not enabled
-			expect(commandArg.additionalModelRequestFields.anthropic_version).toBeUndefined()
+			expect(commandArg.anthropic_version).toBeUndefined()
 			// Model ID should have cross-region prefix
 			expect(commandArg.modelId).toBe(`us.${BEDROCK_CLAUDE_SONNET_4_MODEL_ID}`)
 		})
