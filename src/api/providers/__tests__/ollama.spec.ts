@@ -1,69 +1,16 @@
 // npx vitest run api/providers/__tests__/ollama.spec.ts
 
+import { vi, describe, it, expect, beforeEach } from "vitest"
 import { Anthropic } from "@anthropic-ai/sdk"
+import axios from "axios"
+import { Readable } from "stream"
 
 import { OllamaHandler } from "../ollama"
 import { ApiHandlerOptions } from "../../../shared/api"
 
-const mockCreate = vitest.fn()
-
-vitest.mock("openai", () => {
-	return {
-		__esModule: true,
-		default: vitest.fn().mockImplementation(() => ({
-			chat: {
-				completions: {
-					create: mockCreate.mockImplementation(async (options) => {
-						if (!options.stream) {
-							return {
-								id: "test-completion",
-								choices: [
-									{
-										message: { role: "assistant", content: "Test response" },
-										finish_reason: "stop",
-										index: 0,
-									},
-								],
-								usage: {
-									prompt_tokens: 10,
-									completion_tokens: 5,
-									total_tokens: 15,
-								},
-							}
-						}
-
-						return {
-							[Symbol.asyncIterator]: async function* () {
-								yield {
-									choices: [
-										{
-											delta: { content: "Test response" },
-											index: 0,
-										},
-									],
-									usage: null,
-								}
-								yield {
-									choices: [
-										{
-											delta: {},
-											index: 0,
-										},
-									],
-									usage: {
-										prompt_tokens: 10,
-										completion_tokens: 5,
-										total_tokens: 15,
-									},
-								}
-							},
-						}
-					}),
-				},
-			},
-		})),
-	}
-})
+// Mock axios
+vi.mock("axios")
+const mockedAxios = axios as any
 
 describe("OllamaHandler", () => {
 	let handler: OllamaHandler
@@ -73,10 +20,10 @@ describe("OllamaHandler", () => {
 		mockOptions = {
 			apiModelId: "llama2",
 			ollamaModelId: "llama2",
-			ollamaBaseUrl: "http://localhost:11434/v1",
+			ollamaBaseUrl: "http://localhost:11434",
 		}
 		handler = new OllamaHandler(mockOptions)
-		mockCreate.mockClear()
+		vi.clearAllMocks()
 	})
 
 	describe("constructor", () => {
@@ -104,6 +51,47 @@ describe("OllamaHandler", () => {
 		]
 
 		it("should handle streaming responses", async () => {
+			// Create a mock readable stream
+			const mockStreamData = [
+				JSON.stringify({
+					model: "llama2",
+					created_at: "2024-01-01T00:00:00Z",
+					message: { role: "assistant", content: "Test " },
+					done: false,
+				}),
+				JSON.stringify({
+					model: "llama2",
+					created_at: "2024-01-01T00:00:01Z",
+					message: { role: "assistant", content: "response" },
+					done: false,
+				}),
+				JSON.stringify({
+					model: "llama2",
+					created_at: "2024-01-01T00:00:02Z",
+					done: true,
+					prompt_eval_count: 10,
+					eval_count: 5,
+				}),
+			]
+
+			const mockStream = new Readable({
+				read() {
+					if (mockStreamData.length > 0) {
+						this.push(mockStreamData.shift() + "\n")
+					} else {
+						this.push(null)
+					}
+				},
+			})
+
+			mockedAxios.post.mockResolvedValueOnce({
+				data: mockStream,
+				status: 200,
+				statusText: "OK",
+				headers: {},
+				config: {} as any,
+			})
+
 			const stream = handler.createMessage(systemPrompt, messages)
 			const chunks: any[] = []
 			for await (const chunk of stream) {
@@ -112,12 +100,44 @@ describe("OllamaHandler", () => {
 
 			expect(chunks.length).toBeGreaterThan(0)
 			const textChunks = chunks.filter((chunk) => chunk.type === "text")
-			expect(textChunks).toHaveLength(1)
-			expect(textChunks[0].text).toBe("Test response")
+			expect(textChunks).toHaveLength(2)
+			expect(textChunks[0].text).toBe("Test ")
+			expect(textChunks[1].text).toBe("response")
+
+			// Check usage information
+			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
+			expect(usageChunks).toHaveLength(1)
+			expect(usageChunks[0].inputTokens).toBe(10)
+			expect(usageChunks[0].outputTokens).toBe(5)
+
+			// Verify the API was called with correct endpoint and data
+			expect(mockedAxios.post).toHaveBeenCalledWith(
+				"http://localhost:11434/api/chat",
+				{
+					model: "llama2",
+					messages: [
+						{ role: "system", content: systemPrompt },
+						{ role: "user", content: "Hello!" },
+					],
+					stream: true,
+					options: {
+						temperature: 0,
+					},
+				},
+				expect.objectContaining({
+					responseType: "stream",
+					headers: {
+						"Content-Type": "application/json",
+					},
+				}),
+			)
 		})
 
 		it("should handle API errors", async () => {
-			mockCreate.mockRejectedValueOnce(new Error("API Error"))
+			const error = new Error("API Error")
+			;(error as any).code = "ECONNREFUSED"
+			mockedAxios.isAxiosError = vi.fn().mockReturnValue(true)
+			mockedAxios.post.mockRejectedValueOnce(error)
 
 			const stream = handler.createMessage(systemPrompt, messages)
 
@@ -125,31 +145,91 @@ describe("OllamaHandler", () => {
 				for await (const _chunk of stream) {
 					// Should not reach here
 				}
-			}).rejects.toThrow("API Error")
+			}).rejects.toThrow("Ollama service is not running")
+		})
+
+		it("should handle model not found errors", async () => {
+			const error = new Error("Not Found")
+			;(error as any).response = { status: 404 }
+			mockedAxios.isAxiosError = vi.fn().mockReturnValue(true)
+			mockedAxios.post.mockRejectedValueOnce(error)
+
+			const stream = handler.createMessage(systemPrompt, messages)
+
+			await expect(async () => {
+				for await (const _chunk of stream) {
+					// Should not reach here
+				}
+			}).rejects.toThrow("Model llama2 not found in Ollama")
 		})
 	})
 
 	describe("completePrompt", () => {
 		it("should complete prompt successfully", async () => {
+			mockedAxios.post.mockResolvedValueOnce({
+				data: {
+					model: "llama2",
+					created_at: "2024-01-01T00:00:00Z",
+					message: {
+						role: "assistant",
+						content: "Test response",
+					},
+					done: true,
+				},
+				status: 200,
+				statusText: "OK",
+				headers: {},
+				config: {} as any,
+			})
+
 			const result = await handler.completePrompt("Test prompt")
 			expect(result).toBe("Test response")
-			expect(mockCreate).toHaveBeenCalledWith({
-				model: mockOptions.ollamaModelId,
-				messages: [{ role: "user", content: "Test prompt" }],
-				temperature: 0,
-				stream: false,
-			})
+			expect(mockedAxios.post).toHaveBeenCalledWith(
+				"http://localhost:11434/api/chat",
+				{
+					model: mockOptions.ollamaModelId,
+					messages: [{ role: "user", content: "Test prompt" }],
+					stream: false,
+					options: {
+						temperature: 0,
+					},
+				},
+				expect.objectContaining({
+					headers: {
+						"Content-Type": "application/json",
+					},
+				}),
+			)
 		})
 
 		it("should handle API errors", async () => {
-			mockCreate.mockRejectedValueOnce(new Error("API Error"))
-			await expect(handler.completePrompt("Test prompt")).rejects.toThrow("Ollama completion error: API Error")
+			const error = new Error("API Error")
+			;(error as any).code = "ECONNREFUSED"
+			mockedAxios.isAxiosError = vi.fn().mockReturnValue(true)
+			mockedAxios.post.mockRejectedValueOnce(error)
+
+			await expect(handler.completePrompt("Test prompt")).rejects.toThrow(
+				"Ollama service is not running at http://localhost:11434",
+			)
 		})
 
 		it("should handle empty response", async () => {
-			mockCreate.mockResolvedValueOnce({
-				choices: [{ message: { content: "" } }],
+			mockedAxios.post.mockResolvedValueOnce({
+				data: {
+					model: "llama2",
+					created_at: "2024-01-01T00:00:00Z",
+					message: {
+						role: "assistant",
+						content: "",
+					},
+					done: true,
+				},
+				status: 200,
+				statusText: "OK",
+				headers: {},
+				config: {} as any,
 			})
+
 			const result = await handler.completePrompt("Test prompt")
 			expect(result).toBe("")
 		})
@@ -162,6 +242,70 @@ describe("OllamaHandler", () => {
 			expect(modelInfo.info).toBeDefined()
 			expect(modelInfo.info.maxTokens).toBe(-1)
 			expect(modelInfo.info.contextWindow).toBe(128_000)
+		})
+	})
+
+	describe("message format conversion", () => {
+		it("should handle complex message content", async () => {
+			const complexMessages: Anthropic.Messages.MessageParam[] = [
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: "Here is an image:" },
+						{
+							type: "image",
+							source: {
+								type: "base64",
+								media_type: "image/png",
+								data: "base64data",
+							},
+						},
+					],
+				},
+			]
+
+			const mockStream = new Readable({
+				read() {
+					this.push(
+						JSON.stringify({
+							model: "llama2",
+							created_at: "2024-01-01T00:00:00Z",
+							message: { role: "assistant", content: "I see the image" },
+							done: true,
+						}) + "\n",
+					)
+					this.push(null)
+				},
+			})
+
+			mockedAxios.post.mockResolvedValueOnce({
+				data: mockStream,
+				status: 200,
+				statusText: "OK",
+				headers: {},
+				config: {} as any,
+			})
+
+			const stream = handler.createMessage("System prompt", complexMessages)
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Verify the message was properly converted
+			expect(mockedAxios.post).toHaveBeenCalledWith(
+				"http://localhost:11434/api/chat",
+				expect.objectContaining({
+					messages: expect.arrayContaining([
+						expect.objectContaining({
+							role: "user",
+							content: "Here is an image:",
+							images: ["base64data"],
+						}),
+					]),
+				}),
+				expect.any(Object),
+			)
 		})
 	})
 })
