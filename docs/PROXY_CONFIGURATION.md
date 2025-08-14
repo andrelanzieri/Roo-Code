@@ -58,14 +58,6 @@ VSCode has two different implementations for making HTTP requests:
 
 When `http.electronFetch` is `false` (default), extensions using the native fetch API may fail to route requests through your proxy correctly.
 
-## Automatic Detection
-
-Roo Code now automatically detects this configuration issue and will:
-
-1. Show a warning notification when proxy settings are detected but `http.electronFetch` is disabled
-2. Provide helpful error messages when connection errors occur
-3. Suggest the appropriate fix based on your configuration
-
 ## Supported Proxy Types
 
 With `http.electronFetch` enabled, the following proxy configurations are supported:

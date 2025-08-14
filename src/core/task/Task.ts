@@ -9,7 +9,6 @@ import delay from "delay"
 import pWaitFor from "p-wait-for"
 import { serializeError } from "serialize-error"
 
-import { detectProxyConfigurationIssue, formatProxyErrorMessage } from "../../api/providers/utils/proxy-detection"
 import {
 	type TaskLike,
 	type TaskEvents,
@@ -2222,7 +2221,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 				return
 			} else {
-				const { response } = await this.ask("api_req_failed", formatProxyErrorMessage(error))
+				let errorMsg = error.message || "API request failed"
+
+				// Add helpful message about proxy configuration if relevant
+				if (
+					errorMsg.includes("ECONNREFUSED") ||
+					errorMsg.includes("ETIMEDOUT") ||
+					errorMsg.includes("ENOTFOUND")
+				) {
+					errorMsg +=
+						"\n\nIf you're behind a proxy, try enabling the 'http.electronFetch' setting in VSCode:\n1. Open Settings (Cmd/Ctrl + ,)\n2. Search for 'http.electronFetch'\n3. Enable the setting\n4. Restart VSCode"
+				}
+
+				const { response } = await this.ask("api_req_failed", errorMsg)
 
 				if (response !== "yesButtonClicked") {
 					// This will never happen since if noButtonClicked, we will
