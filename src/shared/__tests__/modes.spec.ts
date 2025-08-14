@@ -400,6 +400,59 @@ describe("FileRestrictionError", () => {
 		})
 	})
 
+	describe("coderoo mode", () => {
+		it("is configured correctly", () => {
+			const coderooMode = modes.find((mode) => mode.slug === "coderoo")
+			expect(coderooMode).toBeDefined()
+			expect(coderooMode).toMatchObject({
+				slug: "coderoo",
+				name: "🦘 CodeRoo",
+				roleDefinition:
+					"You are CodeRoo, an expert code reviewer who audits every commit with Git, hunts for redundancy, verifies functional completeness, and flags security flaws.",
+				groups: ["read", "command", "browser", "mcp"],
+			})
+			expect(coderooMode?.whenToUse).toContain(
+				"Use this mode for secondary code review when you need to audit code changes",
+			)
+			expect(coderooMode?.description).toBe("Expert code review and security audit")
+			expect(coderooMode?.customInstructions).toContain("git diff --cached")
+			expect(coderooMode?.customInstructions).toContain("Scan for duplicated logic")
+			expect(coderooMode?.customInstructions).toContain("Run a quick mental threat-model")
+			expect(coderooMode?.customInstructions).toContain("Present findings in a concise table format")
+		})
+
+		it("has correct tool groups", () => {
+			const coderooMode = modes.find((mode) => mode.slug === "coderoo")
+			expect(coderooMode?.groups).toEqual(["read", "command", "browser", "mcp"])
+			// Should not have "edit" group as it's a reviewer, not an editor
+			expect(coderooMode?.groups).not.toContain("edit")
+		})
+
+		it("allows read and command tools", () => {
+			expect(isToolAllowedForMode("read_file", "coderoo", [])).toBe(true)
+			expect(isToolAllowedForMode("list_files", "coderoo", [])).toBe(true)
+			expect(isToolAllowedForMode("search_files", "coderoo", [])).toBe(true)
+			expect(isToolAllowedForMode("execute_command", "coderoo", [])).toBe(true)
+		})
+
+		it("allows browser and mcp tools", () => {
+			expect(isToolAllowedForMode("browser_action", "coderoo", [])).toBe(true)
+			expect(isToolAllowedForMode("use_mcp_tool", "coderoo", [])).toBe(true)
+		})
+
+		it("does not allow edit tools", () => {
+			expect(isToolAllowedForMode("write_to_file", "coderoo", [])).toBe(false)
+			expect(isToolAllowedForMode("apply_diff", "coderoo", [])).toBe(false)
+			expect(isToolAllowedForMode("search_and_replace", "coderoo", [])).toBe(false)
+			expect(isToolAllowedForMode("insert_content", "coderoo", [])).toBe(false)
+		})
+
+		it("allows always available tools", () => {
+			expect(isToolAllowedForMode("ask_followup_question", "coderoo", [])).toBe(true)
+			expect(isToolAllowedForMode("attempt_completion", "coderoo", [])).toBe(true)
+		})
+	})
+
 	describe("getFullModeDetails", () => {
 		beforeEach(() => {
 			vi.clearAllMocks()
