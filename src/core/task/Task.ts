@@ -1533,6 +1533,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// results.
 		const finalUserContent = [...parsedUserContent, { type: "text" as const, text: environmentDetails }]
 
+		// Save checkpoint before adding user message to conversation history
+		if (this.enableCheckpoints) {
+			try {
+				await this.checkpointSave(true)
+			} catch (error) {
+				console.error(
+					`[Task#recursivelyMakeClineRequests] Error saving checkpoint before user message: ${error.message}`,
+					error,
+				)
+			}
+		}
+
 		await this.addToApiConversationHistory({ role: "user", content: finalUserContent })
 		TelemetryService.instance.captureConversationMessage(this.taskId, "user")
 

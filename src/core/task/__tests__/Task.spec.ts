@@ -1613,5 +1613,147 @@ describe("Cline", () => {
 				consoleErrorSpy.mockRestore()
 			})
 		})
+
+		describe("Checkpoint before user messages", () => {
+			it("should save checkpoint before adding user message to conversation history", async () => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "test task",
+					enableCheckpoints: true,
+					startTask: false,
+				})
+
+				// Mock checkpointSave method
+				const checkpointSaveSpy = vi.spyOn(task, "checkpointSave").mockResolvedValue(undefined)
+
+				// Mock addToApiConversationHistory
+				const addToApiConversationHistorySpy = vi
+					.spyOn(task as any, "addToApiConversationHistory")
+					.mockResolvedValue(undefined)
+
+				// Mock other required methods
+				vi.spyOn(task as any, "saveClineMessages").mockResolvedValue(undefined)
+				vi.spyOn(task.api, "createMessage").mockReturnValue({
+					async *[Symbol.asyncIterator]() {
+						yield { type: "text", text: "response" }
+					},
+				} as any)
+
+				// Mock clineMessages to avoid errors
+				task.clineMessages = [
+					{
+						ts: Date.now(),
+						type: "say",
+						say: "api_req_started",
+						text: JSON.stringify({ request: "test" }),
+					},
+				]
+
+				// Call recursivelyMakeClineRequests which should trigger checkpoint save
+				await task.recursivelyMakeClineRequests([{ type: "text", text: "test user message" }])
+
+				// Verify checkpoint was saved before adding to conversation history
+				expect(checkpointSaveSpy).toHaveBeenCalledWith(true)
+				expect(checkpointSaveSpy).toHaveBeenCalledBefore(addToApiConversationHistorySpy)
+				expect(addToApiConversationHistorySpy).toHaveBeenCalled()
+			})
+
+			it("should handle checkpoint save errors gracefully", async () => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "test task",
+					enableCheckpoints: true,
+					startTask: false,
+				})
+
+				// Mock checkpointSave to throw an error
+				const checkpointError = new Error("Checkpoint save failed")
+				const checkpointSaveSpy = vi.spyOn(task, "checkpointSave").mockRejectedValue(checkpointError)
+
+				// Mock console.error to verify error logging
+				const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+				// Mock addToApiConversationHistory to verify it still gets called
+				const addToApiConversationHistorySpy = vi
+					.spyOn(task as any, "addToApiConversationHistory")
+					.mockResolvedValue(undefined)
+
+				// Mock other required methods
+				vi.spyOn(task as any, "saveClineMessages").mockResolvedValue(undefined)
+				vi.spyOn(task.api, "createMessage").mockReturnValue({
+					async *[Symbol.asyncIterator]() {
+						yield { type: "text", text: "response" }
+					},
+				} as any)
+
+				// Mock clineMessages
+				task.clineMessages = [
+					{
+						ts: Date.now(),
+						type: "say",
+						say: "api_req_started",
+						text: JSON.stringify({ request: "test" }),
+					},
+				]
+
+				// Call recursivelyMakeClineRequests
+				await task.recursivelyMakeClineRequests([{ type: "text", text: "test user message" }])
+
+				// Verify checkpoint save was attempted
+				expect(checkpointSaveSpy).toHaveBeenCalledWith(true)
+
+				// Verify error was logged
+				expect(consoleErrorSpy).toHaveBeenCalledWith(
+					expect.stringContaining("Error saving checkpoint before user message"),
+					checkpointError,
+				)
+
+				// Verify conversation history was still updated despite checkpoint error
+				expect(addToApiConversationHistorySpy).toHaveBeenCalled()
+
+				// Restore console.error
+				consoleErrorSpy.mockRestore()
+			})
+
+			it("should not save checkpoint when checkpoints are disabled", async () => {
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "test task",
+					enableCheckpoints: false,
+					startTask: false,
+				})
+
+				// Mock checkpointSave method
+				const checkpointSaveSpy = vi.spyOn(task, "checkpointSave").mockResolvedValue(undefined)
+
+				// Mock other required methods
+				vi.spyOn(task as any, "addToApiConversationHistory").mockResolvedValue(undefined)
+				vi.spyOn(task as any, "saveClineMessages").mockResolvedValue(undefined)
+				vi.spyOn(task.api, "createMessage").mockReturnValue({
+					async *[Symbol.asyncIterator]() {
+						yield { type: "text", text: "response" }
+					},
+				} as any)
+
+				// Mock clineMessages
+				task.clineMessages = [
+					{
+						ts: Date.now(),
+						type: "say",
+						say: "api_req_started",
+						text: JSON.stringify({ request: "test" }),
+					},
+				]
+
+				// Call recursivelyMakeClineRequests
+				await task.recursivelyMakeClineRequests([{ type: "text", text: "test user message" }])
+
+				// Verify checkpoint was NOT saved
+				expect(checkpointSaveSpy).not.toHaveBeenCalled()
+			})
+		})
 	})
 })
