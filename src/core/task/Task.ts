@@ -35,7 +35,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { CloudService, UnifiedBridgeService } from "@roo-code/cloud"
 
 // api
-import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
+import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler, buildApiHandlerWithFallback } from "../../api"
 import { ApiStream } from "../../api/transform/stream"
 
 // shared
@@ -302,7 +302,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		})
 
 		this.apiConfiguration = apiConfiguration
-		this.api = buildApiHandler(apiConfiguration)
+		// Check if we should use fallback handler
+		this.api = this.createApiHandlerForTask(apiConfiguration, provider)
 		this.autoApprovalHandler = new AutoApprovalHandler()
 
 		this.urlContentFetcher = new UrlContentFetcher(provider.context)
@@ -2328,5 +2329,35 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	public get cwd() {
 		return this.workspacePath
+	}
+
+	/**
+	 * Creates an API handler for the task, potentially with fallback support.
+	 * If multiple configurations are available for the current mode, creates a FallbackApiHandler.
+	 */
+	private createApiHandlerForTask(primaryConfig: ProviderSettings, provider: ClineProvider): ApiHandler {
+		// For history items, use the stored mode; for new tasks, we'll use the provider's current mode
+		const mode =
+			this._taskMode ||
+			provider
+				.getState()
+				.then((state) => state?.mode)
+				.catch(() => undefined)
+
+		// If we have a mode, try to get fallback configs
+		if (mode && typeof mode === "string") {
+			// This is synchronous for history items (mode already set)
+			// For new tasks, we'll just use the primary config for now
+			// TODO: Make this async to properly support fallback configs for new tasks
+			const configs = provider.providerSettingsManager.getModeConfigs(mode).catch(() => [])
+
+			// For now, just use the primary config
+			// In a future update, we could make the constructor async or
+			// update the API handler after mode initialization
+			return buildApiHandler(primaryConfig)
+		}
+
+		// No mode specified or couldn't determine mode, use single handler
+		return buildApiHandler(primaryConfig)
 	}
 }

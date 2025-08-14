@@ -24,6 +24,8 @@ export const providerProfilesSchema = z.object({
 	currentApiConfigName: z.string(),
 	apiConfigs: z.record(z.string(), providerSettingsWithIdSchema),
 	modeApiConfigs: z.record(z.string(), z.string()).optional(),
+	// New field for fallback configurations per mode
+	modeFallbackConfigs: z.record(z.string(), z.array(z.string())).optional(),
 	cloudProfileIds: z.array(z.string()).optional(),
 	migrations: z
 		.object({
@@ -32,6 +34,7 @@ export const providerProfilesSchema = z.object({
 			openAiHeadersMigrated: z.boolean().optional(),
 			consecutiveMistakeLimitMigrated: z.boolean().optional(),
 			todoListEnabledMigrated: z.boolean().optional(),
+			fallbackConfigsMigrated: z.boolean().optional(),
 		})
 		.optional(),
 })
@@ -46,16 +49,22 @@ export class ProviderSettingsManager {
 		modes.map((mode) => [mode.slug, this.defaultConfigId]),
 	)
 
+	private readonly defaultModeFallbackConfigs: Record<string, string[]> = Object.fromEntries(
+		modes.map((mode) => [mode.slug, []]),
+	)
+
 	private readonly defaultProviderProfiles: ProviderProfiles = {
 		currentApiConfigName: "default",
 		apiConfigs: { default: { id: this.defaultConfigId } },
 		modeApiConfigs: this.defaultModeApiConfigs,
+		modeFallbackConfigs: this.defaultModeFallbackConfigs,
 		migrations: {
 			rateLimitSecondsMigrated: true, // Mark as migrated on fresh installs
 			diffSettingsMigrated: true, // Mark as migrated on fresh installs
 			openAiHeadersMigrated: true, // Mark as migrated on fresh installs
 			consecutiveMistakeLimitMigrated: true, // Mark as migrated on fresh installs
 			todoListEnabledMigrated: true, // Mark as migrated on fresh installs
+			fallbackConfigsMigrated: true, // Mark as migrated on fresh installs
 		},
 	}
 
@@ -154,6 +163,13 @@ export class ProviderSettingsManager {
 				if (!providerProfiles.migrations.todoListEnabledMigrated) {
 					await this.migrateTodoListEnabled(providerProfiles)
 					providerProfiles.migrations.todoListEnabledMigrated = true
+					isDirty = true
+				}
+
+				// Migrate fallback configs if not already migrated
+				if (!providerProfiles.migrations.fallbackConfigsMigrated) {
+					await this.migrateFallbackConfigs(providerProfiles)
+					providerProfiles.migrations.fallbackConfigsMigrated = true
 					isDirty = true
 				}
 
@@ -271,6 +287,17 @@ export class ProviderSettingsManager {
 			}
 		} catch (error) {
 			console.error(`[MigrateTodoListEnabled] Failed to migrate todo list enabled setting:`, error)
+		}
+	}
+
+	private async migrateFallbackConfigs(providerProfiles: ProviderProfiles) {
+		try {
+			// Initialize fallback configs if they don't exist
+			if (!providerProfiles.modeFallbackConfigs) {
+				providerProfiles.modeFallbackConfigs = Object.fromEntries(modes.map((mode) => [mode.slug, []]))
+			}
+		} catch (error) {
+			console.error(`[MigrateFallbackConfigs] Failed to migrate fallback configs:`, error)
 		}
 	}
 
@@ -445,6 +472,87 @@ export class ProviderSettingsManager {
 			})
 		} catch (error) {
 			throw new Error(`Failed to get mode config: ${error}`)
+		}
+	}
+
+	/**
+	 * Set the fallback API configs for a specific mode.
+	 * @param mode The mode to set fallback configs for
+	 * @param configIds Array of config IDs in priority order (primary first)
+	 */
+	public async setModeFallbackConfigs(mode: Mode, configIds: string[]) {
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+				// Ensure the fallback config map exists
+				if (!providerProfiles.modeFallbackConfigs) {
+					providerProfiles.modeFallbackConfigs = {}
+				}
+				// Set the fallback config IDs for this mode
+				providerProfiles.modeFallbackConfigs[mode] = configIds
+				await this.store(providerProfiles)
+			})
+		} catch (error) {
+			throw new Error(`Failed to set mode fallback configs: ${error}`)
+		}
+	}
+
+	/**
+	 * Get the fallback API config IDs for a specific mode.
+	 * @param mode The mode to get fallback configs for
+	 * @returns Array of config IDs in priority order, or empty array if none configured
+	 */
+	public async getModeFallbackConfigs(mode: Mode): Promise<string[]> {
+		try {
+			return await this.lock(async () => {
+				const { modeFallbackConfigs } = await this.load()
+				return modeFallbackConfigs?.[mode] || []
+			})
+		} catch (error) {
+			throw new Error(`Failed to get mode fallback configs: ${error}`)
+		}
+	}
+
+	/**
+	 * Get all API configurations for a mode (primary + fallbacks).
+	 * @param mode The mode to get configs for
+	 * @returns Array of ProviderSettingsWithId in priority order
+	 */
+	public async getModeConfigs(mode: Mode): Promise<ProviderSettingsWithId[]> {
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+				const configs: ProviderSettingsWithId[] = []
+
+				// Get primary config
+				const primaryId = providerProfiles.modeApiConfigs?.[mode]
+				if (primaryId) {
+					const primaryConfig = Object.values(providerProfiles.apiConfigs).find(
+						(config) => config.id === primaryId,
+					)
+					if (primaryConfig) {
+						configs.push(primaryConfig)
+					}
+				}
+
+				// Get fallback configs
+				const fallbackIds = providerProfiles.modeFallbackConfigs?.[mode] || []
+				for (const fallbackId of fallbackIds) {
+					// Skip if this is the same as primary (avoid duplicates)
+					if (fallbackId === primaryId) continue
+
+					const fallbackConfig = Object.values(providerProfiles.apiConfigs).find(
+						(config) => config.id === fallbackId,
+					)
+					if (fallbackConfig) {
+						configs.push(fallbackConfig)
+					}
+				}
+
+				return configs
+			})
+		} catch (error) {
+			throw new Error(`Failed to get mode configs: ${error}`)
 		}
 	}
 

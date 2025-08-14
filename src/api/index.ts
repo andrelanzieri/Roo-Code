@@ -1,8 +1,9 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { ProviderSettings, ModelInfo } from "@roo-code/types"
+import type { ProviderSettings, ProviderSettingsWithId, ModelInfo } from "@roo-code/types"
 
 import { ApiStream } from "./transform/stream"
+import { FallbackApiHandler } from "./FallbackApiHandler"
 
 import {
 	GlamaHandler,
@@ -144,4 +145,32 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			apiProvider satisfies "gemini-cli" | undefined
 			return new AnthropicHandler(options)
 	}
+}
+
+/**
+ * Builds an API handler with fallback support.
+ * If multiple configurations are provided, returns a FallbackApiHandler that will
+ * automatically try each configuration in order until one succeeds.
+ *
+ * @param configurations - Either a single ProviderSettings or an array of ProviderSettingsWithId for fallback
+ * @returns An ApiHandler that may support fallback
+ */
+export function buildApiHandlerWithFallback(configurations: ProviderSettings | ProviderSettingsWithId[]): ApiHandler {
+	// If it's an array with multiple configurations, use FallbackApiHandler
+	if (Array.isArray(configurations)) {
+		if (configurations.length === 0) {
+			throw new Error("At least one API configuration is required")
+		}
+
+		if (configurations.length === 1) {
+			// Single configuration, use regular handler
+			return buildApiHandler(configurations[0])
+		}
+
+		// Multiple configurations, use fallback handler
+		return new FallbackApiHandler(configurations)
+	}
+
+	// Single configuration, use regular handler
+	return buildApiHandler(configurations)
 }

@@ -62,12 +62,20 @@ describe("ProviderSettingsManager", () => {
 						},
 					},
 					modeApiConfigs: {},
+					modeFallbackConfigs: {
+						architect: [],
+						code: [],
+						ask: [],
+						debug: [],
+						orchestrator: [],
+					},
 					migrations: {
 						rateLimitSecondsMigrated: true,
 						diffSettingsMigrated: true,
 						openAiHeadersMigrated: true,
 						consecutiveMistakeLimitMigrated: true,
 						todoListEnabledMigrated: true,
+						fallbackConfigsMigrated: true,
 					},
 				}),
 			)
