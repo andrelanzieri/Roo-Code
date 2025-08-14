@@ -739,6 +739,7 @@
 		"cacheReadsPrice": "Önbellek okuma fiyatı",
 		"cacheWritesPrice": "Önbellek yazma fiyatı",
 		"enableStreaming": "Akışı etkinleştir",
+		"enableStreamingDescription": "Gelişmiş modellerle kuruluş doğrulama hatalarıyla karşılaşırsan akışı devre dışı bırak. Akış olmayan istekler doğrulama olmadan çalışabilir.",
 		"enableR1Format": "R1 model parametrelerini etkinleştir",
 		"enableR1FormatTips": "QWQ gibi R1 modelleri kullanıldığında etkinleştirilmelidir, 400 hatası alınmaması için",
 		"useAzure": "Azure kullan",

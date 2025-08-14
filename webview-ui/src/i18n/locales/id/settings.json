@@ -768,6 +768,7 @@
 		"cacheReadsPrice": "Harga cache reads",
 		"cacheWritesPrice": "Harga cache writes",
 		"enableStreaming": "Aktifkan streaming",
+		"enableStreamingDescription": "Nonaktifkan streaming jika kamu mengalami kesalahan verifikasi organisasi dengan model lanjutan. Permintaan non-streaming mungkin berfungsi tanpa verifikasi.",
 		"enableR1Format": "Aktifkan parameter model R1",
 		"enableR1FormatTips": "Harus diaktifkan saat menggunakan model R1 seperti QWQ untuk mencegah error 400",
 		"useAzure": "Gunakan Azure",

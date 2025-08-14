@@ -739,6 +739,7 @@
 		"cacheReadsPrice": "Cache-leesprijs",
 		"cacheWritesPrice": "Cache-schrijfprijs",
 		"enableStreaming": "Streaming inschakelen",
+		"enableStreamingDescription": "Schakel streaming uit als je organisatieverificatiefouten tegenkomt met geavanceerde modellen. Niet-streaming verzoeken kunnen zonder verificatie werken.",
 		"enableR1Format": "R1-modelparameters inschakelen",
 		"enableR1FormatTips": "Moet ingeschakeld zijn bij gebruik van R1-modellen zoals QWQ om 400-fouten te voorkomen",
 		"useAzure": "Azure gebruiken",
