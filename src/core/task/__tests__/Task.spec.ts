@@ -1613,5 +1613,249 @@ describe("Cline", () => {
 				consoleErrorSpy.mockRestore()
 			})
 		})
+
+		describe("Message Queueing", () => {
+			let task: Task
+			let mockProvider: any
+
+			beforeEach(() => {
+				mockProvider = {
+					context: {
+						globalStorageUri: { fsPath: "/test/storage" },
+					},
+					getState: vi.fn().mockResolvedValue({}),
+					postMessageToWebview: vi.fn().mockResolvedValue(undefined),
+					postStateToWebview: vi.fn().mockResolvedValue(undefined),
+					updateTaskHistory: vi.fn().mockResolvedValue(undefined),
+					log: vi.fn(), // Add log method to mock provider
+				}
+
+				task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "test task",
+					startTask: false,
+				})
+			})
+
+			it("should queue messages when already processing", async () => {
+				// Access private properties via any cast for testing
+				const taskAny = task as any
+
+				// Set processing state
+				taskAny.isProcessingMessage = true
+
+				// Spy on postMessageToWebview
+				const postMessageSpy = vi.spyOn(mockProvider, "postMessageToWebview")
+
+				// Try to handle a new message while processing
+				await task.handleWebviewAskResponse("messageResponse", "new message while processing")
+
+				// Verify message was queued
+				expect(taskAny.messageQueue).toHaveLength(1)
+				expect(taskAny.messageQueue[0]).toEqual({
+					text: "new message while processing",
+					images: undefined,
+				})
+
+				// Verify queue notification was sent
+				expect(postMessageSpy).toHaveBeenCalledWith({
+					type: "messageQueued",
+					queueSize: 1,
+				})
+			})
+
+			it("should process messages immediately when not processing", async () => {
+				// Access private properties via any cast
+				const taskAny = task as any
+
+				// Directly test the queueing logic
+				taskAny.isProcessingMessage = false
+
+				// Call handleWebviewAskResponse
+				await task.handleWebviewAskResponse("messageResponse", "test message")
+
+				// Since we're not processing, it should start processing immediately
+				// The message should not be in the queue
+				expect(taskAny.messageQueue).toHaveLength(0)
+			})
+
+			it("should process queued messages in FIFO order", async () => {
+				// Access private properties via any cast
+				const taskAny = task as any
+
+				// Set processing state
+				taskAny.isProcessingMessage = true
+
+				// Queue multiple messages
+				await task.handleWebviewAskResponse("messageResponse", "first message")
+				await task.handleWebviewAskResponse("messageResponse", "second message")
+				await task.handleWebviewAskResponse("messageResponse", "third message")
+
+				// Verify all messages were queued in order
+				expect(taskAny.messageQueue).toHaveLength(3)
+				expect(taskAny.messageQueue[0].text).toBe("first message")
+				expect(taskAny.messageQueue[1].text).toBe("second message")
+				expect(taskAny.messageQueue[2].text).toBe("third message")
+
+				// Reset processing state and remove first message to simulate processing
+				taskAny.isProcessingMessage = false
+				const firstMessage = taskAny.messageQueue.shift()
+
+				// Verify FIFO order is maintained
+				expect(firstMessage.text).toBe("first message")
+				expect(taskAny.messageQueue).toHaveLength(2)
+				expect(taskAny.messageQueue[0].text).toBe("second message")
+			})
+
+			it("should handle empty queue gracefully", async () => {
+				// Access private properties via any cast
+				const taskAny = task as any
+
+				// Ensure queue is empty
+				taskAny.messageQueue = []
+
+				// Mock initiateTaskLoop
+				const initiateTaskLoopSpy = vi.spyOn(taskAny, "initiateTaskLoop").mockResolvedValue(undefined)
+
+				// Try to process next queued message
+				await taskAny.processNextQueuedMessage()
+
+				// Verify no processing occurred
+				expect(initiateTaskLoopSpy).not.toHaveBeenCalled()
+				expect(taskAny.isProcessingMessage).toBe(false)
+			})
+
+			it("should set processing state correctly during message handling", async () => {
+				// Access private properties via any cast
+				const taskAny = task as any
+
+				// Initially not processing
+				expect(taskAny.isProcessingMessage).toBe(false)
+
+				// Mock recursivelyMakeClineRequests to track processing
+				let processingDuringRequest = false
+				vi.spyOn(taskAny, "recursivelyMakeClineRequests").mockImplementation(async () => {
+					processingDuringRequest = taskAny.isProcessingMessage
+					return true
+				})
+
+				// Mock other required methods
+				vi.spyOn(task, "say").mockResolvedValue(undefined)
+				vi.spyOn(taskAny, "addToApiConversationHistory").mockReturnValue(undefined)
+				vi.spyOn(taskAny, "saveApiConversationHistory").mockResolvedValue(undefined)
+
+				// Start processing a message
+				await taskAny.initiateTaskLoop([{ type: "text", text: "test message" }])
+
+				// Verify processing state was set during request
+				expect(processingDuringRequest).toBe(true)
+
+				// Verify processing state is reset after completion
+				expect(taskAny.isProcessingMessage).toBe(false)
+			})
+
+			it("should send queue size updates when queueing multiple messages", async () => {
+				// Access private properties via any cast
+				const taskAny = task as any
+
+				// Set processing state
+				taskAny.isProcessingMessage = true
+
+				// Spy on postMessageToWebview
+				const postMessageSpy = vi.spyOn(mockProvider, "postMessageToWebview")
+
+				// Queue multiple messages
+				await task.handleWebviewAskResponse("messageResponse", "message 1")
+				await task.handleWebviewAskResponse("messageResponse", "message 2")
+				await task.handleWebviewAskResponse("messageResponse", "message 3")
+
+				// Verify queue notifications were sent with correct sizes
+				expect(postMessageSpy).toHaveBeenNthCalledWith(1, {
+					type: "messageQueued",
+					queueSize: 1,
+				})
+				expect(postMessageSpy).toHaveBeenNthCalledWith(2, {
+					type: "messageQueued",
+					queueSize: 2,
+				})
+				expect(postMessageSpy).toHaveBeenNthCalledWith(3, {
+					type: "messageQueued",
+					queueSize: 3,
+				})
+			})
+
+			it("should handle rapid message submissions correctly", async () => {
+				// Access private properties via any cast
+				const taskAny = task as any
+
+				// Set processing state
+				taskAny.isProcessingMessage = true
+
+				// Simulate rapid message submissions
+				const promises = []
+				for (let i = 1; i <= 10; i++) {
+					promises.push(task.handleWebviewAskResponse("messageResponse", `rapid message ${i}`))
+				}
+
+				// Wait for all to complete
+				await Promise.all(promises)
+
+				// Verify all messages were queued
+				expect(taskAny.messageQueue).toHaveLength(10)
+				for (let i = 0; i < 10; i++) {
+					expect(taskAny.messageQueue[i].text).toBe(`rapid message ${i + 1}`)
+				}
+			})
+
+			it("should reset processing state when recursivelyMakeClineRequests completes", async () => {
+				// Access private properties via any cast
+				const taskAny = task as any
+
+				// Mock the recursive method to track state changes
+				vi.spyOn(taskAny, "recursivelyMakeClineRequests").mockResolvedValue(true)
+
+				// Mock other required methods
+				vi.spyOn(task, "say").mockResolvedValue(undefined)
+				vi.spyOn(taskAny, "addToApiConversationHistory").mockReturnValue(undefined)
+				vi.spyOn(taskAny, "saveApiConversationHistory").mockResolvedValue(undefined)
+
+				// Queue a message for after processing
+				taskAny.messageQueue = [{ text: "queued message" }]
+
+				// Mock processNextQueuedMessage
+				const processNextSpy = vi.spyOn(taskAny, "processNextQueuedMessage").mockResolvedValue(undefined)
+
+				// Start processing
+				await taskAny.initiateTaskLoop([{ type: "text", text: "initial message" }])
+
+				// Verify processing state was reset
+				expect(taskAny.isProcessingMessage).toBe(false)
+
+				// Verify next queued message was triggered
+				expect(processNextSpy).toHaveBeenCalled()
+			})
+
+			it("should handle undefined provider reference when sending queue notifications", async () => {
+				// Access private properties via any cast
+				const taskAny = task as any
+
+				// Set processing state
+				taskAny.isProcessingMessage = true
+
+				// Simulate weakref returning undefined
+				Object.defineProperty(task, "providerRef", {
+					value: { deref: () => undefined },
+					writable: false,
+					configurable: true,
+				})
+
+				// Try to queue a message - this should not throw
+				await task.handleWebviewAskResponse("messageResponse", "message without provider")
+
+				// Verify message was still queued
+				expect(taskAny.messageQueue).toHaveLength(1)
+			})
+		})
 	})
 })

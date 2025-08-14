@@ -131,6 +131,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly taskNumber: number
 	readonly workspacePath: string
 
+	// Message queue for handling user messages
+	private messageQueue: Array<{ text: string; images?: string[] }> = []
+	private isProcessingMessage: boolean = false
+
 	/**
 	 * The mode associated with this task. Persisted across sessions
 	 * to maintain user context when reopening tasks from history.
@@ -742,9 +746,46 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	handleWebviewAskResponse(askResponse: ClineAskResponse, text?: string, images?: string[]) {
+		// If we're currently processing a message and this is a new user message,
+		// queue it instead of processing immediately
+		if (this.isProcessingMessage && askResponse === "messageResponse" && (text || images?.length)) {
+			this.messageQueue.push({ text: text || "", images })
+			this.providerRef
+				.deref()
+				?.log(`[Task#handleWebviewAskResponse] Message queued. Queue size: ${this.messageQueue.length}`)
+
+			// Notify the user that their message has been queued
+			this.providerRef.deref()?.postMessageToWebview({
+				type: "messageQueued",
+				queueSize: this.messageQueue.length,
+			})
+			return
+		}
+
 		this.askResponse = askResponse
 		this.askResponseText = text
 		this.askResponseImages = images
+	}
+
+	// Process the next message in the queue
+	private async processNextQueuedMessage() {
+		if (this.messageQueue.length === 0 || this.isProcessingMessage) {
+			return
+		}
+
+		const nextMessage = this.messageQueue.shift()
+		if (!nextMessage) {
+			return
+		}
+
+		this.providerRef
+			.deref()
+			?.log(
+				`[Task#processNextQueuedMessage] Processing queued message. Remaining in queue: ${this.messageQueue.length}`,
+			)
+
+		// Submit the queued message as a new user message
+		this.submitUserMessage(nextMessage.text, nextMessage.images)
 	}
 
 	public submitUserMessage(text: string, images?: string[]): void {
@@ -1409,30 +1450,37 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		let includeFileDetails = true
 
 		this.emit(RooCodeEventName.TaskStarted)
+		this.isProcessingMessage = true
 
-		while (!this.abort) {
-			const didEndLoop = await this.recursivelyMakeClineRequests(nextUserContent, includeFileDetails)
-			includeFileDetails = false // We only need file details the first time.
+		try {
+			while (!this.abort) {
+				const didEndLoop = await this.recursivelyMakeClineRequests(nextUserContent, includeFileDetails)
+				includeFileDetails = false // We only need file details the first time.
 
-			// The way this agentic loop works is that cline will be given a
-			// task that he then calls tools to complete. Unless there's an
-			// attempt_completion call, we keep responding back to him with his
-			// tool's responses until he either attempt_completion or does not
-			// use anymore tools. If he does not use anymore tools, we ask him
-			// to consider if he's completed the task and then call
-			// attempt_completion, otherwise proceed with completing the task.
-			// There is a MAX_REQUESTS_PER_TASK limit to prevent infinite
-			// requests, but Cline is prompted to finish the task as efficiently
-			// as he can.
+				// The way this agentic loop works is that cline will be given a
+				// task that he then calls tools to complete. Unless there's an
+				// attempt_completion call, we keep responding back to him with his
+				// tool's responses until he either attempt_completion or does not
+				// use anymore tools. If he does not use anymore tools, we ask him
+				// to consider if he's completed the task and then call
+				// attempt_completion, otherwise proceed with completing the task.
+				// There is a MAX_REQUESTS_PER_TASK limit to prevent infinite
+				// requests, but Cline is prompted to finish the task as efficiently
+				// as he can.
 
-			if (didEndLoop) {
-				// For now a task never 'completes'. This will only happen if
-				// the user hits max requests and denies resetting the count.
-				break
-			} else {
-				nextUserContent = [{ type: "text", text: formatResponse.noToolsUsed() }]
-				this.consecutiveMistakeCount++
+				if (didEndLoop) {
+					// For now a task never 'completes'. This will only happen if
+					// the user hits max requests and denies resetting the count.
+					break
+				} else {
+					nextUserContent = [{ type: "text", text: formatResponse.noToolsUsed() }]
+					this.consecutiveMistakeCount++
+				}
 			}
+		} finally {
+			this.isProcessingMessage = false
+			// Process any queued messages after the current task completes
+			await this.processNextQueuedMessage()
 		}
 	}
 
@@ -1443,6 +1491,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (this.abort) {
 			throw new Error(`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`)
 		}
+
+		// Mark that we're processing a message
+		this.isProcessingMessage = true
 
 		if (this.consecutiveMistakeLimit > 0 && this.consecutiveMistakeCount >= this.consecutiveMistakeLimit) {
 			const { response, text, images } = await this.ask(
@@ -1889,8 +1940,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				})
 			}
 
+			// Mark processing complete and check for queued messages
+			this.isProcessingMessage = false
+
+			// Process next queued message if any
+			if (this.messageQueue.length > 0) {
+				await this.processNextQueuedMessage()
+			}
+
 			return didEndLoop // Will always be false for now.
 		} catch (error) {
+			// Mark processing complete even on error
+			this.isProcessingMessage = false
+
 			// This should never happen since the only thing that can throw an
 			// error is the attemptApiRequest, which is wrapped in a try catch
 			// that sends an ask where if noButtonClicked, will clear current

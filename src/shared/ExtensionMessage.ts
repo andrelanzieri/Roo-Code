@@ -66,6 +66,7 @@ export interface ExtensionMessage {
 		| "workspaceUpdated"
 		| "invoke"
 		| "messageUpdated"
+		| "messageQueued"
 		| "mcpServers"
 		| "enhancedPrompt"
 		| "commitSearchResults"
@@ -193,6 +194,7 @@ export interface ExtensionMessage {
 	messageTs?: number
 	context?: string
 	commands?: Command[]
+	queueSize?: number
 }
 
 export type ExtensionState = Pick<
