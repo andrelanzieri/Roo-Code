@@ -267,6 +267,54 @@ echo "three"`
 				expect(result.command).toContain('echo "Line 99"')
 				expect(result.command.split(";").length).toBeGreaterThan(50)
 			})
+
+			it("should handle multiline strings correctly", () => {
+				const input = `echo "This is a
+multiline
+string"`
+				const result = convertMultilineToSingleLine(input)
+				expect(result.success).toBe(true)
+				expect(result.command).toBe('echo "This is a\\nmultiline\\nstring"')
+			})
+
+			it("should handle multiline strings with single quotes", () => {
+				const input = `echo 'First line
+Second line
+Third line'`
+				const result = convertMultilineToSingleLine(input)
+				expect(result.success).toBe(true)
+				expect(result.command).toBe("echo 'First line\\nSecond line\\nThird line'")
+			})
+
+			it("should handle mixed commands with multiline strings", () => {
+				const input = `echo "Start"
+MESSAGE="This is
+a multiline
+message"
+echo "$MESSAGE"`
+				const result = convertMultilineToSingleLine(input)
+				expect(result.success).toBe(true)
+				expect(result.command).toBe(
+					'echo "Start" ; MESSAGE="This is\\na multiline\\nmessage" ; echo "$MESSAGE"',
+				)
+			})
+
+			it("should handle escaped quotes in strings", () => {
+				const input = `echo "Line with \\"escaped\\" quotes
+and a new line"`
+				const result = convertMultilineToSingleLine(input)
+				expect(result.success).toBe(true)
+				expect(result.command).toBe('echo "Line with \\"escaped\\" quotes\\nand a new line"')
+			})
+
+			it("should handle commands after multiline strings", () => {
+				const input = `TEXT="Line 1
+Line 2"
+echo "Done"`
+				const result = convertMultilineToSingleLine(input)
+				expect(result.success).toBe(true)
+				expect(result.command).toBe('TEXT="Line 1\\nLine 2" ; echo "Done"')
+			})
 		})
 
 		describe("Real-world examples", () => {
