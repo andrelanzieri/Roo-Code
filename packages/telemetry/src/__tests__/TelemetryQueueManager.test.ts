@@ -130,11 +130,13 @@ describe("TelemetryQueueManager", () => {
 			const sendFunction = vi.fn().mockRejectedValue(new Error("Network error"))
 			await queueManager.processQueue("test-client", sendFunction)
 
-			const events = queueManager.getEventsForRetry("test-client")
-			expect(events[0].retryCount).toBe(1)
+			// Access the internal queue directly to check retry count
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const internalQueue = (queueManager as any).queue
+			expect(internalQueue[0].retryCount).toBe(1)
 		})
 
-		it("should remove events after max retries", async () => {
+		it("should not remove events based on retry count (events expire after 24 hours)", async () => {
 			const event: TelemetryEvent = {
 				event: TelemetryEventName.TASK_CREATED,
 				properties: { taskId: "test-123" },
@@ -142,16 +144,16 @@ describe("TelemetryQueueManager", () => {
 
 			queueManager.enqueue(event, "test-client")
 
-			// Set retry count to max
+			// Set retry count to high value
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const queuedEvents = (queueManager as any).queue
-			queuedEvents[0].retryCount = 4
+			queuedEvents[0].retryCount = 10
 
 			const sendFunction = vi.fn().mockRejectedValue(new Error("Network error"))
 			await queueManager.processQueue("test-client", sendFunction)
 
 			const stats = queueManager.getStats()
-			expect(stats.queueSize).toBe(0) // Event removed after max retries
+			expect(stats.queueSize).toBe(1) // Event NOT removed, will expire after 24 hours
 		})
 	})
 
@@ -162,6 +164,22 @@ describe("TelemetryQueueManager", () => {
 			expect(queueManager.getRetryDelay(2)).toBe(4000)
 			expect(queueManager.getRetryDelay(3)).toBe(8000)
 			expect(queueManager.getRetryDelay(10)).toBe(60000) // Max delay
+		})
+
+		describe("loadQueue with corrupted file", () => {
+			it("should handle corrupted JSON gracefully", async () => {
+				vi.mocked(fs.readFile).mockResolvedValueOnce("{ invalid json }")
+
+				// Create new instance to trigger load
+				resetQueueManagerInstance()
+				queueManager = TelemetryQueueManager.getInstance(testStoragePath)
+
+				// Wait for async load
+				await new Promise((resolve) => setTimeout(resolve, 10))
+
+				const stats = queueManager.getStats()
+				expect(stats.queueSize).toBe(0) // Should start with empty queue
+			})
 		})
 	})
 
@@ -250,19 +268,19 @@ describe("TelemetryQueueManager", () => {
 			expect(stats.queueSize).toBe(1)
 		})
 
-		it("should filter out events older than 7 days", async () => {
+		it("should filter out events older than 24 hours", async () => {
 			const savedQueue = {
 				version: 1,
 				events: [
 					{
 						event: { event: TelemetryEventName.TASK_CREATED },
-						timestamp: Date.now() - 8 * 24 * 60 * 60 * 1000, // 8 days old
+						timestamp: Date.now() - 25 * 60 * 60 * 1000, // 25 hours old
 						retryCount: 0,
 						clientId: "test-client",
 					},
 					{
 						event: { event: TelemetryEventName.TASK_COMPLETED },
-						timestamp: Date.now() - 6 * 24 * 60 * 60 * 1000, // 6 days old
+						timestamp: Date.now() - 23 * 60 * 60 * 1000, // 23 hours old
 						retryCount: 0,
 						clientId: "test-client",
 					},
@@ -279,7 +297,7 @@ describe("TelemetryQueueManager", () => {
 			await new Promise((resolve) => setTimeout(resolve, 10))
 
 			const stats = queueManager.getStats()
-			expect(stats.queueSize).toBe(1) // Only the 6-day-old event
+			expect(stats.queueSize).toBe(1) // Only the 23-hour-old event
 		})
 	})
 

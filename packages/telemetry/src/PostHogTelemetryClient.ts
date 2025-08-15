@@ -93,7 +93,35 @@ export class PostHogTelemetryClient extends QueuedTelemetryClient {
 			if (this.debug) {
 				console.error(`[PostHogTelemetryClient#sendEvent] Failed to send event: ${event.event}`, error)
 			}
-			// Re-throw to trigger our queuing mechanism
+
+			// Differentiate between different types of errors
+			const errorMessage = error instanceof Error ? error.message : String(error)
+
+			// Check if it's a network error or other transient issue
+			const _isNetworkError =
+				errorMessage.toLowerCase().includes("network") ||
+				errorMessage.toLowerCase().includes("timeout") ||
+				errorMessage.toLowerCase().includes("econnrefused") ||
+				errorMessage.toLowerCase().includes("enotfound") ||
+				errorMessage.toLowerCase().includes("fetch")
+
+			// Check if it's a configuration error that won't be fixed by retrying
+			const isConfigError =
+				errorMessage.toLowerCase().includes("api key") ||
+				errorMessage.toLowerCase().includes("invalid configuration")
+
+			if (isConfigError) {
+				// Don't queue config errors - they won't succeed on retry
+				if (this.debug) {
+					console.error(
+						`[PostHogTelemetryClient#sendEvent] Configuration error, not queuing: ${errorMessage}`,
+					)
+				}
+				// Silently fail for config errors to not break the extension
+				return
+			}
+
+			// Re-throw network and other transient errors to trigger queuing
 			throw error
 		}
 	}

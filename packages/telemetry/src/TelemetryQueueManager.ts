@@ -30,10 +30,16 @@ export class TelemetryQueueManager {
 	private cleanupInterval: NodeJS.Timeout | null = null
 	private readonly QUEUE_VERSION = 1
 	private readonly MAX_EVENT_AGE = 24 * 60 * 60 * 1000 // 24 hours instead of 7 days
+	private debug = false
+	private persistPromise: Promise<void> | null = null
+	private pendingPersist = false
 
-	private constructor(storagePath: string) {
+	private constructor(storagePath: string, debug = false) {
+		this.debug = debug || process.env.DEBUG_TELEMETRY === "true"
 		this.persistPath = path.join(storagePath, "telemetry-queue.json")
-		console.log(`[TelemetryQueue] Initializing with path: ${this.persistPath}`)
+		if (this.debug) {
+			console.log(`[TelemetryQueue] Initializing with path: ${this.persistPath}`)
+		}
 		this.loadQueue()
 		this.startPeriodicFlush()
 		this.startPeriodicCleanup()
@@ -42,26 +48,40 @@ export class TelemetryQueueManager {
 	/**
 	 * Get or create the singleton instance
 	 */
-	public static getInstance(storagePath: string): TelemetryQueueManager {
+	public static getInstance(storagePath: string, debug = false): TelemetryQueueManager {
 		if (!this.instance) {
-			this.instance = new TelemetryQueueManager(storagePath)
+			this.instance = new TelemetryQueueManager(storagePath, debug)
 		}
 		return this.instance
+	}
+
+	/**
+	 * Reset the singleton instance (for testing)
+	 */
+	public static resetInstance(): void {
+		if (this.instance) {
+			this.instance.shutdown()
+			this.instance = null
+		}
 	}
 
 	/**
 	 * Add an event to the queue
 	 */
 	public enqueue(event: TelemetryEvent, clientId: string): void {
-		console.log(`[TelemetryQueue] Enqueueing event: ${event.event} for client: ${clientId}`)
+		if (this.debug) {
+			console.log(`[TelemetryQueue] Enqueueing event: ${event.event} for client: ${clientId}`)
+		}
 
 		// Don't queue if we've reached the maximum size
 		if (this.queue.length >= this.maxQueueSize) {
 			// Remove oldest events to make room (FIFO)
 			const removed = this.queue.shift()
-			console.log(
-				`[TelemetryQueue] Queue full (${this.maxQueueSize}), removed oldest event: ${removed?.event.event}`,
-			)
+			if (this.debug) {
+				console.log(
+					`[TelemetryQueue] Queue full (${this.maxQueueSize}), removed oldest event: ${removed?.event.event}`,
+				)
+			}
 		}
 
 		const queuedEvent: QueuedEvent = {
@@ -72,8 +92,10 @@ export class TelemetryQueueManager {
 		}
 
 		this.queue.push(queuedEvent)
-		console.log(`[TelemetryQueue] Queue size after enqueue: ${this.queue.length}`)
-		this.persistQueue()
+		if (this.debug) {
+			console.log(`[TelemetryQueue] Queue size after enqueue: ${this.queue.length}`)
+		}
+		this.schedulePersist()
 	}
 
 	/**
@@ -89,23 +111,31 @@ export class TelemetryQueueManager {
 		try {
 			const clientEvents = this.queue.filter((e) => e.clientId === clientId)
 
-			console.log(`[TelemetryQueue] Processing ${clientEvents.length} events for client: ${clientId}`)
+			if (this.debug) {
+				console.log(`[TelemetryQueue] Processing ${clientEvents.length} events for client: ${clientId}`)
+			}
 
 			for (const queuedEvent of clientEvents) {
 				try {
-					console.log(
-						`[TelemetryQueue] Attempting to send event: ${queuedEvent.event.event}, retry count: ${queuedEvent.retryCount}`,
-					)
+					if (this.debug) {
+						console.log(
+							`[TelemetryQueue] Attempting to send event: ${queuedEvent.event.event}, retry count: ${queuedEvent.retryCount}`,
+						)
+					}
 					await sendFunction(queuedEvent.event)
 					// Remove successfully sent event
-					console.log(`[TelemetryQueue] Successfully sent event: ${queuedEvent.event.event}`)
+					if (this.debug) {
+						console.log(`[TelemetryQueue] Successfully sent event: ${queuedEvent.event.event}`)
+					}
 					this.removeEvent(queuedEvent)
 				} catch (error) {
 					// Increment retry count
 					queuedEvent.retryCount++
-					console.log(
-						`[TelemetryQueue] Failed to send event: ${queuedEvent.event.event}, retry count now: ${queuedEvent.retryCount}, error: ${error}`,
-					)
+					if (this.debug) {
+						console.log(
+							`[TelemetryQueue] Failed to send event: ${queuedEvent.event.event}, retry count now: ${queuedEvent.retryCount}, error: ${error}`,
+						)
+					}
 
 					// Don't remove based on retry count - let it keep trying until 24 hours
 				}
@@ -168,33 +198,75 @@ export class TelemetryQueueManager {
 				const originalCount = state.events.length
 				this.queue = state.events.filter((e) => e.timestamp > cutoffTime)
 
-				console.log(
-					`[TelemetryQueue] Loaded ${this.queue.length} events from disk (filtered ${originalCount - this.queue.length} old events)`,
-				)
+				if (this.debug) {
+					console.log(
+						`[TelemetryQueue] Loaded ${this.queue.length} events from disk (filtered ${originalCount - this.queue.length} old events)`,
+					)
+				}
 
 				// If we filtered out any events, persist the cleaned queue
 				if (this.queue.length < originalCount) {
-					this.persistQueue()
+					this.schedulePersist()
 				}
 			}
 		} catch (error) {
 			// File doesn't exist or is corrupted, start with empty queue
-			console.log(`[TelemetryQueue] No existing queue file found or error loading: ${error}`)
+			if (this.debug) {
+				console.log(`[TelemetryQueue] No existing queue file found or error loading: ${error}`)
+			}
 			this.queue = []
 		}
+	}
+
+	/**
+	 * Schedule a persist operation with debouncing to avoid race conditions
+	 */
+	private schedulePersist(): void {
+		if (this.pendingPersist) {
+			// A persist is already scheduled
+			return
+		}
+
+		this.pendingPersist = true
+
+		// Use setImmediate to batch multiple rapid enqueue operations
+		setImmediate(() => {
+			this.pendingPersist = false
+			this.persistQueue()
+		})
 	}
 
 	/**
 	 * Persist queue to disk
 	 */
 	private async persistQueue(): Promise<void> {
+		// If a persist is already in progress, wait for it to complete
+		if (this.persistPromise) {
+			await this.persistPromise
+			return
+		}
+
+		this.persistPromise = this.doPersist()
+		try {
+			await this.persistPromise
+		} finally {
+			this.persistPromise = null
+		}
+	}
+
+	/**
+	 * Actually perform the persist operation
+	 */
+	private async doPersist(): Promise<void> {
 		try {
 			const state: QueueState = {
 				events: this.queue,
 				version: this.QUEUE_VERSION,
 			}
 
-			console.log(`[TelemetryQueue] Persisting ${this.queue.length} events to disk`)
+			if (this.debug) {
+				console.log(`[TelemetryQueue] Persisting ${this.queue.length} events to disk`)
+			}
 
 			// Ensure directory exists
 			const dir = path.dirname(this.persistPath)
@@ -205,10 +277,14 @@ export class TelemetryQueueManager {
 			await fs.writeFile(tempPath, JSON.stringify(state, null, 2))
 			await fs.rename(tempPath, this.persistPath)
 
-			console.log(`[TelemetryQueue] Successfully persisted queue to: ${this.persistPath}`)
+			if (this.debug) {
+				console.log(`[TelemetryQueue] Successfully persisted queue to: ${this.persistPath}`)
+			}
 		} catch (error) {
 			// Log error but don't throw - telemetry should not break the app
-			console.error("[TelemetryQueue] Failed to persist telemetry queue:", error)
+			if (this.debug) {
+				console.error("[TelemetryQueue] Failed to persist telemetry queue:", error)
+			}
 		}
 	}
 
@@ -243,14 +319,16 @@ export class TelemetryQueueManager {
 	 */
 	private performAggressiveCleanup(): void {
 		const originalSize = this.queue.length
-		console.log(`[TelemetryQueue] Running aggressive cleanup, current queue size: ${originalSize}`)
+		if (this.debug) {
+			console.log(`[TelemetryQueue] Running aggressive cleanup, current queue size: ${originalSize}`)
+		}
 
 		// Remove old events
 		const cutoffTime = Date.now() - this.MAX_EVENT_AGE
 		const beforeOldFilter = this.queue.length
 		this.queue = this.queue.filter((e) => e.timestamp > cutoffTime)
 		const removedOld = beforeOldFilter - this.queue.length
-		if (removedOld > 0) {
+		if (removedOld > 0 && this.debug) {
 			console.log(`[TelemetryQueue] Removed ${removedOld} events older than 24 hours`)
 		}
 
@@ -262,15 +340,19 @@ export class TelemetryQueueManager {
 			this.queue.sort((a, b) => b.timestamp - a.timestamp)
 			const beforeTrim = this.queue.length
 			this.queue = this.queue.slice(0, this.maxQueueSize)
-			console.log(`[TelemetryQueue] Trimmed queue from ${beforeTrim} to ${this.maxQueueSize} events`)
+			if (this.debug) {
+				console.log(`[TelemetryQueue] Trimmed queue from ${beforeTrim} to ${this.maxQueueSize} events`)
+			}
 		}
 
 		// Persist if we made changes
 		if (this.queue.length !== originalSize) {
-			console.log(
-				`[TelemetryQueue] Cleanup complete, queue size changed from ${originalSize} to ${this.queue.length}`,
-			)
-			this.persistQueue()
+			if (this.debug) {
+				console.log(
+					`[TelemetryQueue] Cleanup complete, queue size changed from ${originalSize} to ${this.queue.length}`,
+				)
+			}
+			this.schedulePersist()
 		}
 	}
 
@@ -283,7 +365,7 @@ export class TelemetryQueueManager {
 		this.queue = this.queue.filter((e) => e.timestamp > cutoffTime)
 
 		if (this.queue.length < originalLength) {
-			this.persistQueue()
+			this.schedulePersist()
 		}
 	}
 

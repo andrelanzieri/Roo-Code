@@ -11,18 +11,27 @@ export abstract class QueuedTelemetryClient extends BaseTelemetryClient {
 	protected clientId: string
 	private retryTimer: NodeJS.Timeout | null = null
 	private isOnline = true
-	private readonly RETRY_CHECK_INTERVAL = 30000 // Check for retries every 30 seconds
+	private readonly retryCheckInterval: number
 
-	constructor(clientId: string, storagePath: string, subscription?: TelemetryEventSubscription, debug = false) {
+	constructor(
+		clientId: string,
+		storagePath: string,
+		subscription?: TelemetryEventSubscription,
+		debug = false,
+		retryCheckInterval = 30000, // Default: Check for retries every 30 seconds
+	) {
 		super(subscription, debug)
 		this.clientId = clientId
+		this.retryCheckInterval = retryCheckInterval
 
 		// Initialize queue manager
 		try {
-			this.queueManager = TelemetryQueueManager.getInstance(storagePath)
+			this.queueManager = TelemetryQueueManager.getInstance(storagePath, debug)
 			this.startRetryTimer()
 		} catch (error) {
-			console.error(`Failed to initialize queue manager: ${error}`)
+			if (debug) {
+				console.error(`Failed to initialize queue manager: ${error}`)
+			}
 		}
 	}
 
@@ -110,14 +119,14 @@ export abstract class QueuedTelemetryClient extends BaseTelemetryClient {
 	 */
 	private startRetryTimer(): void {
 		if (this.debug) {
-			console.info(`[${this.clientId}] Starting retry timer, checking every ${this.RETRY_CHECK_INTERVAL}ms`)
+			console.info(`[${this.clientId}] Starting retry timer, checking every ${this.retryCheckInterval}ms`)
 		}
 		this.retryTimer = setInterval(() => {
 			if (this.debug) {
 				console.info(`[${this.clientId}] Retry timer triggered, checking for events to retry`)
 			}
 			this.processQueuedEvents()
-		}, this.RETRY_CHECK_INTERVAL)
+		}, this.retryCheckInterval)
 	}
 
 	/**
