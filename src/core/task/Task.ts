@@ -781,7 +781,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			// Run asynchronously to allow awaiting mode switch before sending the message
 			void (async () => {
-				// If a mode slug is provided, handle the mode switch first (same behavior as initClineWithTask)
+				// If a mode slug is provided, handle the mode switch first (same behavior as createTask)
 				try {
 					const modeSlugValue = (modeSlug ?? "").trim()
 					if (modeSlugValue.length > 0) {

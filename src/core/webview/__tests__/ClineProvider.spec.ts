@@ -2278,7 +2278,7 @@ describe("Bridge modeSlug handling", () => {
 		} as any)
 
 		// Pass modeSlug through the options object (as provided by the bridge package)
-		await provider.initClineWithTask("Started from bridge", undefined, undefined, {
+		await provider.createTask("Started from bridge", undefined, undefined, {
 			experiments: {},
 			modeSlug: "architect",
 		} as any)
