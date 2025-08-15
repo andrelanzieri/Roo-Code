@@ -1,6 +1,9 @@
+import { z } from "zod"
+
 import { RooCodeEventName } from "./events.js"
 import { type ClineMessage, type BlockingAsk, type TokenUsage } from "./message.js"
 import { type ToolUsage, type ToolName } from "./tool.js"
+import { type Experiments } from "./experiment.js"
 
 /**
  * TaskProviderLike
@@ -16,7 +19,7 @@ export interface InitTaskOptions {
 	enableCheckpoints?: boolean
 	fuzzyMatchThreshold?: number
 	consecutiveMistakeLimit?: number
-	experiments?: any
+	experiments?: Experiments
 }
 export interface TaskProviderLike {
 	readonly cwd: string
@@ -74,10 +77,19 @@ export type TaskProviderEvents = {
  * TaskLike
  */
 
+export const taskMetadataSchema = z.object({
+	taskId: z.string(),
+	task: z.string().optional(),
+	images: z.array(z.string()).optional(),
+})
+
+export type TaskMetadata = z.infer<typeof taskMetadataSchema>
+
 export interface TaskLike {
 	readonly taskId: string
 	readonly rootTask?: TaskLike
 	readonly blockingAsk?: BlockingAsk
+	readonly metadata: TaskMetadata
 
 	on<K extends keyof TaskEvents>(event: K, listener: (...args: TaskEvents[K]) => void | Promise<void>): this
 	off<K extends keyof TaskEvents>(event: K, listener: (...args: TaskEvents[K]) => void | Promise<void>): this
