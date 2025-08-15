@@ -2,6 +2,6 @@
 	"errors": {
 		"cloud_auth_required": "Cloud authentication required",
 		"organization_mismatch": "Organization mismatch detected",
-		"verification_failed": "Verification failed"
+		"verification_failed": "検証に失敗しました"
 	}
 }

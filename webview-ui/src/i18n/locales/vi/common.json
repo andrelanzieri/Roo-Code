@@ -85,7 +85,7 @@
 		"years_ago": "{{count}} năm trước"
 	},
 	"errors": {
-		"invalid_line_limit": "Invalid line limit specified",
-		"invalid_character_limit": "Invalid character limit specified"
+		"invalid_line_limit": "Giới hạn dòng được chỉ định không hợp lệ",
+		"invalid_character_limit": "Giới hạn ký tự được chỉ định không hợp lệ"
 	}
 }

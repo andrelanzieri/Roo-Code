@@ -85,7 +85,7 @@
 		"years_ago": "{{count}} tahun yang lalu"
 	},
 	"errors": {
-		"invalid_line_limit": "Invalid line limit specified",
-		"invalid_character_limit": "Invalid character limit specified"
+		"invalid_line_limit": "Batas baris yang ditentukan tidak valid",
+		"invalid_character_limit": "Batas karakter yang ditentukan tidak valid"
 	}
 }

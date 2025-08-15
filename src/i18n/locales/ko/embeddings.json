@@ -63,6 +63,6 @@
 		"indexingRequiresWorkspace": "인덱싱에는 열린 워크스페이스 폴더가 필요합니다"
 	},
 	"openai": {
-		"invalidResponseFormat": "Invalid response format from OpenAI API"
+		"invalidResponseFormat": "OpenAI API에서 잘못된 응답 형식"
 	}
 }

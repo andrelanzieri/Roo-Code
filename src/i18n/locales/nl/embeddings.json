@@ -63,6 +63,6 @@
 		"indexingRequiresWorkspace": "Indexering vereist een geopende workspace map"
 	},
 	"openai": {
-		"invalidResponseFormat": "Invalid response format from OpenAI API"
+		"invalidResponseFormat": "Ongeldig antwoordformaat van OpenAI API"
 	}
 }

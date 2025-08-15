@@ -63,6 +63,6 @@
 		"indexingRequiresWorkspace": "İndeksleme açık bir workspace klasörü gerektirir"
 	},
 	"openai": {
-		"invalidResponseFormat": "Invalid response format from OpenAI API"
+		"invalidResponseFormat": "OpenAI API'sinden geçersiz yanıt formatı"
 	}
 }

@@ -85,7 +85,7 @@
 		"years_ago": "il y a {{count}} ans"
 	},
 	"errors": {
-		"invalid_line_limit": "Invalid line limit specified",
-		"invalid_character_limit": "Invalid character limit specified"
+		"invalid_line_limit": "Limite de lignes spécifiée non valide",
+		"invalid_character_limit": "Limite de caractères spécifiée non valide"
 	}
 }

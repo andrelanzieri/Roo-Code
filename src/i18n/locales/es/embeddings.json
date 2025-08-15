@@ -63,6 +63,6 @@
 		"indexingRequiresWorkspace": "La indexación requiere una carpeta de workspace abierta"
 	},
 	"openai": {
-		"invalidResponseFormat": "Invalid response format from OpenAI API"
+		"invalidResponseFormat": "Formato de respuesta no válido de la API de OpenAI"
 	}
 }

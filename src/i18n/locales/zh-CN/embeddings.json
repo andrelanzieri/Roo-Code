@@ -63,6 +63,6 @@
 		"indexingRequiresWorkspace": "索引需要打开的工作区文件夹"
 	},
 	"openai": {
-		"invalidResponseFormat": "Invalid response format from OpenAI API"
+		"invalidResponseFormat": "OpenAI API 响应格式无效"
 	}
 }

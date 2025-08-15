@@ -63,6 +63,6 @@
 		"indexingRequiresWorkspace": "インデックス作成には、開かれたワークスペースフォルダーが必要です"
 	},
 	"openai": {
-		"invalidResponseFormat": "Invalid response format from OpenAI API"
+		"invalidResponseFormat": "OpenAI APIからの無効な応答形式"
 	}
 }

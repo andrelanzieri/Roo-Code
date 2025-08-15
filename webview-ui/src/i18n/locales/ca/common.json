@@ -85,7 +85,7 @@
 		"years_ago": "fa {{count}} anys"
 	},
 	"errors": {
-		"invalid_line_limit": "Invalid line limit specified",
-		"invalid_character_limit": "Invalid character limit specified"
+		"invalid_line_limit": "Límit de línies especificat no vàlid",
+		"invalid_character_limit": "Límit de caràcters especificat no vàlid"
 	}
 }

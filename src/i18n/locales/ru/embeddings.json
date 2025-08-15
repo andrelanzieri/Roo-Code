@@ -63,6 +63,6 @@
 		"indexingRequiresWorkspace": "Для индексации требуется открытая папка рабочего пространства"
 	},
 	"openai": {
-		"invalidResponseFormat": "Invalid response format from OpenAI API"
+		"invalidResponseFormat": "Недопустимый формат ответа от API OpenAI"
 	}
 }

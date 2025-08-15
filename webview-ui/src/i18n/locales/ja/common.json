@@ -85,7 +85,7 @@
 		"years_ago": "{{count}}年前"
 	},
 	"errors": {
-		"invalid_line_limit": "Invalid line limit specified",
-		"invalid_character_limit": "Invalid character limit specified"
+		"invalid_line_limit": "無効な行制限が指定されました",
+		"invalid_character_limit": "無効な文字制限が指定されました"
 	}
 }

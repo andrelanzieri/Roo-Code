@@ -63,6 +63,6 @@
 		"indexingRequiresWorkspace": "इंडेक्सिंग के लिए एक खुला वर्कस्पेस फ़ोल्डर आवश्यक है"
 	},
 	"openai": {
-		"invalidResponseFormat": "Invalid response format from OpenAI API"
+		"invalidResponseFormat": "OpenAI API से अमान्य प्रतिक्रिया प्रारूप"
 	}
 }
