@@ -21,10 +21,6 @@ export class PostHogTelemetryClient extends QueuedTelemetryClient {
 		// Use workspace-specific storage to avoid conflicts between multiple VS Code windows
 		const storagePath = context.storageUri?.fsPath || context.globalStorageUri?.fsPath || context.extensionPath
 
-		if (debug) {
-			console.info(`[PostHogTelemetryClient] Initializing with storage path: ${storagePath}`)
-		}
-
 		super(
 			"posthog",
 			storagePath,
@@ -44,9 +40,7 @@ export class PostHogTelemetryClient extends QueuedTelemetryClient {
 
 		// Disable PostHog's internal error logging to reduce noise
 		this.client.on("error", (error) => {
-			if (this.debug) {
-				console.error("[PostHogTelemetryClient] PostHog internal error:", error)
-			}
+			console.error("[PostHogTelemetryClient] PostHog internal error:", error)
 		})
 	}
 
@@ -67,10 +61,6 @@ export class PostHogTelemetryClient extends QueuedTelemetryClient {
 	 * Send event to PostHog (called by the base class)
 	 */
 	protected async sendEvent(event: TelemetryEvent): Promise<void> {
-		if (this.debug) {
-			console.info(`[PostHogTelemetryClient#sendEvent] ${event.event}`)
-		}
-
 		const properties = await this.getEventProperties(event)
 
 		// PostHog queues events internally and flushes them in batches
@@ -85,15 +75,7 @@ export class PostHogTelemetryClient extends QueuedTelemetryClient {
 			// Force immediate flush to detect network errors
 			// This will throw if there's a network issue
 			await this.client.flush()
-
-			if (this.debug) {
-				console.info(`[PostHogTelemetryClient#sendEvent] Successfully flushed event: ${event.event}`)
-			}
 		} catch (error) {
-			if (this.debug) {
-				console.error(`[PostHogTelemetryClient#sendEvent] Failed to send event: ${event.event}`, error)
-			}
-
 			// Differentiate between different types of errors
 			const errorMessage = error instanceof Error ? error.message : String(error)
 
@@ -104,11 +86,6 @@ export class PostHogTelemetryClient extends QueuedTelemetryClient {
 
 			if (isConfigError) {
 				// Don't queue config errors - they won't succeed on retry
-				if (this.debug) {
-					console.error(
-						`[PostHogTelemetryClient#sendEvent] Configuration error, not queuing: ${errorMessage}`,
-					)
-				}
 				// Silently fail for config errors to not break the extension
 				return
 			}

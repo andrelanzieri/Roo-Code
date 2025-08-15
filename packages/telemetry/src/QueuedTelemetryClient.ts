@@ -29,9 +29,7 @@ export abstract class QueuedTelemetryClient extends BaseTelemetryClient {
 			this.queueManager = TelemetryQueueManager.getInstance(storagePath, debug)
 			this.startRetryTimer()
 		} catch (error) {
-			if (debug) {
-				console.error(`Failed to initialize queue manager: ${error}`)
-			}
+			console.error(`Failed to initialize queue manager: ${error}`)
 		}
 	}
 
@@ -40,34 +38,20 @@ export abstract class QueuedTelemetryClient extends BaseTelemetryClient {
 	 */
 	public async capture(event: TelemetryEvent): Promise<void> {
 		if (!this.isTelemetryEnabled() || !this.isEventCapturable(event.event)) {
-			if (this.debug) {
-				console.info(`[${this.clientId}#capture] Skipping event: ${event.event}`)
-			}
 			return
 		}
 
 		try {
 			// Try to send the event
-			if (this.debug) {
-				console.info(`[${this.clientId}#capture] Attempting to send: ${event.event}`)
-			}
 			await this.sendEvent(event)
 
 			// If successful and we have queued events, try to process them
 			if (this.queueManager && this.isOnline) {
-				if (this.debug) {
-					console.info(`[${this.clientId}#capture] Send successful, checking for queued events`)
-				}
 				this.processQueuedEvents()
 			}
 		} catch (error) {
 			// Queue the event for retry
 			if (this.queueManager) {
-				if (this.debug) {
-					console.info(
-						`[${this.clientId}#capture] Send failed, queuing event: ${event.event}, error: ${error}`,
-					)
-				}
 				this.queueManager.enqueue(event, this.clientId)
 				this.isOnline = false
 			}
@@ -98,19 +82,9 @@ export abstract class QueuedTelemetryClient extends BaseTelemetryClient {
 			return
 		}
 
-		if (this.debug) {
-			console.info(`[${this.clientId}] Processing ${eventsToRetry.length} queued events`)
-		}
-
 		await this.queueManager.processQueue(this.clientId, async (event) => {
-			if (this.debug) {
-				console.info(`[${this.clientId}] Retrying queued event: ${event.event}`)
-			}
 			await this.sendEvent(event)
 			this.isOnline = true
-			if (this.debug) {
-				console.info(`[${this.clientId}] Successfully sent queued event, marking online`)
-			}
 		})
 	}
 
@@ -118,13 +92,7 @@ export abstract class QueuedTelemetryClient extends BaseTelemetryClient {
 	 * Start the retry timer
 	 */
 	private startRetryTimer(): void {
-		if (this.debug) {
-			console.info(`[${this.clientId}] Starting retry timer, checking every ${this.retryCheckInterval}ms`)
-		}
 		this.retryTimer = setInterval(() => {
-			if (this.debug) {
-				console.info(`[${this.clientId}] Retry timer triggered, checking for events to retry`)
-			}
 			this.processQueuedEvents()
 		}, this.retryCheckInterval)
 	}
