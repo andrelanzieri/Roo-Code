@@ -231,7 +231,6 @@ export class TelemetryQueueManager {
 
 		// Use setImmediate to batch multiple rapid enqueue operations
 		setImmediate(() => {
-			this.pendingPersist = false
 			this.persistQueue()
 		})
 	}
@@ -240,17 +239,24 @@ export class TelemetryQueueManager {
 	 * Persist queue to disk
 	 */
 	private async persistQueue(): Promise<void> {
-		// If a persist is already in progress, wait for it to complete
+		// If a persist is already in progress, wait for it to complete first
 		if (this.persistPromise) {
 			await this.persistPromise
-			return
 		}
 
-		this.persistPromise = this.doPersist()
-		try {
-			await this.persistPromise
-		} finally {
-			this.persistPromise = null
+		// Drain all pending persist requests in a loop
+		// This ensures that any enqueue that happens during a persist operation
+		// will trigger another persist pass immediately after
+		while (this.pendingPersist) {
+			this.pendingPersist = false
+
+			this.persistPromise = this.doPersist()
+			try {
+				await this.persistPromise
+			} finally {
+				this.persistPromise = null
+			}
+			// If enqueue() ran during doPersist, pendingPersist will be true again
 		}
 	}
 
