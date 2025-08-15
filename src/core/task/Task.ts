@@ -303,17 +303,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.instanceId = crypto.randomUUID().slice(0, 8)
 		this.taskNumber = -1
 
-		// Initialize workspacePath FIRST before any code that uses this.cwd
-		// This MUST happen before creating RooIgnoreController or RooProtectedController
-		const defaultPath = path.join(os.homedir(), "Desktop")
-		const workspaceFromVSCode = getWorkspacePath(defaultPath)
-
-		// Ensure workspacePath is never undefined or empty - use the VSCode workspace or fallback
-		// Check for both undefined and empty string from parentTask
-		const parentWorkspace = parentTask?.workspacePath
-		this.workspacePath = parentWorkspace && parentWorkspace.trim() !== "" ? parentWorkspace : workspaceFromVSCode
-
-		// Now create controllers with properly initialized workspacePath
 		this.rooIgnoreController = new RooIgnoreController(this.cwd)
 		this.rooProtectedController = new RooProtectedController(this.cwd)
 		this.fileContextTracker = new FileContextTracker(provider, this.taskId)
