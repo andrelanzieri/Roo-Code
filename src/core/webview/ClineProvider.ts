@@ -753,8 +753,7 @@ export class ClineProvider
 			throw new OrganizationAllowListViolationError(t("common:errors.violated_organization_allowlist"))
 		}
 
-		// Bridge: If a modeSlug is provided by the cloud extension bridge, honor it before creating the task
-		// This ensures the task initializes with the correct mode and associated provider profile
+		// Initializes task with the correct mode and associated provider profile
 		try {
 			const modeSlugFromBridge: string | undefined = (options as any)?.modeSlug
 			if (typeof modeSlugFromBridge === "string" && modeSlugFromBridge.trim().length > 0) {
