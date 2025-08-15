@@ -10,13 +10,26 @@ export interface TaskProviderState {
 	mode?: string
 }
 
+export interface InitTaskOptions {
+	mode_slug?: string
+	enableDiff?: boolean
+	enableCheckpoints?: boolean
+	fuzzyMatchThreshold?: number
+	consecutiveMistakeLimit?: number
+	experiments?: any
+}
 export interface TaskProviderLike {
 	readonly cwd: string
 
 	getCurrentCline(): TaskLike | undefined
 	getCurrentTaskStack(): string[]
 
-	initClineWithTask(text?: string, images?: string[], parentTask?: TaskLike): Promise<TaskLike>
+	initClineWithTask(
+		text?: string,
+		images?: string[],
+		parentTask?: TaskLike,
+		options?: InitTaskOptions,
+	): Promise<TaskLike>
 	cancelTask(): Promise<void>
 	clearTask(): Promise<void>
 	postStateToWebview(): Promise<void>
