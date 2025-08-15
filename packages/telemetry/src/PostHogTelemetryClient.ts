@@ -97,14 +97,6 @@ export class PostHogTelemetryClient extends QueuedTelemetryClient {
 			// Differentiate between different types of errors
 			const errorMessage = error instanceof Error ? error.message : String(error)
 
-			// Check if it's a network error or other transient issue
-			const _isNetworkError =
-				errorMessage.toLowerCase().includes("network") ||
-				errorMessage.toLowerCase().includes("timeout") ||
-				errorMessage.toLowerCase().includes("econnrefused") ||
-				errorMessage.toLowerCase().includes("enotfound") ||
-				errorMessage.toLowerCase().includes("fetch")
-
 			// Check if it's a configuration error that won't be fixed by retrying
 			const isConfigError =
 				errorMessage.toLowerCase().includes("api key") ||

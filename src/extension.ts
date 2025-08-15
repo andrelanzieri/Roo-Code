@@ -290,5 +290,11 @@ export async function deactivate() {
 
 	await McpServerManager.cleanup(extensionContext)
 	TelemetryService.instance.shutdown()
+
+	// Clean up the telemetry queue manager singleton to prevent memory leaks
+	// and stale data when switching workspaces
+	const { TelemetryQueueManager } = await import("@roo-code/telemetry")
+	TelemetryQueueManager.resetInstance()
+
 	TerminalRegistry.cleanup()
 }
