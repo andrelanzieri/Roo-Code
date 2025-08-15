@@ -1,5 +1,5 @@
 {
-	"running": "Running",
-	"completed": "Completed",
-	"error": "Error"
+	"running": "चल रहा है",
+	"completed": "पूर्ण",
+	"error": "त्रुटि"
 }

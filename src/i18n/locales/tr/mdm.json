@@ -1,7 +1,7 @@
 {
 	"errors": {
-		"cloud_auth_required": "Cloud authentication required",
-		"organization_mismatch": "Organization mismatch detected",
+		"cloud_auth_required": "Bulut kimlik doğrulaması gerekli",
+		"organization_mismatch": "Organizasyon uyuşmazlığı tespit edildi",
 		"verification_failed": "Doğrulama başarısız"
 	}
 }

@@ -1,5 +1,5 @@
 {
-	"running": "Running",
-	"completed": "Completed",
-	"error": "Error"
+	"running": "Выполняется",
+	"completed": "Завершено",
+	"error": "Ошибка"
 }

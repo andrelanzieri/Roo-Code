@@ -1,5 +1,5 @@
 {
-	"running": "Running",
-	"completed": "Completed",
-	"error": "Error"
+	"running": "実行中",
+	"completed": "完了",
+	"error": "エラー"
 }

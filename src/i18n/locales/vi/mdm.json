@@ -1,7 +1,7 @@
 {
 	"errors": {
-		"cloud_auth_required": "Cloud authentication required",
-		"organization_mismatch": "Organization mismatch detected",
+		"cloud_auth_required": "Yêu cầu xác thực đám mây",
+		"organization_mismatch": "Phát hiện không khớp tổ chức",
 		"verification_failed": "Xác minh thất bại"
 	}
 }

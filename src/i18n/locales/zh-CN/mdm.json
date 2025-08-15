@@ -1,7 +1,7 @@
 {
 	"errors": {
-		"cloud_auth_required": "Cloud authentication required",
-		"organization_mismatch": "Organization mismatch detected",
+		"cloud_auth_required": "需要云身份验证",
+		"organization_mismatch": "检测到组织不匹配",
 		"verification_failed": "验证失败"
 	}
 }

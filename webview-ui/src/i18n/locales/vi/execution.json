@@ -1,5 +1,5 @@
 {
-	"running": "Running",
-	"completed": "Completed",
-	"error": "Error"
+	"running": "Đang chạy",
+	"completed": "Hoàn thành",
+	"error": "Lỗi"
 }

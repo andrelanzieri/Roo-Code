@@ -1,5 +1,5 @@
 {
-	"running": "Running",
-	"completed": "Completed",
-	"error": "Error"
+	"running": "Uruchomione",
+	"completed": "Zakończone",
+	"error": "Błąd"
 }

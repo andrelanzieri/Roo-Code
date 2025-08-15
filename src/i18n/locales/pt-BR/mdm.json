@@ -1,7 +1,7 @@
 {
 	"errors": {
-		"cloud_auth_required": "Cloud authentication required",
-		"organization_mismatch": "Organization mismatch detected",
-		"verification_failed": "Verificação falhou"
+		"cloud_auth_required": "Autenticação na nuvem necessária",
+		"organization_mismatch": "Incompatibilidade de organização detectada",
+		"verification_failed": "Falha na verificação"
 	}
 }

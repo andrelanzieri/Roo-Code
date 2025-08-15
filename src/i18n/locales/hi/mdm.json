@@ -1,7 +1,7 @@
 {
 	"errors": {
-		"cloud_auth_required": "Cloud authentication required",
-		"organization_mismatch": "Organization mismatch detected",
-		"verification_failed": "सत्यापन असफल"
+		"cloud_auth_required": "क्लाउड प्रमाणीकरण आवश्यक",
+		"organization_mismatch": "संगठन बेमेल पाया गया",
+		"verification_failed": "सत्यापन विफल"
 	}
 }
