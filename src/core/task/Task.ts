@@ -768,7 +768,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.askResponseImages = images
 	}
 
-	public submitUserMessage(text: string, images?: string[], mode_slug?: string): void {
+	public submitUserMessage(text: string, images?: string[], modeSlug?: string): void {
 		try {
 			const trimmed = (text ?? "").trim()
 			const imgs = images ?? []
@@ -783,20 +783,20 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			void (async () => {
 				// If a mode slug is provided, handle the mode switch first (same behavior as initClineWithTask)
 				try {
-					const modeSlugValue = (mode_slug ?? "").trim()
+					const modeSlugValue = (modeSlug ?? "").trim()
 					if (modeSlugValue.length > 0) {
 						const customModes = await provider.customModesManager.getCustomModes()
 						const targetMode = getModeBySlug(modeSlugValue, customModes)
 						if (targetMode) {
 							await provider.handleModeSwitch(targetMode.slug)
-							provider.log(`[Task#submitUserMessage] Applied mode from mode_slug: '${targetMode.slug}'`)
+							provider.log(`[Task#submitUserMessage] Applied mode from modeSlug: '${targetMode.slug}'`)
 						} else {
-							provider.log(`[Task#submitUserMessage] Ignoring invalid mode_slug: '${modeSlugValue}'.`)
+							provider.log(`[Task#submitUserMessage] Ignoring invalid modeSlug: '${modeSlugValue}'.`)
 						}
 					}
 				} catch (err) {
 					provider.log(
-						`[Task#submitUserMessage] Failed to apply mode_slug: ${
+						`[Task#submitUserMessage] Failed to apply modeSlug: ${
 							err instanceof Error ? err.message : String(err)
 						}`,
 					)
@@ -2554,10 +2554,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Getters
 
 	public get cwd() {
-		if (!this.workspacePath) {
-			// Return a fallback to prevent crashes
-			return path.join(os.homedir(), "Desktop")
-		}
 		return this.workspacePath
 	}
 }

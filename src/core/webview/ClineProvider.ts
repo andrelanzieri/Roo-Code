@@ -708,10 +708,10 @@ export class ClineProvider
 			throw new OrganizationAllowListViolationError(t("common:errors.violated_organization_allowlist"))
 		}
 
-		// Bridge: If a mode_slug is provided by the cloud extension bridge, honor it before creating the task
+		// Bridge: If a modeSlug is provided by the cloud extension bridge, honor it before creating the task
 		// This ensures the task initializes with the correct mode and associated provider profile
 		try {
-			const modeSlugFromBridge: string | undefined = (options as any)?.mode_slug
+			const modeSlugFromBridge: string | undefined = (options as any)?.modeSlug
 			if (typeof modeSlugFromBridge === "string" && modeSlugFromBridge.trim().length > 0) {
 				const customModes = await this.customModesManager.getCustomModes()
 				const targetMode = getModeBySlug(modeSlugFromBridge, customModes)
@@ -721,13 +721,13 @@ export class ClineProvider
 					this.log(`[initClineWithTask] Applied mode from bridge: '${targetMode.slug}'`)
 				} else {
 					this.log(
-						`[initClineWithTask] Ignoring invalid mode_slug from bridge: '${modeSlugFromBridge}'. Falling back to current mode.`,
+						`[initClineWithTask] Ignoring invalid modeSlug from bridge: '${modeSlugFromBridge}'. Falling back to current mode.`,
 					)
 				}
 			}
 		} catch (err) {
 			this.log(
-				`[initClineWithTask] Failed to apply mode_slug from bridge: ${
+				`[initClineWithTask] Failed to apply modeSlug from bridge: ${
 					err instanceof Error ? err.message : String(err)
 				}`,
 			)

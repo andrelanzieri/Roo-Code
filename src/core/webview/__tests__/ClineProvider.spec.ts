@@ -2208,7 +2208,7 @@ describe("ClineProvider", () => {
 		})
 	})
 })
-describe("Bridge mode_slug handling", () => {
+describe("Bridge modeSlug handling", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
 	let mockOutputChannel: vscode.OutputChannel
@@ -2262,7 +2262,7 @@ describe("Bridge mode_slug handling", () => {
 		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
 	})
 
-	it("applies mode_slug from bridge options when starting task", async () => {
+	it("applies modeSlug from bridge options when starting task", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 
 		// Spy on handleModeSwitch to ensure it's invoked with the bridge-provided mode
@@ -2277,10 +2277,10 @@ describe("Bridge mode_slug handling", () => {
 			groups: ["read", "edit"] as any,
 		} as any)
 
-		// Pass mode_slug through the options object (as provided by the bridge package)
+		// Pass modeSlug through the options object (as provided by the bridge package)
 		await provider.initClineWithTask("Started from bridge", undefined, undefined, {
 			experiments: {},
-			mode_slug: "architect",
+			modeSlug: "architect",
 		} as any)
 
 		expect(handleModeSwitchSpy).toHaveBeenCalledWith("architect")

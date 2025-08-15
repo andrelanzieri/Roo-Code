@@ -14,7 +14,7 @@ export interface TaskProviderState {
 }
 
 export interface InitTaskOptions {
-	mode_slug?: string
+	modeSlug?: string
 	enableDiff?: boolean
 	enableCheckpoints?: boolean
 	fuzzyMatchThreshold?: number
@@ -95,7 +95,7 @@ export interface TaskLike {
 	off<K extends keyof TaskEvents>(event: K, listener: (...args: TaskEvents[K]) => void | Promise<void>): this
 
 	setMessageResponse(text: string, images?: string[]): void
-	submitUserMessage(text: string, images?: string[], mode_slug?: string): void
+	submitUserMessage(text: string, images?: string[], modeSlug?: string): void
 }
 
 export type TaskEvents = {
