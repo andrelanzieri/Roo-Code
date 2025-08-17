@@ -2618,5 +2618,100 @@ export const webviewMessageHandler = async (
 			}
 			break
 		}
+		case "submitCrashReport": {
+			if (message.crashReport) {
+				try {
+					// Log the crash report for debugging
+					provider.log(`Crash report submitted: ${JSON.stringify(message.crashReport, null, 2)}`)
+
+					// If it's a human-relay crash, show the human relay dialog
+					if (message.crashReport.source === "human-relay") {
+						// Create a formatted message for human relay
+						const formattedReport = `
+Crash Report - ${message.crashReport.source}
+=====================================
+Description: ${message.crashReport.description}
+Email: ${message.crashReport.email || "Not provided"}
+Timestamp: ${new Date(message.crashReport.timestamp).toISOString()}
+
+Error Details:
+${message.crashReport.errorDetails ? JSON.stringify(message.crashReport.errorDetails, null, 2) : "No error details"}
+
+User Agent: ${message.crashReport.userAgent}
+						`.trim()
+
+						// Copy to clipboard for human relay
+						await vscode.env.clipboard.writeText(formattedReport)
+
+						// Show human relay dialog
+						vscode.commands.executeCommand(getCommand("showHumanRelayDialog"), {
+							requestId: `crash-${Date.now()}`,
+							promptText: formattedReport,
+						})
+					} else {
+						// For code-index and general crashes, save to a file or send to telemetry
+						const crashReportDir = path.join(provider.context.globalStorageUri.fsPath, "crash-reports")
+						await fs.mkdir(crashReportDir, { recursive: true })
+
+						const filename = `crash-${message.crashReport.source}-${Date.now()}.json`
+						const filepath = path.join(crashReportDir, filename)
+
+						await safeWriteJson(filepath, message.crashReport)
+
+						// Show success notification
+						vscode.window.showInformationMessage(
+							t("crashReport:submitSuccess") ||
+								"Crash report submitted successfully. Thank you for your feedback!",
+						)
+
+						// Log telemetry event if available
+						if (TelemetryService.hasInstance()) {
+							TelemetryService.instance.captureEvent(TelemetryEventName.CRASH_REPORT_SUBMITTED, {
+								source: message.crashReport.source,
+								hasDescription: !!message.crashReport.description,
+								hasEmail: !!message.crashReport.email,
+								hasErrorDetails: !!message.crashReport.errorDetails,
+							})
+						}
+					}
+
+					// Send success response to webview
+					await provider.postMessageToWebview({
+						type: "crashReportSubmitted",
+						success: true,
+					})
+				} catch (error) {
+					provider.log(
+						`Error submitting crash report: ${error instanceof Error ? error.message : String(error)}`,
+					)
+					vscode.window.showErrorMessage(
+						t("crashReport:submitError") || "Failed to submit crash report. Please try again.",
+					)
+
+					// Send error response to webview
+					await provider.postMessageToWebview({
+						type: "crashReportSubmitted",
+						success: false,
+						error: error instanceof Error ? error.message : String(error),
+					})
+				}
+			}
+			break
+		}
+		case "showCrashReportDialog": {
+			// This message can be sent from various parts of the UI to show the crash report dialog
+			await provider.postMessageToWebview({
+				type: "showCrashReportDialog",
+				errorDetails: message.values?.errorDetails,
+				source: message.values?.source || "general",
+			})
+			break
+		}
+		case "showNotification": {
+			if (message.text) {
+				vscode.window.showInformationMessage(message.text)
+			}
+			break
+		}
 	}
 }

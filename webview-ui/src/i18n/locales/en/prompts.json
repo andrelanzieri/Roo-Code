@@ -1,4 +1,22 @@
 {
+	"crashReport": {
+		"title": "Report an Issue",
+		"description": "Help us improve by reporting this issue. Your feedback is valuable in making the extension better.",
+		"errorDetails": "Error Details",
+		"copyDetails": "Copy Details",
+		"copiedToClipboard": "Error details copied to clipboard",
+		"whatHappened": "What were you doing when this happened?",
+		"whatHappenedPlaceholder": "Please describe what you were trying to do when the error occurred...",
+		"email": "Email",
+		"optional": "optional",
+		"emailPlaceholder": "your.email@example.com",
+		"emailDescription": "We'll only use this to follow up if we need more information",
+		"submit": "Submit Report",
+		"submitting": "Submitting...",
+		"submitSuccess": "Thank you! Your report has been submitted successfully.",
+		"submitError": "Failed to submit crash report. Please try again.",
+		"humanRelayNote": "This report will be sent via Human Relay. The error details will be copied to your clipboard for manual submission."
+	},
 	"title": "Modes",
 	"done": "Done",
 	"modes": {

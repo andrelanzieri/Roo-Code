@@ -119,6 +119,8 @@ export interface ExtensionMessage {
 		| "showEditMessageDialog"
 		| "commands"
 		| "insertTextIntoTextarea"
+		| "crashReportSubmitted"
+		| "showCrashReportDialog"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -193,6 +195,14 @@ export interface ExtensionMessage {
 	messageTs?: number
 	context?: string
 	commands?: Command[]
+	errorDetails?: {
+		message?: string
+		stack?: string
+		componentStack?: string
+		context?: string
+		timestamp?: number
+	}
+	source?: "code-index" | "human-relay" | "general"
 }
 
 export type ExtensionState = Pick<

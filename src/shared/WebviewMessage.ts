@@ -211,6 +211,9 @@ export interface WebviewMessage {
 		| "deleteCommand"
 		| "createCommand"
 		| "insertTextIntoTextarea"
+		| "submitCrashReport"
+		| "showCrashReportDialog"
+		| "showNotification"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account"
@@ -272,6 +275,20 @@ export interface WebviewMessage {
 		codebaseIndexOpenAiCompatibleApiKey?: string
 		codebaseIndexGeminiApiKey?: string
 		codebaseIndexMistralApiKey?: string
+	}
+	crashReport?: {
+		source: "code-index" | "human-relay" | "general"
+		description: string
+		email?: string
+		errorDetails?: {
+			message?: string
+			stack?: string
+			componentStack?: string
+			context?: string
+			timestamp?: number
+		}
+		timestamp: number
+		userAgent: string
 	}
 }
 

@@ -39,6 +39,7 @@ import {
 import { AlertTriangle } from "lucide-react"
 import { useRooPortal } from "@src/components/ui/hooks/useRooPortal"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
+import { CrashReportDialog } from "@src/components/common/CrashReportDialog"
 import type { EmbedderProvider } from "@roo/embeddingModels"
 import type { IndexingStatus } from "@roo/ExtensionMessage"
 import { CODEBASE_INDEX_DEFAULTS } from "@roo-code/types"
@@ -151,6 +152,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 	const [open, setOpen] = useState(false)
 	const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
 	const [isSetupSettingsOpen, setIsSetupSettingsOpen] = useState(false)
+	const [showCrashReport, setShowCrashReport] = useState(false)
 
 	const [indexingStatus, setIndexingStatus] = useState<IndexingStatus>(externalIndexingStatus)
 
@@ -579,6 +581,14 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 								{t(`settings:codeIndex.indexingStatuses.${indexingStatus.systemStatus.toLowerCase()}`)}
 								{indexingStatus.message ? ` - ${indexingStatus.message}` : ""}
 							</div>
+							{indexingStatus.systemStatus === "Error" && (
+								<VSCodeButton
+									appearance="secondary"
+									onClick={() => setShowCrashReport(true)}
+									style={{ marginTop: "8px" }}>
+									{t("settings:codeIndex.reportError")}
+								</VSCodeButton>
+							)}
 
 							{indexingStatus.systemStatus === "Indexing" && (
 								<div className="mt-2">
@@ -1282,6 +1292,18 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			{/* Crash Report Dialog */}
+			{showCrashReport && (
+				<CrashReportDialog
+					isOpen={showCrashReport}
+					onClose={() => setShowCrashReport(false)}
+					source="code-index"
+					errorDetails={{
+						message: indexingStatus.message || "Code indexing error occurred",
+					}}
+				/>
+			)}
 		</>
 	)
 }
