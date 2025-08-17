@@ -149,6 +149,25 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setMaxDiagnosticMessages: (value: number) => void
 	includeTaskHistoryInEnhance?: boolean
 	setIncludeTaskHistoryInEnhance: (value: boolean) => void
+	// UI Settings
+	showEnhancePromptButton: boolean
+	setShowEnhancePromptButton: (value: boolean) => void
+	showCodebaseIndexingButton: boolean
+	setShowCodebaseIndexingButton: (value: boolean) => void
+	showAddImagesToMessageButton: boolean
+	setShowAddImagesToMessageButton: (value: boolean) => void
+	showManageSlashCommandsButton: boolean
+	setShowManageSlashCommandsButton: (value: boolean) => void
+	showHintText: boolean
+	setShowHintText: (value: boolean) => void
+	showSendButton: boolean
+	setShowSendButton: (value: boolean) => void
+	showApiConfigurationButton: boolean
+	setShowApiConfigurationButton: (value: boolean) => void
+	showAutoApproveTab: boolean
+	setShowAutoApproveTab: (value: boolean) => void
+	showContextPercentageBar: boolean
+	setShowContextPercentageBar: (value: boolean) => void
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -522,6 +541,31 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		},
 		includeTaskHistoryInEnhance,
 		setIncludeTaskHistoryInEnhance,
+		// UI Settings - these come from state now
+		showEnhancePromptButton: state.showEnhancePromptButton ?? true,
+		setShowEnhancePromptButton: (value) =>
+			setState((prevState) => ({ ...prevState, showEnhancePromptButton: value })),
+		showCodebaseIndexingButton: state.showCodebaseIndexingButton ?? true,
+		setShowCodebaseIndexingButton: (value) =>
+			setState((prevState) => ({ ...prevState, showCodebaseIndexingButton: value })),
+		showAddImagesToMessageButton: state.showAddImagesToMessageButton ?? true,
+		setShowAddImagesToMessageButton: (value) =>
+			setState((prevState) => ({ ...prevState, showAddImagesToMessageButton: value })),
+		showManageSlashCommandsButton: state.showManageSlashCommandsButton ?? true,
+		setShowManageSlashCommandsButton: (value) =>
+			setState((prevState) => ({ ...prevState, showManageSlashCommandsButton: value })),
+		showHintText: state.showHintText ?? true,
+		setShowHintText: (value) => setState((prevState) => ({ ...prevState, showHintText: value })),
+		showSendButton: state.showSendButton ?? true,
+		setShowSendButton: (value) => setState((prevState) => ({ ...prevState, showSendButton: value })),
+		showApiConfigurationButton: state.showApiConfigurationButton ?? true,
+		setShowApiConfigurationButton: (value) =>
+			setState((prevState) => ({ ...prevState, showApiConfigurationButton: value })),
+		showAutoApproveTab: state.showAutoApproveTab ?? true,
+		setShowAutoApproveTab: (value) => setState((prevState) => ({ ...prevState, showAutoApproveTab: value })),
+		showContextPercentageBar: state.showContextPercentageBar ?? true,
+		setShowContextPercentageBar: (value) =>
+			setState((prevState) => ({ ...prevState, showContextPercentageBar: value })),
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

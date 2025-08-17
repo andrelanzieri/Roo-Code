@@ -2618,5 +2618,42 @@ export const webviewMessageHandler = async (
 			}
 			break
 		}
+		// UI Settings handlers
+		case "showEnhancePromptButton":
+			await updateGlobalState("showEnhancePromptButton", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "showCodebaseIndexingButton":
+			await updateGlobalState("showCodebaseIndexingButton", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "showAddImagesToMessageButton":
+			await updateGlobalState("showAddImagesToMessageButton", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "showManageSlashCommandsButton":
+			await updateGlobalState("showManageSlashCommandsButton", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "showHintText":
+			await updateGlobalState("showHintText", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "showSendButton":
+			await updateGlobalState("showSendButton", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "showApiConfigurationButton":
+			await updateGlobalState("showApiConfigurationButton", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "showAutoApproveTab":
+			await updateGlobalState("showAutoApproveTab", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "showContextPercentageBar":
+			await updateGlobalState("showContextPercentageBar", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
 	}
 }

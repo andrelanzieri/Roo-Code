@@ -117,6 +117,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		soundEnabled,
 		soundVolume,
 		cloudIsAuthenticated,
+		showContextPercentageBar,
+		showAutoApproveTab,
 	} = useExtensionState()
 
 	const messagesRef = useRef(messages)
@@ -1794,6 +1796,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						buttonsDisabled={sendingDisabled}
 						handleCondenseContext={handleCondenseContext}
 						todos={latestTodos}
+						showContextPercentageBar={showContextPercentageBar}
 					/>
 
 					{hasSystemPromptOverride && (
@@ -1858,7 +1861,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			//    This ensures it takes its natural height when there's space
 			//    but becomes scrollable when the viewport is too small
 			*/}
-			{!task && (
+			{!task && showAutoApproveTab && (
 				<div className="mb-1 flex-initial min-h-0">
 					<AutoApproveMenu />
 				</div>
@@ -1885,9 +1888,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							initialTopMostItemIndex={groupedMessages.length - 1}
 						/>
 					</div>
-					<div className={`flex-initial min-h-0 ${!areButtonsVisible ? "mb-1" : ""}`}>
-						<AutoApproveMenu />
-					</div>
+					{showAutoApproveTab && (
+						<div className={`flex-initial min-h-0 ${!areButtonsVisible ? "mb-1" : ""}`}>
+							<AutoApproveMenu />
+						</div>
+					)}
 					{areButtonsVisible && (
 						<div
 							className={`flex h-9 items-center mb-1 px-[15px] ${

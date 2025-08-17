@@ -73,6 +73,16 @@ describe("ChatTextArea", () => {
 			},
 			taskHistory: [],
 			cwd: "/test/workspace",
+			// UI visibility settings - all enabled by default for tests
+			showEnhancePromptButton: true,
+			showCodebaseIndexingButton: true,
+			showAddImagesToMessageButton: true,
+			showManageSlashCommandsButton: true,
+			showHintText: true,
+			showSendButton: true,
+			showApiConfigurationButton: true,
+			showAutoApproveTab: true,
+			showContextPercentageBar: true,
 		})
 	})
 
@@ -83,6 +93,16 @@ describe("ChatTextArea", () => {
 				openedTabs: [],
 				taskHistory: [],
 				cwd: "/test/workspace",
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 			render(<ChatTextArea {...defaultProps} sendingDisabled={true} />)
 			const enhanceButton = getEnhancePromptButton()
@@ -103,6 +123,16 @@ describe("ChatTextArea", () => {
 				apiConfiguration,
 				taskHistory: [],
 				cwd: "/test/workspace",
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 
 			render(<ChatTextArea {...defaultProps} inputValue="Test prompt" />)
@@ -125,6 +155,16 @@ describe("ChatTextArea", () => {
 				},
 				taskHistory: [],
 				cwd: "/test/workspace",
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 
 			render(<ChatTextArea {...defaultProps} inputValue="" />)
@@ -147,6 +187,16 @@ describe("ChatTextArea", () => {
 				},
 				taskHistory: [],
 				cwd: "/test/workspace",
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 
 			render(<ChatTextArea {...defaultProps} inputValue="Test prompt" />)
@@ -174,6 +224,16 @@ describe("ChatTextArea", () => {
 				},
 				taskHistory: [],
 				cwd: "/test/workspace",
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 
 			rerender(<ChatTextArea {...defaultProps} />)
@@ -275,6 +335,16 @@ describe("ChatTextArea", () => {
 				filePaths: [],
 				openedTabs: [],
 				cwd: mockCwd,
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesButton: true,
+				showSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 			mockConvertToMentionPath.mockClear()
 		})
@@ -506,6 +576,16 @@ describe("ChatTextArea", () => {
 					taskHistory: [],
 					clineMessages: mockClineMessages,
 					cwd: "/test/workspace",
+					// UI visibility settings
+					showEnhancePromptButton: true,
+					showCodebaseIndexingButton: true,
+					showAddImagesButton: true,
+					showSlashCommandsButton: true,
+					showHintText: true,
+					showSendButton: true,
+					showApiConfigButton: true,
+					showAutoApproveTab: true,
+					showContextPercentageBar: true,
 				})
 			})
 
@@ -659,6 +739,16 @@ describe("ChatTextArea", () => {
 					taskHistory: [],
 					clineMessages: mixedClineMessages,
 					cwd: "/test/workspace",
+					// UI visibility settings
+					showEnhancePromptButton: true,
+					showCodebaseIndexingButton: true,
+					showAddImagesToMessageButton: true,
+					showManageSlashCommandsButton: true,
+					showHintText: true,
+					showSendButton: true,
+					showApiConfigurationButton: true,
+					showAutoApproveTab: true,
+					showContextPercentageBar: true,
 				})
 
 				const setInputValue = vi.fn()
@@ -687,6 +777,16 @@ describe("ChatTextArea", () => {
 					taskHistory: [],
 					clineMessages: [],
 					cwd: "/test/workspace",
+					// UI visibility settings
+					showEnhancePromptButton: true,
+					showCodebaseIndexingButton: true,
+					showAddImagesToMessageButton: true,
+					showManageSlashCommandsButton: true,
+					showHintText: true,
+					showSendButton: true,
+					showApiConfigurationButton: true,
+					showAutoApproveTab: true,
+					showContextPercentageBar: true,
 				})
 
 				const setInputValue = vi.fn()
@@ -718,6 +818,16 @@ describe("ChatTextArea", () => {
 					taskHistory: [],
 					clineMessages: clineMessagesWithEmpty,
 					cwd: "/test/workspace",
+					// UI visibility settings
+					showEnhancePromptButton: true,
+					showCodebaseIndexingButton: true,
+					showAddImagesToMessageButton: true,
+					showManageSlashCommandsButton: true,
+					showHintText: true,
+					showSendButton: true,
+					showApiConfigurationButton: true,
+					showAutoApproveTab: true,
+					showContextPercentageBar: true,
 				})
 
 				const setInputValue = vi.fn()
@@ -752,6 +862,16 @@ describe("ChatTextArea", () => {
 					taskHistory: mockTaskHistory,
 					clineMessages: [], // No conversation messages
 					cwd: "/test/workspace",
+					// UI visibility settings
+					showEnhancePromptButton: true,
+					showCodebaseIndexingButton: true,
+					showAddImagesToMessageButton: true,
+					showManageSlashCommandsButton: true,
+					showHintText: true,
+					showSendButton: true,
+					showApiConfigurationButton: true,
+					showAutoApproveTab: true,
+					showContextPercentageBar: true,
 				})
 
 				const setInputValue = vi.fn()
@@ -789,6 +909,16 @@ describe("ChatTextArea", () => {
 					],
 					clineMessages: [],
 					cwd: "/test/workspace",
+					// UI visibility settings
+					showEnhancePromptButton: true,
+					showCodebaseIndexingButton: true,
+					showAddImagesButton: true,
+					showSlashCommandsButton: true,
+					showHintText: true,
+					showSendButton: true,
+					showApiConfigButton: true,
+					showAutoApproveTab: true,
+					showContextPercentageBar: true,
 				})
 
 				rerender(<ChatTextArea {...defaultProps} setInputValue={setInputValue} inputValue="" />)
@@ -812,6 +942,16 @@ describe("ChatTextArea", () => {
 						{ type: "say", say: "user_feedback", text: "Message 2", ts: 2000 },
 					],
 					cwd: "/test/workspace",
+					// UI visibility settings
+					showEnhancePromptButton: true,
+					showCodebaseIndexingButton: true,
+					showAddImagesToMessageButton: true,
+					showManageSlashCommandsButton: true,
+					showHintText: true,
+					showSendButton: true,
+					showApiConfigurationButton: true,
+					showAutoApproveTab: true,
+					showContextPercentageBar: true,
 				})
 
 				setInputValue.mockClear()
@@ -918,6 +1058,16 @@ describe("ChatTextArea", () => {
 				taskHistory: [],
 				cwd: "/test/workspace",
 				commands: mockCommands,
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 		})
 
@@ -1027,6 +1177,16 @@ describe("ChatTextArea", () => {
 				taskHistory: [],
 				cwd: "/test/workspace",
 				commands: undefined,
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesButton: true,
+				showSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 
 			const { getByTestId } = render(<ChatTextArea {...defaultProps} inputValue="/setup the project" />)
@@ -1048,11 +1208,43 @@ describe("ChatTextArea", () => {
 			return screen.getByTestId("dropdown-trigger")
 		}
 		it("should be enabled independently of sendingDisabled", () => {
+			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
+				filePaths: [],
+				openedTabs: [],
+				taskHistory: [],
+				cwd: "/test/workspace",
+				// UI visibility settings - API config button must be visible
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
+			})
 			render(<ChatTextArea {...defaultProps} sendingDisabled={true} selectApiConfigDisabled={false} />)
 			const apiConfigDropdown = getApiConfigDropdown()
 			expect(apiConfigDropdown).not.toHaveAttribute("disabled")
 		})
 		it("should be disabled when selectApiConfigDisabled is true", () => {
+			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
+				filePaths: [],
+				openedTabs: [],
+				taskHistory: [],
+				cwd: "/test/workspace",
+				// UI visibility settings - API config button must be visible
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
+			})
 			render(<ChatTextArea {...defaultProps} sendingDisabled={true} selectApiConfigDisabled={true} />)
 			const apiConfigDropdown = getApiConfigDropdown()
 			expect(apiConfigDropdown).toHaveAttribute("disabled")
@@ -1067,6 +1259,16 @@ describe("ChatTextArea", () => {
 				cwd: "/test/workspace",
 				customModes: [],
 				customModePrompts: {},
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 
 			render(<ChatTextArea {...defaultProps} isEditMode={true} />)
@@ -1091,6 +1293,16 @@ describe("ChatTextArea", () => {
 				openedTabs: [],
 				taskHistory: [],
 				cwd: "/test/workspace",
+				// UI visibility settings
+				showEnhancePromptButton: true,
+				showCodebaseIndexingButton: true,
+				showAddImagesToMessageButton: true,
+				showManageSlashCommandsButton: true,
+				showHintText: true,
+				showSendButton: true,
+				showApiConfigurationButton: true,
+				showAutoApproveTab: true,
+				showContextPercentageBar: true,
 			})
 
 			render(<ChatTextArea {...defaultProps} isEditMode={false} />)

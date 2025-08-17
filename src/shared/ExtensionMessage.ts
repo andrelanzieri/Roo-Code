@@ -270,6 +270,16 @@ export type ExtensionState = Pick<
 	| "includeDiagnosticMessages"
 	| "maxDiagnosticMessages"
 	| "remoteControlEnabled"
+	// UI Settings
+	| "showEnhancePromptButton"
+	| "showCodebaseIndexingButton"
+	| "showAddImagesToMessageButton"
+	| "showManageSlashCommandsButton"
+	| "showHintText"
+	| "showSendButton"
+	| "showApiConfigurationButton"
+	| "showAutoApproveTab"
+	| "showContextPercentageBar"
 > & {
 	version: string
 	clineMessages: ClineMessage[]

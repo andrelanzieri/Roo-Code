@@ -23,6 +23,7 @@ import {
 	Info,
 	MessageSquare,
 	LucideIcon,
+	Palette,
 } from "lucide-react"
 
 import type { ProviderSettings, ExperimentId } from "@roo-code/types"
@@ -65,6 +66,7 @@ import { LanguageSettings } from "./LanguageSettings"
 import { About } from "./About"
 import { Section } from "./Section"
 import PromptsSettings from "./PromptsSettings"
+import { UISettings } from "./UISettings"
 import { cn } from "@/lib/utils"
 
 export const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
@@ -87,6 +89,7 @@ const sectionNames = [
 	"contextManagement",
 	"terminal",
 	"prompts",
+	"uiSettings",
 	"experimental",
 	"language",
 	"about",
@@ -183,6 +186,16 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		includeDiagnosticMessages,
 		maxDiagnosticMessages,
 		includeTaskHistoryInEnhance,
+		// UI Settings
+		showEnhancePromptButton,
+		showCodebaseIndexingButton,
+		showAddImagesToMessageButton,
+		showManageSlashCommandsButton,
+		showHintText,
+		showSendButton,
+		showApiConfigurationButton,
+		showAutoApproveTab,
+		showContextPercentageBar,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -342,6 +355,16 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			vscode.postMessage({ type: "updateCondensingPrompt", text: customCondensingPrompt || "" })
 			vscode.postMessage({ type: "updateSupportPrompt", values: customSupportPrompts || {} })
 			vscode.postMessage({ type: "includeTaskHistoryInEnhance", bool: includeTaskHistoryInEnhance ?? true })
+			// UI Settings
+			vscode.postMessage({ type: "showEnhancePromptButton", bool: showEnhancePromptButton ?? true })
+			vscode.postMessage({ type: "showCodebaseIndexingButton", bool: showCodebaseIndexingButton ?? true })
+			vscode.postMessage({ type: "showAddImagesToMessageButton", bool: showAddImagesToMessageButton ?? true })
+			vscode.postMessage({ type: "showManageSlashCommandsButton", bool: showManageSlashCommandsButton ?? true })
+			vscode.postMessage({ type: "showHintText", bool: showHintText ?? true })
+			vscode.postMessage({ type: "showSendButton", bool: showSendButton ?? true })
+			vscode.postMessage({ type: "showApiConfigurationButton", bool: showApiConfigurationButton ?? true })
+			vscode.postMessage({ type: "showAutoApproveTab", bool: showAutoApproveTab ?? true })
+			vscode.postMessage({ type: "showContextPercentageBar", bool: showContextPercentageBar ?? true })
 			vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
 			vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
 			vscode.postMessage({ type: "profileThresholds", values: profileThresholds })
@@ -422,6 +445,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "contextManagement", icon: Database },
 			{ id: "terminal", icon: SquareTerminal },
 			{ id: "prompts", icon: MessageSquare },
+			{ id: "uiSettings", icon: Palette },
 			{ id: "experimental", icon: FlaskConical },
 			{ id: "language", icon: Globe },
 			{ id: "about", icon: Info },
@@ -715,6 +739,22 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							setIncludeTaskHistoryInEnhance={(value) =>
 								setCachedStateField("includeTaskHistoryInEnhance", value)
 							}
+						/>
+					)}
+
+					{/* UI Settings Section */}
+					{activeTab === "uiSettings" && (
+						<UISettings
+							showEnhancePromptButton={showEnhancePromptButton}
+							showCodebaseIndexingButton={showCodebaseIndexingButton}
+							showAddImagesToMessageButton={showAddImagesToMessageButton}
+							showManageSlashCommandsButton={showManageSlashCommandsButton}
+							showHintText={showHintText}
+							showSendButton={showSendButton}
+							showApiConfigurationButton={showApiConfigurationButton}
+							showAutoApproveTab={showAutoApproveTab}
+							showContextPercentageBar={showContextPercentageBar}
+							setCachedStateField={setCachedStateField}
 						/>
 					)}
 

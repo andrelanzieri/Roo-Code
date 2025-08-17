@@ -31,6 +31,7 @@ export interface TaskHeaderProps {
 	buttonsDisabled: boolean
 	handleCondenseContext: (taskId: string) => void
 	todos?: any[]
+	showContextPercentageBar?: boolean
 }
 
 const TaskHeader = ({
@@ -44,6 +45,7 @@ const TaskHeader = ({
 	buttonsDisabled,
 	handleCondenseContext,
 	todos,
+	showContextPercentageBar = true,
 }: TaskHeaderProps) => {
 	const { t } = useTranslation()
 	const { apiConfiguration, currentTaskItem } = useExtensionState()
@@ -120,7 +122,7 @@ const TaskHeader = ({
 						</div>
 					</div>
 				</div>
-				{!isTaskExpanded && contextWindow > 0 && (
+				{!isTaskExpanded && contextWindow > 0 && showContextPercentageBar && (
 					<div className="flex items-center gap-2 text-sm" onClick={(e) => e.stopPropagation()}>
 						<StandardTooltip
 							content={

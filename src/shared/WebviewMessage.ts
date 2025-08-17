@@ -211,6 +211,16 @@ export interface WebviewMessage {
 		| "deleteCommand"
 		| "createCommand"
 		| "insertTextIntoTextarea"
+		// UI Settings
+		| "showEnhancePromptButton"
+		| "showCodebaseIndexingButton"
+		| "showAddImagesToMessageButton"
+		| "showManageSlashCommandsButton"
+		| "showHintText"
+		| "showSendButton"
+		| "showApiConfigurationButton"
+		| "showAutoApproveTab"
+		| "showContextPercentageBar"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account"

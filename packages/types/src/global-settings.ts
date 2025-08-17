@@ -148,6 +148,17 @@ export const globalSettingsSchema = z.object({
 	hasOpenedModeSelector: z.boolean().optional(),
 	lastModeExportPath: z.string().optional(),
 	lastModeImportPath: z.string().optional(),
+
+	// UI Settings
+	showEnhancePromptButton: z.boolean().optional(),
+	showCodebaseIndexingButton: z.boolean().optional(),
+	showAddImagesToMessageButton: z.boolean().optional(),
+	showManageSlashCommandsButton: z.boolean().optional(),
+	showHintText: z.boolean().optional(),
+	showSendButton: z.boolean().optional(),
+	showApiConfigurationButton: z.boolean().optional(),
+	showAutoApproveTab: z.boolean().optional(),
+	showContextPercentageBar: z.boolean().optional(),
 })
 
 export type GlobalSettings = z.infer<typeof globalSettingsSchema>
