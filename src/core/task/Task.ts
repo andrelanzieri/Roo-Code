@@ -573,7 +573,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		if (shouldCaptureMessage) {
 			CloudService.instance.captureEvent({
-				event: TelemetryEventName.TASK_MESSAGE,
+				event: "Task Message" as any,
 				properties: { taskId: this.taskId, message },
 			})
 		}
@@ -594,7 +594,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		if (shouldCaptureMessage) {
 			CloudService.instance.captureEvent({
-				event: TelemetryEventName.TASK_MESSAGE,
+				event: "Task Message" as any,
 				properties: { taskId: this.taskId, message },
 			})
 		}
