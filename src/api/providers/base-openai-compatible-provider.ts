@@ -6,6 +6,7 @@ import type { ModelInfo } from "@roo-code/types"
 import type { ApiHandlerOptions } from "../../shared/api"
 import { ApiStream } from "../transform/stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { repairBrokenXml } from "../utils/xml-repair"
 
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { DEFAULT_HEADERS } from "./constants"
@@ -89,9 +90,12 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			const delta = chunk.choices[0]?.delta
 
 			if (delta?.content) {
+				// Apply XML repair if enabled for OpenAI-compatible providers
+				const content = this.options.openAiXmlAutoRepair ? repairBrokenXml(delta.content) : delta.content
+
 				yield {
 					type: "text",
-					text: delta.content,
+					text: content,
 				}
 			}
 

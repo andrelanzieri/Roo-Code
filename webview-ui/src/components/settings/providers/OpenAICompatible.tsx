@@ -169,6 +169,16 @@ export const OpenAICompatible = ({
 			</Checkbox>
 			<div>
 				<Checkbox
+					checked={apiConfiguration?.openAiXmlAutoRepair ?? false}
+					onChange={handleInputChange("openAiXmlAutoRepair", noTransform)}>
+					{t("settings:providers.xmlAutoRepair")}
+				</Checkbox>
+				<div className="text-sm text-vscode-descriptionForeground ml-6">
+					{t("settings:providers.xmlAutoRepairDescription")}
+				</div>
+			</div>
+			<div>
+				<Checkbox
 					checked={apiConfiguration?.includeMaxTokens ?? true}
 					onChange={handleInputChange("includeMaxTokens", noTransform)}>
 					{t("settings:includeMaxOutputTokens")}

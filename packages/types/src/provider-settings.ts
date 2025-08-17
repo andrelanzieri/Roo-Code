@@ -160,6 +160,7 @@ const openAiSchema = baseProviderSettingsSchema.extend({
 	openAiStreamingEnabled: z.boolean().optional(),
 	openAiHostHeader: z.string().optional(), // Keep temporarily for backward compatibility during migration.
 	openAiHeaders: z.record(z.string(), z.string()).optional(),
+	openAiXmlAutoRepair: z.boolean().optional(), // Auto-repair broken XML tool calls from certain providers
 })
 
 const ollamaSchema = baseProviderSettingsSchema.extend({

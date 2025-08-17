@@ -13,6 +13,7 @@ import {
 import type { ApiHandlerOptions } from "../../shared/api"
 
 import { XmlMatcher } from "../../utils/xml-matcher"
+import { repairBrokenXml } from "../utils/xml-repair"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
@@ -187,7 +188,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				const delta = chunk.choices[0]?.delta ?? {}
 
 				if (delta.content) {
-					for (const chunk of matcher.update(delta.content)) {
+					// Apply XML repair if enabled
+					const content = this.options.openAiXmlAutoRepair ? repairBrokenXml(delta.content) : delta.content
+
+					for (const chunk of matcher.update(content)) {
 						yield chunk
 					}
 				}
@@ -362,9 +366,12 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		for await (const chunk of stream) {
 			const delta = chunk.choices[0]?.delta
 			if (delta?.content) {
+				// Apply XML repair if enabled
+				const content = this.options.openAiXmlAutoRepair ? repairBrokenXml(delta.content) : delta.content
+
 				yield {
 					type: "text",
-					text: delta.content,
+					text: content,
 				}
 			}
 
