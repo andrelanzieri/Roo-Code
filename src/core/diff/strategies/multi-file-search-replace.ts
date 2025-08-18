@@ -510,16 +510,12 @@ Each file requires its own path, start_line, and diff elements.
 				replaceContent = stripLineNumbers(replaceContent)
 			}
 
-			// Validate that search and replace content are not identical
+			// If search and replace content are identical, treat as no-op (skip silently)
 			if (searchContent === replaceContent) {
-				diffResults.push({
-					success: false,
-					error:
-						`Search and replace content are identical - no changes would be made\n\n` +
-						`Debug Info:\n` +
-						`- Search and replace must be different to make changes\n` +
-						`- Use read_file to verify the content you want to change`,
-				})
+				// This is a no-op diff, skip it without error
+				// Some AI providers (like Gemini) sometimes generate identical diffs
+				// We treat these as successful no-ops rather than errors
+				appliedCount++ // Count it as applied since it's intentionally a no-op
 				continue
 			}
 
