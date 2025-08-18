@@ -23,7 +23,6 @@
 | learn more    | 了解更多      | 瞭解更多         | Use simplified 了                |
 | approve       | 核准          | 批准             | Use 核准 for approvals           |
 | global        | 全域          | 全局             | Use 全域 for scope               |
-| level         | 層級          | 級               | Use 層級 for hierarchy           |
 
 ## Formatting Rules
 
@@ -45,9 +44,12 @@
 
 ### Action Verbs
 
-- Create/Build: 建立
-- Delete/Remove: 刪除
-- Update/Modify: 更新
+- Create: 建立
+- Build: 建立 (depends on context)
+- Delete: 刪除
+- Remove: 移除
+- Update: 更新
+- Modify: 修改
 - Save: 儲存
 - Cancel: 取消
 - Confirm: 確認
@@ -74,7 +76,7 @@
 - ❌ "使用額外內容增強提示"
 - ✅ "使用額外內容強化提示詞"
 
-- ❌ "線上工作歷歷史記錄" (typo)
+- ❌ "線上工作歷史記錄" (typo)
 - ✅ "線上工作歷史紀錄"
 
 - ❌ "連接到 Roo Code Cloud"
@@ -87,7 +89,7 @@
 
 Before submitting translations:
 
-- [ ] Check for typos and repeated characters
+- [ ] Check for typos
 - [ ] Verify consistent terminology throughout all files
 - [ ] Ensure proper spacing between Chinese and English text
 - [ ] Confirm appropriate formality level (您 vs 你)
