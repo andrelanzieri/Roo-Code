@@ -181,8 +181,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
 	const everVisibleMessagesTsRef = useRef<LRUCache<number, boolean>>(
 		new LRUCache({
-			max: 100,
-			ttl: 1000 * 60 * 5,
+			max: 200, // Increased from 100 to handle longer conversations
+			ttl: 1000 * 60 * 10, // Increased from 5 to 10 minutes
 		}),
 	)
 	const autoApproveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -457,6 +457,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	useEffect(() => {
 		if (isHidden) {
+			// Clear cache when view is hidden to free memory
 			everVisibleMessagesTsRef.current.clear()
 		}
 	}, [isHidden])
@@ -464,8 +465,33 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useEffect(() => {
 		const cache = everVisibleMessagesTsRef.current
 		return () => {
+			// Ensure cache is cleared on unmount
 			cache.clear()
 		}
+	}, [])
+
+	// Add periodic memory cleanup for very long chats
+	useEffect(() => {
+		const memoryCleanupInterval = setInterval(() => {
+			// Only keep recent messages in cache during very long chats
+			const currentSize = everVisibleMessagesTsRef.current.size
+			if (currentSize > 150) {
+				// Force garbage collection by recreating the cache
+				const oldCache = everVisibleMessagesTsRef.current
+				everVisibleMessagesTsRef.current = new LRUCache({
+					max: 200,
+					ttl: 1000 * 60 * 10,
+				})
+				// Copy only the most recent entries
+				const entries = Array.from(oldCache.entries()).slice(-100)
+				entries.forEach(([key, value]) => {
+					everVisibleMessagesTsRef.current.set(key, value)
+				})
+				oldCache.clear()
+			}
+		}, 60000) // Run every minute
+
+		return () => clearInterval(memoryCleanupInterval)
 	}, [])
 
 	useEffect(() => {
@@ -900,27 +926,37 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useMount(() => textAreaRef.current?.focus())
 
 	const visibleMessages = useMemo(() => {
-		// Remove the 500-message limit to prevent array index shifting
-		// Virtuoso is designed to efficiently handle large lists through virtualization
-		const newVisibleMessages = modifiedMessages.filter((message: ClineMessage) => {
-			if (everVisibleMessagesTsRef.current.has(message.ts)) {
-				const alwaysHiddenOnceProcessedAsk: ClineAsk[] = [
-					"api_req_failed",
-					"resume_task",
-					"resume_completed_task",
-				]
-				const alwaysHiddenOnceProcessedSay = [
-					"api_req_finished",
-					"api_req_retried",
-					"api_req_deleted",
-					"mcp_server_request_started",
-				]
-				if (message.ask && alwaysHiddenOnceProcessedAsk.includes(message.ask)) return false
-				if (message.say && alwaysHiddenOnceProcessedSay.includes(message.say)) return false
-				if (message.say === "text" && (message.text ?? "") === "" && (message.images?.length ?? 0) === 0) {
-					return false
+		// Limit processing for very large message arrays to prevent performance issues
+		const messagesToProcess =
+			modifiedMessages.length > 5000
+				? modifiedMessages.slice(-5000) // Only process last 5000 messages for very long chats
+				: modifiedMessages
+
+		const newVisibleMessages = messagesToProcess.filter((message: ClineMessage) => {
+			// Check cache with try-catch to handle potential memory issues
+			try {
+				if (everVisibleMessagesTsRef.current.has(message.ts)) {
+					const alwaysHiddenOnceProcessedAsk: ClineAsk[] = [
+						"api_req_failed",
+						"resume_task",
+						"resume_completed_task",
+					]
+					const alwaysHiddenOnceProcessedSay = [
+						"api_req_finished",
+						"api_req_retried",
+						"api_req_deleted",
+						"mcp_server_request_started",
+					]
+					if (message.ask && alwaysHiddenOnceProcessedAsk.includes(message.ask)) return false
+					if (message.say && alwaysHiddenOnceProcessedSay.includes(message.say)) return false
+					if (message.say === "text" && (message.text ?? "") === "" && (message.images?.length ?? 0) === 0) {
+						return false
+					}
+					return true
 				}
-				return true
+			} catch (error) {
+				console.error("Error accessing message cache:", error)
+				// Continue processing without cache on error
 			}
 
 			switch (message.ask) {
@@ -938,8 +974,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				case "api_req_deleted":
 					return false
 				case "api_req_retry_delayed":
-					const last1 = modifiedMessages.at(-1)
-					const last2 = modifiedMessages.at(-2)
+					const last1 = messagesToProcess.at(-1)
+					const last2 = messagesToProcess.at(-2)
 					if (last1?.ask === "resume_task" && last2 === message) {
 						return true
 					} else if (message !== last1) {
@@ -955,10 +991,19 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			return true
 		})
 
-		const viewportStart = Math.max(0, newVisibleMessages.length - 100)
-		newVisibleMessages
-			.slice(viewportStart)
-			.forEach((msg: ClineMessage) => everVisibleMessagesTsRef.current.set(msg.ts, true))
+		// Safely update cache with error handling
+		try {
+			const viewportStart = Math.max(0, newVisibleMessages.length - 100)
+			newVisibleMessages.slice(viewportStart).forEach((msg: ClineMessage) => {
+				try {
+					everVisibleMessagesTsRef.current.set(msg.ts, true)
+				} catch (error) {
+					console.error("Error updating message cache:", error)
+				}
+			})
+		} catch (error) {
+			console.error("Error processing visible messages:", error)
+		}
 
 		return newVisibleMessages
 	}, [modifiedMessages])
@@ -1867,22 +1912,18 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			{task && (
 				<>
 					<div className="grow flex" ref={scrollContainerRef}>
-						<Virtuoso
-							ref={virtuosoRef}
-							key={task.ts}
-							className="scrollable grow overflow-y-scroll mb-1"
-							increaseViewportBy={{ top: 3_000, bottom: 1000 }}
-							data={groupedMessages}
+						<ErrorBoundaryVirtuoso
+							virtuosoRef={virtuosoRef}
+							task={task}
+							groupedMessages={groupedMessages}
 							itemContent={itemContent}
-							atBottomStateChange={(isAtBottom: boolean) => {
+							onAtBottomChange={(isAtBottom: boolean) => {
 								setIsAtBottom(isAtBottom)
 								if (isAtBottom) {
 									disableAutoScrollRef.current = false
 								}
 								setShowScrollToBottom(disableAutoScrollRef.current && !isAtBottom)
 							}}
-							atBottomThreshold={10}
-							initialTopMostItemIndex={groupedMessages.length - 1}
 						/>
 					</div>
 					<div className={`flex-initial min-h-0 ${!areButtonsVisible ? "mb-1" : ""}`}>
@@ -2010,6 +2051,125 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			<div id="roo-portal" />
 		</div>
 	)
+}
+
+// Error boundary wrapper for Virtuoso to handle scrolling errors
+const ErrorBoundaryVirtuoso: React.FC<{
+	virtuosoRef: React.RefObject<VirtuosoHandle>
+	task: any
+	groupedMessages: any[]
+	itemContent: (index: number, item: any) => React.ReactNode
+	onAtBottomChange: (isAtBottom: boolean) => void
+}> = ({ virtuosoRef, task, groupedMessages, itemContent, onAtBottomChange }) => {
+	const [hasError, setHasError] = useState(false)
+	const [retryCount, setRetryCount] = useState(0)
+
+	// Reset error state when task changes
+	useEffect(() => {
+		setHasError(false)
+		setRetryCount(0)
+	}, [task?.ts])
+
+	const handleRetry = useCallback(() => {
+		setHasError(false)
+		setRetryCount((prev) => prev + 1)
+	}, [])
+
+	if (hasError) {
+		return (
+			<div className="flex-1 flex flex-col items-center justify-center p-4">
+				<div className="text-center max-w-md">
+					<h3 className="text-lg font-semibold mb-2 text-vscode-editor-foreground">
+						Unable to display messages
+					</h3>
+					<p className="text-sm text-vscode-descriptionForeground mb-4">
+						The chat view encountered an issue while rendering messages. This can happen with very long
+						conversations.
+					</p>
+					<div className="flex gap-2 justify-center">
+						<VSCodeButton appearance="primary" onClick={handleRetry}>
+							Try Again
+						</VSCodeButton>
+						<VSCodeButton appearance="secondary" onClick={() => window.location.reload()}>
+							Reload Window
+						</VSCodeButton>
+					</div>
+					{retryCount > 0 && (
+						<p className="text-xs text-vscode-descriptionForeground mt-2">Retry attempts: {retryCount}</p>
+					)}
+				</div>
+			</div>
+		)
+	}
+
+	return (
+		<ErrorBoundary
+			onError={(error: Error) => {
+				console.error("Virtuoso rendering error:", error)
+				setHasError(true)
+			}}
+			fallback={
+				<div className="flex-1 flex items-center justify-center">
+					<p className="text-vscode-descriptionForeground">Loading messages...</p>
+				</div>
+			}>
+			<Virtuoso
+				ref={virtuosoRef}
+				key={`${task.ts}-${retryCount}`}
+				className="scrollable grow overflow-y-scroll mb-1"
+				increaseViewportBy={{ top: 1500, bottom: 500 }}
+				data={groupedMessages}
+				itemContent={itemContent}
+				atBottomStateChange={onAtBottomChange}
+				atBottomThreshold={10}
+				initialTopMostItemIndex={Math.max(0, groupedMessages.length - 1)}
+				overscan={10}
+				scrollSeekConfiguration={{
+					enter: (velocity) => Math.abs(velocity) > 200,
+					exit: (velocity) => Math.abs(velocity) < 30,
+					change: () => {},
+				}}
+				// Add error handling for item rendering
+				components={{
+					ScrollSeekPlaceholder: () => (
+						<div className="h-20 flex items-center justify-center">
+							<span className="text-vscode-descriptionForeground">Loading...</span>
+						</div>
+					),
+				}}
+			/>
+		</ErrorBoundary>
+	)
+}
+
+// Simple error boundary for Virtuoso
+class ErrorBoundary extends React.Component<
+	{
+		children: React.ReactNode
+		onError?: (error: Error) => void
+		fallback?: React.ReactNode
+	},
+	{ hasError: boolean }
+> {
+	constructor(props: any) {
+		super(props)
+		this.state = { hasError: false }
+	}
+
+	static getDerivedStateFromError() {
+		return { hasError: true }
+	}
+
+	componentDidCatch(error: Error) {
+		this.props.onError?.(error)
+	}
+
+	render() {
+		if (this.state.hasError) {
+			return this.props.fallback || <div>Something went wrong</div>
+		}
+		return this.props.children
+	}
 }
 
 const ChatView = forwardRef(ChatViewComponent)
