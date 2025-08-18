@@ -47,5 +47,3 @@ logs
 .vercel
 .roo/mcp.json
 
-# Ignore temporary clones
-tmp/
