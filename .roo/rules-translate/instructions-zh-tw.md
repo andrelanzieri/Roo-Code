@@ -20,7 +20,6 @@
 | prompt        | 提示詞        | 提示             | Add 詞 for AI prompts            |
 | documentation | 說明文件      | 文件             | Use 說明文件 for docs            |
 | endpoint      | 端點          | 站點             | Use 端點 for API endpoints       |
-| learn more    | 了解更多      | 瞭解更多         | Use simplified 了                |
 | approve       | 核准          | 批准             | Use 核准 for approvals           |
 | global        | 全域          | 全局             | Use 全域 for scope               |
 
@@ -45,7 +44,7 @@
 ### Action Verbs
 
 - Create: 建立
-- Build: 建立 (depends on context)
+- Build: 建置
 - Delete: 刪除
 - Remove: 移除
 - Update: 更新
