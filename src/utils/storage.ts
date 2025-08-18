@@ -33,7 +33,9 @@ export async function getStorageBasePath(defaultPath: string): Promise<string> {
 		await fs.mkdir(customStoragePath, { recursive: true })
 
 		// Test if path is writable
-		const testFile = path.join(customStoragePath, ".write_test")
+		// Use unique suffix to prevent race conditions when multiple instances run simultaneously
+		const uniqueSuffix = `${process.pid}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+		const testFile = path.join(customStoragePath, `.write_test_${uniqueSuffix}`)
 		await fs.writeFile(testFile, "test")
 		await fs.rm(testFile)
 
