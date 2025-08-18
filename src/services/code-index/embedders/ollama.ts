@@ -8,8 +8,9 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
 
 // Timeout constants for Ollama API requests
-const OLLAMA_EMBEDDING_TIMEOUT_MS = 60000 // 60 seconds for embedding requests
-const OLLAMA_VALIDATION_TIMEOUT_MS = 30000 // 30 seconds for validation requests
+// Increased timeouts to handle slow CPU processing
+const OLLAMA_EMBEDDING_TIMEOUT_MS = 180000 // 180 seconds (3 minutes) for embedding requests - increased for CPU processing
+const OLLAMA_VALIDATION_TIMEOUT_MS = 60000 // 60 seconds for validation requests - increased for CPU processing
 
 /**
  * Implements the IEmbedder interface using a local Ollama instance.

@@ -165,39 +165,56 @@ export class CodeIndexOrchestrator {
 
 			const { stats } = result
 
-			// Check if any blocks were actually indexed successfully
-			// If no blocks were indexed but blocks were found, it means all batches failed
-			if (cumulativeBlocksIndexed === 0 && cumulativeBlocksFoundSoFar > 0) {
-				if (batchErrors.length > 0) {
-					// Use the first batch error as it's likely representative of the main issue
-					const firstError = batchErrors[0]
+			// Only consider it a failure if:
+			// 1. We found blocks to index AND
+			// 2. None were successfully indexed AND
+			// 3. There were actual batch errors (not just slow processing)
+			if (cumulativeBlocksIndexed === 0 && cumulativeBlocksFoundSoFar > 0 && batchErrors.length > 0) {
+				// Check if the errors are connection-related (Ollama not running)
+				const firstError = batchErrors[0]
+				const isConnectionError =
+					firstError.message.includes("Ollama service is not running") ||
+					firstError.message.includes("ECONNREFUSED") ||
+					firstError.message.includes("fetch failed")
+
+				if (isConnectionError) {
+					// This is a real connection error - Ollama is not accessible
 					throw new Error(`Indexing failed: ${firstError.message}`)
 				} else {
+					// Other types of errors - report as indexing failure
 					throw new Error(t("embeddings:orchestrator.indexingFailedNoBlocks"))
 				}
 			}
 
-			// Check for partial failures - if a significant portion of blocks failed
-			const failureRate = (cumulativeBlocksFoundSoFar - cumulativeBlocksIndexed) / cumulativeBlocksFoundSoFar
-			if (batchErrors.length > 0 && failureRate > 0.1) {
-				// More than 10% of blocks failed to index
-				const firstError = batchErrors[0]
-				throw new Error(
-					`Indexing partially failed: Only ${cumulativeBlocksIndexed} of ${cumulativeBlocksFoundSoFar} blocks were indexed. ${firstError.message}`,
+			// Check for partial failures - but only if we have a significant failure rate
+			// AND actual errors were reported (not just slow processing)
+			if (cumulativeBlocksFoundSoFar > 0 && batchErrors.length > 0) {
+				const failureRate = (cumulativeBlocksFoundSoFar - cumulativeBlocksIndexed) / cumulativeBlocksFoundSoFar
+
+				// Only report partial failure if more than 50% failed (not 10%)
+				// This accounts for slow Ollama processing where some batches might timeout
+				// but the service is actually working
+				if (failureRate > 0.5) {
+					const firstError = batchErrors[0]
+					throw new Error(
+						`Indexing partially failed: Only ${cumulativeBlocksIndexed} of ${cumulativeBlocksFoundSoFar} blocks were indexed. ${firstError.message}`,
+					)
+				} else if (failureRate > 0.1) {
+					// Log a warning for moderate failure rates but don't fail the entire process
+					console.warn(
+						`[CodeIndexOrchestrator] Some blocks failed to index (${cumulativeBlocksIndexed}/${cumulativeBlocksFoundSoFar} succeeded). This may be due to slow processing.`,
+					)
+				}
+			}
+
+			// Final check: If we found blocks but indexed absolutely none and no errors were reported,
+			// this might indicate the process was interrupted or there's a silent failure
+			if (cumulativeBlocksFoundSoFar > 0 && cumulativeBlocksIndexed === 0 && batchErrors.length === 0) {
+				console.warn(
+					`[CodeIndexOrchestrator] No blocks were indexed despite finding ${cumulativeBlocksFoundSoFar} blocks. The indexing may still be in progress or was interrupted.`,
 				)
-			}
-
-			// CRITICAL: If there were ANY batch errors and NO blocks were successfully indexed,
-			// this is a complete failure regardless of the failure rate calculation
-			if (batchErrors.length > 0 && cumulativeBlocksIndexed === 0) {
-				const firstError = batchErrors[0]
-				throw new Error(`Indexing failed completely: ${firstError.message}`)
-			}
-
-			// Final sanity check: If we found blocks but indexed none and somehow no errors were reported,
-			// this is still a failure
-			if (cumulativeBlocksFoundSoFar > 0 && cumulativeBlocksIndexed === 0) {
-				throw new Error(t("embeddings:orchestrator.indexingFailedCritical"))
+				// Don't throw an error here - let the process continue
+				// The file watcher will handle subsequent updates
 			}
 
 			await this._startWatcher()
