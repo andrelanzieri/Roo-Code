@@ -60,6 +60,8 @@ export class CodeIndexServiceFactory {
 				config.openAiCompatibleOptions.baseUrl,
 				config.openAiCompatibleOptions.apiKey,
 				config.modelId,
+				undefined, // maxItemTokens - use default
+				config.openAiCompatibleOptions.encodingFormat,
 			)
 		} else if (provider === "gemini") {
 			if (!config.geminiOptions?.apiKey) {

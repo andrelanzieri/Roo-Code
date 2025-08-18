@@ -16,7 +16,7 @@ export class CodeIndexConfigManager {
 	private modelDimension?: number
 	private openAiOptions?: ApiHandlerOptions
 	private ollamaOptions?: ApiHandlerOptions
-	private openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
+	private openAiCompatibleOptions?: { baseUrl: string; apiKey: string; encodingFormat?: "base64" | "float" }
 	private geminiOptions?: { apiKey: string }
 	private mistralOptions?: { apiKey: string }
 	private qdrantUrl?: string = "http://localhost:6333"
@@ -67,6 +67,9 @@ export class CodeIndexConfigManager {
 		// Fix: Read OpenAI Compatible settings from the correct location within codebaseIndexConfig
 		const openAiCompatibleBaseUrl = codebaseIndexConfig.codebaseIndexOpenAiCompatibleBaseUrl ?? ""
 		const openAiCompatibleApiKey = this.contextProxy?.getSecret("codebaseIndexOpenAiCompatibleApiKey") ?? ""
+		// Default to base64 for backward compatibility, but allow float format
+		const openAiCompatibleEncodingFormat =
+			(codebaseIndexConfig as any).codebaseIndexOpenAiCompatibleEncodingFormat ?? "base64"
 		const geminiApiKey = this.contextProxy?.getSecret("codebaseIndexGeminiApiKey") ?? ""
 		const mistralApiKey = this.contextProxy?.getSecret("codebaseIndexMistralApiKey") ?? ""
 
@@ -119,6 +122,7 @@ export class CodeIndexConfigManager {
 				? {
 						baseUrl: openAiCompatibleBaseUrl,
 						apiKey: openAiCompatibleApiKey,
+						encodingFormat: openAiCompatibleEncodingFormat as "base64" | "float",
 					}
 				: undefined
 
@@ -138,7 +142,7 @@ export class CodeIndexConfigManager {
 			modelDimension?: number
 			openAiOptions?: ApiHandlerOptions
 			ollamaOptions?: ApiHandlerOptions
-			openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
+			openAiCompatibleOptions?: { baseUrl: string; apiKey: string; encodingFormat?: "base64" | "float" }
 			geminiOptions?: { apiKey: string }
 			mistralOptions?: { apiKey: string }
 			qdrantUrl?: string

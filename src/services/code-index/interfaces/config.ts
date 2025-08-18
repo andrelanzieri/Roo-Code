@@ -11,7 +11,7 @@ export interface CodeIndexConfig {
 	modelDimension?: number // Generic dimension property for all providers
 	openAiOptions?: ApiHandlerOptions
 	ollamaOptions?: ApiHandlerOptions
-	openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
+	openAiCompatibleOptions?: { baseUrl: string; apiKey: string; encodingFormat?: "base64" | "float" }
 	geminiOptions?: { apiKey: string }
 	mistralOptions?: { apiKey: string }
 	qdrantUrl?: string

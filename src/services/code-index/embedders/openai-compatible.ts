@@ -38,6 +38,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	private readonly apiKey: string
 	private readonly isFullUrl: boolean
 	private readonly maxItemTokens: number
+	private readonly encodingFormat: "base64" | "float"
 
 	// Global rate limiting state shared across all instances
 	private static globalRateLimitState = {
@@ -55,8 +56,15 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	 * @param apiKey The API key for authentication
 	 * @param modelId Optional model identifier (defaults to "text-embedding-3-small")
 	 * @param maxItemTokens Optional maximum tokens per item (defaults to MAX_ITEM_TOKENS)
+	 * @param encodingFormat Optional encoding format for embeddings (defaults to "base64")
 	 */
-	constructor(baseUrl: string, apiKey: string, modelId?: string, maxItemTokens?: number) {
+	constructor(
+		baseUrl: string,
+		apiKey: string,
+		modelId?: string,
+		maxItemTokens?: number,
+		encodingFormat?: "base64" | "float",
+	) {
 		if (!baseUrl) {
 			throw new Error(t("embeddings:validation.baseUrlRequired"))
 		}
@@ -74,6 +82,8 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 		// Cache the URL type check for performance
 		this.isFullUrl = this.isFullEndpointUrl(baseUrl)
 		this.maxItemTokens = maxItemTokens || MAX_ITEM_TOKENS
+		// Default to base64 for backward compatibility, but allow float format
+		this.encodingFormat = encodingFormat || "base64"
 	}
 
 	/**
@@ -207,7 +217,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 			body: JSON.stringify({
 				input: batchTexts,
 				model: model,
-				encoding_format: "base64",
+				encoding_format: this.encodingFormat,
 			}),
 		})
 
@@ -263,19 +273,26 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 					response = await this.makeDirectEmbeddingRequest(this.baseUrl, batchTexts, model)
 				} else {
 					// Use OpenAI SDK for base URLs
-					response = (await this.embeddingsClient.embeddings.create({
+					const createParams: any = {
 						input: batchTexts,
 						model: model,
-						// OpenAI package (as of v4.78.1) has a parsing issue that truncates embedding dimensions to 256
-						// when processing numeric arrays, which breaks compatibility with models using larger dimensions.
-						// By requesting base64 encoding, we bypass the package's parser and handle decoding ourselves.
-						encoding_format: "base64",
-					})) as OpenAIEmbeddingResponse
+					}
+
+					// Only set encoding_format if it's base64 (SDK default is float)
+					// OpenAI package (as of v4.78.1) has a parsing issue that truncates embedding dimensions to 256
+					// when processing numeric arrays, which breaks compatibility with models using larger dimensions.
+					// By requesting base64 encoding, we bypass the package's parser and handle decoding ourselves.
+					if (this.encodingFormat === "base64") {
+						createParams.encoding_format = "base64"
+					}
+
+					response = (await this.embeddingsClient.embeddings.create(createParams)) as OpenAIEmbeddingResponse
 				}
 
-				// Convert base64 embeddings to float32 arrays
+				// Process embeddings based on encoding format
 				const processedEmbeddings = response.data.map((item: EmbeddingItem) => {
-					if (typeof item.embedding === "string") {
+					if (this.encodingFormat === "base64" && typeof item.embedding === "string") {
+						// Convert base64 embeddings to float32 arrays
 						const buffer = Buffer.from(item.embedding, "base64")
 
 						// Create Float32Array view over the buffer
@@ -286,6 +303,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 							embedding: Array.from(float32Array),
 						}
 					}
+					// For float format, embeddings should already be arrays
 					return item
 				})
 
@@ -365,11 +383,17 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 					response = await this.makeDirectEmbeddingRequest(this.baseUrl, testTexts, modelToUse)
 				} else {
 					// Test using OpenAI SDK for base URLs
-					response = (await this.embeddingsClient.embeddings.create({
+					const createParams: any = {
 						input: testTexts,
 						model: modelToUse,
-						encoding_format: "base64",
-					})) as OpenAIEmbeddingResponse
+					}
+
+					// Only set encoding_format if it's base64
+					if (this.encodingFormat === "base64") {
+						createParams.encoding_format = "base64"
+					}
+
+					response = (await this.embeddingsClient.embeddings.create(createParams)) as OpenAIEmbeddingResponse
 				}
 
 				// Check if we got a valid response

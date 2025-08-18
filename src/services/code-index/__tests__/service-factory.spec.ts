@@ -194,6 +194,8 @@ describe("CodeIndexServiceFactory", () => {
 				"https://api.example.com/v1",
 				"test-api-key",
 				testModelId,
+				undefined, // maxItemTokens
+				undefined, // encodingFormat
 			)
 		})
 
@@ -216,7 +218,9 @@ describe("CodeIndexServiceFactory", () => {
 			expect(MockedOpenAICompatibleEmbedder).toHaveBeenCalledWith(
 				"https://api.example.com/v1",
 				"test-api-key",
-				undefined,
+				undefined, // modelId
+				undefined, // maxItemTokens
+				undefined, // encodingFormat
 			)
 		})
 
