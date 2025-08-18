@@ -2,6 +2,7 @@ import os from "os"
 import * as path from "path"
 import fs from "fs/promises"
 import EventEmitter from "events"
+import { isWSL, getWindowsHomeFromWSL } from "../../utils/wsl"
 
 import { Anthropic } from "@anthropic-ai/sdk"
 import delay from "delay"
@@ -1318,14 +1319,26 @@ export class ClineProvider
 	async ensureMcpServersDirectoryExists(): Promise<string> {
 		// Get platform-specific application data directory
 		let mcpServersDir: string
-		if (process.platform === "win32") {
-			// Windows: %APPDATA%\Roo-Code\MCP
+
+		// Check if we're running in WSL
+		if (isWSL()) {
+			// In WSL, use Windows paths for better compatibility
+			const windowsHome = getWindowsHomeFromWSL()
+			if (windowsHome) {
+				// Use Windows AppData directory accessible from WSL
+				mcpServersDir = path.join(windowsHome, "AppData", "Roaming", "Roo-Code", "MCP")
+			} else {
+				// Fallback to a WSL-friendly location that's easily accessible from Windows
+				mcpServersDir = path.join("/mnt/c", "ProgramData", "Roo-Code", "MCP")
+			}
+		} else if (process.platform === "win32") {
+			// Native Windows: %APPDATA%\Roo-Code\MCP
 			mcpServersDir = path.join(os.homedir(), "AppData", "Roaming", "Roo-Code", "MCP")
 		} else if (process.platform === "darwin") {
 			// macOS: ~/Documents/Cline/MCP
 			mcpServersDir = path.join(os.homedir(), "Documents", "Cline", "MCP")
 		} else {
-			// Linux: ~/.local/share/Cline/MCP
+			// Native Linux: ~/.local/share/Roo-Code/MCP
 			mcpServersDir = path.join(os.homedir(), ".local", "share", "Roo-Code", "MCP")
 		}
 

@@ -18,6 +18,7 @@ import * as path from "path"
 import * as vscode from "vscode"
 import { z } from "zod"
 import { t } from "../../i18n"
+import { isWSL } from "../../utils/wsl"
 
 import { ClineProvider } from "../../core/webview/ClineProvider"
 import { GlobalFileNames } from "../../shared/globalFileNames"
@@ -1657,7 +1658,8 @@ export class McpHub {
 
 		// Normalize path for cross-platform compatibility
 		// Use a consistent path format for both reading and writing
-		const normalizedPath = process.platform === "win32" ? configPath.replace(/\\/g, "/") : configPath
+		// In WSL, we need to handle paths differently
+		const normalizedPath = process.platform === "win32" || isWSL() ? configPath.replace(/\\/g, "/") : configPath
 
 		// Read the appropriate config file
 		const content = await fs.readFile(normalizedPath, "utf-8")
