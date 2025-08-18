@@ -202,5 +202,23 @@
 		"preventCompletionWithOpenTodos": {
 			"description": "Todo listesinde tamamlanmamış todolar olduğunda görev tamamlanmasını engelle"
 		}
+	},
+	"uiSettings": {
+		"description": "Customize which UI elements are visible in the interface",
+		"promptInputArea": {
+			"title": "Prompt Input Area Customization",
+			"showEnhancePromptButton": "Show 'Enhance Prompt' button",
+			"showCodebaseIndexingButton": "Show 'Codebase Indexing' button",
+			"showAddImagesToMessageButton": "Show 'Add Images to Message' button",
+			"showManageSlashCommandsButton": "Show 'Manage Slash Commands' button",
+			"showHintText": "Show hint text (\"@ to add context, / to switch modes...\")",
+			"showSendButton": "Show 'Send' button",
+			"showApiConfigurationButton": "Show 'API Configuration' button",
+			"showAutoApproveTab": "Show 'Auto-Approve' tab"
+		},
+		"generalUI": {
+			"title": "General UI Element Customization",
+			"showContextPercentageBar": "Show context percentage bar during chat"
+		}
 	}
 }

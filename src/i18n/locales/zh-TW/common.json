@@ -202,5 +202,23 @@
 		"preventCompletionWithOpenTodos": {
 			"description": "當待辦事項清單中有未完成的待辦事項時阻止工作完成"
 		}
+	},
+	"uiSettings": {
+		"description": "Customize which UI elements are visible in the interface",
+		"promptInputArea": {
+			"title": "Prompt Input Area Customization",
+			"showEnhancePromptButton": "Show 'Enhance Prompt' button",
+			"showCodebaseIndexingButton": "Show 'Codebase Indexing' button",
+			"showAddImagesToMessageButton": "Show 'Add Images to Message' button",
+			"showManageSlashCommandsButton": "Show 'Manage Slash Commands' button",
+			"showHintText": "Show hint text (\"@ to add context, / to switch modes...\")",
+			"showSendButton": "Show 'Send' button",
+			"showApiConfigurationButton": "Show 'API Configuration' button",
+			"showAutoApproveTab": "Show 'Auto-Approve' tab"
+		},
+		"generalUI": {
+			"title": "General UI Element Customization",
+			"showContextPercentageBar": "Show context percentage bar during chat"
+		}
 	}
 }
