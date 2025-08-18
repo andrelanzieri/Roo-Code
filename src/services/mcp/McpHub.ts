@@ -1690,8 +1690,31 @@ export class McpHub {
 
 		await fs.writeFile(normalizedPath, JSON.stringify(config, null, 2))
 
-		if (connection) {
-			connection.server.tools = await this.fetchToolsList(serverName, source)
+		// Update the local tools list without making an MCP request
+		// This avoids connection issues when toggling auto-approve on running tools
+		if (connection && connection.server.tools) {
+			// Update the local tool's alwaysAllow or enabledForPrompt property
+			const tool = connection.server.tools.find((t) => t.name === toolName)
+			if (tool) {
+				if (listName === "alwaysAllow") {
+					tool.alwaysAllow = addTool
+				} else if (listName === "disabledTools") {
+					tool.enabledForPrompt = !addTool
+				}
+			}
+			await this.notifyWebviewOfServerChanges()
+		} else if (connection && connection.type === "connected") {
+			// Only fetch tools list if we don't have it cached and the connection is active
+			try {
+				connection.server.tools = await this.fetchToolsList(serverName, source)
+				await this.notifyWebviewOfServerChanges()
+			} catch (error) {
+				// If fetching fails, just notify with current state
+				console.warn(`Failed to refresh tools list for ${serverName}, using cached state:`, error)
+				await this.notifyWebviewOfServerChanges()
+			}
+		} else {
+			// For disconnected servers, just notify with current state
 			await this.notifyWebviewOfServerChanges()
 		}
 	}
