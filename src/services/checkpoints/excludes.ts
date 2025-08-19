@@ -2,7 +2,7 @@ import fs from "fs/promises"
 import * as path from "path"
 
 import { fileExistsAtPath } from "../../utils/fs"
-import { executeRipgrepForFiles } from "../search/file-search"
+import { executeRipgrepForFiles, executeRipgrep } from "../search/file-search"
 
 const DEFAULT_LARGE_FILE_THRESHOLD_BYTES = 10 * 1024 * 1024 // 10 MB
 
@@ -268,14 +268,42 @@ const getGameEnginePatterns = () => [
 
 /**
  * Scan the workspace for very large non-code files and exclude them automatically.
+ * Pre-filters out git-lfs managed files to avoid unnecessary file system operations.
  * Uses ripgrep for fast file listing, then fs.stat for sizes.
  */
 async function getLargeFileAutoExcludePatterns(
 	workspacePath: string,
 	thresholdBytes: number = DEFAULT_LARGE_FILE_THRESHOLD_BYTES,
+	lfsPatterns: string[] = [],
 ): Promise<string[]> {
 	try {
-		const items = await executeRipgrepForFiles(workspacePath, 50000)
+		// Create a custom ripgrep execution that excludes git-lfs patterns
+		const args = [
+			"--files",
+			"--follow",
+			"--hidden",
+			"-g",
+			"!**/node_modules/**",
+			"-g",
+			"!**/.git/**",
+			"-g",
+			"!**/out/**",
+			"-g",
+			"!**/dist/**",
+		]
+
+		// Add git-lfs patterns as exclusions to ripgrep
+		// This pre-filters files before we check their sizes
+		for (const pattern of lfsPatterns) {
+			// Convert git-lfs patterns to ripgrep glob patterns
+			// Git patterns like "*.psd" need to be "!*.psd" for ripgrep
+			const rgPattern = pattern.startsWith("!") ? pattern.substring(1) : `!${pattern}`
+			args.push("-g", rgPattern)
+		}
+
+		args.push(workspacePath)
+
+		const items = await executeRipgrep({ args, workspacePath, limit: 50000 })
 		const large: string[] = []
 
 		for (const item of items) {
@@ -311,6 +339,9 @@ export async function getExcludePatternsWithStats(workspacePath: string): Promis
 	patterns: string[]
 	stats: { largeFilesExcluded: number; thresholdBytes: number; sample: string[] }
 }> {
+	// Get git-lfs patterns first
+	const lfsPatterns = await getLfsPatterns(workspacePath)
+
 	const base = [
 		".git/",
 		...getBuildArtifactPatterns(),
@@ -322,10 +353,15 @@ export async function getExcludePatternsWithStats(workspacePath: string): Promis
 		...getGeospatialPatterns(),
 		...getLogFilePatterns(),
 		...getGameEnginePatterns(),
-		...(await getLfsPatterns(workspacePath)),
+		...lfsPatterns,
 	]
 
-	const dynamicLarge = await getLargeFileAutoExcludePatterns(workspacePath)
+	// Pass lfs patterns to the large file scanner to pre-filter them
+	const dynamicLarge = await getLargeFileAutoExcludePatterns(
+		workspacePath,
+		DEFAULT_LARGE_FILE_THRESHOLD_BYTES,
+		lfsPatterns,
+	)
 
 	const patterns = Array.from(new Set([...base, ...dynamicLarge]))
 
