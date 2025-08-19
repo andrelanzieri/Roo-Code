@@ -11,7 +11,7 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { executeRipgrep } from "../../services/search/file-search"
 
 import { CheckpointDiff, CheckpointResult, CheckpointEventMap } from "./types"
-import { getExcludePatterns } from "./excludes"
+import { getExcludePatterns, getExcludePatternsWithStats } from "./excludes"
 
 export abstract class ShadowCheckpointService extends EventEmitter {
 	public readonly taskId: string
@@ -139,8 +139,15 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 	// .gitignore.
 	protected async writeExcludeFile() {
 		await fs.mkdir(path.join(this.dotGitDir, "info"), { recursive: true })
-		const patterns = await getExcludePatterns(this.workspaceDir)
+		const { patterns, stats } = await getExcludePatternsWithStats(this.workspaceDir)
 		await fs.writeFile(path.join(this.dotGitDir, "info", "exclude"), patterns.join("\n"))
+
+		if (stats?.largeFilesExcluded && stats.largeFilesExcluded > 0) {
+			const mb = Math.round(stats.thresholdBytes / (1024 * 1024))
+			this.log(
+				`[${this.constructor.name}#writeExcludeFile] auto-excluding ${stats.largeFilesExcluded} large files (>= ${mb}MB) from checkpoints. Sample: ${stats.sample.join(", ")}`,
+			)
+		}
 	}
 
 	private async stageAll(git: SimpleGit) {
