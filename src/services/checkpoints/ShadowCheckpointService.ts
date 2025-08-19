@@ -109,7 +109,8 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			await git.addConfig("commit.gpgSign", "false") // Disable commit signing for shadow repo.
 			await git.addConfig("user.name", "Roo Code")
 			await git.addConfig("user.email", "noreply@example.com")
-			await this.writeExcludeFile()
+			// Force write exclude file on initial creation (git creates a default one)
+			await this.writeExcludeFile(true)
 			await this.stageAll(git)
 			const { commit } = await git.commit("initial commit", { "--allow-empty": null })
 			this.baseHash = commit
