@@ -12,6 +12,7 @@ import { listFilesTool } from "../tools/listFilesTool"
 import { getReadFileToolDescription, readFileTool } from "../tools/readFileTool"
 import { writeToFileTool } from "../tools/writeToFileTool"
 import { applyDiffTool } from "../tools/multiApplyDiffTool"
+import { morphFastApplyTool } from "../tools/morphFastApplyTool"
 import { insertContentTool } from "../tools/insertContentTool"
 import { searchAndReplaceTool } from "../tools/searchAndReplaceTool"
 import { listCodeDefinitionNamesTool } from "../tools/listCodeDefinitionNamesTool"
@@ -179,6 +180,8 @@ export async function presentAssistantMessage(cline: Task) {
 							}
 						}
 						return `[${block.name}]`
+					case "morph_fast_apply":
+						return `[${block.name} for '${block.params.path}']`
 					case "search_files":
 						return `[${block.name} for '${block.params.regex}'${
 							block.params.file_pattern ? ` in '${block.params.file_pattern}'` : ""
@@ -445,6 +448,10 @@ export async function presentAssistantMessage(cline: Task) {
 					}
 					break
 				}
+				case "morph_fast_apply":
+					await checkpointSaveAndMark(cline)
+					await morphFastApplyTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
+					break
 				case "insert_content":
 					await checkpointSaveAndMark(cline)
 					await insertContentTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)

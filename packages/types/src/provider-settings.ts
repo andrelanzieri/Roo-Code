@@ -91,6 +91,9 @@ const baseProviderSettingsSchema = z.object({
 
 	// Model verbosity.
 	verbosity: verbosityLevelsSchema.optional(),
+
+	// Morph Fast Apply API key
+	morphApiKey: z.string().optional(),
 })
 
 // Several of the providers share common model config properties.
