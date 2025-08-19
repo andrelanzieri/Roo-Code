@@ -264,4 +264,78 @@ readme.md text
 			expect(result.stats.sample).not.toContain("big.ts")
 		})
 	})
+
+	describe("configurable threshold and error reporting", () => {
+		it("respects ROO_CHECKPOINTS_LARGE_FILE_THRESHOLD_MB override", async () => {
+			// Ensure no LFS patterns
+			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
+
+			// Set threshold to 1 MB
+			const prev = process.env.ROO_CHECKPOINTS_LARGE_FILE_THRESHOLD_MB
+			process.env.ROO_CHECKPOINTS_LARGE_FILE_THRESHOLD_MB = "1"
+
+			try {
+				// Mock file listing
+				vi.mocked(executeRipgrep).mockResolvedValue([
+					{ path: "large.bin", type: "file", label: "large.bin" },
+					{ path: "code.js", type: "file", label: "code.js" },
+				])
+
+				// Mock sizes: 2MB for large.bin, 2MB for code.js (but code is allowlisted)
+				vi.mocked(fs.stat).mockImplementation(async (p) => {
+					const s = p.toString()
+					if (s.includes("large.bin") || s.includes("code.js")) {
+						return { size: 2 * 1024 * 1024 } as any
+					}
+					return { size: 1024 } as any
+				})
+
+				const result = await getExcludePatternsWithStats(testWorkspacePath)
+
+				expect(result.stats.thresholdBytes).toBe(1 * 1024 * 1024)
+				expect(result.stats.largeFilesExcluded).toBe(1)
+				expect(result.stats.sample).toContain("large.bin")
+				// code.js should never be excluded even if large
+				expect(result.stats.sample).not.toContain("code.js")
+			} finally {
+				// cleanup
+				if (prev === undefined) {
+					delete process.env.ROO_CHECKPOINTS_LARGE_FILE_THRESHOLD_MB
+				} else {
+					process.env.ROO_CHECKPOINTS_LARGE_FILE_THRESHOLD_MB = prev
+				}
+			}
+		})
+
+		it("records ripgrep failures without breaking pattern generation", async () => {
+			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
+			// Force executeRipgrep to throw
+			vi.mocked(executeRipgrep).mockRejectedValue(new Error("ripgrep failed"))
+
+			const result = await getExcludePatternsWithStats(testWorkspacePath)
+
+			// No dynamic large files because ripgrep failed
+			expect(result.stats.largeFilesExcluded).toBe(0)
+			expect(result.stats.sample.length).toBe(0)
+			// Error counts should reflect one ripgrep error
+			expect(result.stats.errorCounts?.ripgrepErrors).toBe(1)
+			expect(result.stats.errorCounts?.fsStatErrors).toBe(0)
+			// Base patterns should still include .git/
+			expect(result.patterns).toContain(".git/")
+		})
+
+		it("counts fs.stat errors for diagnostics", async () => {
+			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
+			vi.mocked(executeRipgrep).mockResolvedValue([{ path: "mystery.bin", type: "file", label: "mystery.bin" }])
+			// Make stat fail
+			vi.mocked(fs.stat).mockRejectedValue(new Error("stat failure"))
+
+			const result = await getExcludePatternsWithStats(testWorkspacePath)
+
+			expect(result.stats.largeFilesExcluded).toBe(0)
+			expect(result.stats.sample.length).toBe(0)
+			expect(result.stats.errorCounts?.ripgrepErrors).toBe(0)
+			expect(result.stats.errorCounts?.fsStatErrors).toBe(1)
+		})
+	})
 })

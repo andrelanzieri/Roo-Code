@@ -142,10 +142,17 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 		const { patterns, stats } = await getExcludePatternsWithStats(this.workspaceDir)
 		await fs.writeFile(path.join(this.dotGitDir, "info", "exclude"), patterns.join("\n"))
 
+		const mb = Math.round(stats.thresholdBytes / (1024 * 1024))
+
 		if (stats?.largeFilesExcluded && stats.largeFilesExcluded > 0) {
-			const mb = Math.round(stats.thresholdBytes / (1024 * 1024))
 			this.log(
 				`[${this.constructor.name}#writeExcludeFile] auto-excluding ${stats.largeFilesExcluded} large files (>= ${mb}MB) from checkpoints. Sample: ${stats.sample.join(", ")}`,
+			)
+		}
+
+		if (stats?.errorCounts && (stats.errorCounts.ripgrepErrors > 0 || stats.errorCounts.fsStatErrors > 0)) {
+			this.log(
+				`[${this.constructor.name}#writeExcludeFile] auto-exclude encountered errors (ripgrepErrors=${stats.errorCounts.ripgrepErrors}, fsStatErrors=${stats.errorCounts.fsStatErrors}). Check environment and filesystem permissions.`,
 			)
 		}
 	}

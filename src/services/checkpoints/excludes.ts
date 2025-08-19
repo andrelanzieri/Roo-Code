@@ -2,9 +2,19 @@ import fs from "fs/promises"
 import * as path from "path"
 
 import { fileExistsAtPath } from "../../utils/fs"
-import { executeRipgrepForFiles, executeRipgrep } from "../search/file-search"
+import { executeRipgrep } from "../search/file-search"
 
 const DEFAULT_LARGE_FILE_THRESHOLD_BYTES = 10 * 1024 * 1024 // 10 MB
+
+function getConfiguredLargeFileThresholdBytes(): number {
+	// Allow override via environment variable (in MB), e.g. ROO_CHECKPOINTS_LARGE_FILE_THRESHOLD_MB=25
+	const env = process.env.ROO_CHECKPOINTS_LARGE_FILE_THRESHOLD_MB
+	const parsed = env ? Number(env) : NaN
+	if (Number.isFinite(parsed) && parsed > 0) {
+		return Math.round(parsed * 1024 * 1024)
+	}
+	return DEFAULT_LARGE_FILE_THRESHOLD_BYTES
+}
 
 // Common code/text extensions that should not be auto-excluded by size
 const CODE_EXT_ALLOWLIST: Set<string> = new Set<string>([
@@ -273,62 +283,71 @@ const getGameEnginePatterns = () => [
  */
 async function getLargeFileAutoExcludePatterns(
 	workspacePath: string,
-	thresholdBytes: number = DEFAULT_LARGE_FILE_THRESHOLD_BYTES,
+	thresholdBytes: number,
 	lfsPatterns: string[] = [],
-): Promise<string[]> {
+): Promise<{ patterns: string[]; errorCounts: { ripgrepErrors: number; fsStatErrors: number } }> {
+	// Build ripgrep args with common ignores
+	const args = [
+		"--files",
+		"--follow",
+		"--hidden",
+		"-g",
+		"!**/node_modules/**",
+		"-g",
+		"!**/.git/**",
+		"-g",
+		"!**/out/**",
+		"-g",
+		"!**/dist/**",
+	]
+
+	// Pre-filter git-lfs patterns at ripgrep level
+	for (const pattern of lfsPatterns) {
+		const rgPattern = pattern.startsWith("!") ? pattern.substring(1) : `!${pattern}`
+		args.push("-g", rgPattern)
+	}
+
+	args.push(workspacePath)
+
+	let items: Array<{ path: string; type: string }> = []
+	let ripgrepErrors = 0
+	let fsStatErrors = 0
+
 	try {
-		// Create a custom ripgrep execution that excludes git-lfs patterns
-		const args = [
-			"--files",
-			"--follow",
-			"--hidden",
-			"-g",
-			"!**/node_modules/**",
-			"-g",
-			"!**/.git/**",
-			"-g",
-			"!**/out/**",
-			"-g",
-			"!**/dist/**",
-		]
-
-		// Add git-lfs patterns as exclusions to ripgrep
-		// This pre-filters files before we check their sizes
-		for (const pattern of lfsPatterns) {
-			// Convert git-lfs patterns to ripgrep glob patterns
-			// Git patterns like "*.psd" need to be "!*.psd" for ripgrep
-			const rgPattern = pattern.startsWith("!") ? pattern.substring(1) : `!${pattern}`
-			args.push("-g", rgPattern)
-		}
-
-		args.push(workspacePath)
-
-		const items = await executeRipgrep({ args, workspacePath, limit: 50000 })
-		const large: string[] = []
-
-		for (const item of items) {
-			if (item.type !== "file") continue
-
-			const rel = item.path
-			const ext = path.extname(rel).toLowerCase()
-
-			// Keep code/text files even if large
-			if (CODE_EXT_ALLOWLIST.has(ext)) continue
-
-			try {
-				const stat = await fs.stat(path.join(workspacePath, rel))
-				if (stat.size >= thresholdBytes) {
-					// Normalize to forward slashes for git exclude
-					large.push(rel.replace(/\\/g, "/"))
-				}
-			} catch {
-				// Ignore stat errors for individual files
-			}
-		}
-
-		return Array.from(new Set(large))
+		const rgResult = await executeRipgrep({ args, workspacePath, limit: 50000 })
+		items = Array.isArray(rgResult) ? rgResult : []
 	} catch {
-		return []
+		// If ripgrep fails, record error and continue with empty items to avoid breaking checkpoints
+		ripgrepErrors = 1
+		items = []
+	}
+
+	const large: string[] = []
+
+	for (const item of items) {
+		if ((item as any).type !== "file") continue
+
+		const rel = (item as any).path
+		const ext = path.extname(rel).toLowerCase()
+
+		// Keep code/text files even if large
+		if (CODE_EXT_ALLOWLIST.has(ext)) continue
+
+		try {
+			const stat = await fs.stat(path.join(workspacePath, rel))
+			if (stat.size >= thresholdBytes) {
+				// Normalize to forward slashes for git exclude
+				large.push(rel.replace(/\\/g, "/"))
+			}
+		} catch {
+			// Count stat errors for diagnostics
+			fsStatErrors++
+		}
+	}
+
+	return {
+		patterns: Array.from(new Set(large)),
+		errorCounts: { ripgrepErrors, fsStatErrors },
 	}
 }
 
@@ -337,7 +356,12 @@ async function getLargeFileAutoExcludePatterns(
  */
 export async function getExcludePatternsWithStats(workspacePath: string): Promise<{
 	patterns: string[]
-	stats: { largeFilesExcluded: number; thresholdBytes: number; sample: string[] }
+	stats: {
+		largeFilesExcluded: number
+		thresholdBytes: number
+		sample: string[]
+		errorCounts?: { ripgrepErrors: number; fsStatErrors: number }
+	}
 }> {
 	// Get git-lfs patterns first
 	const lfsPatterns = await getLfsPatterns(workspacePath)
@@ -356,10 +380,13 @@ export async function getExcludePatternsWithStats(workspacePath: string): Promis
 		...lfsPatterns,
 	]
 
+	// Determine threshold (env override supported)
+	const thresholdBytes = getConfiguredLargeFileThresholdBytes()
+
 	// Pass lfs patterns to the large file scanner to pre-filter them
-	const dynamicLarge = await getLargeFileAutoExcludePatterns(
+	const { patterns: dynamicLarge, errorCounts } = await getLargeFileAutoExcludePatterns(
 		workspacePath,
-		DEFAULT_LARGE_FILE_THRESHOLD_BYTES,
+		thresholdBytes,
 		lfsPatterns,
 	)
 
@@ -369,8 +396,9 @@ export async function getExcludePatternsWithStats(workspacePath: string): Promis
 		patterns,
 		stats: {
 			largeFilesExcluded: dynamicLarge.length,
-			thresholdBytes: DEFAULT_LARGE_FILE_THRESHOLD_BYTES,
+			thresholdBytes,
 			sample: dynamicLarge.slice(0, 10),
+			errorCounts,
 		},
 	}
 }
