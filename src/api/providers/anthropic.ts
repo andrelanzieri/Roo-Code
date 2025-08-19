@@ -43,11 +43,17 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	): ApiStream {
 		let stream: AnthropicStream<Anthropic.Messages.RawMessageStreamEvent>
 		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
-		let { id: modelId, betas = [], maxTokens, temperature, reasoning: thinking } = this.getModel()
+		let { id: modelId, betas: modelBetas, maxTokens, temperature, reasoning: thinking } = this.getModel()
+
+		// Initialize betas array properly
+		const betas: string[] = modelBetas ? [...modelBetas] : []
 
 		// Add 1M context beta flag if enabled for Claude Sonnet 4
 		if (modelId === "claude-sonnet-4-20250514" && this.options.anthropicBeta1MContext) {
-			betas.push("context-1m-2025-08-07")
+			// Only add if not already present
+			if (!betas.includes("context-1m-2025-08-07")) {
+				betas.push("context-1m-2025-08-07")
+			}
 		}
 
 		switch (modelId) {
@@ -118,8 +124,12 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 							case "claude-3-5-haiku-20241022":
 							case "claude-3-opus-20240229":
 							case "claude-3-haiku-20240307":
-								betas.push("prompt-caching-2024-07-31")
-								return { headers: { "anthropic-beta": betas.join(",") } }
+								// Only add prompt caching beta if not already present
+								if (!betas.includes("prompt-caching-2024-07-31")) {
+									betas.push("prompt-caching-2024-07-31")
+								}
+								// Only set headers if we have betas to include
+								return betas.length > 0 ? { headers: { "anthropic-beta": betas.join(",") } } : undefined
 							default:
 								return undefined
 						}
