@@ -612,7 +612,7 @@
 			"description": "Tempo máximo de espera para a inicialização da integração do shell antes de executar comandos. Para usuários com tempos de inicialização de shell longos, este valor pode precisar ser aumentado se você vir erros \"Shell Integration Unavailable\" no terminal. <0>Saiba mais</0>"
 		},
 		"shellIntegrationDisabled": {
-			"label": "Desativar integração do shell do terminal",
+			"label": "Usar modo de terminal alternativo",
 			"description": "Ative isso se os comandos do terminal não estiverem funcionando corretamente ou se você vir erros de 'Shell Integration Unavailable'. Isso usa um método mais simples para executar comandos, ignorando alguns recursos avançados do terminal. <0>Saiba mais</0>"
 		},
 		"commandDelay": {

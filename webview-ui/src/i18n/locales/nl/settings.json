@@ -612,7 +612,7 @@
 			"description": "Maximale wachttijd voor het initialiseren van shell-integratie voordat commando's worden uitgevoerd. Voor gebruikers met lange shell-opstarttijden moet deze waarde mogelijk worden verhoogd als je 'Shell Integration Unavailable'-fouten ziet in de terminal. <0>Meer informatie</0>"
 		},
 		"shellIntegrationDisabled": {
-			"label": "Terminal shell-integratie uitschakelen",
+			"label": "Gebruik fallback-terminalmodus",
 			"description": "Schakel dit in als terminalcommando's niet correct werken of als je 'Shell Integration Unavailable'-fouten ziet. Dit gebruikt een eenvoudigere methode om commando's uit te voeren en omzeilt enkele geavanceerde terminalfuncties. <0>Meer informatie</0>"
 		},
 		"commandDelay": {

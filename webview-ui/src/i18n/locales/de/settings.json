@@ -611,7 +611,7 @@
 			"description": "Maximale Wartezeit für die Shell-Integration, bevor Befehle ausgeführt werden. Für Benutzer mit langen Shell-Startzeiten musst du diesen Wert möglicherweise erhöhen, wenn du Fehler vom Typ \"Shell Integration Unavailable\" im Terminal siehst. <0>Mehr erfahren</0>"
 		},
 		"shellIntegrationDisabled": {
-			"label": "Terminal-Shell-Integration deaktivieren",
+			"label": "Fallback-Terminal-Modus verwenden",
 			"description": "Aktiviere dies, wenn Terminalbefehle nicht korrekt funktionieren oder du Fehler wie 'Shell Integration Unavailable' siehst. Dies verwendet eine einfachere Methode zur Ausführung von Befehlen und umgeht einige erweiterte Terminalfunktionen. <0>Mehr erfahren</0>"
 		},
 		"commandDelay": {

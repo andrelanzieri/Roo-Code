@@ -612,7 +612,7 @@
 			"description": "Tempo massimo di attesa per l'inizializzazione dell'integrazione della shell prima di eseguire i comandi. Per gli utenti con tempi di avvio della shell lunghi, questo valore potrebbe dover essere aumentato se si vedono errori \"Shell Integration Unavailable\" nel terminale. <0>Scopri di più</0>"
 		},
 		"shellIntegrationDisabled": {
-			"label": "Disabilita l'integrazione della shell del terminale",
+			"label": "Usa modalità terminale di fallback",
 			"description": "Abilita questa opzione se i comandi del terminale non funzionano correttamente o se vedi errori 'Shell Integration Unavailable'. Questo utilizza un metodo più semplice per eseguire i comandi, bypassando alcune funzionalità avanzate del terminale. <0>Scopri di più</0>"
 		},
 		"commandDelay": {

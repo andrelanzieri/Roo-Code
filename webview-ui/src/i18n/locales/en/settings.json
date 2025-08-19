@@ -610,8 +610,8 @@
 			"description": "Maximum time to wait for shell integration to initialize before executing commands. For users with long shell startup times, this value may need to be increased if you see \"Shell Integration Unavailable\" errors in the terminal. <0>Learn more</0>"
 		},
 		"shellIntegrationDisabled": {
-			"label": "Disable terminal shell integration",
-			"description": "Enable this if terminal commands aren't working correctly or you see 'Shell Integration Unavailable' errors. This uses a simpler method to run commands, bypassing some advanced terminal features. <0>Learn more</0>"
+			"label": "Use fallback terminal mode",
+			"description": "Enable this if terminal commands aren't working correctly or you see 'Shell Integration Unavailable' errors. This uses a simpler method to run commands, bypassing VSCode's advanced terminal features. When unchecked (default), Roo Code uses VSCode's terminal shell integration for better command tracking. <0>Learn more</0>"
 		},
 		"commandDelay": {
 			"label": "Terminal command delay",

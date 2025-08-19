@@ -616,7 +616,7 @@
 			"description": "Waktu maksimum untuk menunggu integrasi shell menginisialisasi sebelum mengeksekusi perintah. Untuk pengguna dengan waktu startup shell yang lama, nilai ini mungkin perlu ditingkatkan jika kamu melihat error \"Shell Integration Unavailable\" di terminal. <0>Pelajari lebih lanjut</0>"
 		},
 		"shellIntegrationDisabled": {
-			"label": "Nonaktifkan integrasi shell terminal",
+			"label": "Gunakan mode terminal cadangan",
 			"description": "Aktifkan ini jika perintah terminal tidak bekerja dengan benar atau kamu melihat error 'Shell Integration Unavailable'. Ini menggunakan metode yang lebih sederhana untuk menjalankan perintah, melewati beberapa fitur terminal lanjutan. <0>Pelajari lebih lanjut</0>"
 		},
 		"commandDelay": {

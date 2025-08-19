@@ -612,7 +612,7 @@
 			"description": "執行命令前等待 Shell 整合初始化的最長時間。如果您的 Shell 啟動較慢，且終端機出現「Shell 整合無法使用」的錯誤訊息，可能需要提高此數值。 <0>了解更多</0>"
 		},
 		"shellIntegrationDisabled": {
-			"label": "停用終端機 Shell 整合",
+			"label": "使用備用終端模式",
 			"description": "如果終端機指令無法正常運作或看到 'Shell Integration Unavailable' 錯誤，請啟用此項。這會使用較簡單的方法執行指令，繞過一些進階終端機功能。 <0>了解更多</0>"
 		},
 		"commandDelay": {

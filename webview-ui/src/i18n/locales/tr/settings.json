@@ -612,7 +612,7 @@
 			"description": "Komutları yürütmeden önce kabuk entegrasyonunun başlatılması için beklenecek maksimum süre. Kabuk başlatma süresi uzun olan kullanıcılar için, terminalde \"Shell Integration Unavailable\" hatalarını görürseniz bu değerin artırılması gerekebilir. <0>Daha fazla bilgi</0>"
 		},
 		"shellIntegrationDisabled": {
-			"label": "Terminal kabuk entegrasyonunu devre dışı bırak",
+			"label": "Yedek terminal modunu kullan",
 			"description": "Terminal komutları düzgün çalışmıyorsa veya 'Shell Integration Unavailable' hataları görüyorsanız bunu etkinleştirin. Bu, bazı gelişmiş terminal özelliklerini atlayarak komutları çalıştırmak için daha basit bir yöntem kullanır. <0>Daha fazla bilgi</0>"
 		},
 		"commandDelay": {
