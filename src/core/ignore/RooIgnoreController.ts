@@ -114,44 +114,134 @@ export class RooIgnoreController {
 			return undefined
 		}
 
-		// Split command into parts and get the base command
-		const parts = command.trim().split(/\s+/)
-		const baseCommand = parts[0].toLowerCase()
-
-		// Commands that read file contents
-		const fileReadingCommands = [
-			// Unix commands
-			"cat",
-			"less",
-			"more",
-			"head",
-			"tail",
-			"grep",
-			"awk",
-			"sed",
-			// PowerShell commands and aliases
-			"get-content",
-			"gc",
-			"type",
-			"select-string",
-			"sls",
+		// First, check for shell redirections and command substitutions that could read files
+		// These patterns can bypass simple command parsing
+		const dangerousPatterns = [
+			// Input redirection: < file, <file
+			/<\s*([^\s<>|;&]+)/g,
+			// Command substitution: $(cat file), `cat file`
+			/\$\([^)]*\b(cat|head|tail|less|more|grep|awk|sed|type|gc|get-content)\s+([^\s)]+)[^)]*\)/gi,
+			/`[^`]*\b(cat|head|tail|less|more|grep|awk|sed|type|gc|get-content)\s+([^\s`]+)[^`]*`/gi,
+			// Process substitution: <(cat file)
+			/<\([^)]*\b(cat|head|tail|less|more|grep|awk|sed|type|gc|get-content)\s+([^\s)]+)[^)]*\)/gi,
+			// Here documents/strings that might reference files
+			/<<<?\s*([^\s<>|;&]+)/g,
 		]
 
-		if (fileReadingCommands.includes(baseCommand)) {
-			// Check each argument that could be a file path
-			for (let i = 1; i < parts.length; i++) {
-				const arg = parts[i]
-				// Skip command flags/options (both Unix and PowerShell style)
-				if (arg.startsWith("-") || arg.startsWith("/")) {
-					continue
+		for (const pattern of dangerousPatterns) {
+			const matches = command.matchAll(pattern)
+			for (const match of matches) {
+				// Get the potential file path from the match
+				// Different patterns have the file path at different indices
+				const potentialPaths = [match[1], match[2], match[3]].filter(Boolean)
+				for (const filePath of potentialPaths) {
+					if (filePath && !this.validateAccess(filePath)) {
+						return filePath
+					}
 				}
-				// Ignore PowerShell parameter names
-				if (arg.includes(":")) {
-					continue
+			}
+		}
+
+		// Check for piped commands that might expose file contents
+		// e.g., echo "$(cat file)" or echo `cat file`
+		const pipelineCommands = command.split(/[|;&]/).map((cmd) => cmd.trim())
+
+		for (const pipeCmd of pipelineCommands) {
+			// Split command into parts and get the base command
+			const parts = pipeCmd.split(/\s+/)
+			if (parts.length === 0) continue
+
+			const baseCommand = parts[0].toLowerCase()
+
+			// Commands that read file contents
+			const fileReadingCommands = [
+				// Unix commands
+				"cat",
+				"less",
+				"more",
+				"head",
+				"tail",
+				"grep",
+				"awk",
+				"sed",
+				"nl",
+				"tac",
+				"rev",
+				"cut",
+				"paste",
+				"sort",
+				"uniq",
+				"comm",
+				"diff",
+				"cmp",
+				"od",
+				"hexdump",
+				"xxd",
+				"strings",
+				"file",
+				// Additional Unix utilities
+				"zcat",
+				"zless",
+				"zmore",
+				"bzcat",
+				"xzcat",
+				"view",
+				// PowerShell commands and aliases
+				"get-content",
+				"gc",
+				"type",
+				"select-string",
+				"sls",
+				// Windows commands
+				"findstr",
+				"find",
+				"fc",
+			]
+
+			if (fileReadingCommands.includes(baseCommand)) {
+				// Check each argument that could be a file path
+				for (let i = 1; i < parts.length; i++) {
+					const arg = parts[i]
+					// Skip command flags/options (both Unix and PowerShell style)
+					if (arg.startsWith("-") || arg.startsWith("/")) {
+						continue
+					}
+					// Ignore PowerShell parameter names
+					if (arg.includes(":") && i > 0 && parts[i - 1].startsWith("-")) {
+						continue
+					}
+					// Skip empty arguments
+					if (!arg) {
+						continue
+					}
+					// Remove quotes if present
+					const cleanArg = arg.replace(/^["']|["']$/g, "")
+					// Validate file access
+					if (!this.validateAccess(cleanArg)) {
+						return cleanArg
+					}
 				}
-				// Validate file access
-				if (!this.validateAccess(arg)) {
-					return arg
+			}
+
+			// Also check for commands that might read files indirectly
+			// e.g., xargs cat, find -exec cat, etc.
+			if (baseCommand === "xargs" || baseCommand === "find") {
+				// Look for file-reading commands in the arguments
+				const argsStr = parts.slice(1).join(" ")
+				for (const readCmd of fileReadingCommands) {
+					if (argsStr.includes(readCmd)) {
+						// Try to extract file paths from find patterns or xargs input
+						// This is complex, so we'll check common patterns
+						const filePatterns = argsStr.match(/(?:name|path)\s+["']?([^"'\s]+)["']?/gi)
+						if (filePatterns) {
+							for (const pattern of filePatterns) {
+								const filePath = pattern.replace(/(?:name|path)\s+["']?([^"'\s]+)["']?/i, "$1")
+								if (!this.validateAccess(filePath)) {
+									return filePath
+								}
+							}
+						}
+					}
 				}
 			}
 		}

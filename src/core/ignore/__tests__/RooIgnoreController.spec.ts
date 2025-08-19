@@ -276,6 +276,100 @@ describe("RooIgnoreController", () => {
 		})
 
 		/**
+		 * Tests validation of shell redirections and command substitutions
+		 */
+		it("should block shell redirections that read ignored files", () => {
+			// Input redirection
+			expect(controller.validateCommand("wc -l < node_modules/package.json")).toBe("node_modules/package.json")
+			expect(controller.validateCommand("sort < secrets/api-keys.json")).toBe("secrets/api-keys.json")
+			expect(controller.validateCommand("grep pattern <.git/config")).toBe(".git/config")
+
+			// Should allow non-ignored files
+			expect(controller.validateCommand("wc -l < README.md")).toBeUndefined()
+		})
+
+		it("should block command substitutions that read ignored files", () => {
+			// $() command substitution
+			expect(controller.validateCommand("echo $(cat node_modules/package.json)")).toBe(
+				"node_modules/package.json",
+			)
+			expect(controller.validateCommand("result=$(head secrets/api-keys.json)")).toBe("secrets/api-keys.json")
+
+			// Backtick command substitution
+			expect(controller.validateCommand("echo `cat .git/config`")).toBe(".git/config")
+			expect(controller.validateCommand("data=`tail error.log`")).toBe("error.log")
+
+			// Process substitution
+			expect(controller.validateCommand("diff <(cat node_modules/index.js) file2")).toBe("node_modules/index.js")
+
+			// Should allow non-ignored files
+			expect(controller.validateCommand("echo $(cat README.md)")).toBeUndefined()
+		})
+
+		it("should block piped commands that read ignored files", () => {
+			// Commands in pipelines
+			expect(controller.validateCommand("cat node_modules/package.json | grep version")).toBe(
+				"node_modules/package.json",
+			)
+			expect(controller.validateCommand("echo test | tee secrets/output.log; cat secrets/output.log")).toBe(
+				"secrets/output.log",
+			)
+			expect(controller.validateCommand("ls && head .git/config")).toBe(".git/config")
+
+			// Should allow non-ignored files in pipelines
+			expect(controller.validateCommand("cat README.md | grep title")).toBeUndefined()
+		})
+
+		it("should detect additional file reading commands", () => {
+			// Additional Unix utilities
+			expect(controller.validateCommand("nl node_modules/package.json")).toBe("node_modules/package.json")
+			expect(controller.validateCommand("tac .git/config")).toBe(".git/config")
+			expect(controller.validateCommand("strings secrets/binary.dat")).toBe("secrets/binary.dat")
+			expect(controller.validateCommand("hexdump error.log")).toBe("error.log")
+			expect(controller.validateCommand("od -c node_modules/index.js")).toBe("node_modules/index.js")
+
+			// Compressed file readers
+			expect(controller.validateCommand("zcat secrets/data.gz")).toBe("secrets/data.gz")
+			expect(controller.validateCommand("bzcat node_modules/archive.bz2")).toBe("node_modules/archive.bz2")
+
+			// File comparison utilities
+			expect(controller.validateCommand("diff .git/config file2")).toBe(".git/config")
+			expect(controller.validateCommand("cmp secrets/key1 secrets/key2")).toBe("secrets/key1")
+
+			// Windows/PowerShell commands
+			expect(controller.validateCommand("findstr pattern node_modules/package.json")).toBe(
+				"node_modules/package.json",
+			)
+			expect(controller.validateCommand("fc .git/config file2")).toBe(".git/config")
+		})
+
+		it("should handle complex command patterns", () => {
+			// Commands with quotes
+			expect(controller.validateCommand('cat "node_modules/package.json"')).toBe("node_modules/package.json")
+			expect(controller.validateCommand("cat 'secrets/api-keys.json'")).toBe("secrets/api-keys.json")
+
+			// Multiple files in one command
+			expect(controller.validateCommand("cat README.md node_modules/index.js")).toBe("node_modules/index.js")
+
+			// Nested command substitutions
+			expect(controller.validateCommand("echo $(echo $(cat .git/config))")).toBe(".git/config")
+
+			// Mixed patterns
+			expect(controller.validateCommand("cat < node_modules/data.txt | grep pattern")).toBe(
+				"node_modules/data.txt",
+			)
+		})
+
+		it("should handle xargs and find commands that might read files", () => {
+			// xargs with file reading commands
+			expect(controller.validateCommand("find . -name '*.json' | xargs cat")).toBeUndefined() // Can't determine specific files
+			expect(controller.validateCommand("echo node_modules/package.json | xargs cat")).toBeUndefined() // File path is in stdin, not command
+
+			// find with -exec
+			expect(controller.validateCommand("find . -name 'package.json' -exec cat {} \\;")).toBeUndefined() // Can't determine specific files
+		})
+
+		/**
 		 * Tests behavior when no .rooignore exists
 		 */
 		it("should allow all commands when no .rooignore exists", async () => {
@@ -287,6 +381,8 @@ describe("RooIgnoreController", () => {
 			// All commands should be allowed
 			expect(emptyController.validateCommand("cat node_modules/package.json")).toBeUndefined()
 			expect(emptyController.validateCommand("grep pattern .git/config")).toBeUndefined()
+			expect(emptyController.validateCommand("echo $(cat secrets/file)")).toBeUndefined()
+			expect(emptyController.validateCommand("wc < .git/config")).toBeUndefined()
 		})
 	})
 
