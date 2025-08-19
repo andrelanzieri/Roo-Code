@@ -206,14 +206,16 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 							display: "flex",
 							alignItems: "center",
 							gap: "6px",
-						}}>
+						}}
+						onClick={(e) => e.stopPropagation()}>
 						{allConfigs.map(({ key, icon, labelKey }) => {
 							const isEnabled = !!toggles[key]
 							return (
 								<StandardTooltip key={key} content={t(labelKey)}>
-									<span
+									<button
 										className={`codicon codicon-${icon}`}
 										data-active={isEnabled ? "true" : "false"}
+										onClick={() => onAutoApproveToggle(key, !isEnabled)}
 										style={{
 											fontSize: "14px",
 											flexShrink: 0,
@@ -221,6 +223,19 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 											color: isEnabled
 												? "var(--vscode-foreground)"
 												: "var(--vscode-descriptionForeground)",
+											background: "transparent",
+											border: "none",
+											cursor: "pointer",
+											padding: "2px",
+											borderRadius: "3px",
+											transition: "background-color 0.1s",
+										}}
+										onMouseEnter={(e) => {
+											e.currentTarget.style.backgroundColor =
+												"var(--vscode-toolbar-hoverBackground)"
+										}}
+										onMouseLeave={(e) => {
+											e.currentTarget.style.backgroundColor = "transparent"
 										}}
 									/>
 								</StandardTooltip>

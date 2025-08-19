@@ -243,12 +243,48 @@ describe("AutoApproveMenu", () => {
 			render(<AutoApproveMenu />)
 
 			const container = screen.getByText("Auto-approve").parentElement?.parentElement as HTMLElement
-			expect(container.querySelector(".codicon-eye")?.getAttribute("data-active")).toBe("true") // Read
-			expect(container.querySelector(".codicon-edit")?.getAttribute("data-active")).toBe("true") // Write
-			expect(container.querySelector(".codicon-terminal")?.getAttribute("data-active")).toBe("true") // Execute
+			expect(container.querySelector("button.codicon-eye")?.getAttribute("data-active")).toBe("true") // Read
+			expect(container.querySelector("button.codicon-edit")?.getAttribute("data-active")).toBe("true") // Write
+			expect(container.querySelector("button.codicon-terminal")?.getAttribute("data-active")).toBe("true") // Execute
 		})
 
-		it("should display tooltips on icons in collapsed view", async () => {
+		it("should toggle options when clicking icons in collapsed view", () => {
+			const mockSetAlwaysAllowReadOnly = vi.fn()
+			const mockSetAlwaysAllowWrite = vi.fn()
+
+			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
+				...defaultExtensionState,
+				autoApprovalEnabled: false,
+				alwaysAllowReadOnly: false,
+				alwaysAllowWrite: false,
+				setAlwaysAllowReadOnly: mockSetAlwaysAllowReadOnly,
+				setAlwaysAllowWrite: mockSetAlwaysAllowWrite,
+			})
+
+			render(<AutoApproveMenu />)
+
+			const container = screen.getByText("Auto-approve").parentElement?.parentElement as HTMLElement
+			const eyeButton = container.querySelector("button.codicon-eye") as HTMLElement
+			const editButton = container.querySelector("button.codicon-edit") as HTMLElement
+
+			// Click the read-only icon
+			fireEvent.click(eyeButton)
+			expect(mockPostMessage).toHaveBeenCalledWith({
+				type: "alwaysAllowReadOnly",
+				bool: true,
+			})
+			expect(mockSetAlwaysAllowReadOnly).toHaveBeenCalledWith(true)
+
+			// Click the write icon
+			fireEvent.click(editButton)
+			expect(mockPostMessage).toHaveBeenCalledWith({
+				type: "alwaysAllowWrite",
+				bool: true,
+			})
+			expect(mockSetAlwaysAllowWrite).toHaveBeenCalledWith(true)
+		})
+
+		it("should display tooltips on icon buttons in collapsed view", async () => {
 			const user = userEvent.setup()
 
 			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -261,19 +297,19 @@ describe("AutoApproveMenu", () => {
 
 			render(<AutoApproveMenu />)
 
-			// Find the icons
+			// Find the icon buttons
 			const container = screen.getByText("Auto-approve").parentElement?.parentElement
-			const eyeIcon = container?.querySelector(".codicon-eye") as HTMLElement
-			const editIcon = container?.querySelector(".codicon-edit") as HTMLElement
-			const terminalIcon = container?.querySelector(".codicon-terminal") as HTMLElement
+			const eyeButton = container?.querySelector("button.codicon-eye") as HTMLElement
+			const editButton = container?.querySelector("button.codicon-edit") as HTMLElement
+			const terminalButton = container?.querySelector("button.codicon-terminal") as HTMLElement
 
-			// Verify icons are present
-			expect(eyeIcon).toBeInTheDocument()
-			expect(editIcon).toBeInTheDocument()
-			expect(terminalIcon).toBeInTheDocument()
+			// Verify icon buttons are present
+			expect(eyeButton).toBeInTheDocument()
+			expect(editButton).toBeInTheDocument()
+			expect(terminalButton).toBeInTheDocument()
 
 			// Test read-only icon tooltip
-			await user.hover(eyeIcon)
+			await user.hover(eyeButton)
 			await waitFor(() => {
 				expect(screen.getByRole("tooltip")).toHaveTextContent("Read-only operations")
 			})
