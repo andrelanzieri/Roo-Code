@@ -85,7 +85,7 @@ describe("AutoApproveMenu", () => {
 	})
 
 	describe("Master checkbox behavior", () => {
-		it("should show 'None selected' when no sub-options are selected", () => {
+		it("should show all icons with none highlighted when no sub-options are selected", () => {
 			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
 				...defaultExtensionState,
 				autoApprovalEnabled: false,
@@ -98,11 +98,23 @@ describe("AutoApproveMenu", () => {
 
 			render(<AutoApproveMenu />)
 
-			// Check that the text shows "None selected"
-			expect(screen.getByText("None selected")).toBeInTheDocument()
+			const container = screen.getByText("Auto-approve").parentElement?.parentElement
+
+			// All primary icons are rendered
+			expect(container?.querySelector(".codicon-eye")).toBeInTheDocument()
+			expect(container?.querySelector(".codicon-edit")).toBeInTheDocument()
+			expect(container?.querySelector(".codicon-terminal")).toBeInTheDocument()
+
+			// None are active
+			expect(container?.querySelector(".codicon-eye")?.getAttribute("data-active")).toBe("false")
+			expect(container?.querySelector(".codicon-edit")?.getAttribute("data-active")).toBe("false")
+			expect(container?.querySelector(".codicon-terminal")?.getAttribute("data-active")).toBe("false")
+
+			// "None selected" helper text is not shown anymore
+			expect(screen.queryByText("None selected")).not.toBeInTheDocument()
 		})
 
-		it("should show enabled options when sub-options are selected", () => {
+		it("should highlight the enabled icons when sub-options are selected", () => {
 			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
 				...defaultExtensionState,
 				autoApprovalEnabled: true,
@@ -112,9 +124,15 @@ describe("AutoApproveMenu", () => {
 
 			render(<AutoApproveMenu />)
 
-			// Check that the icon for read-only operations is shown
-			const container = screen.getByText("Auto-approve").parentElement?.parentElement
-			expect(container?.querySelector(".codicon-eye")).toBeInTheDocument()
+			const container = screen.getByText("Auto-approve").parentElement?.parentElement as HTMLElement
+			const eyeIcon = container.querySelector(".codicon-eye") as HTMLElement
+			const editIcon = container.querySelector(".codicon-edit") as HTMLElement
+
+			expect(eyeIcon).toBeInTheDocument()
+			expect(editIcon).toBeInTheDocument()
+
+			expect(eyeIcon.getAttribute("data-active")).toBe("true")
+			expect(editIcon.getAttribute("data-active")).toBe("false")
 		})
 
 		it("should not allow toggling master checkbox when no options are selected", () => {
@@ -213,7 +231,7 @@ describe("AutoApproveMenu", () => {
 	})
 
 	describe("Complex scenarios", () => {
-		it("should display multiple enabled options in summary text", () => {
+		it("should highlight multiple enabled icons in collapsed view", () => {
 			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
 				...defaultExtensionState,
 				autoApprovalEnabled: true,
@@ -224,11 +242,10 @@ describe("AutoApproveMenu", () => {
 
 			render(<AutoApproveMenu />)
 
-			// Should show icons for all enabled options
-			const container = screen.getByText("Auto-approve").parentElement?.parentElement
-			expect(container?.querySelector(".codicon-eye")).toBeInTheDocument() // Read
-			expect(container?.querySelector(".codicon-edit")).toBeInTheDocument() // Write
-			expect(container?.querySelector(".codicon-terminal")).toBeInTheDocument() // Execute
+			const container = screen.getByText("Auto-approve").parentElement?.parentElement as HTMLElement
+			expect(container.querySelector(".codicon-eye")?.getAttribute("data-active")).toBe("true") // Read
+			expect(container.querySelector(".codicon-edit")?.getAttribute("data-active")).toBe("true") // Write
+			expect(container.querySelector(".codicon-terminal")?.getAttribute("data-active")).toBe("true") // Execute
 		})
 
 		it("should display tooltips on icons in collapsed view", async () => {

@@ -129,12 +129,8 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 		setIsExpanded((prev) => !prev)
 	}, [])
 
-	// Get enabled icons for display
-	const enabledIcons = useMemo(() => {
-		return Object.entries(toggles)
-			.filter(([_key, value]) => !!value)
-			.map(([key]) => autoApproveSettingsConfig[key as AutoApproveSetting].icon)
-	}, [toggles])
+	// Get all icons for display and highlight based on toggle state
+	const allConfigs = useMemo(() => Object.values(autoApproveSettingsConfig), [])
 
 	const handleOpenSettings = useCallback(
 		() =>
@@ -211,27 +207,25 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 							alignItems: "center",
 							gap: "6px",
 						}}>
-						{!effectiveAutoApprovalEnabled || !hasEnabledOptions
-							? t("chat:autoApprove.none")
-							: enabledIcons.map((icon, index) => {
-									// Find the config for this icon to get the label
-									const config = Object.values(autoApproveSettingsConfig).find(
-										(cfg) => cfg.icon === icon,
-									)
-									const tooltipContent = config ? t(config.labelKey) : ""
-
-									return (
-										<StandardTooltip key={index} content={tooltipContent}>
-											<span
-												className={`codicon codicon-${icon}`}
-												style={{
-													fontSize: "14px",
-													flexShrink: 0,
-												}}
-											/>
-										</StandardTooltip>
-									)
-								})}
+						{allConfigs.map(({ key, icon, labelKey }) => {
+							const isEnabled = !!toggles[key]
+							return (
+								<StandardTooltip key={key} content={t(labelKey)}>
+									<span
+										className={`codicon codicon-${icon}`}
+										data-active={isEnabled ? "true" : "false"}
+										style={{
+											fontSize: "14px",
+											flexShrink: 0,
+											opacity: isEnabled ? 1 : 0.5,
+											color: isEnabled
+												? "var(--vscode-foreground)"
+												: "var(--vscode-descriptionForeground)",
+										}}
+									/>
+								</StandardTooltip>
+							)
+						})}
 					</span>
 					<span
 						className={`codicon codicon-chevron-${isExpanded ? "down" : "right"}`}
