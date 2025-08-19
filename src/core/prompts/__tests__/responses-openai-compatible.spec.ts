@@ -18,17 +18,22 @@ describe("formatResponse.noToolsUsed", () => {
 		expect(result).not.toContain("OpenAI Compatible")
 	})
 
-	it("should include OpenAI Compatible specific hints when apiProvider is openai-compatible", () => {
-		const result = formatResponse.noToolsUsed("openai-compatible")
+	it("should include OpenAI Compatible specific hints for OpenAI-compatible providers", () => {
+		// Test with various OpenAI-compatible providers
+		const openAICompatibleProviders = ["openai", "openai-native", "fireworks", "groq", "ollama"]
 
-		expect(result).toContain("[ERROR] You did not use a tool in your previous response!")
-		expect(result).toContain("# Important Note for OpenAI Compatible Models")
-		expect(result).toContain("Your model appears to not be using the required XML tool format")
-		expect(result).toContain("Use XML tags for ALL tool invocations")
-		expect(result).toContain("Place tool uses at the END of your message")
-		expect(result).toContain("Use only ONE tool per message")
-		expect(result).toContain("Follow the exact XML format shown below")
-		expect(result).toContain("# Reminder: Instructions for Tool Use")
+		for (const provider of openAICompatibleProviders) {
+			const result = formatResponse.noToolsUsed(provider)
+
+			expect(result).toContain("[ERROR] You did not use a tool in your previous response!")
+			expect(result).toContain("# Important Note for OpenAI Compatible Models")
+			expect(result).toContain("Your model appears to not be using the required XML tool format")
+			expect(result).toContain("Use XML tags for ALL tool invocations")
+			expect(result).toContain("Place tool uses at the END of your message")
+			expect(result).toContain("Use only ONE tool per message")
+			expect(result).toContain("Follow the exact XML format shown below")
+			expect(result).toContain("# Reminder: Instructions for Tool Use")
+		}
 	})
 
 	it("should maintain the same structure with Next Steps section", () => {

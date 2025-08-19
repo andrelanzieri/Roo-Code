@@ -21,8 +21,27 @@ export const formatResponse = {
 	noToolsUsed: (apiProvider?: string) => {
 		const baseMessage = `[ERROR] You did not use a tool in your previous response! Please retry with a tool use.`
 
+		// List of providers that use OpenAI-compatible APIs
+		const openAICompatibleProviders = [
+			"openai",
+			"openai-native",
+			"fireworks",
+			"groq",
+			"sambanova",
+			"chutes",
+			"roo",
+			"zai",
+			"io-intelligence",
+			"deepseek",
+			"moonshot",
+			"doubao",
+			"litellm",
+			"lmstudio",
+			"ollama",
+		]
+
 		let providerSpecificHint = ""
-		if (apiProvider === "openai-compatible") {
+		if (apiProvider && openAICompatibleProviders.includes(apiProvider)) {
 			providerSpecificHint = `
 
 # Important Note for OpenAI Compatible Models
