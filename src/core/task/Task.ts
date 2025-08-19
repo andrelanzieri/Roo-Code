@@ -1510,7 +1510,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// the user hits max requests and denies resetting the count.
 				break
 			} else {
-				nextUserContent = [{ type: "text", text: formatResponse.noToolsUsed() }]
+				nextUserContent = [
+					{ type: "text", text: formatResponse.noToolsUsed(this.apiConfiguration.apiProvider) },
+				]
 				this.consecutiveMistakeCount++
 			}
 		}
@@ -1537,10 +1539,28 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 
 			if (this.consecutiveMistakeLimit > 0 && this.consecutiveMistakeCount >= this.consecutiveMistakeLimit) {
-				const { response, text, images } = await this.ask(
-					"mistake_limit_reached",
-					t("common:errors.mistake_limit_guidance"),
-				)
+				// Provide more specific guidance for OpenAI Compatible providers
+				const isOpenAICompatible = this.apiConfiguration.apiProvider === "openai-compatible"
+				const modelId = getModelId(this.apiConfiguration)
+
+				let guidanceMessage = t("common:errors.mistake_limit_guidance")
+
+				if (isOpenAICompatible) {
+					guidanceMessage = `The model appears to be having difficulty with tool usage. This often happens with OpenAI Compatible providers when the model doesn't properly format tool calls using XML tags.
+
+Common issues with ${modelId || "this model"}:
+1. The model may not be following the XML tool format correctly
+2. The model might be responding conversationally instead of using tools
+3. The model's output format may be incompatible with Roo Code's expectations
+
+Try these solutions:
+• Break down your request into smaller, more specific steps
+• Be more explicit about what you want to accomplish
+• Try a different model that better supports tool usage
+• Ensure your OpenAI Compatible endpoint is properly configured`
+				}
+
+				const { response, text, images } = await this.ask("mistake_limit_reached", guidanceMessage)
 
 				if (response === "messageResponse") {
 					currentUserContent.push(
@@ -2108,7 +2128,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					const didToolUse = this.assistantMessageContent.some((block) => block.type === "tool_use")
 
 					if (!didToolUse) {
-						this.userMessageContent.push({ type: "text", text: formatResponse.noToolsUsed() })
+						this.userMessageContent.push({
+							type: "text",
+							text: formatResponse.noToolsUsed(this.apiConfiguration.apiProvider),
+						})
 						this.consecutiveMistakeCount++
 					}
 
