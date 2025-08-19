@@ -159,6 +159,16 @@ readme.md text
 			expect(excludePatterns).toContain("*.shp") // geospatial
 			expect(excludePatterns).toContain("*.log") // log
 		})
+		it("should include Windows Thumbs.db cache pattern", async () => {
+			// Mock .gitattributes file doesn't exist
+			vi.mocked(fileExistsAtPath).mockResolvedValue(false)
+
+			// Get exclude patterns
+			const excludePatterns = await getExcludePatterns(testWorkspacePath)
+
+			// Verify Windows cache file pattern is included
+			expect(excludePatterns).toContain("Thumbs.db")
+		})
 	})
 
 	describe("getLargeFileAutoExcludePatterns with LFS pre-filtering", () => {

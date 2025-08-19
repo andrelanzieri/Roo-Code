@@ -150,7 +150,7 @@ const getCacheFilePatterns = () => [
 	"*.swp",
 	"*.temp",
 	"*.tmp",
-	"*.Thumbs.db",
+	"Thumbs.db",
 ]
 
 const getConfigFilePatterns = () => ["*.env*", "*.local", "*.development", "*.production"]
