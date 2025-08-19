@@ -95,7 +95,12 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 				)
 			}
 
-			await this.writeExcludeFile()
+			// Only regenerate exclude file if it doesn't exist
+			const excludePath = path.join(this.dotGitDir, "info", "exclude")
+			if (!(await fileExistsAtPath(excludePath))) {
+				this.log(`[${this.constructor.name}#initShadowGit] exclude file missing, regenerating`)
+				await this.writeExcludeFile()
+			}
 			this.baseHash = await git.revparse(["HEAD"])
 		} else {
 			this.log(`[${this.constructor.name}#initShadowGit] creating shadow git repo at ${this.checkpointsDir}`)
@@ -137,7 +142,18 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 	// .git/info/exclude is local to the shadow git repo, so it's not
 	// shared with the main repo - and won't conflict with user's
 	// .gitignore.
-	protected async writeExcludeFile() {
+	// Note: This is only called on initial creation or when the exclude file is missing
+	// to avoid expensive scans on every initialization.
+	protected async writeExcludeFile(forceRefresh: boolean = false) {
+		// Skip if exclude file exists and not forcing refresh
+		if (!forceRefresh) {
+			const excludePath = path.join(this.dotGitDir, "info", "exclude")
+			if (await fileExistsAtPath(excludePath)) {
+				this.log(`[${this.constructor.name}#writeExcludeFile] exclude file exists, skipping regeneration`)
+				return
+			}
+		}
+
 		await fs.mkdir(path.join(this.dotGitDir, "info"), { recursive: true })
 		const { patterns, stats } = await getExcludePatternsWithStats(this.workspaceDir)
 		await fs.writeFile(path.join(this.dotGitDir, "info", "exclude"), patterns.join("\n"))
@@ -155,6 +171,15 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 				`[${this.constructor.name}#writeExcludeFile] auto-exclude encountered errors (ripgrepErrors=${stats.errorCounts.ripgrepErrors}, fsStatErrors=${stats.errorCounts.fsStatErrors}). Check environment and filesystem permissions.`,
 			)
 		}
+	}
+
+	// Public method to allow manual refresh of exclude patterns if needed
+	public async refreshExcludePatterns() {
+		if (!this.git) {
+			throw new Error("Shadow git repo not initialized")
+		}
+		this.log(`[${this.constructor.name}#refreshExcludePatterns] manually refreshing exclude patterns`)
+		await this.writeExcludeFile(true)
 	}
 
 	private async stageAll(git: SimpleGit) {
