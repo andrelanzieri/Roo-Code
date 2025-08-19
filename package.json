@@ -62,7 +62,8 @@
 			"undici": ">=5.29.0",
 			"brace-expansion": ">=2.0.2",
 			"form-data": ">=4.0.4",
-			"bluebird": ">=3.7.2"
+			"bluebird": ">=3.7.2",
+			"@roo-code/types": "workspace:*"
 		}
 	}
 }
