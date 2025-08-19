@@ -147,6 +147,7 @@ const vertexSchema = apiModelIdProviderModelSchema.extend({
 	vertexJsonCredentials: z.string().optional(),
 	vertexProjectId: z.string().optional(),
 	vertexRegion: z.string().optional(),
+	vertexCustomModelInfo: modelInfoSchema.nullish(),
 })
 
 const openAiSchema = baseProviderSettingsSchema.extend({
@@ -248,6 +249,7 @@ const xaiSchema = apiModelIdProviderModelSchema.extend({
 
 const groqSchema = apiModelIdProviderModelSchema.extend({
 	groqApiKey: z.string().optional(),
+	groqCustomModelInfo: modelInfoSchema.nullish(),
 })
 
 const huggingFaceSchema = baseProviderSettingsSchema.extend({

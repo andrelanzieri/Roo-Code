@@ -1,10 +1,11 @@
 import { useCallback } from "react"
 import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
-import { type ProviderSettings, VERTEX_REGIONS } from "@roo-code/types"
+import { type ProviderSettings, type ModelInfo, VERTEX_REGIONS } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
+import { ContextWindow } from "@src/components/common/ContextWindow"
 
 import { inputEventTransform } from "../transforms"
 
@@ -25,6 +26,42 @@ export const Vertex = ({ apiConfiguration, setApiConfigurationField }: VertexPro
 				setApiConfigurationField(field, transform(event as E))
 			},
 		[setApiConfigurationField],
+	)
+
+	const handleContextWindowChange = useCallback(
+		(contextWindow: number | undefined) => {
+			const currentModelInfo = apiConfiguration?.vertexCustomModelInfo
+			const updatedModelInfo: ModelInfo | undefined = contextWindow
+				? {
+						maxTokens: currentModelInfo?.maxTokens ?? null,
+						contextWindow,
+						supportsPromptCache: currentModelInfo?.supportsPromptCache ?? false,
+						// Preserve other fields if they exist
+						...(currentModelInfo && {
+							maxThinkingTokens: currentModelInfo.maxThinkingTokens,
+							supportsImages: currentModelInfo.supportsImages,
+							supportsComputerUse: currentModelInfo.supportsComputerUse,
+							supportsVerbosity: currentModelInfo.supportsVerbosity,
+							supportsReasoningBudget: currentModelInfo.supportsReasoningBudget,
+							requiredReasoningBudget: currentModelInfo.requiredReasoningBudget,
+							supportsReasoningEffort: currentModelInfo.supportsReasoningEffort,
+							supportedParameters: currentModelInfo.supportedParameters,
+							inputPrice: currentModelInfo.inputPrice,
+							outputPrice: currentModelInfo.outputPrice,
+							cacheWritesPrice: currentModelInfo.cacheWritesPrice,
+							cacheReadsPrice: currentModelInfo.cacheReadsPrice,
+							description: currentModelInfo.description,
+							reasoningEffort: currentModelInfo.reasoningEffort,
+							minTokensPerCachePoint: currentModelInfo.minTokensPerCachePoint,
+							maxCachePoints: currentModelInfo.maxCachePoints,
+							cachableFields: currentModelInfo.cachableFields,
+							tiers: currentModelInfo.tiers,
+						}),
+					}
+				: undefined
+			setApiConfigurationField("vertexCustomModelInfo", updatedModelInfo)
+		},
+		[apiConfiguration?.vertexCustomModelInfo, setApiConfigurationField],
 	)
 
 	return (
@@ -91,6 +128,11 @@ export const Vertex = ({ apiConfiguration, setApiConfigurationField }: VertexPro
 					</SelectContent>
 				</Select>
 			</div>
+			<ContextWindow
+				customModelInfo={apiConfiguration?.vertexCustomModelInfo}
+				defaultContextWindow={128000}
+				onContextWindowChange={handleContextWindowChange}
+			/>
 		</>
 	)
 }

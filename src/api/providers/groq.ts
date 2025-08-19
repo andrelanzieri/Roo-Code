@@ -1,4 +1,4 @@
-import { type GroqModelId, groqDefaultModelId, groqModels } from "@roo-code/types"
+import { type GroqModelId, type ModelInfo, groqDefaultModelId, groqModels } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
@@ -15,5 +15,9 @@ export class GroqHandler extends BaseOpenAiCompatibleProvider<GroqModelId> {
 			providerModels: groqModels,
 			defaultTemperature: 0.5,
 		})
+	}
+
+	protected override getCustomModelInfo(): ModelInfo | undefined {
+		return this.options.groqCustomModelInfo ?? undefined
 	}
 }

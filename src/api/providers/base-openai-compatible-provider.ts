@@ -130,6 +130,28 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 				? (this.options.apiModelId as ModelName)
 				: this.defaultProviderModelId
 
-		return { id, info: this.providerModels[id] }
+		const defaultInfo = this.providerModels[id]
+
+		// Check if there's custom model info for this provider
+		// This allows Groq and other providers to override context window
+		const customModelInfo = this.getCustomModelInfo()
+
+		const info: ModelInfo = customModelInfo
+			? {
+					...defaultInfo,
+					...customModelInfo,
+					// Ensure required fields are present
+					maxTokens: customModelInfo.maxTokens ?? defaultInfo.maxTokens,
+					contextWindow: customModelInfo.contextWindow ?? defaultInfo.contextWindow,
+					supportsPromptCache: customModelInfo.supportsPromptCache ?? defaultInfo.supportsPromptCache,
+				}
+			: defaultInfo
+
+		return { id, info }
+	}
+
+	protected getCustomModelInfo(): ModelInfo | undefined {
+		// Override in subclasses to provide custom model info
+		return undefined
 	}
 }
