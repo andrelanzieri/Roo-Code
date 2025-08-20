@@ -104,6 +104,12 @@ If you're not confident in the exact content to search for, use the read_file to
 When applying the diffs, be extra careful to remember to change any closing brackets or other syntax that may be affected by the diff farther down in the file.
 ALWAYS make as many changes in a single 'apply_diff' request as possible using multiple SEARCH/REPLACE blocks
 
+**IMPORTANT ESCAPING RULES:**
+- The diff structure markers (<<<<<<< SEARCH, =======, >>>>>>> REPLACE) should NEVER be escaped - they define the diff structure
+- ONLY escape these patterns when they appear in the actual file content you're searching for or replacing
+- Example: If you're removing merge conflict markers from a file, escape them in the SEARCH content: \\=======
+- Do NOT escape the ======= that separates your SEARCH and REPLACE sections
+
 Parameters:
 - args: Contains one or more file elements, where each file contains:
   - path: (required) The path of the file to modify (relative to the current workspace directory ${args.cwd})
@@ -266,22 +272,22 @@ Each file requires its own path, start_line, and diff elements.
 				`ERROR: Special marker '${found}' found in your diff content at line ${state.line}:\n` +
 				"\n" +
 				`When removing merge conflict markers like '${found}' from files, you MUST escape them\n` +
-				"in your SEARCH section by prepending a backslash (\\) at the beginning of the line:\n" +
+				"in your SEARCH section by prepending a backslash (\\) at the beginning of the line.\n" +
+				"\n" +
+				"IMPORTANT CLARIFICATION:\n" +
+				"- ONLY escape these patterns when they appear in the actual file content you're modifying\n" +
+				"- The diff structure markers themselves (<<<<<<< SEARCH, =======, >>>>>>> REPLACE) should NEVER be escaped\n" +
 				"\n" +
 				"CORRECT FORMAT:\n\n" +
 				"<<<<<<< SEARCH\n" +
 				"content before\n" +
-				`\\${found} <-- Note the backslash here in this example\n` +
+				`\\${found} <-- Escape ONLY when this is part of the file content\n` +
 				"content after\n" +
 				"=======\n" +
 				"replacement content\n" +
 				">>>>>>> REPLACE\n" +
 				"\n" +
-				"Without escaping, the system confuses your content with diff syntax markers.\n" +
-				"You may use multiple diff blocks in a single diff request, but ANY of ONLY the following separators that occur within SEARCH or REPLACE content must be escaped, as follows:\n" +
-				`\\${SEARCH}\n` +
-				`\\${SEP}\n` +
-				`\\${REPLACE}\n`,
+				"Without escaping, the system confuses your content with diff syntax markers.",
 		})
 
 		const reportInvalidDiffError = (found: string, expected: string) => ({
@@ -289,14 +295,19 @@ Each file requires its own path, start_line, and diff elements.
 			error:
 				`ERROR: Diff block is malformed: marker '${found}' found in your diff content at line ${state.line}. Expected: ${expected}\n` +
 				"\n" +
-				"CORRECT FORMAT:\n\n" +
+				"CORRECT DIFF STRUCTURE:\n" +
 				"<<<<<<< SEARCH\n" +
-				":start_line: (required) The line number of original content where the search block starts.\n" +
-				"-------\n" +
-				"[exact content to find including whitespace]\n" +
-				"=======\n" +
+				":start_line:NUMBER (optional - specify line number)\n" +
+				"------- (optional separator)\n" +
+				"[exact content to find]\n" +
+				"======= (required - separates search from replace)\n" +
 				"[new content to replace with]\n" +
-				">>>>>>> REPLACE\n",
+				">>>>>>> REPLACE (required - ends the diff block)\n" +
+				"\n" +
+				"The markers above (<<<<<<< SEARCH, =======, >>>>>>> REPLACE) are part of the diff syntax.\n" +
+				"They should appear exactly as shown, without any escaping.\n" +
+				"\n" +
+				"Make sure you're following this exact structure for your diff blocks.",
 		})
 
 		const reportLineMarkerInReplaceError = (marker: string) => ({
