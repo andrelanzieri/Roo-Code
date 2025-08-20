@@ -2132,10 +2132,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						"Unexpected API Response: The language model did not provide any assistant messages. This may indicate an issue with the API or the model's output.",
 					)
 
-					await this.addToApiConversationHistory({
-						role: "assistant",
-						content: [{ type: "text", text: "Failure: I did not provide a response." }],
-					})
+					// Don't add error messages to the API conversation history as it pollutes
+					// the context sent to the LLM. The error is already shown to the user via say("error").
+					// This prevents the issue where API errors disrupt the conversation flow.
 				}
 
 				// If we reach here without continuing, return false (will always be false for now)
