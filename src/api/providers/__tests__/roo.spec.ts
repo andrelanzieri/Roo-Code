@@ -257,6 +257,7 @@ describe("RooHandler", () => {
 						expect.objectContaining({ role: "user", content: "Second message" }),
 					]),
 				}),
+				expect.any(Object), // Headers object
 			)
 		})
 	})
@@ -331,7 +332,7 @@ describe("RooHandler", () => {
 			expect(modelInfo.info.maxTokens).toBe(16_384)
 			expect(modelInfo.info.contextWindow).toBe(262_144)
 			expect(modelInfo.info.supportsImages).toBe(false)
-			expect(modelInfo.info.supportsPromptCache).toBe(true)
+			expect(modelInfo.info.supportsPromptCache).toBe(false) // Should be false now to prevent context mixing
 			expect(modelInfo.info.inputPrice).toBe(0)
 			expect(modelInfo.info.outputPrice).toBe(0)
 		})
@@ -361,6 +362,7 @@ describe("RooHandler", () => {
 				expect.not.objectContaining({
 					temperature: expect.anything(),
 				}),
+				expect.any(Object), // Headers object
 			)
 		})
 
@@ -378,6 +380,7 @@ describe("RooHandler", () => {
 				expect.objectContaining({
 					temperature: 0.9,
 				}),
+				expect.any(Object), // Headers object
 			)
 		})
 
@@ -431,6 +434,145 @@ describe("RooHandler", () => {
 			expect(() => {
 				new RooHandler(mockOptions)
 			}).toThrow("Authentication required for Roo Code Cloud")
+		})
+	})
+
+	describe("session isolation", () => {
+		beforeEach(() => {
+			mockHasInstanceFn.mockReturnValue(true)
+			mockGetSessionTokenFn.mockReturnValue("test-session-token")
+			mockCreate.mockClear()
+		})
+
+		it("should include session isolation headers in requests", async () => {
+			handler = new RooHandler(mockOptions)
+			const stream = handler.createMessage(systemPrompt, messages)
+
+			// Consume the stream
+			for await (const _chunk of stream) {
+				// Just consume
+			}
+
+			// Verify that create was called with session isolation headers
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.any(Object),
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Session-Id": expect.any(String),
+						"X-Request-Id": expect.any(String),
+						"X-No-Cache": "true",
+						"Cache-Control": "no-store, no-cache, must-revalidate",
+						Pragma: "no-cache",
+					}),
+				}),
+			)
+		})
+
+		it("should generate unique session IDs for different handler instances", async () => {
+			const handler1 = new RooHandler(mockOptions)
+			const handler2 = new RooHandler(mockOptions)
+
+			// Create messages with both handlers
+			const stream1 = handler1.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream1) {
+				// Consume
+			}
+
+			const stream2 = handler2.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream2) {
+				// Consume
+			}
+
+			// Get the session IDs from the calls
+			const call1Headers = mockCreate.mock.calls[0][1].headers
+			const call2Headers = mockCreate.mock.calls[1][1].headers
+
+			// Session IDs should be different for different handler instances
+			expect(call1Headers["X-Session-Id"]).toBeDefined()
+			expect(call2Headers["X-Session-Id"]).toBeDefined()
+			expect(call1Headers["X-Session-Id"]).not.toBe(call2Headers["X-Session-Id"])
+		})
+
+		it("should generate unique request IDs for each request", async () => {
+			handler = new RooHandler(mockOptions)
+
+			// Make two requests with the same handler
+			const stream1 = handler.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream1) {
+				// Consume
+			}
+
+			const stream2 = handler.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream2) {
+				// Consume
+			}
+
+			// Get the request IDs from the calls
+			const call1Headers = mockCreate.mock.calls[0][1].headers
+			const call2Headers = mockCreate.mock.calls[1][1].headers
+
+			// Request IDs should be different for each request
+			expect(call1Headers["X-Request-Id"]).toBeDefined()
+			expect(call2Headers["X-Request-Id"]).toBeDefined()
+			expect(call1Headers["X-Request-Id"]).not.toBe(call2Headers["X-Request-Id"])
+
+			// But session IDs should be the same for the same handler
+			expect(call1Headers["X-Session-Id"]).toBe(call2Headers["X-Session-Id"])
+		})
+
+		it("should include metadata in request params", async () => {
+			handler = new RooHandler(mockOptions)
+			const stream = handler.createMessage(systemPrompt, messages)
+
+			for await (const _chunk of stream) {
+				// Consume
+			}
+
+			// Verify metadata is included in the request
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					metadata: expect.objectContaining({
+						session_id: expect.any(String),
+						request_id: expect.any(String),
+						timestamp: expect.any(String),
+					}),
+				}),
+				expect.any(Object),
+			)
+		})
+
+		it("should have prompt caching disabled for roo/sonic model", () => {
+			handler = new RooHandler(mockOptions)
+			const modelInfo = handler.getModel()
+
+			// Verify that prompt caching is disabled
+			expect(modelInfo.info.supportsPromptCache).toBe(false)
+		})
+
+		it("should maintain session ID consistency across multiple requests", async () => {
+			handler = new RooHandler(mockOptions)
+
+			// Make multiple requests
+			const requests = []
+			for (let i = 0; i < 3; i++) {
+				const stream = handler.createMessage(systemPrompt, messages)
+				for await (const _chunk of stream) {
+					// Consume
+				}
+				requests.push(i)
+			}
+
+			// All requests should have the same session ID
+			const sessionIds = mockCreate.mock.calls.map((call) => call[1].headers["X-Session-Id"])
+			const firstSessionId = sessionIds[0]
+
+			expect(sessionIds.every((id) => id === firstSessionId)).toBe(true)
+
+			// But all request IDs should be unique
+			const requestIds = mockCreate.mock.calls.map((call) => call[1].headers["X-Request-Id"])
+			const uniqueRequestIds = new Set(requestIds)
+
+			expect(uniqueRequestIds.size).toBe(requestIds.length)
 		})
 	})
 })

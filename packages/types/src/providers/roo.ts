@@ -10,7 +10,7 @@ export const rooModels = {
 		maxTokens: 16_384,
 		contextWindow: 262_144,
 		supportsImages: false,
-		supportsPromptCache: true,
+		supportsPromptCache: false, // Disabled to prevent context mixing between sessions
 		inputPrice: 0,
 		outputPrice: 0,
 		description:
