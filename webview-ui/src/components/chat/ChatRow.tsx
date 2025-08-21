@@ -1088,7 +1088,27 @@ export const ChatRowContent = ({
 							/>
 						</div>
 					)
-				case "error":
+				case "error": {
+					// Extract error title from the message text if it follows the pattern "Title: rest of message"
+					let errorTitle = t("chat:error")
+					const errorContent = message.text || ""
+
+					// Check if the error message starts with a title pattern (e.g., "File Not Found:", "Permission Denied:", etc.)
+					// Look for text before the first colon on the first line
+					const firstLineEnd = errorContent.indexOf("\n")
+					const firstLine = firstLineEnd > -1 ? errorContent.substring(0, firstLineEnd) : errorContent
+					const colonIndex = firstLine.indexOf(":")
+
+					if (colonIndex > 0 && colonIndex < 50) {
+						// Reasonable title length limit
+						// Extract the title part before the colon
+						const potentialTitle = firstLine.substring(0, colonIndex).trim()
+						// Use it as title if it's not too long and looks like a title
+						if (potentialTitle.length > 0) {
+							errorTitle = potentialTitle.replace(/^Error\s+/i, "").trim()
+						}
+					}
+
 					return (
 						<div>
 							<div
@@ -1101,7 +1121,7 @@ export const ChatRowContent = ({
 									contentId={`error-${message.ts}`}
 									iconClass="codicon-warning"
 									iconStyle={{ color: "var(--vscode-editorWarning-foreground)", opacity: 0.8 }}
-									title={<span style={{ fontWeight: "bold" }}>{t("chat:error")}</span>}
+									title={<span style={{ fontWeight: "bold" }}>{errorTitle}</span>}
 									expanded={isErrorExpanded}
 									onToggle={() => setIsErrorExpanded(!isErrorExpanded)}
 									onCopy={() => {
@@ -1126,13 +1146,14 @@ export const ChatRowContent = ({
 											borderTop: "none",
 										}}>
 										<p style={{ ...pStyle, color: "var(--vscode-errorForeground)" }}>
-											{message.text}
+											{errorContent}
 										</p>
 									</div>
 								)}
 							</div>
 						</div>
 					)
+				}
 				case "completion_result":
 					return (
 						<>
