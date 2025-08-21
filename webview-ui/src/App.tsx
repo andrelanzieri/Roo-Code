@@ -275,6 +275,15 @@ const App = () => {
 					vscode.postMessage({
 						type: "deleteMessageConfirm",
 						messageTs: deleteMessageDialogState.messageTs,
+						withRestore: false,
+					})
+					setDeleteMessageDialogState((prev) => ({ ...prev, isOpen: false }))
+				}}
+				onConfirmWithRestore={() => {
+					vscode.postMessage({
+						type: "deleteMessageConfirm",
+						messageTs: deleteMessageDialogState.messageTs,
+						withRestore: true,
 					})
 					setDeleteMessageDialogState((prev) => ({ ...prev, isOpen: false }))
 				}}

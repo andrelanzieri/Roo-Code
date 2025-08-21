@@ -97,20 +97,49 @@ export const webviewMessageHandler = async (
 	}
 
 	/**
+	 * Removes messages and restores file state to checkpoint
+	 */
+	const removeMessagesAndRestoreFileState = async (
+		currentCline: any,
+		messageIndex: number,
+		apiConversationHistoryIndex: number,
+		messageTs: number,
+	) => {
+		// First, delete messages
+		await removeMessagesThisAndSubsequent(currentCline, messageIndex, apiConversationHistoryIndex)
+
+		// Find the first checkpoint after this message
+		const checkpointMessage = currentCline.clineMessages.find(
+			(msg: ClineMessage) => msg.say === "checkpoint_saved" && msg.ts && msg.ts > messageTs,
+		)
+
+		if (checkpointMessage && checkpointMessage.text) {
+			// Restore to the checkpoint
+			const { checkpointRestore } = await import("../checkpoints")
+			await checkpointRestore(currentCline, {
+				ts: checkpointMessage.ts,
+				commitHash: checkpointMessage.text,
+				mode: "restore",
+			})
+		}
+	}
+
+	/**
 	 * Handles message deletion operations with user confirmation
 	 */
-	const handleDeleteOperation = async (messageTs: number): Promise<void> => {
+	const handleDeleteOperation = async (messageTs: number, withRestore: boolean = false): Promise<void> => {
 		// Send message to webview to show delete confirmation dialog
 		await provider.postMessageToWebview({
 			type: "showDeleteMessageDialog",
 			messageTs,
+			withRestore,
 		})
 	}
 
 	/**
 	 * Handles confirmed message deletion from webview dialog
 	 */
-	const handleDeleteMessageConfirm = async (messageTs: number): Promise<void> => {
+	const handleDeleteMessageConfirm = async (messageTs: number, withRestore: boolean = false): Promise<void> => {
 		// Only proceed if we have a current task.
 		if (provider.getCurrentTask()) {
 			const currentCline = provider.getCurrentTask()!
@@ -120,8 +149,18 @@ export const webviewMessageHandler = async (
 				try {
 					const { historyItem } = await provider.getTaskWithId(currentCline.taskId)
 
-					// Delete this message and all subsequent messages
-					await removeMessagesThisAndSubsequent(currentCline, messageIndex, apiConversationHistoryIndex)
+					if (withRestore) {
+						// Delete messages and restore file state
+						await removeMessagesAndRestoreFileState(
+							currentCline,
+							messageIndex,
+							apiConversationHistoryIndex,
+							messageTs,
+						)
+					} else {
+						// Delete this message and all subsequent messages
+						await removeMessagesThisAndSubsequent(currentCline, messageIndex, apiConversationHistoryIndex)
+					}
 
 					// Initialize with history item after deletion
 					await provider.createTaskWithHistoryItem(historyItem)

@@ -193,6 +193,7 @@ export interface ExtensionMessage {
 	messageTs?: number
 	context?: string
 	commands?: Command[]
+	withRestore?: boolean // For showDeleteMessageDialog
 }
 
 export type ExtensionState = Pick<

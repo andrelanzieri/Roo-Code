@@ -254,6 +254,7 @@ export interface WebviewMessage {
 	visibility?: ShareVisibility // For share visibility
 	hasContent?: boolean // For checkRulesDirectoryResult
 	checkOnly?: boolean // For deleteCustomMode check
+	withRestore?: boolean // For deleteMessageConfirm with file state restore
 	codeIndexSettings?: {
 		// Global state settings
 		codebaseIndexEnabled: boolean

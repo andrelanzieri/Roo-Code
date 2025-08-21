@@ -15,6 +15,7 @@ interface MessageModificationConfirmationDialogProps {
 	open: boolean
 	onOpenChange: (open: boolean) => void
 	onConfirm: () => void
+	onConfirmWithRestore?: () => void
 	type: "edit" | "delete"
 }
 
@@ -22,11 +23,13 @@ export const MessageModificationConfirmationDialog: React.FC<MessageModification
 	open,
 	onOpenChange,
 	onConfirm,
+	onConfirmWithRestore,
 	type,
 }) => {
 	const { t } = useAppTranslation()
 
 	const isEdit = type === "edit"
+	const isDelete = type === "delete"
 	const title = isEdit ? t("common:confirmation.editMessage") : t("common:confirmation.deleteMessage")
 	const description = isEdit ? t("common:confirmation.editWarning") : t("common:confirmation.deleteWarning")
 
@@ -44,8 +47,17 @@ export const MessageModificationConfirmationDialog: React.FC<MessageModification
 					<AlertDialogAction
 						onClick={onConfirm}
 						className="bg-vscode-button-background hover:bg-vscode-button-hoverBackground text-vscode-button-foreground border-vscode-button-border">
-						{t("common:confirmation.proceed")}
+						{isDelete
+							? t("common:confirmation.deleteOnly") || "Delete Messages Only"
+							: t("common:confirmation.proceed")}
 					</AlertDialogAction>
+					{isDelete && onConfirmWithRestore && (
+						<AlertDialogAction
+							onClick={onConfirmWithRestore}
+							className="bg-vscode-button-background hover:bg-vscode-button-hoverBackground text-vscode-button-foreground border-vscode-button-border">
+							{t("common:confirmation.deleteAndRestore") || "Delete Messages and Restore Files"}
+						</AlertDialogAction>
+					)}
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>
