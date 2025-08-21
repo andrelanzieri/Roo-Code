@@ -554,6 +554,7 @@ describe("webviewMessageHandler - message dialog preferences", () => {
 			expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 				type: "showDeleteMessageDialog",
 				messageTs: 123456789,
+				withRestore: false,
 			})
 		})
 	})

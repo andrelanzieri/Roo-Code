@@ -1216,6 +1216,7 @@ describe("ClineProvider", () => {
 			expect(mockPostMessage).toHaveBeenCalledWith({
 				type: "showDeleteMessageDialog",
 				messageTs: 4000,
+				withRestore: false,
 			})
 
 			// Simulate user confirming deletion through the dialog
@@ -3441,6 +3442,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				expect(mockPostMessage).toHaveBeenCalledWith({
 					type: "showDeleteMessageDialog",
 					messageTs: 5000,
+					withRestore: false,
 				})
 
 				// Simulate user confirming the delete
@@ -3531,6 +3533,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				expect(mockPostMessage).toHaveBeenCalledWith({
 					type: "showDeleteMessageDialog",
 					messageTs: 2000,
+					withRestore: false,
 				})
 
 				// Simulate user confirming the delete
@@ -3626,6 +3629,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				expect(mockPostMessage).toHaveBeenCalledWith({
 					type: "showDeleteMessageDialog",
 					messageTs: 3000,
+					withRestore: false,
 				})
 
 				// Simulate user confirming the delete
@@ -3664,6 +3668,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				expect(mockPostMessage).toHaveBeenCalledWith({
 					type: "showDeleteMessageDialog",
 					messageTs: 2000,
+					withRestore: false,
 				})
 
 				// Simulate user confirming the delete
@@ -3737,6 +3742,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				expect(mockPostMessage).toHaveBeenCalledWith({
 					type: "showDeleteMessageDialog",
 					messageTs: 1000,
+					withRestore: false,
 				})
 
 				// Simulate user confirming the delete
