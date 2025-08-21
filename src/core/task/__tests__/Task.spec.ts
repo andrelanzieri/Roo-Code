@@ -919,18 +919,18 @@ describe("Cline", () => {
 					})
 
 					// Regular text should not be processed
-					expect((processedContent[0] as Anthropic.TextBlockParam).text).toBe(
+					expect((processedContent.content[0] as Anthropic.TextBlockParam).text).toBe(
 						"Regular text with 'some/path' (see below for file content)",
 					)
 
 					// Text within task tags should be processed
-					expect((processedContent[1] as Anthropic.TextBlockParam).text).toContain("processed:")
-					expect((processedContent[1] as Anthropic.TextBlockParam).text).toContain(
+					expect((processedContent.content[1] as Anthropic.TextBlockParam).text).toContain("processed:")
+					expect((processedContent.content[1] as Anthropic.TextBlockParam).text).toContain(
 						"<task>Text with 'some/path' (see below for file content) in task tags</task>",
 					)
 
 					// Feedback tag content should be processed
-					const toolResult1 = processedContent[2] as Anthropic.ToolResultBlockParam
+					const toolResult1 = processedContent.content[2] as Anthropic.ToolResultBlockParam
 					const content1 = Array.isArray(toolResult1.content) ? toolResult1.content[0] : toolResult1.content
 					expect((content1 as Anthropic.TextBlockParam).text).toContain("processed:")
 					expect((content1 as Anthropic.TextBlockParam).text).toContain(
@@ -938,7 +938,7 @@ describe("Cline", () => {
 					)
 
 					// Regular tool result should not be processed
-					const toolResult2 = processedContent[3] as Anthropic.ToolResultBlockParam
+					const toolResult2 = processedContent.content[3] as Anthropic.ToolResultBlockParam
 					const content2 = Array.isArray(toolResult2.content) ? toolResult2.content[0] : toolResult2.content
 					expect((content2 as Anthropic.TextBlockParam).text).toBe(
 						"Regular tool result with 'path' (see below for file content)",
