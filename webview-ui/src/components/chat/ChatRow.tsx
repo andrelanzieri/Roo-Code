@@ -4,7 +4,7 @@ import { McpExecution } from "./McpExecution"
 import { useSize } from "react-use"
 import { useTranslation, Trans } from "react-i18next"
 import deepEqual from "fast-deep-equal"
-import { VSCodeBadge, VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeBadge } from "@vscode/webview-ui-toolkit/react"
 
 import type { ClineMessage } from "@roo-code/types"
 import { Mode } from "@roo/modes"
@@ -33,6 +33,7 @@ import MarkdownBlock from "../common/MarkdownBlock"
 import { ReasoningBlock } from "./ReasoningBlock"
 import Thumbnails from "../common/Thumbnails"
 import McpResourceRow from "../mcp/McpResourceRow"
+import { IconButton } from "./IconButton"
 
 import { Mention } from "./Mention"
 import { CheckpointSaved } from "./checkpoints/CheckpointSaved"
@@ -895,37 +896,22 @@ export const ChatRowContent = ({
 										<span style={{ fontWeight: "bold" }}>{t("chat:diffError.title")}</span>
 									</div>
 									<div style={{ display: "flex", alignItems: "center" }}>
-										<VSCodeButton
-											appearance="icon"
-											style={{
-												padding: "3px",
-												height: "24px",
-												marginRight: "4px",
-												color: "var(--vscode-editor-foreground)",
-												display: "flex",
-												alignItems: "center",
-												justifyContent: "center",
-												background: "transparent",
-											}}
-											onClick={(e) => {
+										<IconButton
+											iconClass={showCopySuccess ? "codicon-check" : "codicon-copy"}
+											title={t("chat:codeblock.tooltips.copy_code")}
+											onClick={(e: React.MouseEvent) => {
 												e.stopPropagation()
-
-												// Call copyWithFeedback and handle the Promise
 												copyWithFeedback(message.text || "").then((success) => {
 													if (success) {
-														// Show checkmark
 														setShowCopySuccess(true)
-
-														// Reset after a brief delay
 														setTimeout(() => {
 															setShowCopySuccess(false)
 														}, 1000)
 													}
 												})
-											}}>
-											<span
-												className={`codicon codicon-${showCopySuccess ? "check" : "copy"}`}></span>
-										</VSCodeButton>
+											}}
+											style={{ marginRight: "4px" }}
+										/>
 										<span
 											className={`codicon codicon-chevron-${isDiffErrorExpanded ? "up" : "down"}`}></span>
 									</div>
@@ -1175,37 +1161,22 @@ export const ChatRowContent = ({
 										</span>
 									</div>
 									<div style={{ display: "flex", alignItems: "center" }}>
-										<VSCodeButton
-											appearance="icon"
-											style={{
-												padding: "3px",
-												height: "24px",
-												marginRight: "4px",
-												color: "var(--vscode-editor-foreground)",
-												display: "flex",
-												alignItems: "center",
-												justifyContent: "center",
-												background: "transparent",
-											}}
-											onClick={(e) => {
+										<IconButton
+											iconClass={showErrorCopySuccess ? "codicon-check" : "codicon-copy"}
+											title={t("chat:codeblock.tooltips.copy_code")}
+											onClick={(e: React.MouseEvent) => {
 												e.stopPropagation()
-
-												// Call copyWithFeedback and handle the Promise
 												copyWithFeedback(message.text || "").then((success) => {
 													if (success) {
-														// Show checkmark
 														setShowErrorCopySuccess(true)
-
-														// Reset after a brief delay
 														setTimeout(() => {
 															setShowErrorCopySuccess(false)
 														}, 1000)
 													}
 												})
-											}}>
-											<span
-												className={`codicon codicon-${showErrorCopySuccess ? "check" : "copy"}`}></span>
-										</VSCodeButton>
+											}}
+											style={{ marginRight: "4px" }}
+										/>
 										<span
 											className={`codicon codicon-chevron-${isErrorExpanded ? "up" : "down"}`}></span>
 									</div>
