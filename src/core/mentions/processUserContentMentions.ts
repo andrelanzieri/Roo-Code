@@ -16,6 +16,7 @@ export async function processUserContentMentions({
 	includeDiagnosticMessages = true,
 	maxDiagnosticMessages = 50,
 	maxReadFileLine,
+	enablePdfMultimodal = true,
 }: {
 	userContent: Anthropic.Messages.ContentBlockParam[]
 	cwd: string
@@ -26,7 +27,8 @@ export async function processUserContentMentions({
 	includeDiagnosticMessages?: boolean
 	maxDiagnosticMessages?: number
 	maxReadFileLine?: number
-}) {
+	enablePdfMultimodal?: boolean
+}): Promise<{ content: Anthropic.Messages.ContentBlockParam[]; pdfAttachments?: Array<{ path: string; data: any }> }> {
 	// Process userContent array, which contains various block types:
 	// TextBlockParam, ImageBlockParam, ToolUseBlockParam, and ToolResultBlockParam.
 	// We need to apply parseMentions() to:
@@ -37,7 +39,9 @@ export async function processUserContentMentions({
 	// (see askFollowupQuestion), we place all user generated content in
 	// these tags so they can effectively be used as markers for when we
 	// should parse mentions).
-	return Promise.all(
+	const allPdfAttachments: Array<{ path: string; data: any }> = []
+
+	const processedContent = await Promise.all(
 		userContent.map(async (block) => {
 			const shouldProcessMentions = (text: string) =>
 				text.includes("<task>") ||
@@ -47,10 +51,35 @@ export async function processUserContentMentions({
 
 			if (block.type === "text") {
 				if (shouldProcessMentions(block.text)) {
+					const result = await parseMentions(
+						block.text,
+						cwd,
+						urlContentFetcher,
+						fileContextTracker,
+						rooIgnoreController,
+						showRooIgnoredFiles,
+						includeDiagnosticMessages,
+						maxDiagnosticMessages,
+						maxReadFileLine,
+						enablePdfMultimodal,
+					)
+
+					if (result.pdfAttachments) {
+						allPdfAttachments.push(...result.pdfAttachments)
+					}
+
 					return {
 						...block,
-						text: await parseMentions(
-							block.text,
+						text: result.text,
+					}
+				}
+
+				return block
+			} else if (block.type === "tool_result") {
+				if (typeof block.content === "string") {
+					if (shouldProcessMentions(block.content)) {
+						const result = await parseMentions(
+							block.content,
 							cwd,
 							urlContentFetcher,
 							fileContextTracker,
@@ -59,27 +88,16 @@ export async function processUserContentMentions({
 							includeDiagnosticMessages,
 							maxDiagnosticMessages,
 							maxReadFileLine,
-						),
-					}
-				}
+							enablePdfMultimodal,
+						)
 
-				return block
-			} else if (block.type === "tool_result") {
-				if (typeof block.content === "string") {
-					if (shouldProcessMentions(block.content)) {
+						if (result.pdfAttachments) {
+							allPdfAttachments.push(...result.pdfAttachments)
+						}
+
 						return {
 							...block,
-							content: await parseMentions(
-								block.content,
-								cwd,
-								urlContentFetcher,
-								fileContextTracker,
-								rooIgnoreController,
-								showRooIgnoredFiles,
-								includeDiagnosticMessages,
-								maxDiagnosticMessages,
-								maxReadFileLine,
-							),
+							content: result.text,
 						}
 					}
 
@@ -88,19 +106,26 @@ export async function processUserContentMentions({
 					const parsedContent = await Promise.all(
 						block.content.map(async (contentBlock) => {
 							if (contentBlock.type === "text" && shouldProcessMentions(contentBlock.text)) {
+								const result = await parseMentions(
+									contentBlock.text,
+									cwd,
+									urlContentFetcher,
+									fileContextTracker,
+									rooIgnoreController,
+									showRooIgnoredFiles,
+									includeDiagnosticMessages,
+									maxDiagnosticMessages,
+									maxReadFileLine,
+									enablePdfMultimodal,
+								)
+
+								if (result.pdfAttachments) {
+									allPdfAttachments.push(...result.pdfAttachments)
+								}
+
 								return {
 									...contentBlock,
-									text: await parseMentions(
-										contentBlock.text,
-										cwd,
-										urlContentFetcher,
-										fileContextTracker,
-										rooIgnoreController,
-										showRooIgnoredFiles,
-										includeDiagnosticMessages,
-										maxDiagnosticMessages,
-										maxReadFileLine,
-									),
+									text: result.text,
 								}
 							}
 
@@ -117,4 +142,9 @@ export async function processUserContentMentions({
 			return block
 		}),
 	)
+
+	return {
+		content: processedContent,
+		pdfAttachments: allPdfAttachments.length > 0 ? allPdfAttachments : undefined,
+	}
 }

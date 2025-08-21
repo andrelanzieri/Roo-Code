@@ -10,7 +10,7 @@ import { getCommitInfo, getWorkingState } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 
 import { openFile } from "../../integrations/misc/open-file"
-import { extractTextFromFile } from "../../integrations/misc/extract-text"
+import { extractTextFromFile, supportsMultimodalAnalysis } from "../../integrations/misc/extract-text"
 import { diagnosticsToProblemsString } from "../../integrations/diagnostics"
 
 import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
@@ -87,9 +87,11 @@ export async function parseMentions(
 	includeDiagnosticMessages: boolean = true,
 	maxDiagnosticMessages: number = 50,
 	maxReadFileLine?: number,
-): Promise<string> {
+	enablePdfMultimodal: boolean = true,
+): Promise<{ text: string; pdfAttachments?: Array<{ path: string; data: any }> }> {
 	const mentions: Set<string> = new Set()
 	const validCommands: Map<string, Command> = new Map()
+	const pdfAttachments: Array<{ path: string; data: any }> = []
 
 	// First pass: check which command mentions exist and cache the results
 	const commandMatches = Array.from(text.matchAll(commandRegexGlobal))
@@ -188,20 +190,30 @@ export async function parseMentions(
 		} else if (mention.startsWith("/")) {
 			const mentionPath = mention.slice(1)
 			try {
-				const content = await getFileOrFolderContent(
+				const result = await getFileOrFolderContent(
 					mentionPath,
 					cwd,
 					rooIgnoreController,
 					showRooIgnoredFiles,
 					maxReadFileLine,
+					enablePdfMultimodal,
 				)
-				if (mention.endsWith("/")) {
-					parsedText += `\n\n<folder_content path="${mentionPath}">\n${content}\n</folder_content>`
+
+				// Check if this is a PDF with multimodal content
+				if (result.pdfData) {
+					pdfAttachments.push({
+						path: mentionPath,
+						data: result.pdfData,
+					})
+					parsedText += `\n\n<file_content path="${mentionPath}">\n[PDF file attached for multimodal analysis - contains visual elements like charts, diagrams, and tables]\n${result.content}\n</file_content>`
+				} else if (mention.endsWith("/")) {
+					parsedText += `\n\n<folder_content path="${mentionPath}">\n${result.content}\n</folder_content>`
 				} else {
-					parsedText += `\n\n<file_content path="${mentionPath}">\n${content}\n</file_content>`
-					if (fileContextTracker) {
-						await fileContextTracker.trackFileContext(mentionPath, "file_mentioned")
-					}
+					parsedText += `\n\n<file_content path="${mentionPath}">\n${result.content}\n</file_content>`
+				}
+
+				if (fileContextTracker && !mention.endsWith("/")) {
+					await fileContextTracker.trackFileContext(mentionPath, "file_mentioned")
 				}
 			} catch (error) {
 				if (mention.endsWith("/")) {
@@ -263,7 +275,7 @@ export async function parseMentions(
 		}
 	}
 
-	return parsedText
+	return { text: parsedText, pdfAttachments: pdfAttachments.length > 0 ? pdfAttachments : undefined }
 }
 
 async function getFileOrFolderContent(
@@ -272,7 +284,8 @@ async function getFileOrFolderContent(
 	rooIgnoreController?: any,
 	showRooIgnoredFiles: boolean = true,
 	maxReadFileLine?: number,
-): Promise<string> {
+	enablePdfMultimodal: boolean = true,
+): Promise<{ content: string; pdfData?: any }> {
 	const unescapedPath = unescapeSpaces(mentionPath)
 	const absPath = path.resolve(cwd, unescapedPath)
 
@@ -281,13 +294,25 @@ async function getFileOrFolderContent(
 
 		if (stats.isFile()) {
 			if (rooIgnoreController && !rooIgnoreController.validateAccess(absPath)) {
-				return `(File ${mentionPath} is ignored by .rooignore)`
+				return { content: `(File ${mentionPath} is ignored by .rooignore)` }
 			}
 			try {
-				const content = await extractTextFromFile(absPath, maxReadFileLine)
-				return content
+				// Check if this is a PDF and multimodal is enabled
+				const fileExtension = path.extname(absPath).toLowerCase()
+				if (enablePdfMultimodal && supportsMultimodalAnalysis(fileExtension)) {
+					// Get both text and multimodal content for PDFs
+					const textContent = (await extractTextFromFile(absPath, maxReadFileLine, false)) as string
+					const pdfData = await extractTextFromFile(absPath, maxReadFileLine, true)
+					return {
+						content: textContent,
+						pdfData: pdfData,
+					}
+				} else {
+					const content = (await extractTextFromFile(absPath, maxReadFileLine, false)) as string
+					return { content }
+				}
 			} catch (error) {
-				return `(Failed to read contents of ${mentionPath}): ${error.message}`
+				return { content: `(Failed to read contents of ${mentionPath}): ${error.message}` }
 			}
 		} else if (stats.isDirectory()) {
 			const entries = await fs.readdir(absPath, { withFileTypes: true })
@@ -339,9 +364,9 @@ async function getFileOrFolderContent(
 				}
 			}
 			const fileContents = (await Promise.all(fileContentPromises)).filter((content) => content)
-			return `${folderContent}\n${fileContents.join("\n\n")}`.trim()
+			return { content: `${folderContent}\n${fileContents.join("\n\n")}`.trim() }
 		} else {
-			return `(Failed to read contents of ${mentionPath})`
+			return { content: `(Failed to read contents of ${mentionPath})` }
 		}
 	} catch (error) {
 		throw new Error(`Failed to access path "${mentionPath}": ${error.message}`)

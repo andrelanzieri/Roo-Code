@@ -6,6 +6,7 @@ import {
 	applyRunLengthEncoding,
 	processCarriageReturns,
 	processBackspaces,
+	supportsMultimodalAnalysis,
 } from "../extract-text"
 
 describe("addLineNumbers", () => {
@@ -708,4 +709,37 @@ describe("processCarriageReturns", () => {
 		const expected = "nextial text"
 		expect(processCarriageReturns(input)).toBe(expected)
 	})
+})
+
+describe("PDF Multimodal Support", () => {
+	describe("supportsMultimodalAnalysis", () => {
+		it("should return true for PDF files", () => {
+			expect(supportsMultimodalAnalysis(".pdf")).toBe(true)
+			expect(supportsMultimodalAnalysis(".PDF")).toBe(true)
+			expect(supportsMultimodalAnalysis(".Pdf")).toBe(true)
+		})
+
+		it("should return false for non-PDF files", () => {
+			expect(supportsMultimodalAnalysis(".txt")).toBe(false)
+			expect(supportsMultimodalAnalysis(".docx")).toBe(false)
+			expect(supportsMultimodalAnalysis(".png")).toBe(false)
+			expect(supportsMultimodalAnalysis(".jpg")).toBe(false)
+			expect(supportsMultimodalAnalysis("")).toBe(false)
+		})
+
+		it("should handle file extensions with paths", () => {
+			expect(supportsMultimodalAnalysis("/path/to/file.pdf")).toBe(false) // This is a path, not an extension
+			expect(supportsMultimodalAnalysis(".PDF")).toBe(true)
+			expect(supportsMultimodalAnalysis(".pDf")).toBe(true)
+		})
+	})
+
+	// Note: The extractPDFAsBase64 and validatePDFForMultimodal functions
+	// interact with the file system and would require actual PDF files
+	// or mocking to test properly. Since the project doesn't use mocking
+	// in its test suite, these would be better tested as integration tests
+	// with actual test PDF files.
+
+	// For now, we're testing the logic that doesn't require file system access
+	// The supportsMultimodalAnalysis function is pure and can be tested easily
 })

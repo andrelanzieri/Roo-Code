@@ -14,6 +14,35 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
 	return addLineNumbers(data.text)
 }
 
+/**
+ * Extracts PDF content as base64 for multimodal analysis
+ * This allows AI models to analyze the visual content of PDFs including
+ * charts, diagrams, tables, and other visual elements
+ *
+ * @param filePath - Path to the PDF file
+ * @returns Promise resolving to base64 encoded PDF data with metadata
+ */
+export async function extractPDFAsBase64(filePath: string): Promise<{
+	type: "pdf"
+	source: {
+		type: "base64"
+		media_type: "application/pdf"
+		data: string
+	}
+}> {
+	const dataBuffer = await fs.readFile(filePath)
+	const base64Data = dataBuffer.toString("base64")
+
+	return {
+		type: "pdf",
+		source: {
+			type: "base64",
+			media_type: "application/pdf",
+			data: base64Data,
+		},
+	}
+}
+
 async function extractTextFromDOCX(filePath: string): Promise<string> {
 	const result = await mammoth.extractRawText({ path: filePath })
 	return addLineNumbers(result.value)
@@ -51,6 +80,77 @@ export function getSupportedBinaryFormats(): string[] {
 }
 
 /**
+ * Checks if a file format supports multimodal analysis
+ * Currently only PDF files support multimodal analysis
+ *
+ * @param fileExtension - The file extension to check (e.g., '.pdf')
+ * @returns true if the format supports multimodal analysis
+ */
+export function supportsMultimodalAnalysis(fileExtension: string): boolean {
+	return fileExtension.toLowerCase() === ".pdf"
+}
+
+// Size limits for different AI providers (in bytes)
+const PDF_SIZE_LIMITS = {
+	CLAUDE: 30 * 1024 * 1024, // 30MB for Claude
+	CHATGPT: 512 * 1024 * 1024, // 512MB for ChatGPT
+	GEMINI: 20 * 1024 * 1024, // 20MB for Gemini (conservative estimate)
+	DEFAULT: 30 * 1024 * 1024, // Default to Claude's limit
+}
+
+/**
+ * Validate PDF file for multimodal analysis
+ * @param filePath Path to the PDF file
+ * @param provider Optional AI provider name for size limit checking
+ * @returns Object with validation result and error message if invalid
+ */
+export async function validatePDFForMultimodal(
+	filePath: string,
+	provider: "claude" | "chatgpt" | "gemini" | "default" = "default",
+): Promise<{ valid: boolean; error?: string }> {
+	try {
+		// Check if file exists
+		const stats = await fs.stat(filePath)
+
+		// Check file extension
+		const ext = path.extname(filePath).toLowerCase()
+		if (ext !== ".pdf") {
+			return { valid: false, error: `File is not a PDF: ${ext}` }
+		}
+
+		// Check file size based on provider
+		const sizeLimit =
+			PDF_SIZE_LIMITS[provider.toUpperCase() as keyof typeof PDF_SIZE_LIMITS] || PDF_SIZE_LIMITS.DEFAULT
+		if (stats.size > sizeLimit) {
+			const sizeMB = (stats.size / (1024 * 1024)).toFixed(2)
+			const limitMB = (sizeLimit / (1024 * 1024)).toFixed(0)
+			return {
+				valid: false,
+				error: `PDF file size (${sizeMB}MB) exceeds the ${limitMB}MB limit for ${provider}`,
+			}
+		}
+
+		// Validate PDF structure by checking magic bytes
+		const fileHandle = await fs.open(filePath, "r")
+		const buffer = Buffer.alloc(5)
+		await fileHandle.read(buffer, 0, 5, 0)
+		await fileHandle.close()
+
+		const magicBytes = buffer.toString("ascii")
+		if (magicBytes !== "%PDF-") {
+			return { valid: false, error: "File does not appear to be a valid PDF (invalid magic bytes)" }
+		}
+
+		return { valid: true }
+	} catch (error) {
+		return {
+			valid: false,
+			error: `Failed to validate PDF: ${error instanceof Error ? error.message : String(error)}`,
+		}
+	}
+}
+
+/**
  * Extracts text content from a file, with support for various formats including PDF, DOCX, XLSX, and plain text.
  * For large text files, can limit the number of lines read to prevent context exhaustion.
  *
@@ -61,7 +161,11 @@ export function getSupportedBinaryFormats(): string[] {
  * @returns Promise resolving to the extracted text content with line numbers
  * @throws {Error} If file not found, unsupported format, or invalid parameters
  */
-export async function extractTextFromFile(filePath: string, maxReadFileLine?: number): Promise<string> {
+export async function extractTextFromFile(
+	filePath: string,
+	maxReadFileLine?: number,
+	multimodal: boolean = false,
+): Promise<string | { type: "pdf"; source: { type: "base64"; media_type: "application/pdf"; data: string } }> {
 	// Validate maxReadFileLine parameter
 	if (maxReadFileLine !== undefined && maxReadFileLine !== -1) {
 		if (!Number.isInteger(maxReadFileLine) || maxReadFileLine < 1) {
@@ -78,6 +182,11 @@ export async function extractTextFromFile(filePath: string, maxReadFileLine?: nu
 	}
 
 	const fileExtension = path.extname(filePath).toLowerCase()
+
+	// For PDF files with multimodal flag, return base64 encoded content
+	if (multimodal && fileExtension === ".pdf") {
+		return extractPDFAsBase64(filePath)
+	}
 
 	// Check if we have a specific extractor for this format
 	const extractor = SUPPORTED_BINARY_FORMATS[fileExtension as keyof typeof SUPPORTED_BINARY_FORMATS]

@@ -23,8 +23,8 @@ describe("processUserContentMentions", () => {
 		mockFileContextTracker = {} as FileContextTracker
 		mockRooIgnoreController = {}
 
-		// Default mock implementation
-		vi.mocked(parseMentions).mockImplementation(async (text) => `parsed: ${text}`)
+		// Default mock implementation - parseMentions now returns an object with text and optional pdfAttachments
+		vi.mocked(parseMentions).mockImplementation(async (text) => ({ text: `parsed: ${text}` }))
 	})
 
 	describe("maxReadFileLine parameter", () => {
@@ -55,6 +55,7 @@ describe("processUserContentMentions", () => {
 				true, // includeDiagnosticMessages
 				50, // maxDiagnosticMessages
 				100,
+				true, // enablePdfMultimodal
 			)
 		})
 
@@ -84,6 +85,7 @@ describe("processUserContentMentions", () => {
 				true, // includeDiagnosticMessages
 				50, // maxDiagnosticMessages
 				undefined,
+				true, // enablePdfMultimodal
 			)
 		})
 
@@ -114,6 +116,7 @@ describe("processUserContentMentions", () => {
 				true, // includeDiagnosticMessages
 				50, // maxDiagnosticMessages
 				-1,
+				true, // enablePdfMultimodal
 			)
 		})
 	})
@@ -135,7 +138,7 @@ describe("processUserContentMentions", () => {
 			})
 
 			expect(parseMentions).toHaveBeenCalled()
-			expect(result[0]).toEqual({
+			expect(result.content[0]).toEqual({
 				type: "text",
 				text: "parsed: <task>Do something</task>",
 			})
@@ -157,7 +160,7 @@ describe("processUserContentMentions", () => {
 			})
 
 			expect(parseMentions).toHaveBeenCalled()
-			expect(result[0]).toEqual({
+			expect(result.content[0]).toEqual({
 				type: "text",
 				text: "parsed: <feedback>Fix this issue</feedback>",
 			})
@@ -179,7 +182,7 @@ describe("processUserContentMentions", () => {
 			})
 
 			expect(parseMentions).not.toHaveBeenCalled()
-			expect(result[0]).toEqual(userContent[0])
+			expect(result.content[0]).toEqual(userContent[0])
 		})
 
 		it("should process tool_result blocks with string content", async () => {
@@ -199,7 +202,7 @@ describe("processUserContentMentions", () => {
 			})
 
 			expect(parseMentions).toHaveBeenCalled()
-			expect(result[0]).toEqual({
+			expect(result.content[0]).toEqual({
 				type: "tool_result",
 				tool_use_id: "123",
 				content: "parsed: <feedback>Tool feedback</feedback>",
@@ -232,7 +235,7 @@ describe("processUserContentMentions", () => {
 			})
 
 			expect(parseMentions).toHaveBeenCalledTimes(1)
-			expect(result[0]).toEqual({
+			expect(result.content[0]).toEqual({
 				type: "tool_result",
 				tool_use_id: "123",
 				content: [
@@ -278,13 +281,13 @@ describe("processUserContentMentions", () => {
 			})
 
 			expect(parseMentions).toHaveBeenCalledTimes(2)
-			expect(result).toHaveLength(3)
-			expect(result[0]).toEqual({
+			expect(result.content).toHaveLength(3)
+			expect(result.content[0]).toEqual({
 				type: "text",
 				text: "parsed: <task>First task</task>",
 			})
-			expect(result[1]).toEqual(userContent[1]) // Image block unchanged
-			expect(result[2]).toEqual({
+			expect(result.content[1]).toEqual(userContent[1]) // Image block unchanged
+			expect(result.content[2]).toEqual({
 				type: "tool_result",
 				tool_use_id: "456",
 				content: "parsed: <feedback>Feedback</feedback>",
@@ -318,6 +321,7 @@ describe("processUserContentMentions", () => {
 				true, // includeDiagnosticMessages
 				50, // maxDiagnosticMessages
 				undefined,
+				true, // enablePdfMultimodal
 			)
 		})
 
@@ -347,6 +351,7 @@ describe("processUserContentMentions", () => {
 				true, // includeDiagnosticMessages
 				50, // maxDiagnosticMessages
 				undefined,
+				true, // enablePdfMultimodal
 			)
 		})
 	})

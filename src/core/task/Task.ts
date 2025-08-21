@@ -1608,7 +1608,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				maxReadFileLine = -1,
 			} = (await this.providerRef.deref()?.getState()) ?? {}
 
-			const parsedUserContent = await processUserContentMentions({
+			const { content: parsedContent, pdfAttachments } = await processUserContentMentions({
 				userContent: currentUserContent,
 				cwd: this.cwd,
 				urlContentFetcher: this.urlContentFetcher,
@@ -1622,9 +1622,29 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			const environmentDetails = await getEnvironmentDetails(this, currentIncludeFileDetails)
 
-			// Add environment details as its own text block, separate from tool
-			// results.
-			const finalUserContent = [...parsedUserContent, { type: "text" as const, text: environmentDetails }]
+			// Build final user content with PDF attachments if present
+			let finalUserContent: Anthropic.Messages.ContentBlockParam[] = [...parsedContent]
+
+			// Add PDF attachments as document blocks for multimodal analysis
+			if (pdfAttachments && pdfAttachments.length > 0) {
+				for (const pdfAttachment of pdfAttachments) {
+					// Add PDF as a document block for models that support it
+					// The document type is supported by Claude 3.5 and newer models for native PDF analysis
+					const documentBlock: any = {
+						type: "document",
+						source: {
+							type: "base64",
+							media_type: "application/pdf",
+							data: pdfAttachment.data.source.data,
+						},
+						cache_control: { type: "ephemeral" }, // Enable caching for PDFs to reduce costs
+					}
+					finalUserContent.push(documentBlock)
+				}
+			}
+
+			// Add environment details as its own text block, separate from tool results
+			finalUserContent.push({ type: "text" as const, text: environmentDetails })
 
 			await this.addToApiConversationHistory({ role: "user", content: finalUserContent })
 			TelemetryService.instance.captureConversationMessage(this.taskId, "user")
