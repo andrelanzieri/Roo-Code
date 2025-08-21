@@ -102,7 +102,8 @@
 			"completionError": "Błąd uzupełniania Cerebras: {{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "Dostawca Roo wymaga uwierzytelnienia w chmurze. Zaloguj się do Roo Code Cloud."
+			"authenticationRequired": "Dostawca Roo wymaga uwierzytelnienia w chmurze. Zaloguj się do Roo Code Cloud.",
+			"authenticationRequiredWithOptions": "Dostawca Roo wymaga uwierzytelnienia. Zaloguj się do Roo Code Cloud lub przełącz na innego dostawcę."
 		}
 	},
 	"warnings": {
@@ -194,6 +195,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "Twoja organizacja wymaga uwierzytelnienia."
+		},
+		"buttons": {
+			"signIn": "Zaloguj się",
+			"settings": "Ustawienia"
+		}
 		}
 	},
 	"prompts": {

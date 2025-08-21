@@ -75,7 +75,7 @@ import { setPanel } from "../../activate/registerCommands"
 
 import { t } from "../../i18n"
 
-import { buildApiHandler } from "../../api"
+import { buildApiHandler, RooAuthenticationError } from "../../api"
 import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "../../api/providers/fetchers/lmstudio"
 
 import { ContextProxy } from "../config/ContextProxy"
@@ -774,6 +774,44 @@ export class ClineProvider
 
 		if (!ProfileValidator.isProfileAllowed(apiConfiguration, organizationAllowList)) {
 			throw new OrganizationAllowListViolationError(t("common:errors.violated_organization_allowlist"))
+		}
+
+		// Check if Roo provider is selected and not authenticated BEFORE creating the task
+		if (apiConfiguration.apiProvider === "roo") {
+			try {
+				// Try to build the API handler to check if authentication works
+				buildApiHandler(apiConfiguration)
+			} catch (error) {
+				if (error instanceof RooAuthenticationError) {
+					// Show error message to user
+					const signInText = t("common:mdm.buttons.signIn")
+					const settingsText = t("common:mdm.buttons.settings")
+					const selection = await vscode.window.showErrorMessage(
+						t("common:errors.roo.authenticationRequiredWithOptions"),
+						signInText,
+						settingsText,
+					)
+
+					if (selection === signInText) {
+						// Navigate to account view
+						await this.postMessageToWebview({ type: "action", action: "accountButtonClicked" })
+					} else if (selection === settingsText) {
+						// Open settings to allow provider change
+						await this.postMessageToWebview({ type: "action", action: "switchTab", tab: "settings" })
+					}
+
+					// Return the current task if it exists to prevent UI issues
+					const currentTask = this.getCurrentTask()
+					if (currentTask) {
+						return currentTask
+					}
+
+					// Throw a specific error that the webview can handle
+					throw new RooAuthenticationError("Authentication required for Roo provider")
+				}
+				// Re-throw other errors
+				throw error
+			}
 		}
 
 		const task = new Task({

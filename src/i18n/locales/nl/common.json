@@ -102,7 +102,8 @@
 			"completionError": "Cerebras-voltooiingsfout: {{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "Roo provider vereist cloud authenticatie. Log in bij Roo Code Cloud."
+			"authenticationRequired": "Roo provider vereist cloud authenticatie. Log in bij Roo Code Cloud.",
+			"authenticationRequiredWithOptions": "Roo provider vereist authenticatie. Log in bij Roo Code Cloud of schakel over naar een andere provider."
 		}
 	},
 	"warnings": {
@@ -194,6 +195,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "Je organisatie vereist authenticatie."
+		},
+		"buttons": {
+			"signIn": "Inloggen",
+			"settings": "Instellingen"
+		}
 		}
 	},
 	"prompts": {

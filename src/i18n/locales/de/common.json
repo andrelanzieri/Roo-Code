@@ -102,7 +102,8 @@
 			"completionError": "Cerebras-Vervollständigungsfehler: {{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "Roo-Anbieter erfordert Cloud-Authentifizierung. Bitte melde dich bei Roo Code Cloud an."
+			"authenticationRequired": "Roo-Anbieter erfordert Cloud-Authentifizierung. Bitte melde dich bei Roo Code Cloud an.",
+			"authenticationRequiredWithOptions": "Roo-Anbieter erfordert Authentifizierung. Bitte melde dich bei Roo Code Cloud an oder wechsle zu einem anderen Anbieter."
 		}
 	},
 	"warnings": {
@@ -194,6 +195,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "Deine Organisation erfordert eine Authentifizierung."
+		},
+		"buttons": {
+			"signIn": "Anmelden",
+			"settings": "Einstellungen"
+		}
 		}
 	},
 	"prompts": {

@@ -102,7 +102,8 @@
 			"completionError": "Errore di completamento Cerebras: {{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "Il provider Roo richiede l'autenticazione cloud. Accedi a Roo Code Cloud."
+			"authenticationRequired": "Il provider Roo richiede l'autenticazione cloud. Accedi a Roo Code Cloud.",
+			"authenticationRequiredWithOptions": "Il provider Roo richiede l'autenticazione. Accedi a Roo Code Cloud o passa a un provider diverso."
 		}
 	},
 	"warnings": {
@@ -194,6 +195,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "La tua organizzazione richiede l'autenticazione."
+		},
+		"buttons": {
+			"signIn": "Accedi",
+			"settings": "Impostazioni"
+		}
 		}
 	},
 	"prompts": {

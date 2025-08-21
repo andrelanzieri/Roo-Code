@@ -288,7 +288,38 @@ export const webviewMessageHandler = async (
 			// Initializing new instance of Cline will make sure that any
 			// agentically running promises in old instance don't affect our new
 			// task. This essentially creates a fresh slate for the new task.
-			await provider.createTask(message.text, message.images)
+			try {
+				await provider.createTask(message.text, message.images)
+				// Task created successfully - notify the UI to reset
+				await provider.postMessageToWebview({
+					type: "invoke",
+					invoke: "newChat",
+				})
+			} catch (error) {
+				// Check if it's a RooAuthenticationError by checking the error name
+				// The RooAuthenticationError class sets error.name = 'RooAuthenticationError'
+				if (error instanceof Error && error.name === "RooAuthenticationError") {
+					// The error has already been handled in createTask with a user-friendly dialog
+					// Send a specific message to unlock the UI without resetting the chat
+					provider.log(`Task creation cancelled due to Roo authentication: ${error.message}`)
+					await provider.postMessageToWebview({
+						type: "taskCreationFailed",
+						reason: "rooAuthenticationError",
+					})
+					// Exit without sending newChat to keep the chat state
+					break
+				}
+
+				// For all other errors, reset the UI and show error
+				await provider.postMessageToWebview({
+					type: "invoke",
+					invoke: "newChat",
+				})
+				// Show error to user
+				vscode.window.showErrorMessage(
+					`Failed to create task: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
 			break
 		case "customInstructions":
 			await provider.updateCustomInstructions(message.text)

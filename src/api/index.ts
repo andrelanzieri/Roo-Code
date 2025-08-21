@@ -4,6 +4,14 @@ import type { ProviderSettings, ModelInfo } from "@roo-code/types"
 
 import { ApiStream } from "./transform/stream"
 
+// Custom error class for Roo authentication failures
+export class RooAuthenticationError extends Error {
+	constructor(message: string) {
+		super(message)
+		this.name = "RooAuthenticationError"
+	}
+}
+
 import {
 	GlamaHandler,
 	AnthropicHandler,
@@ -143,7 +151,15 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 		case "io-intelligence":
 			return new IOIntelligenceHandler(options)
 		case "roo":
-			return new RooHandler(options)
+			try {
+				return new RooHandler(options)
+			} catch (error) {
+				// If Roo authentication fails, throw a specific error that can be caught upstream
+				// This allows proper handling in the UI rather than silently falling back
+				const errorMessage = error instanceof Error ? error.message : "Authentication required for Roo provider"
+				console.error("[API] Roo provider authentication failed:", errorMessage)
+				throw new RooAuthenticationError(errorMessage)
+			}
 		case "featherless":
 			return new FeatherlessHandler(options)
 		default:

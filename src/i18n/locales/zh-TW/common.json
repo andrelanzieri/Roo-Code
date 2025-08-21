@@ -101,7 +101,8 @@
 			"completionError": "Cerebras 完成錯誤：{{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "Roo 提供者需要雲端認證。請登入 Roo Code Cloud。"
+			"authenticationRequired": "Roo 提供者需要雲端認證。請登入 Roo Code Cloud。",
+			"authenticationRequiredWithOptions": "Roo 提供者需要身分驗證。請登入 Roo Code Cloud 或切換至其他提供者。"
 		},
 		"mode_import_failed": "匯入模式失敗：{{error}}"
 	},
@@ -194,6 +195,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "您的組織需要身份驗證。"
+		},
+		"buttons": {
+			"signIn": "登入",
+			"settings": "設定"
+		}
 		}
 	},
 	"prompts": {

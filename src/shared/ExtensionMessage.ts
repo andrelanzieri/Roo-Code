@@ -119,8 +119,10 @@ export interface ExtensionMessage {
 		| "showEditMessageDialog"
 		| "commands"
 		| "insertTextIntoTextarea"
+		| "taskCreationFailed"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
+	reason?: string // Reason for task creation failure
 	action?:
 		| "chatButtonClicked"
 		| "mcpButtonClicked"

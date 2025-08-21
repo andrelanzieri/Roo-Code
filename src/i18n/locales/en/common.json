@@ -102,7 +102,8 @@
 			"completionError": "Cerebras completion error: {{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "Roo provider requires cloud authentication. Please sign in to Roo Code Cloud."
+			"authenticationRequired": "Roo provider requires cloud authentication. Please sign in to Roo Code Cloud.",
+			"authenticationRequiredWithOptions": "Roo provider requires authentication. Please sign in to Roo Code Cloud or switch to a different provider."
 		}
 	},
 	"warnings": {
@@ -183,6 +184,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "Your organization requires authentication."
+		},
+		"buttons": {
+			"signIn": "Sign In",
+			"settings": "Settings"
+		}
 		}
 	},
 	"prompts": {

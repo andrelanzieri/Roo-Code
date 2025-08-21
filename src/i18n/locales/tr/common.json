@@ -102,7 +102,8 @@
 			"completionError": "Cerebras tamamlama hatası: {{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "Roo sağlayıcısı bulut kimlik doğrulaması gerektirir. Lütfen Roo Code Cloud'a giriş yapın."
+			"authenticationRequired": "Roo sağlayıcısı bulut kimlik doğrulaması gerektirir. Lütfen Roo Code Cloud'a giriş yapın.",
+			"authenticationRequiredWithOptions": "Roo sağlayıcısı kimlik doğrulaması gerektirir. Lütfen Roo Code Cloud'a giriş yapın veya farklı bir sağlayıcıya geçin."
 		}
 	},
 	"warnings": {
@@ -194,6 +195,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "Kuruluşunuz kimlik doğrulaması gerektiriyor."
+		},
+		"buttons": {
+			"signIn": "Oturum Aç",
+			"settings": "Ayarlar"
+		}
 		}
 	},
 	"prompts": {

@@ -107,7 +107,8 @@
 			"completionError": "Cerebras 完成错误：{{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "Roo 提供商需要云认证。请登录 Roo Code Cloud。"
+			"authenticationRequired": "Roo 提供商需要云认证。请登录 Roo Code Cloud。",
+			"authenticationRequiredWithOptions": "Roo 提供商需要身份验证。请登录 Roo Code Cloud 或切换到其他提供商。"
 		}
 	},
 	"warnings": {
@@ -199,6 +200,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "您的组织需要身份验证。"
+		},
+		"buttons": {
+			"signIn": "登录",
+			"settings": "设置"
+		}
 		}
 	},
 	"prompts": {

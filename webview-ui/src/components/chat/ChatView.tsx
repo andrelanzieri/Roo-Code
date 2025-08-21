@@ -875,6 +875,17 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						setIsCondensing(false)
 					}
 					break
+				case "taskCreationFailed":
+					// Re-enable the UI when task creation fails (e.g., Roo authentication error)
+					if (message.reason === "rooAuthenticationError") {
+						setSendingDisabled(false)
+						setClineAsk(undefined)
+						setEnableButtons(false)
+						// Clear any other UI state that might be stuck
+						setPrimaryButtonText(undefined)
+						setSecondaryButtonText(undefined)
+					}
+					break
 			}
 			// textAreaRef.current is not explicitly required here since React
 			// guarantees that ref will be stable across re-renders, and we're

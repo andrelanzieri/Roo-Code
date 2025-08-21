@@ -102,7 +102,8 @@
 			"completionError": "Cerebras完了エラー: {{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "Rooプロバイダーはクラウド認証が必要です。Roo Code Cloudにサインインしてください。"
+			"authenticationRequired": "Rooプロバイダーはクラウド認証が必要です。Roo Code Cloudにサインインしてください。",
+			"authenticationRequiredWithOptions": "Rooプロバイダーは認証が必要です。Roo Code Cloudにサインインするか、別のプロバイダーに切り替えてください。"
 		}
 	},
 	"warnings": {
@@ -194,6 +195,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "あなたの組織では認証が必要です。"
+		},
+		"buttons": {
+			"signIn": "サインイン",
+			"settings": "設定"
+		}
 		}
 	},
 	"prompts": {

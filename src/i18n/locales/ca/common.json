@@ -105,7 +105,8 @@
 			"completionError": "Error de finalització de Cerebras: {{error}}"
 		},
 		"roo": {
-			"authenticationRequired": "El proveïdor Roo requereix autenticació al núvol. Si us plau, inicieu sessió a Roo Code Cloud."
+			"authenticationRequired": "El proveïdor Roo requereix autenticació al núvol. Si us plau, inicieu sessió a Roo Code Cloud.",
+			"authenticationRequiredWithOptions": "El proveïdor Roo requereix autenticació. Si us plau, inicieu sessió a Roo Code Cloud o canvieu a un proveïdor diferent."
 		},
 		"mode_import_failed": "Ha fallat la importació del mode: {{error}}"
 	},
@@ -194,6 +195,11 @@
 		},
 		"info": {
 			"organization_requires_auth": "La teva organització requereix autenticació."
+		},
+		"buttons": {
+			"signIn": "Inicia sessió",
+			"settings": "Configuració"
+		}
 		}
 	},
 	"prompts": {
