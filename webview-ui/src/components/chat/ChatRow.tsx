@@ -33,7 +33,8 @@ import MarkdownBlock from "../common/MarkdownBlock"
 import { ReasoningBlock } from "./ReasoningBlock"
 import Thumbnails from "../common/Thumbnails"
 import McpResourceRow from "../mcp/McpResourceRow"
-import { IconButton } from "./IconButton"
+
+import { DisclosureHeader } from "./DisclosureHeader"
 
 import { Mention } from "./Mention"
 import { CheckpointSaved } from "./checkpoints/CheckpointSaved"
@@ -864,60 +865,29 @@ export const ChatRowContent = ({
 									overflow: "hidden",
 									marginBottom: "8px",
 								}}>
-								<div
-									style={{
-										borderBottom: isDiffErrorExpanded
-											? "1px solid var(--vscode-editorGroup-border)"
-											: "none",
-										fontWeight: "normal",
-										fontSize: "var(--vscode-font-size)",
-										color: "var(--vscode-editor-foreground)",
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "space-between",
-										cursor: "pointer",
+								<DisclosureHeader
+									contentId={`diff-error-${message.ts}`}
+									iconClass="codicon-warning"
+									iconStyle={{ color: "var(--vscode-editorWarning-foreground)", opacity: 0.8 }}
+									title={<span style={{ fontWeight: "bold" }}>{t("chat:diffError.title")}</span>}
+									expanded={isDiffErrorExpanded}
+									onToggle={() => setIsDiffErrorExpanded(!isDiffErrorExpanded)}
+									onCopy={() => {
+										copyWithFeedback(message.text || "").then((success) => {
+											if (success) {
+												setShowCopySuccess(true)
+												setTimeout(() => {
+													setShowCopySuccess(false)
+												}, 1000)
+											}
+										})
 									}}
-									onClick={() => setIsDiffErrorExpanded(!isDiffErrorExpanded)}>
-									<div
-										style={{
-											display: "flex",
-											alignItems: "center",
-											gap: "10px",
-											flexGrow: 1,
-										}}>
-										<span
-											className="codicon codicon-warning"
-											style={{
-												color: "var(--vscode-editorWarning-foreground)",
-												opacity: 0.8,
-												fontSize: 16,
-												marginBottom: "-1.5px",
-											}}></span>
-										<span style={{ fontWeight: "bold" }}>{t("chat:diffError.title")}</span>
-									</div>
-									<div style={{ display: "flex", alignItems: "center" }}>
-										<IconButton
-											iconClass={showCopySuccess ? "codicon-check" : "codicon-copy"}
-											title={t("chat:codeblock.tooltips.copy_code")}
-											onClick={(e: React.MouseEvent) => {
-												e.stopPropagation()
-												copyWithFeedback(message.text || "").then((success) => {
-													if (success) {
-														setShowCopySuccess(true)
-														setTimeout(() => {
-															setShowCopySuccess(false)
-														}, 1000)
-													}
-												})
-											}}
-											style={{ marginRight: "4px" }}
-										/>
-										<span
-											className={`codicon codicon-chevron-${isDiffErrorExpanded ? "up" : "down"}`}></span>
-									</div>
-								</div>
+									copyTitle={t("chat:codeblock.tooltips.copy_code")}
+									copyIconClass={showCopySuccess ? "codicon-check" : "codicon-copy"}
+								/>
 								{isDiffErrorExpanded && (
 									<div
+										id={`diff-error-${message.ts}`}
 										style={{
 											padding: "8px",
 											backgroundColor: "var(--vscode-editor-background)",
@@ -1127,62 +1097,29 @@ export const ChatRowContent = ({
 									overflow: "hidden",
 									marginBottom: "8px",
 								}}>
-								<div
-									style={{
-										borderBottom: isErrorExpanded
-											? "1px solid var(--vscode-editorGroup-border)"
-											: "none",
-										fontWeight: "normal",
-										fontSize: "var(--vscode-font-size)",
-										color: "var(--vscode-editor-foreground)",
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "space-between",
-										cursor: "pointer",
+								<DisclosureHeader
+									contentId={`error-${message.ts}`}
+									iconClass="codicon-error"
+									iconStyle={{ color: "var(--vscode-errorForeground)", opacity: 0.8 }}
+									title={<span style={{ fontWeight: "bold" }}>{t("chat:error")}</span>}
+									expanded={isErrorExpanded}
+									onToggle={() => setIsErrorExpanded(!isErrorExpanded)}
+									onCopy={() => {
+										copyWithFeedback(message.text || "").then((success) => {
+											if (success) {
+												setShowErrorCopySuccess(true)
+												setTimeout(() => {
+													setShowErrorCopySuccess(false)
+												}, 1000)
+											}
+										})
 									}}
-									onClick={() => setIsErrorExpanded(!isErrorExpanded)}>
-									<div
-										style={{
-											display: "flex",
-											alignItems: "center",
-											gap: "10px",
-											flexGrow: 1,
-										}}>
-										<span
-											className="codicon codicon-error"
-											style={{
-												color: "var(--vscode-errorForeground)",
-												opacity: 0.8,
-												fontSize: 16,
-												marginBottom: "-1.5px",
-											}}></span>
-										<span style={{ fontWeight: "bold", color: "var(--vscode-errorForeground)" }}>
-											{t("chat:error")}
-										</span>
-									</div>
-									<div style={{ display: "flex", alignItems: "center" }}>
-										<IconButton
-											iconClass={showErrorCopySuccess ? "codicon-check" : "codicon-copy"}
-											title={t("chat:codeblock.tooltips.copy_code")}
-											onClick={(e: React.MouseEvent) => {
-												e.stopPropagation()
-												copyWithFeedback(message.text || "").then((success) => {
-													if (success) {
-														setShowErrorCopySuccess(true)
-														setTimeout(() => {
-															setShowErrorCopySuccess(false)
-														}, 1000)
-													}
-												})
-											}}
-											style={{ marginRight: "4px" }}
-										/>
-										<span
-											className={`codicon codicon-chevron-${isErrorExpanded ? "up" : "down"}`}></span>
-									</div>
-								</div>
+									copyTitle={t("chat:codeblock.tooltips.copy_code")}
+									copyIconClass={showErrorCopySuccess ? "codicon-check" : "codicon-copy"}
+								/>
 								{isErrorExpanded && (
 									<div
+										id={`error-${message.ts}`}
 										style={{
 											padding: "8px",
 											backgroundColor: "var(--vscode-editor-background)",
