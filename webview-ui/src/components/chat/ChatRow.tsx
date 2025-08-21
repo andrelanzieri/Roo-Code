@@ -1089,23 +1089,43 @@ export const ChatRowContent = ({
 						</div>
 					)
 				case "error": {
-					// Extract error title from the message text if it follows the pattern "Title: rest of message"
+					// Extract error title from the message text
 					let errorTitle = t("chat:error")
 					const errorContent = message.text || ""
 
-					// Check if the error message starts with a title pattern (e.g., "File Not Found:", "Permission Denied:", etc.)
-					// Look for text before the first colon on the first line
-					const firstLineEnd = errorContent.indexOf("\n")
-					const firstLine = firstLineEnd > -1 ? errorContent.substring(0, firstLineEnd) : errorContent
-					const colonIndex = firstLine.indexOf(":")
+					// Common error patterns to extract meaningful titles from
+					const patterns = [
+						// "Error reading file: File not found: /path/to/file" -> "File Not Found"
+						{ regex: /^Error reading file:.*?(File not found):/i, title: "File Not Found" },
+						// "Error reading file: Permission denied: /path/to/file" -> "Permission Denied"
+						{ regex: /^Error reading file:.*?(Permission denied):/i, title: "Permission Denied" },
+						// "Error reading file: <any other error>" -> extract the error part
+						{ regex: /^Error reading file:\s*(.+?)(?::|$)/i, extractTitle: true },
+						// Generic "Title: rest of message" pattern
+						{ regex: /^([^:]+):\s*/, extractTitle: true, maxLength: 50 },
+					]
 
-					if (colonIndex > 0 && colonIndex < 50) {
-						// Reasonable title length limit
-						// Extract the title part before the colon
-						const potentialTitle = firstLine.substring(0, colonIndex).trim()
-						// Use it as title if it's not too long and looks like a title
-						if (potentialTitle.length > 0) {
-							errorTitle = potentialTitle.replace(/^Error\s+/i, "").trim()
+					// Try each pattern to find a match
+					for (const pattern of patterns) {
+						const match = errorContent.match(pattern.regex)
+						if (match) {
+							if (pattern.title) {
+								// Use predefined title
+								errorTitle = pattern.title
+							} else if (pattern.extractTitle && match[1]) {
+								// Extract and clean up the title
+								let extracted = match[1].trim()
+								// Remove redundant "Error" prefix
+								extracted = extracted.replace(/^Error\s+/i, "").trim()
+								// Only use if it's a reasonable length
+								if (
+									extracted.length > 0 &&
+									(!pattern.maxLength || extracted.length <= pattern.maxLength)
+								) {
+									errorTitle = extracted
+								}
+							}
+							break
 						}
 					}
 
