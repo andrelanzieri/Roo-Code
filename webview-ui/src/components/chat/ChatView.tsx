@@ -449,11 +449,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		// Reset user response flag for new task
 		userRespondedRef.current = false
 
-		// Clear message queue when starting a new task
-		setMessageQueue([])
-		// Clear retry counts
-		retryCountRef.current.clear()
-	}, [task?.ts])
+		// Preserve the user's queued messages if the active task was canceled.
+		if (!didClickCancel) {
+			// Clear message queue when starting a new task
+			setMessageQueue([])
+			// Clear retry counts
+			retryCountRef.current.clear()
+		}
+	}, [task?.ts, didClickCancel])
 
 	useEffect(() => {
 		if (isHidden) {
@@ -636,11 +639,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useEffect(() => {
 		// Early return if conditions aren't met
 		// Also don't process queue if there's an API error (clineAsk === "api_req_failed")
+		// Additionally, DO NOT process queued messages when there is no active task context
+		// (messages.length === 0). This prevents accidentally starting a new task after cancel.
 		if (
 			sendingDisabled ||
 			messageQueue.length === 0 ||
 			isProcessingQueueRef.current ||
-			clineAsk === "api_req_failed"
+			clineAsk === "api_req_failed" ||
+			messages.length === 0
 		) {
 			return
 		}
@@ -685,7 +691,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		return () => {
 			isProcessingQueueRef.current = false
 		}
-	}, [sendingDisabled, messageQueue, handleSendMessage, clineAsk])
+	}, [sendingDisabled, messageQueue, handleSendMessage, clineAsk, messages.length])
 
 	const handleSetChatBoxMessage = useCallback(
 		(text: string, images: string[]) => {
