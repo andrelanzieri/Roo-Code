@@ -117,6 +117,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		soundEnabled,
 		soundVolume,
 		cloudIsAuthenticated,
+		shouldShowAnnouncement,
 	} = useExtensionState()
 
 	const messagesRef = useRef(messages)
@@ -1829,6 +1830,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						<VersionIndicator
 							onClick={() => setShowAnnouncementModal(true)}
 							className="absolute top-2 right-3 z-10"
+							showNotification={shouldShowAnnouncement}
 						/>
 
 						<RooHero />
