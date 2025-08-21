@@ -1670,6 +1670,7 @@ export class ClineProvider
 		const {
 			apiConfiguration,
 			lastShownAnnouncementId,
+			lastAcknowledgedAnnouncementId,
 			customInstructions,
 			alwaysAllowReadOnly,
 			alwaysAllowReadOnlyOutsideWorkspace,
@@ -1800,6 +1801,8 @@ export class ClineProvider
 			enableCheckpoints: enableCheckpoints ?? true,
 			shouldShowAnnouncement:
 				telemetrySetting !== "unset" && lastShownAnnouncementId !== this.latestAnnouncementId,
+			// Badge should persist across sessions until manually acknowledged by clicking version indicator
+			shouldShowAnnouncementBadge: lastAcknowledgedAnnouncementId !== this.latestAnnouncementId,
 			allowedCommands: mergedAllowedCommands,
 			deniedCommands: mergedDeniedCommands,
 			soundVolume: soundVolume ?? 0.5,
@@ -1963,6 +1966,7 @@ export class ClineProvider
 		return {
 			apiConfiguration: providerSettings,
 			lastShownAnnouncementId: stateValues.lastShownAnnouncementId,
+			lastAcknowledgedAnnouncementId: stateValues.lastAcknowledgedAnnouncementId,
 			customInstructions: stateValues.customInstructions,
 			apiModelId: stateValues.apiModelId,
 			alwaysAllowReadOnly: stateValues.alwaysAllowReadOnly ?? false,
