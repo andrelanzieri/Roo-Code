@@ -30,6 +30,7 @@ import {
 	type TerminalActionPromptType,
 	type HistoryItem,
 	type CreateTaskOptions,
+	type ClineAsk,
 	RooCodeEventName,
 	requestyDefaultModelId,
 	openRouterDefaultModelId,
@@ -120,7 +121,7 @@ export class ClineProvider
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
-	public readonly latestAnnouncementId = "jul-29-2025-3-25-0" // Update for v3.25.0 announcement
+	public readonly latestAnnouncementId = "aug-20-2025-stealth-model" // Update for stealth model announcement
 	public readonly providerSettingsManager: ProviderSettingsManager
 	public readonly customModesManager: CustomModesManager
 
@@ -177,6 +178,8 @@ export class ClineProvider
 			const onTaskFocused = () => this.emit(RooCodeEventName.TaskFocused, instance.taskId)
 			const onTaskUnfocused = () => this.emit(RooCodeEventName.TaskUnfocused, instance.taskId)
 			const onTaskActive = (taskId: string) => this.emit(RooCodeEventName.TaskActive, taskId)
+			const onTaskInteractive = (taskId: string) => this.emit(RooCodeEventName.TaskInteractive, taskId)
+			const onTaskResumable = (taskId: string) => this.emit(RooCodeEventName.TaskResumable, taskId)
 			const onTaskIdle = (taskId: string) => this.emit(RooCodeEventName.TaskIdle, taskId)
 
 			// Attach the listeners.
@@ -186,6 +189,8 @@ export class ClineProvider
 			instance.on(RooCodeEventName.TaskFocused, onTaskFocused)
 			instance.on(RooCodeEventName.TaskUnfocused, onTaskUnfocused)
 			instance.on(RooCodeEventName.TaskActive, onTaskActive)
+			instance.on(RooCodeEventName.TaskInteractive, onTaskInteractive)
+			instance.on(RooCodeEventName.TaskResumable, onTaskResumable)
 			instance.on(RooCodeEventName.TaskIdle, onTaskIdle)
 
 			// Store the cleanup functions for later removal.
@@ -196,6 +201,8 @@ export class ClineProvider
 				() => instance.off(RooCodeEventName.TaskFocused, onTaskFocused),
 				() => instance.off(RooCodeEventName.TaskUnfocused, onTaskUnfocused),
 				() => instance.off(RooCodeEventName.TaskActive, onTaskActive),
+				() => instance.off(RooCodeEventName.TaskInteractive, onTaskInteractive),
+				() => instance.off(RooCodeEventName.TaskResumable, onTaskResumable),
 				() => instance.off(RooCodeEventName.TaskIdle, onTaskIdle),
 			])
 		}
@@ -402,6 +409,13 @@ export class ClineProvider
 	// This is used when the user cancels a task that is not a subtask
 	async clearTask() {
 		await this.removeClineFromStack()
+	}
+
+	resumeTask(taskId: string): void {
+		// Use the existing showTaskWithId method which handles both current and historical tasks
+		this.showTaskWithId(taskId).catch((error) => {
+			this.log(`Failed to resume task ${taskId}: ${error.message}`)
+		})
 	}
 
 	getRecentTasks(): string[] {
@@ -1881,7 +1895,7 @@ export class ClineProvider
 			followupAutoApproveTimeoutMs: followupAutoApproveTimeoutMs ?? 60000,
 			includeDiagnosticMessages: includeDiagnosticMessages ?? true,
 			maxDiagnosticMessages: maxDiagnosticMessages ?? 50,
-			includeTaskHistoryInEnhance: includeTaskHistoryInEnhance ?? false,
+			includeTaskHistoryInEnhance: includeTaskHistoryInEnhance ?? true,
 			remoteControlEnabled: remoteControlEnabled ?? false,
 		}
 	}
@@ -2069,7 +2083,7 @@ export class ClineProvider
 			includeDiagnosticMessages: stateValues.includeDiagnosticMessages ?? true,
 			maxDiagnosticMessages: stateValues.maxDiagnosticMessages ?? 50,
 			// Add includeTaskHistoryInEnhance setting
-			includeTaskHistoryInEnhance: stateValues.includeTaskHistoryInEnhance ?? false,
+			includeTaskHistoryInEnhance: stateValues.includeTaskHistoryInEnhance ?? true,
 			// Add remoteControlEnabled setting
 			remoteControlEnabled: stateValues.remoteControlEnabled ?? false,
 		}
