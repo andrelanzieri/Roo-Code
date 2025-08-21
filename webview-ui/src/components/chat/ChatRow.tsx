@@ -1099,8 +1099,8 @@ export const ChatRowContent = ({
 								}}>
 								<DisclosureHeader
 									contentId={`error-${message.ts}`}
-									iconClass="codicon-error"
-									iconStyle={{ color: "var(--vscode-errorForeground)", opacity: 0.8 }}
+									iconClass="codicon-warning"
+									iconStyle={{ color: "var(--vscode-editorWarning-foreground)", opacity: 0.8 }}
 									title={<span style={{ fontWeight: "bold" }}>{t("chat:error")}</span>}
 									expanded={isErrorExpanded}
 									onToggle={() => setIsErrorExpanded(!isErrorExpanded)}
