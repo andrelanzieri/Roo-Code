@@ -266,6 +266,7 @@ const xaiSchema = apiModelIdProviderModelSchema.extend({
 
 const groqSchema = apiModelIdProviderModelSchema.extend({
 	groqApiKey: z.string().optional(),
+	groqUsePromptCache: z.boolean().optional(),
 })
 
 const huggingFaceSchema = baseProviderSettingsSchema.extend({

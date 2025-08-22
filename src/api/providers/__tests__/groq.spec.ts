@@ -320,5 +320,284 @@ describe("GroqHandler", () => {
 			cacheWriteTokens: 0,
 			cacheReadTokens: 0, // Default to 0 when not provided
 		})
+
+		describe("Prompt Caching", () => {
+			it("should use caching strategy when groqUsePromptCache is enabled", async () => {
+				const handlerWithCache = new GroqHandler({
+					groqApiKey: "test-groq-api-key",
+					groqUsePromptCache: true,
+				})
+
+				mockCreate.mockImplementationOnce(() => {
+					return {
+						[Symbol.asyncIterator]: () => ({
+							async next() {
+								return { done: true }
+							},
+						}),
+					}
+				})
+
+				const systemPrompt = "Test system prompt for caching"
+				const messages: Anthropic.Messages.MessageParam[] = [
+					{ role: "user", content: "First message" },
+					{ role: "assistant", content: "First response" },
+					{ role: "user", content: "Second message" },
+				]
+
+				const messageGenerator = handlerWithCache.createMessage(systemPrompt, messages)
+				await messageGenerator.next()
+
+				// Verify that the messages were formatted with the system prompt
+				expect(mockCreate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						messages: expect.arrayContaining([
+							{ role: "system", content: systemPrompt },
+							{ role: "user", content: "First message" },
+							{ role: "assistant", content: "First response" },
+							{ role: "user", content: "Second message" },
+						]),
+					}),
+					undefined,
+				)
+			})
+
+			it("should not use caching strategy when groqUsePromptCache is disabled", async () => {
+				const handlerWithoutCache = new GroqHandler({
+					groqApiKey: "test-groq-api-key",
+					groqUsePromptCache: false,
+				})
+
+				mockCreate.mockImplementationOnce(() => {
+					return {
+						[Symbol.asyncIterator]: () => ({
+							async next() {
+								return { done: true }
+							},
+						}),
+					}
+				})
+
+				const systemPrompt = "Test system prompt without caching"
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
+
+				const messageGenerator = handlerWithoutCache.createMessage(systemPrompt, messages)
+				await messageGenerator.next()
+
+				// Verify standard formatting is used
+				expect(mockCreate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						messages: expect.arrayContaining([
+							{ role: "system", content: systemPrompt },
+							{ role: "user", content: "Test message" },
+						]),
+					}),
+					undefined,
+				)
+			})
+
+			it("should handle multiple cache read token field names", async () => {
+				const testContent = "Test content"
+
+				// Test different field names that Groq might use for cached tokens
+				const cacheFieldVariations = [
+					{ cached_tokens: 30 },
+					{ cache_read_input_tokens: 40 },
+					{ cache_tokens: 50 },
+				]
+
+				for (const cacheFields of cacheFieldVariations) {
+					vitest.clearAllMocks()
+
+					mockCreate.mockImplementationOnce(() => {
+						return {
+							[Symbol.asyncIterator]: () => ({
+								next: vitest
+									.fn()
+									.mockResolvedValueOnce({
+										done: false,
+										value: { choices: [{ delta: { content: testContent } }] },
+									})
+									.mockResolvedValueOnce({
+										done: false,
+										value: {
+											choices: [{ delta: {} }],
+											usage: {
+												prompt_tokens: 100,
+												completion_tokens: 20,
+												prompt_tokens_details: cacheFields,
+											},
+										},
+									})
+									.mockResolvedValueOnce({ done: true }),
+							}),
+						}
+					})
+
+					const stream = handler.createMessage("system prompt", [])
+					const chunks = []
+					for await (const chunk of stream) {
+						chunks.push(chunk)
+					}
+
+					// Get the expected cached tokens value
+					const expectedCachedTokens = Object.values(cacheFields)[0]
+
+					// Should properly extract cached tokens from any of the field names
+					expect(chunks[1]).toEqual({
+						type: "usage",
+						inputTokens: 100 - expectedCachedTokens,
+						outputTokens: 20,
+						cacheWriteTokens: 0,
+						cacheReadTokens: expectedCachedTokens,
+					})
+				}
+			})
+
+			it("should maintain conversation cache state across multiple messages", async () => {
+				const handlerWithCache = new GroqHandler({
+					groqApiKey: "test-groq-api-key",
+					groqUsePromptCache: true,
+				})
+
+				mockCreate.mockImplementation(() => {
+					return {
+						[Symbol.asyncIterator]: () => ({
+							async next() {
+								return { done: true }
+							},
+						}),
+					}
+				})
+
+				const systemPrompt = "System prompt for conversation"
+				const firstMessages: Anthropic.Messages.MessageParam[] = [
+					{ role: "user", content: "First user message" },
+				]
+
+				// First call
+				const firstGenerator = handlerWithCache.createMessage(systemPrompt, firstMessages)
+				await firstGenerator.next()
+
+				// Add more messages for second call
+				const secondMessages: Anthropic.Messages.MessageParam[] = [
+					...firstMessages,
+					{ role: "assistant", content: "First assistant response" },
+					{ role: "user", content: "Second user message" },
+				]
+
+				// Second call with extended conversation
+				const secondGenerator = handlerWithCache.createMessage(systemPrompt, secondMessages)
+				await secondGenerator.next()
+
+				// Both calls should have been made
+				expect(mockCreate).toHaveBeenCalledTimes(2)
+
+				// Verify the second call has all messages
+				const secondCallArgs = mockCreate.mock.calls[1][0]
+				expect(secondCallArgs.messages).toHaveLength(4) // system + 3 messages
+			})
+
+			it("should handle complex message content with caching", async () => {
+				const handlerWithCache = new GroqHandler({
+					groqApiKey: "test-groq-api-key",
+					groqUsePromptCache: true,
+				})
+
+				mockCreate.mockImplementationOnce(() => {
+					return {
+						[Symbol.asyncIterator]: () => ({
+							async next() {
+								return { done: true }
+							},
+						}),
+					}
+				})
+
+				const systemPrompt = "System prompt"
+				const messages: Anthropic.Messages.MessageParam[] = [
+					{
+						role: "user",
+						content: [
+							{ type: "text", text: "Part 1" },
+							{ type: "text", text: "Part 2" },
+						],
+					},
+					{
+						role: "assistant",
+						content: [
+							{ type: "text", text: "Response part 1" },
+							{ type: "text", text: "Response part 2" },
+						],
+					},
+				]
+
+				const messageGenerator = handlerWithCache.createMessage(systemPrompt, messages)
+				await messageGenerator.next()
+
+				// Verify that complex content is properly converted
+				expect(mockCreate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						messages: expect.arrayContaining([
+							{ role: "system", content: systemPrompt },
+							{ role: "user", content: "Part 1\nPart 2" },
+							{ role: "assistant", content: "Response part 1\nResponse part 2" },
+						]),
+					}),
+					undefined,
+				)
+			})
+
+			it("should respect model's supportsPromptCache flag", async () => {
+				// Mock the getModel method to return a model without cache support
+				const modelId: GroqModelId = "llama-3.1-8b-instant"
+
+				const handlerWithCache = new GroqHandler({
+					apiModelId: modelId,
+					groqApiKey: "test-groq-api-key",
+					groqUsePromptCache: true, // Enabled but we'll mock the model to not support it
+				})
+
+				// Override getModel to return a model without cache support
+				const originalGetModel = handlerWithCache.getModel.bind(handlerWithCache)
+				handlerWithCache.getModel = () => {
+					const model = originalGetModel()
+					return {
+						...model,
+						info: {
+							...model.info,
+							supportsPromptCache: false, // Override to false for this test
+						},
+					}
+				}
+
+				mockCreate.mockImplementationOnce(() => {
+					return {
+						[Symbol.asyncIterator]: () => ({
+							async next() {
+								return { done: true }
+							},
+						}),
+					}
+				})
+
+				const systemPrompt = "Test system prompt"
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
+
+				const messageGenerator = handlerWithCache.createMessage(systemPrompt, messages)
+				await messageGenerator.next()
+
+				// Should use standard formatting when model doesn't support caching
+				expect(mockCreate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						messages: expect.arrayContaining([
+							{ role: "system", content: systemPrompt },
+							{ role: "user", content: "Test message" },
+						]),
+					}),
+					undefined,
+				)
+			})
+		})
 	})
 })
