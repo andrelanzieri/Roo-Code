@@ -339,40 +339,45 @@ function processCaptures(captures: QueryCapture[], lines: string[], language: st
 		}
 		// For other component definitions
 		else if (isNotHtmlElement(startLineContent)) {
-			// For Java, special handling to avoid showing @Override as a separate line
-			// when it's part of a method declaration
+			// For Java, special handling for methods with annotations
 			if (language === "java" && name === "definition.method") {
-				// Check if the method has an annotation like @Override
-				const methodText = definitionNode.text
-				if (methodText.includes("@Override")) {
-					// Find the actual method declaration line (not the annotation line)
-					let methodDeclarationLine = startLine
-					for (let i = startLine; i <= endLine; i++) {
-						if (
-							lines[i].includes("public") ||
-							lines[i].includes("private") ||
-							lines[i].includes("protected") ||
-							lines[i].includes("void") ||
-							lines[i].includes("static")
-						) {
-							methodDeclarationLine = i
-							break
-						}
+				// Find the actual method declaration line (skip annotation lines)
+				let methodDeclarationLine = startLine
+				for (let i = startLine; i <= endLine; i++) {
+					const line = lines[i].trim()
+					// Skip empty lines and annotation lines (lines starting with @)
+					if (line && !line.startsWith("@") && !line.startsWith("//") && !line.startsWith("/*")) {
+						methodDeclarationLine = i
+						break
 					}
-					// Output the method with its proper line range, but show the method declaration line
-					formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[methodDeclarationLine]}\n`
-					processedLines.add(lineKey)
-				} else {
-					// Normal method without annotations
-					formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[startLine]}\n`
-					processedLines.add(lineKey)
 				}
+				// Output the method with its proper line range, showing the method declaration line
+				formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[methodDeclarationLine]}\n`
+				processedLines.add(lineKey)
 			} else if (language === "java" && name === "definition.class") {
 				// For Java classes, skip the entire class definition to avoid duplication
 				// The class name will be handled by name.definition.class
 				return
+			} else if (language === "java" && name.includes("definition.annotation")) {
+				// Skip standalone annotation definitions - they're not useful for code structure overview
+				// Annotations will be shown as part of the methods/fields they annotate
+				return
 			} else {
-				formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[startLine]}\n`
+				// For Java, check if this line is just an annotation
+				if (language === "java" && lines[startLine].trim().startsWith("@")) {
+					// Find the next non-annotation line
+					let actualDefinitionLine = startLine
+					for (let i = startLine + 1; i <= endLine; i++) {
+						const line = lines[i].trim()
+						if (line && !line.startsWith("@")) {
+							actualDefinitionLine = i
+							break
+						}
+					}
+					formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[actualDefinitionLine]}\n`
+				} else {
+					formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[startLine]}\n`
+				}
 				processedLines.add(lineKey)
 			}
 
