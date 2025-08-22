@@ -1,5 +1,6 @@
 import * as path from "path"
 import { Parser as ParserT, Language as LanguageT, Query as QueryT } from "web-tree-sitter"
+import { shouldUseFallbackChunking } from "../code-index/shared/supported-extensions"
 import {
 	javascriptQuery,
 	typescriptQuery,
@@ -92,6 +93,12 @@ export async function loadRequiredLanguageParsers(filesToParse: string[], source
 	const parsers: LanguageParser = {}
 
 	for (const ext of extensionsToLoad) {
+		// Skip extensions that should use fallback chunking (e.g., Swift)
+		if (shouldUseFallbackChunking(`.${ext}`)) {
+			console.log(`Skipping parser load for .${ext} - using fallback chunking for stability`)
+			continue
+		}
+
 		let language: LanguageT
 		let query: QueryT
 		let parserKey = ext // Default to using extension as key
@@ -149,10 +156,7 @@ export async function loadRequiredLanguageParsers(filesToParse: string[], source
 				language = await loadLanguage("php", sourceDirectory)
 				query = new Query(language, phpQuery)
 				break
-			case "swift":
-				language = await loadLanguage("swift", sourceDirectory)
-				query = new Query(language, swiftQuery)
-				break
+			// Swift case removed - it uses fallback chunking for stability
 			case "kt":
 			case "kts":
 				language = await loadLanguage("kotlin", sourceDirectory)

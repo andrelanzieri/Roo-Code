@@ -6,6 +6,7 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { parseMarkdown } from "./markdownParser"
 import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
 import { QueryCapture } from "web-tree-sitter"
+import { shouldUseFallbackChunking } from "../code-index/shared/supported-extensions"
 
 // Private constant
 const DEFAULT_MIN_COMPONENT_LINES_VALUE = 4
@@ -137,6 +138,13 @@ export async function parseSourceCodeDefinitionsForFile(
 		return undefined
 	}
 
+	// Check if this extension should use fallback chunking (e.g., Swift)
+	if (shouldUseFallbackChunking(ext)) {
+		// Return a message indicating this file type uses fallback chunking
+		// This prevents attempting to load the potentially unstable parser
+		return `# ${path.basename(filePath)}\n// This file type uses fallback chunking for stability`
+	}
+
 	// For other file types, load parser and use tree-sitter
 	const languageParsers = await loadRequiredLanguageParsers([filePath])
 
@@ -171,20 +179,23 @@ export async function parseSourceCodeForDefinitionsTopLevel(
 	// Filter filepaths for access if controller is provided
 	const allowedFilesToParse = rooIgnoreController ? rooIgnoreController.filterPaths(filesToParse) : filesToParse
 
-	// Separate markdown files from other files
+	// Separate markdown files, fallback files, and other files
 	const markdownFiles: string[] = []
+	const fallbackFiles: string[] = []
 	const otherFiles: string[] = []
 
 	for (const file of allowedFilesToParse) {
 		const ext = path.extname(file).toLowerCase()
 		if (ext === ".md" || ext === ".markdown") {
 			markdownFiles.push(file)
+		} else if (shouldUseFallbackChunking(ext)) {
+			fallbackFiles.push(file)
 		} else {
 			otherFiles.push(file)
 		}
 	}
 
-	// Load language parsers only for non-markdown files
+	// Load language parsers only for non-markdown and non-fallback files
 	const languageParsers = await loadRequiredLanguageParsers(otherFiles)
 
 	// Process markdown files
@@ -213,6 +224,15 @@ export async function parseSourceCodeForDefinitionsTopLevel(
 		} catch (error) {
 			console.log(`Error parsing markdown file: ${error}\n`)
 		}
+	}
+
+	// Process fallback files (e.g., Swift) without loading parsers
+	for (const file of fallbackFiles) {
+		// Check if we have permission to access this file
+		if (rooIgnoreController && !rooIgnoreController.validateAccess(file)) {
+			continue
+		}
+		result += `# ${path.relative(dirPath, file).toPosix()}\n// This file type uses fallback chunking for stability\n`
 	}
 
 	// Process other files using tree-sitter
