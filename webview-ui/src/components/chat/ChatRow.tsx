@@ -20,6 +20,7 @@ import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
 import { vscode } from "@src/utils/vscode"
 import { removeLeadingNonAlphanumeric } from "@src/utils/removeLeadingNonAlphanumeric"
 import { getLanguageFromPath } from "@src/utils/getLanguageFromPath"
+import { extractErrorTitle } from "@src/utils/errorTitleExtractor"
 import { Button } from "@src/components/ui"
 
 import ChatTextArea from "./ChatTextArea"
@@ -1089,45 +1090,9 @@ export const ChatRowContent = ({
 						</div>
 					)
 				case "error": {
-					// Extract error title from the message text
-					let errorTitle = t("chat:error")
+					// Extract error title from the message text using the comprehensive extractor
 					const errorContent = message.text || ""
-
-					// Common error patterns to extract meaningful titles from
-					const patterns = [
-						// "Error reading file: File not found: /path/to/file" -> "File Not Found"
-						{ regex: /^Error reading file:.*?(File not found):/i, title: "File Not Found" },
-						// "Error reading file: Permission denied: /path/to/file" -> "Permission Denied"
-						{ regex: /^Error reading file:.*?(Permission denied):/i, title: "Permission Denied" },
-						// "Error reading file: <any other error>" -> extract the error part
-						{ regex: /^Error reading file:\s*(.+?)(?::|$)/i, extractTitle: true },
-						// Generic "Title: rest of message" pattern
-						{ regex: /^([^:]+):\s*/, extractTitle: true, maxLength: 50 },
-					]
-
-					// Try each pattern to find a match
-					for (const pattern of patterns) {
-						const match = errorContent.match(pattern.regex)
-						if (match) {
-							if (pattern.title) {
-								// Use predefined title
-								errorTitle = pattern.title
-							} else if (pattern.extractTitle && match[1]) {
-								// Extract and clean up the title
-								let extracted = match[1].trim()
-								// Remove redundant "Error" prefix
-								extracted = extracted.replace(/^Error\s+/i, "").trim()
-								// Only use if it's a reasonable length
-								if (
-									extracted.length > 0 &&
-									(!pattern.maxLength || extracted.length <= pattern.maxLength)
-								) {
-									errorTitle = extracted
-								}
-							}
-							break
-						}
-					}
+					const errorTitle = extractErrorTitle(errorContent, t)
 
 					return (
 						<div>
