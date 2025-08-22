@@ -95,7 +95,8 @@ export class ChutesHandler extends BaseOpenAiCompatibleProvider<ChutesModelId> {
 				)
 			}
 		} else {
-			// For non-DeepSeek models, track content and handle empty responses
+			// For non-DeepSeek models, we reimplement the stream handling instead of calling
+			// super.createMessage() to ensure consistent error handling for empty responses
 			const stream = await this.createStream(systemPrompt, messages)
 
 			for await (const chunk of stream) {
