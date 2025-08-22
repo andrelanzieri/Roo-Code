@@ -16,6 +16,28 @@ export function extractErrorTitle(errorContent: string, t: TFunction): string {
 	// Clean up the error content
 	const trimmedContent = errorContent.trim()
 
+	// Special-case: if tool use is missing a required param for apply_diff, title as the diff error (localized).
+	// Example: "Roo tried to use apply_diff without value for required parameter 'path'. Retrying..."
+	const missingRequiredParamRe =
+		/^Roo tried to use .+ without value for required parameter ['"“”‘’][^'"“”‘’]+['"“”‘’]/i
+	const missingRequiredParamReFallback = /^Roo tried to use .+ without value for required parameter/i
+	if (missingRequiredParamRe.test(trimmedContent) || missingRequiredParamReFallback.test(trimmedContent)) {
+		return t("chat:diffError.title") // localized "Edit Unsuccessful"
+	}
+
+	// For other tools, use stable tool-scoped titles that don't depend on message wording.
+	const toolFailureTitles: Array<{ test: RegExp; title: string }> = [
+		{ test: /\bsearch_and_replace\b/i, title: "Search & Replace Failure" },
+		{ test: /\binsert_content\b/i, title: "Insert Content Failure" },
+		{ test: /\bread_file\b/i, title: "Read File Failure" },
+		{ test: /\bwrite_to_file\b/i, title: "Write File Failure" },
+	]
+	for (const { test, title } of toolFailureTitles) {
+		if (test.test(trimmedContent)) {
+			return title
+		}
+	}
+
 	// Define the type for error patterns
 	type ErrorPattern = {
 		pattern: RegExp
@@ -103,17 +125,8 @@ export function extractErrorTitle(errorContent: string, t: TFunction): string {
 			pattern: /^Failed to apply diff:/i,
 			title: "Diff Application Failed",
 		},
-		// Roo chat errors generated when tool args are missing/invalid
-		{
-			// Example: Roo tried to use apply_diff without value for required parameter 'path'. Retrying...
-			pattern: /^Roo tried to use .+ without value for required parameter ['"“”‘’][^'"“”‘’]+['"“”‘’]/i,
-			title: "Missing Required Parameter",
-		},
-		{
-			// Fallback without quoting the param
-			pattern: /^Roo tried to use .+ without value for required parameter/i,
-			title: "Missing Required Parameter",
-		},
+		// Roo chat errors generated when tool args are missing/invalid (handled elsewhere for missing params)
+		// Keep invalid JSON argument mapping here.
 	]
 
 	// API and service error patterns

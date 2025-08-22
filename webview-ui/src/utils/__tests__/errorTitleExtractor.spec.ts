@@ -228,7 +228,8 @@ describe("extractErrorTitle", () => {
 
 		it("should handle missing required parameter tool error", () => {
 			const error = "Roo tried to use apply_diff without value for required parameter 'path'. Retrying..."
-			expect(extractErrorTitle(error, mockT)).toBe("Missing Required Parameter")
+			// For apply_diff, prefer the same localized title used for diff_error in the chat
+			expect(extractErrorTitle(error, mockT)).toBe("chat:diffError.title")
 		})
 
 		it("should handle file not found error from actual code", () => {
