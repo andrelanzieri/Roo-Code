@@ -119,6 +119,9 @@ readme.md text
 			expect(excludePatterns).toContain("*.db") // database
 			expect(excludePatterns).toContain("*.shp") // geospatial
 			expect(excludePatterns).toContain("*.log") // log
+
+			// Verify SQL files are NOT excluded (fix for issue #7310)
+			expect(excludePatterns).not.toContain("*.sql")
 		})
 
 		it("should handle errors when reading .gitattributes", async () => {
@@ -150,6 +153,9 @@ readme.md text
 			expect(excludePatterns).toContain("*.db") // database
 			expect(excludePatterns).toContain("*.shp") // geospatial
 			expect(excludePatterns).toContain("*.log") // log
+
+			// Verify SQL files are NOT excluded (fix for issue #7310)
+			expect(excludePatterns).not.toContain("*.sql")
 		})
 	})
 })
