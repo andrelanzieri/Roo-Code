@@ -17,7 +17,7 @@ import { getLiteLLMModels } from "./litellm"
 import { GetModelsOptions } from "../../../shared/api"
 import { getOllamaModels } from "./ollama"
 import { getLMStudioModels } from "./lmstudio"
-
+import { getIOIntelligenceModels } from "./io-intelligence"
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
 async function writeModels(router: RouterName, data: ModelRecord) {
@@ -59,7 +59,7 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 				break
 			case "requesty":
 				// Requesty models endpoint requires an API key for per-user custom policies
-				models = await getRequestyModels(options.apiKey)
+				models = await getRequestyModels(options.baseUrl, options.apiKey)
 				break
 			case "glama":
 				models = await getGlamaModels()
@@ -77,6 +77,9 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 				break
 			case "lmstudio":
 				models = await getLMStudioModels(options.baseUrl)
+				break
+			case "io-intelligence":
+				models = await getIOIntelligenceModels(options.apiKey)
 				break
 			default: {
 				// Ensures router is exhaustively checked if RouterName is a strict union

@@ -1,11 +1,12 @@
 // npx vitest run api/providers/__tests__/openai.spec.ts
 
-import { OpenAiHandler } from "../openai"
+import { OpenAiHandler, getOpenAiModels } from "../openai"
 import { ApiHandlerOptions } from "../../../shared/api"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import { openAiModelInfoSaneDefaults } from "@roo-code/types"
 import { Package } from "../../../shared/package"
+import axios from "axios"
 
 const mockCreate = vitest.fn()
 
@@ -68,6 +69,13 @@ vitest.mock("openai", () => {
 	}
 })
 
+// Mock axios for getOpenAiModels tests
+vitest.mock("axios", () => ({
+	default: {
+		get: vitest.fn(),
+	},
+}))
+
 describe("OpenAiHandler", () => {
 	let handler: OpenAiHandler
 	let mockOptions: ApiHandlerOptions
@@ -107,6 +115,7 @@ describe("OpenAiHandler", () => {
 					"X-Title": "Roo Code",
 					"User-Agent": `RooCode/${Package.version}`,
 				},
+				timeout: expect.any(Number),
 			})
 		})
 	})
@@ -306,6 +315,71 @@ describe("OpenAiHandler", () => {
 			const callArgs = mockCreate.mock.calls[0][0]
 			expect(callArgs.max_completion_tokens).toBe(4096)
 		})
+
+		it("should omit temperature when modelTemperature is undefined", async () => {
+			const optionsWithoutTemperature: ApiHandlerOptions = {
+				...mockOptions,
+				// modelTemperature is not set, should not include temperature
+			}
+			const handlerWithoutTemperature = new OpenAiHandler(optionsWithoutTemperature)
+			const stream = handlerWithoutTemperature.createMessage(systemPrompt, messages)
+			// Consume the stream to trigger the API call
+			for await (const _chunk of stream) {
+			}
+			// Assert the mockCreate was called without temperature
+			expect(mockCreate).toHaveBeenCalled()
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs).not.toHaveProperty("temperature")
+		})
+
+		it("should include temperature when modelTemperature is explicitly set to 0", async () => {
+			const optionsWithZeroTemperature: ApiHandlerOptions = {
+				...mockOptions,
+				modelTemperature: 0,
+			}
+			const handlerWithZeroTemperature = new OpenAiHandler(optionsWithZeroTemperature)
+			const stream = handlerWithZeroTemperature.createMessage(systemPrompt, messages)
+			// Consume the stream to trigger the API call
+			for await (const _chunk of stream) {
+			}
+			// Assert the mockCreate was called with temperature: 0
+			expect(mockCreate).toHaveBeenCalled()
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs.temperature).toBe(0)
+		})
+
+		it("should include temperature when modelTemperature is set to a non-zero value", async () => {
+			const optionsWithCustomTemperature: ApiHandlerOptions = {
+				...mockOptions,
+				modelTemperature: 0.7,
+			}
+			const handlerWithCustomTemperature = new OpenAiHandler(optionsWithCustomTemperature)
+			const stream = handlerWithCustomTemperature.createMessage(systemPrompt, messages)
+			// Consume the stream to trigger the API call
+			for await (const _chunk of stream) {
+			}
+			// Assert the mockCreate was called with temperature: 0.7
+			expect(mockCreate).toHaveBeenCalled()
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs.temperature).toBe(0.7)
+		})
+
+		it("should include DEEP_SEEK_DEFAULT_TEMPERATURE for deepseek-reasoner models when temperature is not set", async () => {
+			const deepseekOptions: ApiHandlerOptions = {
+				...mockOptions,
+				openAiModelId: "deepseek-reasoner",
+				// modelTemperature is not set
+			}
+			const deepseekHandler = new OpenAiHandler(deepseekOptions)
+			const stream = deepseekHandler.createMessage(systemPrompt, messages)
+			// Consume the stream to trigger the API call
+			for await (const _chunk of stream) {
+			}
+			// Assert the mockCreate was called with DEEP_SEEK_DEFAULT_TEMPERATURE (0.6)
+			expect(mockCreate).toHaveBeenCalled()
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs.temperature).toBe(0.6)
+		})
 	})
 
 	describe("error handling", () => {
@@ -441,7 +515,7 @@ describe("OpenAiHandler", () => {
 					],
 					stream: true,
 					stream_options: { include_usage: true },
-					temperature: 0,
+					// temperature should be omitted when not set
 				},
 				{ path: "/models/chat/completions" },
 			)
@@ -774,5 +848,145 @@ describe("OpenAiHandler", () => {
 				{ path: "/models/chat/completions" },
 			)
 		})
+	})
+})
+
+describe("getOpenAiModels", () => {
+	beforeEach(() => {
+		vi.mocked(axios.get).mockClear()
+	})
+
+	it("should return empty array when baseUrl is not provided", async () => {
+		const result = await getOpenAiModels(undefined, "test-key")
+		expect(result).toEqual([])
+		expect(axios.get).not.toHaveBeenCalled()
+	})
+
+	it("should return empty array when baseUrl is empty string", async () => {
+		const result = await getOpenAiModels("", "test-key")
+		expect(result).toEqual([])
+		expect(axios.get).not.toHaveBeenCalled()
+	})
+
+	it("should trim whitespace from baseUrl", async () => {
+		const mockResponse = {
+			data: {
+				data: [{ id: "gpt-4" }, { id: "gpt-3.5-turbo" }],
+			},
+		}
+		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+
+		const result = await getOpenAiModels("  https://api.openai.com/v1  ", "test-key")
+
+		expect(axios.get).toHaveBeenCalledWith("https://api.openai.com/v1/models", expect.any(Object))
+		expect(result).toEqual(["gpt-4", "gpt-3.5-turbo"])
+	})
+
+	it("should handle baseUrl with trailing spaces", async () => {
+		const mockResponse = {
+			data: {
+				data: [{ id: "model-1" }, { id: "model-2" }],
+			},
+		}
+		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+
+		const result = await getOpenAiModels("https://api.example.com/v1 ", "test-key")
+
+		expect(axios.get).toHaveBeenCalledWith("https://api.example.com/v1/models", expect.any(Object))
+		expect(result).toEqual(["model-1", "model-2"])
+	})
+
+	it("should handle baseUrl with leading spaces", async () => {
+		const mockResponse = {
+			data: {
+				data: [{ id: "model-1" }],
+			},
+		}
+		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+
+		const result = await getOpenAiModels(" https://api.example.com/v1", "test-key")
+
+		expect(axios.get).toHaveBeenCalledWith("https://api.example.com/v1/models", expect.any(Object))
+		expect(result).toEqual(["model-1"])
+	})
+
+	it("should return empty array for invalid URL after trimming", async () => {
+		const result = await getOpenAiModels("   not-a-valid-url   ", "test-key")
+		expect(result).toEqual([])
+		expect(axios.get).not.toHaveBeenCalled()
+	})
+
+	it("should include authorization header when apiKey is provided", async () => {
+		const mockResponse = {
+			data: {
+				data: [{ id: "model-1" }],
+			},
+		}
+		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+
+		await getOpenAiModels("https://api.example.com/v1", "test-api-key")
+
+		expect(axios.get).toHaveBeenCalledWith(
+			"https://api.example.com/v1/models",
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					Authorization: "Bearer test-api-key",
+				}),
+			}),
+		)
+	})
+
+	it("should include custom headers when provided", async () => {
+		const mockResponse = {
+			data: {
+				data: [{ id: "model-1" }],
+			},
+		}
+		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+
+		const customHeaders = {
+			"X-Custom-Header": "custom-value",
+		}
+
+		await getOpenAiModels("https://api.example.com/v1", "test-key", customHeaders)
+
+		expect(axios.get).toHaveBeenCalledWith(
+			"https://api.example.com/v1/models",
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					"X-Custom-Header": "custom-value",
+					Authorization: "Bearer test-key",
+				}),
+			}),
+		)
+	})
+
+	it("should handle API errors gracefully", async () => {
+		vi.mocked(axios.get).mockRejectedValueOnce(new Error("Network error"))
+
+		const result = await getOpenAiModels("https://api.example.com/v1", "test-key")
+
+		expect(result).toEqual([])
+	})
+
+	it("should handle malformed response data", async () => {
+		vi.mocked(axios.get).mockResolvedValueOnce({ data: null })
+
+		const result = await getOpenAiModels("https://api.example.com/v1", "test-key")
+
+		expect(result).toEqual([])
+	})
+
+	it("should deduplicate model IDs", async () => {
+		const mockResponse = {
+			data: {
+				data: [{ id: "gpt-4" }, { id: "gpt-4" }, { id: "gpt-3.5-turbo" }, { id: "gpt-4" }],
+			},
+		}
+		vi.mocked(axios.get).mockResolvedValueOnce(mockResponse)
+
+		const result = await getOpenAiModels("https://api.example.com/v1", "test-key")
+
+		expect(result).toEqual(["gpt-4", "gpt-3.5-turbo"])
 	})
 })

@@ -61,6 +61,7 @@
 		"no_internet": "インターネット接続がありません。ネットワーク接続を確認してもう一度試してください。",
 		"url_forbidden": "このウェブサイトへのアクセスが禁止されています。サイトが自動アクセスをブロックしているか、認証が必要な可能性があります。",
 		"url_page_not_found": "ページが見つかりませんでした。URLが正しいか確認してください。",
+		"url_request_aborted": "URLの取得リクエストが中断されました。これは、サイトが自動アクセスをブロックしている、認証が必要、またはネットワークの問題がある場合に発生する可能性があります。もう一度試すか、通常のブラウザでURLにアクセスできるか確認してください。",
 		"url_fetch_failed": "URLコンテンツの取得に失敗しました：{{error}}",
 		"url_fetch_error_with_url": "{{url}} のコンテンツ取得エラー：{{error}}",
 		"command_timeout": "コマンドの実行が{{seconds}}秒後にタイムアウトしました",
@@ -99,6 +100,9 @@
 			"genericError": "Cerebras APIエラー ({{status}}): {{message}}",
 			"noResponseBody": "Cerebras APIエラー: レスポンスボディなし",
 			"completionError": "Cerebras完了エラー: {{error}}"
+		},
+		"roo": {
+			"authenticationRequired": "Rooプロバイダーはクラウド認証が必要です。Roo Code Cloudにサインインしてください。"
 		}
 	},
 	"warnings": {
@@ -187,6 +191,9 @@
 			"cloud_auth_required": "あなたの組織では Roo Code Cloud 認証が必要です。続行するにはサインインしてください。",
 			"organization_mismatch": "組織の Roo Code Cloud アカウントで認証する必要があります。",
 			"verification_failed": "組織認証の確認ができませんでした。"
+		},
+		"info": {
+			"organization_requires_auth": "あなたの組織では認証が必要です。"
 		}
 	},
 	"prompts": {

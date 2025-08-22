@@ -7,7 +7,9 @@ import { Mode, getModeConfig, isToolAllowedForMode, getGroupName } from "../../.
 import { ToolArgs } from "./types"
 import { getExecuteCommandDescription } from "./execute-command"
 import { getReadFileDescription } from "./read-file"
+import { getSimpleReadFileDescription } from "./simple-read-file"
 import { getFetchInstructionsDescription } from "./fetch-instructions"
+import { shouldUseSingleFileRead } from "@roo-code/types"
 import { getWriteToFileDescription } from "./write-to-file"
 import { getSearchFilesDescription } from "./search-files"
 import { getListFilesDescription } from "./list-files"
@@ -28,8 +30,15 @@ import { CodeIndexManager } from "../../../services/code-index/manager"
 // Map of tool names to their description functions
 const toolDescriptionMap: Record<string, (args: ToolArgs) => string | undefined> = {
 	execute_command: (args) => getExecuteCommandDescription(args),
-	read_file: (args) => getReadFileDescription(args),
-	fetch_instructions: () => getFetchInstructionsDescription(),
+	read_file: (args) => {
+		// Check if the current model should use the simplified read_file tool
+		const modelId = args.settings?.modelId
+		if (modelId && shouldUseSingleFileRead(modelId)) {
+			return getSimpleReadFileDescription(args)
+		}
+		return getReadFileDescription(args)
+	},
+	fetch_instructions: (args) => getFetchInstructionsDescription(args.settings?.enableMcpServerCreation),
 	write_to_file: (args) => getWriteToFileDescription(args),
 	search_files: (args) => getSearchFilesDescription(args),
 	list_files: (args) => getListFilesDescription(args),
@@ -39,7 +48,7 @@ const toolDescriptionMap: Record<string, (args: ToolArgs) => string | undefined>
 	attempt_completion: (args) => getAttemptCompletionDescription(args),
 	use_mcp_tool: (args) => getUseMcpToolDescription(args),
 	access_mcp_resource: (args) => getAccessMcpResourceDescription(args),
-	codebase_search: () => getCodebaseSearchDescription(),
+	codebase_search: (args) => getCodebaseSearchDescription(args),
 	switch_mode: () => getSwitchModeDescription(),
 	new_task: (args) => getNewTaskDescription(args),
 	insert_content: (args) => getInsertContentDescription(args),
@@ -61,6 +70,8 @@ export function getToolDescriptionsForMode(
 	experiments?: Record<string, boolean>,
 	partialReadsEnabled?: boolean,
 	settings?: Record<string, any>,
+	enableMcpServerCreation?: boolean,
+	modelId?: string,
 ): string {
 	const config = getModeConfig(mode, customModes)
 	const args: ToolArgs = {
@@ -70,7 +81,11 @@ export function getToolDescriptionsForMode(
 		browserViewportSize,
 		mcpHub,
 		partialReadsEnabled,
-		settings,
+		settings: {
+			...settings,
+			enableMcpServerCreation,
+			modelId,
+		},
 		experiments,
 	}
 
@@ -134,6 +149,7 @@ export function getToolDescriptionsForMode(
 export {
 	getExecuteCommandDescription,
 	getReadFileDescription,
+	getSimpleReadFileDescription,
 	getFetchInstructionsDescription,
 	getWriteToFileDescription,
 	getSearchFilesDescription,

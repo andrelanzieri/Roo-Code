@@ -61,6 +61,7 @@
 		"no_internet": "Keine Internetverbindung. Bitte prüfe deine Netzwerkverbindung und versuche es erneut.",
 		"url_forbidden": "Zugriff auf diese Website ist verboten. Die Seite könnte automatisierten Zugriff blockieren oder eine Authentifizierung erfordern.",
 		"url_page_not_found": "Die Seite wurde nicht gefunden. Bitte prüfe, ob die URL korrekt ist.",
+		"url_request_aborted": "Die Anfrage zum Abrufen der URL wurde abgebrochen. Dies kann passieren, wenn die Seite automatisierten Zugriff blockiert, eine Authentifizierung erfordert oder wenn es ein Netzwerkproblem gibt. Bitte versuche es erneut oder prüfe, ob die URL in einem normalen Browser zugänglich ist.",
 		"url_fetch_failed": "Fehler beim Abrufen des URL-Inhalts: {{error}}",
 		"url_fetch_error_with_url": "Fehler beim Abrufen des Inhalts für {{url}}: {{error}}",
 		"command_timeout": "Zeitüberschreitung bei der Befehlsausführung nach {{seconds}} Sekunden",
@@ -99,6 +100,9 @@
 			"genericError": "Cerebras API-Fehler ({{status}}): {{message}}",
 			"noResponseBody": "Cerebras API-Fehler: Kein Antworttext vorhanden",
 			"completionError": "Cerebras-Vervollständigungsfehler: {{error}}"
+		},
+		"roo": {
+			"authenticationRequired": "Roo-Anbieter erfordert Cloud-Authentifizierung. Bitte melde dich bei Roo Code Cloud an."
 		}
 	},
 	"warnings": {
@@ -187,6 +191,9 @@
 			"cloud_auth_required": "Deine Organisation erfordert eine Roo Code Cloud-Authentifizierung. Bitte melde dich an, um fortzufahren.",
 			"organization_mismatch": "Du musst mit dem Roo Code Cloud-Konto deiner Organisation authentifiziert sein.",
 			"verification_failed": "Die Organisationsauthentifizierung konnte nicht verifiziert werden."
+		},
+		"info": {
+			"organization_requires_auth": "Deine Organisation erfordert eine Authentifizierung."
 		}
 	},
 	"prompts": {

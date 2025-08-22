@@ -58,6 +58,7 @@ export type OpenRouterModel = z.infer<typeof openRouterModelSchema>
 
 export const openRouterModelEndpointSchema = modelRouterBaseModelSchema.extend({
 	provider_name: z.string(),
+	tag: z.string().optional(),
 })
 
 export type OpenRouterModelEndpoint = z.infer<typeof openRouterModelEndpointSchema>
@@ -149,7 +150,7 @@ export async function getOpenRouterModelEndpoints(
 		const { id, architecture, endpoints } = data
 
 		for (const endpoint of endpoints) {
-			models[endpoint.provider_name] = parseOpenRouterModel({
+			models[endpoint.tag ?? endpoint.provider_name] = parseOpenRouterModel({
 				id,
 				model: endpoint,
 				modality: architecture?.modality,
@@ -188,7 +189,7 @@ export const parseOpenRouterModel = ({
 
 	const cacheReadsPrice = model.pricing?.input_cache_read ? parseApiPrice(model.pricing?.input_cache_read) : undefined
 
-	const supportsPromptCache = typeof cacheWritesPrice !== "undefined" && typeof cacheReadsPrice !== "undefined"
+	const supportsPromptCache = typeof cacheReadsPrice !== "undefined" // some models support caching but don't charge a cacheWritesPrice, e.g. GPT-5
 
 	const modelInfo: ModelInfo = {
 		maxTokens: maxTokens || Math.ceil(model.context_length * 0.2),
@@ -232,8 +233,18 @@ export const parseOpenRouterModel = ({
 		modelInfo.maxTokens = anthropicModels["claude-3-7-sonnet-20250219:thinking"].maxTokens
 	}
 
+	// Set claude-opus-4.1 model to use the correct configuration
+	if (id === "anthropic/claude-opus-4.1") {
+		modelInfo.maxTokens = anthropicModels["claude-opus-4-1-20250805"].maxTokens
+	}
+
 	// Set horizon-alpha model to 32k max tokens
 	if (id === "openrouter/horizon-alpha") {
+		modelInfo.maxTokens = 32768
+	}
+
+	// Set horizon-beta model to 32k max tokens
+	if (id === "openrouter/horizon-beta") {
 		modelInfo.maxTokens = 32768
 	}
 

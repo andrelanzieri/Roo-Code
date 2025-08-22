@@ -1,14 +1,14 @@
 import { z } from "zod"
 
-import type {
-	ProviderSettings,
-	PromptComponent,
-	ModeConfig,
-	InstallMarketplaceItemOptions,
-	MarketplaceItem,
-	ShareVisibility,
+import {
+	type ProviderSettings,
+	type PromptComponent,
+	type ModeConfig,
+	type InstallMarketplaceItemOptions,
+	type MarketplaceItem,
+	marketplaceItemSchema,
 } from "@roo-code/types"
-import { marketplaceItemSchema } from "@roo-code/types"
+import type { ShareVisibility } from "@roo-code/cloud"
 
 import { Mode } from "./modes"
 
@@ -130,6 +130,7 @@ export interface WebviewMessage {
 		| "terminalCompressProgressBar"
 		| "mcpEnabled"
 		| "enableMcpServerCreation"
+		| "remoteControlEnabled"
 		| "searchCommits"
 		| "alwaysApproveResubmit"
 		| "requestDelaySeconds"
@@ -210,6 +211,7 @@ export interface WebviewMessage {
 		| "deleteCommand"
 		| "createCommand"
 		| "insertTextIntoTextarea"
+		| "showMdmAuthRequiredNotification"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account"

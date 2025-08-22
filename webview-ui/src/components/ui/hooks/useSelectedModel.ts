@@ -40,6 +40,19 @@ import {
 	sambaNovaDefaultModelId,
 	doubaoModels,
 	doubaoDefaultModelId,
+	internationalZAiDefaultModelId,
+	mainlandZAiDefaultModelId,
+	internationalZAiModels,
+	mainlandZAiModels,
+	fireworksModels,
+	fireworksDefaultModelId,
+	featherlessModels,
+	featherlessDefaultModelId,
+	ioIntelligenceDefaultModelId,
+	ioIntelligenceModels,
+	rooDefaultModelId,
+	rooModels,
+	BEDROCK_CLAUDE_SONNET_4_MODEL_ID,
 } from "@roo-code/types"
 
 import type { ModelRecord, RouterModels } from "@roo/api"
@@ -166,7 +179,7 @@ function getSelectedModel({
 		}
 		case "bedrock": {
 			const id = apiConfiguration.apiModelId ?? bedrockDefaultModelId
-			const info = bedrockModels[id as keyof typeof bedrockModels]
+			const baseInfo = bedrockModels[id as keyof typeof bedrockModels]
 
 			// Special case for custom ARN.
 			if (id === "custom-arn") {
@@ -176,7 +189,17 @@ function getSelectedModel({
 				}
 			}
 
-			return { id, info }
+			// Apply 1M context for Claude Sonnet 4 when enabled
+			if (id === BEDROCK_CLAUDE_SONNET_4_MODEL_ID && apiConfiguration.awsBedrock1MContext && baseInfo) {
+				// Create a new ModelInfo object with updated context window
+				const info: ModelInfo = {
+					...baseInfo,
+					contextWindow: 1_000_000,
+				}
+				return { id, info }
+			}
+
+			return { id, info: baseInfo }
 		}
 		case "vertex": {
 			const id = apiConfiguration.apiModelId ?? vertexDefaultModelId
@@ -201,6 +224,14 @@ function getSelectedModel({
 		case "moonshot": {
 			const id = apiConfiguration.apiModelId ?? moonshotDefaultModelId
 			const info = moonshotModels[id as keyof typeof moonshotModels]
+			return { id, info }
+		}
+		case "zai": {
+			const isChina = apiConfiguration.zaiApiLine === "china"
+			const models = isChina ? mainlandZAiModels : internationalZAiModels
+			const defaultModelId = isChina ? mainlandZAiDefaultModelId : internationalZAiDefaultModelId
+			const id = apiConfiguration.apiModelId ?? defaultModelId
+			const info = models[id as keyof typeof models]
 			return { id, info }
 		}
 		case "openai-native": {
@@ -251,11 +282,32 @@ function getSelectedModel({
 		case "cerebras": {
 			const id = apiConfiguration.apiModelId ?? cerebrasDefaultModelId
 			const info = cerebrasModels[id as keyof typeof cerebrasModels]
-      return { id, info }
+			return { id, info }
 		}
 		case "sambanova": {
 			const id = apiConfiguration.apiModelId ?? sambaNovaDefaultModelId
 			const info = sambaNovaModels[id as keyof typeof sambaNovaModels]
+			return { id, info }
+		}
+		case "fireworks": {
+			const id = apiConfiguration.apiModelId ?? fireworksDefaultModelId
+			const info = fireworksModels[id as keyof typeof fireworksModels]
+			return { id, info }
+		}
+		case "featherless": {
+			const id = apiConfiguration.apiModelId ?? featherlessDefaultModelId
+			const info = featherlessModels[id as keyof typeof featherlessModels]
+			return { id, info }
+		}
+		case "io-intelligence": {
+			const id = apiConfiguration.ioIntelligenceModelId ?? ioIntelligenceDefaultModelId
+			const info =
+				routerModels["io-intelligence"]?.[id] ?? ioIntelligenceModels[id as keyof typeof ioIntelligenceModels]
+			return { id, info }
+		}
+		case "roo": {
+			const id = apiConfiguration.apiModelId ?? rooDefaultModelId
+			const info = rooModels[id as keyof typeof rooModels]
 			return { id, info }
 		}
 		// case "anthropic":
@@ -264,8 +316,41 @@ function getSelectedModel({
 		default: {
 			provider satisfies "anthropic" | "gemini-cli" | "human-relay" | "fake-ai"
 			const id = apiConfiguration.apiModelId ?? anthropicDefaultModelId
-			const info = anthropicModels[id as keyof typeof anthropicModels]
-			return { id, info }
+			const baseInfo = anthropicModels[id as keyof typeof anthropicModels]
+
+			// Apply 1M context beta tier pricing for Claude Sonnet 4
+			if (
+				provider === "anthropic" &&
+				id === "claude-sonnet-4-20250514" &&
+				apiConfiguration.anthropicBeta1MContext &&
+				baseInfo
+			) {
+				// Type assertion since we know claude-sonnet-4-20250514 has tiers
+				const modelWithTiers = baseInfo as typeof baseInfo & {
+					tiers?: Array<{
+						contextWindow: number
+						inputPrice?: number
+						outputPrice?: number
+						cacheWritesPrice?: number
+						cacheReadsPrice?: number
+					}>
+				}
+				const tier = modelWithTiers.tiers?.[0]
+				if (tier) {
+					// Create a new ModelInfo object with updated values
+					const info: ModelInfo = {
+						...baseInfo,
+						contextWindow: tier.contextWindow,
+						inputPrice: tier.inputPrice ?? baseInfo.inputPrice,
+						outputPrice: tier.outputPrice ?? baseInfo.outputPrice,
+						cacheWritesPrice: tier.cacheWritesPrice ?? baseInfo.cacheWritesPrice,
+						cacheReadsPrice: tier.cacheReadsPrice ?? baseInfo.cacheReadsPrice,
+					}
+					return { id, info }
+				}
+			}
+
+			return { id, info: baseInfo }
 		}
 	}
 }

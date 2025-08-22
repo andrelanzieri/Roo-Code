@@ -61,6 +61,7 @@
 		"no_internet": "No internet connection. Please check your network connection and try again.",
 		"url_forbidden": "Access to this website is forbidden. The site may block automated access or require authentication.",
 		"url_page_not_found": "The page was not found. Please check if the URL is correct.",
+		"url_request_aborted": "The request to fetch the URL was aborted. This may happen if the site blocks automated access, requires authentication, or if there's a network issue. Please try again or check if the URL is accessible in a regular browser.",
 		"url_fetch_failed": "Failed to fetch URL content: {{error}}",
 		"url_fetch_error_with_url": "Error fetching content for {{url}}: {{error}}",
 		"command_timeout": "Command execution timed out after {{seconds}} seconds",
@@ -99,6 +100,9 @@
 			"genericError": "Cerebras API Error ({{status}}): {{message}}",
 			"noResponseBody": "Cerebras API Error: No response body",
 			"completionError": "Cerebras completion error: {{error}}"
+		},
+		"roo": {
+			"authenticationRequired": "Roo provider requires cloud authentication. Please sign in to Roo Code Cloud."
 		}
 	},
 	"warnings": {
@@ -176,6 +180,9 @@
 			"cloud_auth_required": "Your organization requires Roo Code Cloud authentication. Please sign in to continue.",
 			"organization_mismatch": "You must be authenticated with your organization's Roo Code Cloud account.",
 			"verification_failed": "Unable to verify organization authentication."
+		},
+		"info": {
+			"organization_requires_auth": "Your organization requires authentication."
 		}
 	},
 	"prompts": {

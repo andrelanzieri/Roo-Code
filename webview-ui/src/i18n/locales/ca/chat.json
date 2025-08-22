@@ -2,12 +2,15 @@
 	"greeting": "Benvingut a Roo Code",
 	"task": {
 		"title": "Tasca",
+		"expand": "Expandir tasca",
+		"collapse": "Replegar tasca",
 		"seeMore": "Veure més",
 		"seeLess": "Veure menys",
-		"tokens": "Tokens:",
-		"cache": "Caché:",
-		"apiCost": "Cost d'API:",
-		"contextWindow": "Finestra de context:",
+		"tokens": "Tokens",
+		"cache": "Caché",
+		"apiCost": "Cost d'API",
+		"size": "Mida",
+		"contextWindow": "Finestra de context",
 		"closeAndStart": "Tancar tasca i iniciar-ne una de nova",
 		"export": "Exportar historial de tasques",
 		"delete": "Eliminar tasca (Shift + Clic per ometre confirmació)",
@@ -139,7 +142,6 @@
 		"streamingFailed": "Transmissió API ha fallat"
 	},
 	"checkpoint": {
-		"initial": "Punt de control inicial",
 		"regular": "Punt de control",
 		"initializingWarning": "Encara s'està inicialitzant el punt de control... Si això triga massa, pots desactivar els punts de control a la <settingsLink>configuració</settingsLink> i reiniciar la teva tasca.",
 		"menu": {
@@ -263,6 +265,12 @@
 	},
 	"announcement": {
 		"title": "🎉 Roo Code {{version}} Llançat",
+		"stealthModel": {
+			"feature": "<bold>Model stealth GRATUÏT per temps limitat</bold> - Un model de raonament ultraràpid que destaca en codificació agèntica amb una finestra de context de 262k, disponible a través de Roo Code Cloud.",
+			"note": "(Nota: els prompts i completacions són registrats pel creador del model i utilitzats per millorar-lo)",
+			"connectButton": "Connectar a Roo Code Cloud",
+			"selectModel": "Selecciona <code>roo/sonic</code> del proveïdor Roo Code Cloud a<br/><settingsLink>Configuració</settingsLink> per començar"
+		},
 		"description": "Roo Code {{version}} porta noves funcions potents i millores significatives per millorar el vostre flux de treball de desenvolupament.",
 		"whatsNew": "Novetats",
 		"feature1": "<bold>Cua de Missatges</bold>: Posa en cua múltiples missatges mentre Roo està treballant, permetent-te continuar planificant el teu flux de treball sense interrupcions.",
@@ -347,9 +355,9 @@
 		"ariaLabel": "Versió {{version}} - Feu clic per veure les notes de llançament"
 	},
 	"rooCloudCTA": {
-		"title": "Roo Code Cloud arribarà aviat!",
+		"title": "Roo Code Cloud està evolucionant!",
 		"description": "Executa agents remots al núvol, accedeix a les teves tasques des de qualsevol lloc, col·labora amb altres i molt més.",
-		"joinWaitlist": "Uneix-te a la llista d'espera per obtenir accés anticipat."
+		"joinWaitlist": "Registra't per rebre les últimes actualitzacions."
 	},
 	"editMessage": {
 		"placeholder": "Edita el teu missatge..."

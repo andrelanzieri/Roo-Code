@@ -1,5 +1,178 @@
 # Roo Code Changelog
 
+## [3.25.23] - 2025-08-22
+
+- feat: add custom base URL support for Requesty provider (thanks @requesty-JohnCosta27!)
+- feat: add DeepSeek V3.1 model to Chutes AI provider (#7294 by @dmarkey, PR by @app/roomote)
+- Revert "feat: enable loading Roo modes from multiple files in .roo/modes directory" temporarily to fix a bug with mode installation
+
+## [3.25.22] - 2025-08-22
+
+- Add prompt caching support for Kimi K2 on Groq (thanks @daniel-lxs and @benank!)
+- Add documentation links for global custom instructions in UI (thanks @app/roomote!)
+
+## [3.25.21] - 2025-08-21
+
+- Ensure subtask results are provided to GPT-5 in OpenAI Responses API
+- Promote the experimental AssistantMessageParser to the default parser
+- Update DeepSeek models context window to 128k (thanks @JuanPerezReal)
+- Enable grounding features for Vertex AI (thanks @anguslees)
+- Allow orchestrator to pass TODO lists to subtasks
+- Improved MDM handling
+- Handle nullish token values in ContextCondenseRow to prevent UI crash (thanks @s97712)
+- Improved context window error handling for OpenAI and other providers
+- Add "installed" filter to Roo Marketplace (thanks @semidark)
+- Improve filesystem access checks (thanks @elianiva)
+- Support for loading Roo modes from multiple YAML files in the `.roo/modes/` directory (thanks @farazoman)
+- Add Featherless provider (thanks @DarinVerheijke)
+
+## [3.25.20] - 2025-08-19
+
+- Add announcement for Sonic model
+
+## [3.25.19] - 2025-08-19
+
+- Fix issue where new users couldn't select the Roo Code Cloud provider (thanks @daniel-lxs!)
+
+## [3.25.18] - 2025-08-19
+
+- Add new stealth Sonic model through the Roo Code Cloud provider
+- Fix: respect enableReasoningEffort setting when determining reasoning usage (#7048 by @ikbencasdoei, PR by @app/roomote)
+- Fix: prevent duplicate LM Studio models with case-insensitive deduplication (#6954 by @fbuechler, PR by @daniel-lxs)
+- Feat: simplify ask_followup_question prompt documentation (thanks @daniel-lxs!)
+- Feat: simple read_file tool for single-file-only models (thanks @daniel-lxs!)
+- Fix: Add missing zaiApiKey and doubaoApiKey to SECRET_STATE_KEYS (#7082 by @app/roomote)
+- Feat: Add new models and update configurations for vscode-lm (thanks @NaccOll!)
+
+## [3.25.17] - 2025-08-17
+
+- Fix: Resolve terminal reuse logic issues
+
+## [3.25.16] - 2025-08-16
+
+- Add support for OpenAI gpt-5-chat-latest model (#7057 by @PeterDaveHello, PR by @app/roomote)
+- Fix: Use native Ollama API instead of OpenAI compatibility layer (#7070 by @LivioGama, PR by @daniel-lxs)
+- Fix: Prevent XML entity decoding in diff tools (#7107 by @indiesewell, PR by @app/roomote)
+- Fix: Add type check before calling .match() on diffItem.content (#6905 by @pwilkin, PR by @app/roomote)
+- Refactor task execution system: improve call stack management (thanks @catrielmuller!)
+- Fix: Enable save button for provider dropdown and checkbox changes (thanks @daniel-lxs!)
+- Add an API for resuming tasks by ID (thanks @mrubens!)
+- Emit event when a task ask requires interaction (thanks @cte!)
+- Make enhance with task history default to true (thanks @liwilliam2021!)
+- Fix: Use cline.cwd as primary source for workspace path in codebaseSearchTool (thanks @NaccOll!)
+- Hotfix multiple folder workspace checkpoint (thanks @NaccOll!)
+
+## [3.25.15] - 2025-08-14
+
+- Fix: Remove 500-message limit to prevent scrollbar jumping in long conversations (#7052, #7063 by @daniel-lxs, PR by @app/roomote)
+- Fix: Reset condensing state when switching tasks (#6919 by @f14XuanLv, PR by @f14XuanLv)
+- Fix: Implement sitemap generation in TypeScript and remove XML file (#5231 by @abumalick, PR by @abumalick)
+- Fix: allowedMaxRequests and allowedMaxCost values not showing in the settings UI (thanks @chrarnoldus!)
+
+## [3.25.14] - 2025-08-13
+
+- Fix: Only include verbosity parameter for models that support it (#7054 by @eastonmeth, PR by @app/roomote)
+- Fix: AWS Bedrock 1M context - Move anthropic_beta to additionalModelRequestFields (thanks @daniel-lxs!)
+- Fix: Make cancelling requests more responsive by reverting recent changes
+
+## [3.25.13] - 2025-08-12
+
+- Add Sonnet 1M context checkbox to Bedrock
+- Fix: add --no-messages flag to ripgrep to suppress file access errors (#6756 by @R-omk, PR by @app/roomote)
+- Add support for AGENT.md alongside AGENTS.md (#6912 by @Brendan-Z, PR by @app/roomote)
+- Remove deprecated GPT-4.5 Preview model (thanks @PeterDaveHello!)
+
+## [3.25.12] - 2025-08-12
+
+- Update: Claude Sonnet 4 context window configurable to 1 million tokens in Anthropic provider (thanks @daniel-lxs!)
+- Add: Minimal reasoning support to OpenRouter (thanks @daniel-lxs!)
+- Fix: Add configurable API request timeout for local providers (#6521 by @dabockster, PR by @app/roomote)
+- Fix: Add --no-sandbox flag to browser launch options (#6632 by @QuinsZouls, PR by @QuinsZouls)
+- Fix: Ensure JSON files respect .rooignore during indexing (#6690 by @evermoving, PR by @app/roomote)
+- Add: New Chutes provider models (#6698 by @fstandhartinger, PR by @app/roomote)
+- Add: OpenAI gpt-oss models to Amazon Bedrock dropdown (#6752 by @josh-clanton-powerschool, PR by @app/roomote)
+- Fix: Correct tool repetition detector to not block first tool call when limit is 1 (#6834 by @NaccOll, PR by @app/roomote)
+- Fix: Improve checkpoint service initialization handling (thanks @NaccOll!)
+- Update: Improve zh-TW Traditional Chinese locale (thanks @PeterDaveHello!)
+- Add: Task expand and collapse translations (thanks @app/roomote!)
+- Update: Exclude GPT-5 models from 20% context window output token cap (thanks @app/roomote!)
+- Fix: Truncate long model names in model selector to prevent overflow (thanks @app/roomote!)
+- Add: Requesty base url support (thanks @requesty-JohnCosta27!)
+
+## [3.25.11] - 2025-08-11
+
+- Add: Native OpenAI provider support for Codex Mini model (#5386 by @KJ7LNW, PR by @daniel-lxs)
+- Add: IO Intelligence Provider support (thanks @ertan2002!)
+- Fix: MCP startup issues and remove refresh notifications (thanks @hannesrudolph!)
+- Fix: Improvements to GPT-5 OpenAI provider configuration (thanks @hannesrudolph!)
+- Fix: Clarify codebase_search path parameter as optional and improve tool descriptions (thanks @app/roomote!)
+- Fix: Bedrock provider workaround for LiteLLM passthrough issues (thanks @jr!)
+- Fix: Token usage and cost being underreported on cancelled requests (thanks @chrarnoldus!)
+
+## [3.25.10] - 2025-08-07
+
+- Add support for GPT-5 (thanks Cline and @app/roomote!)
+- Fix: Use CDATA sections in XML examples to prevent parser errors (#4852 by @hannesrudolph, PR by @hannesrudolph)
+- Fix: Add missing MCP error translation keys (thanks @app/roomote!)
+
+## [3.25.9] - 2025-08-07
+
+- Fix: Resolve rounding issue with max tokens (#6806 by @markp018, PR by @mrubens)
+- Add support for GLM-4.5 and OpenAI gpt-oss models in Fireworks provider (#6753 by @alexfarlander, PR by @app/roomote)
+- Improve UX by focusing chat input when clicking plus button in extension menu (thanks @app/roomote!)
+
+## [3.25.8] - 2025-08-06
+
+- Fix: Prevent disabled MCP servers from starting processes and show correct status (#6036 by @hannesrudolph, PR by @app/roomote)
+- Fix: Handle current directory path "." correctly in codebase_search tool (#6514 by @hannesrudolph, PR by @app/roomote)
+- Fix: Trim whitespace from OpenAI base URL to fix model detection (#6559 by @vauhochzett, PR by @app/roomote)
+- Feat: Reduce Gemini 2.5 Pro minimum thinking budget to 128 (thanks @app/roomote!)
+- Fix: Improve handling of net::ERR_ABORTED errors in URL fetching (#6632 by @QuinsZouls, PR by @app/roomote)
+- Fix: Recover from error state when Qdrant becomes available (#6660 by @hannesrudolph, PR by @app/roomote)
+- Fix: Resolve memory leak in ChatView virtual scrolling implementation (thanks @xyOz-dev!)
+- Add: Swift files to fallback list (#5857 by @niteshbalusu11, #6555 by @sealad886, PR by @niteshbalusu11)
+- Feat: Clamp default model max tokens to 20% of context window (thanks @mrubens!)
+
+## [3.25.7] - 2025-08-05
+
+- Add support for Claude Opus 4.1
+- Add Fireworks AI provider (#6653 by @ershang-fireworks, PR by @ershang-fireworks)
+- Add Z AI provider (thanks @jues!)
+- Add Groq support for GPT-OSS
+- Add Cerebras support for GPT-OSS
+- Add code indexing support for multiple folders similar to task history (#6197 by @NaccOll, PR by @NaccOll)
+- Make mode selection dropdowns responsive (#6423 by @AyazKaan, PR by @AyazKaan)
+- Redesigned task header and task history (thanks @brunobergher!)
+- Fix checkpoints timing and ensure checkpoints work properly (#4827 by @mrubens, PR by @NaccOll)
+- Fix empty mode names from being saved (#5766 by @kfxmvp, PR by @app/roomote)
+- Fix MCP server creation when setting is disabled (#6607 by @characharm, PR by @app/roomote)
+- Update highlight layer style and align to textarea (#6647 by @NaccOll, PR by @NaccOll)
+- Fix UI for approving chained commands
+- Use assistantMessageParser class instead of parseAssistantMessage (#5340 by @qdaxb, PR by @qdaxb)
+- Conditionally include reminder section based on todo list config (thanks @NaccOll!)
+- Task and TaskProvider event emitter cleanup with new events (thanks @cte!)
+
+## [3.25.6] - 2025-08-01
+
+- Set horizon-beta model max tokens to 32k for OpenRouter (requested by @hannesrudolph, PR by @app/roomote)
+- Add support for syncing provider profiles from the cloud
+
+## [3.25.5] - 2025-08-01
+
+- Fix: Improve Claude Code ENOENT error handling with installation guidance (#5866 by @JamieJ1, PR by @app/roomote)
+- Fix: LM Studio model context length (#5075 by @Angular-Angel, PR by @pwilkin)
+- Fix: VB.NET indexing by implementing fallback chunking system (#6420 by @JensvanZutphen, PR by @daniel-lxs)
+- Add auto-approved cost limits (thanks @hassoncs!)
+- Add Cerebras as a provider (thanks @kevint-cerebras!)
+- Add Qwen 3 Coder from Cerebras (thanks @kevint-cerebras!)
+- Fix: Handle Qdrant deletion errors gracefully to prevent indexing interruption (thanks @daniel-lxs!)
+- Fix: Restore message sending when clicking save button (thanks @daniel-lxs!)
+- Fix: Linter not applied to locales/\*/README.md (thanks @liwilliam2021!)
+- Handle more variations of chaining and subshell command validation
+- More tolerant search/replace match
+- Clean up the auto-approve UI (thanks @mrubens!)
+- Skip interpolation for non-existent slash commands (thanks @app/roomote!)
+
 ## [3.25.4] - 2025-07-30
 
 - feat: add SambaNova provider integration (#6077 by @snova-jorgep, PR by @snova-jorgep)
