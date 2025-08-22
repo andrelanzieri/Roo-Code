@@ -29,7 +29,8 @@ export default `
 (record_declaration
   name: (identifier) @name.definition.record) @definition.record
 
-; Annotation declarations
+; Annotation type declarations (e.g., @interface MyAnnotation)
+; Note: This captures annotation type declarations, not annotation usages like @Override
 (annotation_type_declaration
   name: (identifier) @name.definition.annotation) @definition.annotation
 

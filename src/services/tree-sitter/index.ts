@@ -339,8 +339,42 @@ function processCaptures(captures: QueryCapture[], lines: string[], language: st
 		}
 		// For other component definitions
 		else if (isNotHtmlElement(startLineContent)) {
-			formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[startLine]}\n`
-			processedLines.add(lineKey)
+			// For Java, special handling to avoid showing @Override as a separate line
+			// when it's part of a method declaration
+			if (language === "java" && name === "definition.method") {
+				// Check if the method has an annotation like @Override
+				const methodText = definitionNode.text
+				if (methodText.includes("@Override")) {
+					// Find the actual method declaration line (not the annotation line)
+					let methodDeclarationLine = startLine
+					for (let i = startLine; i <= endLine; i++) {
+						if (
+							lines[i].includes("public") ||
+							lines[i].includes("private") ||
+							lines[i].includes("protected") ||
+							lines[i].includes("void") ||
+							lines[i].includes("static")
+						) {
+							methodDeclarationLine = i
+							break
+						}
+					}
+					// Output the method with its proper line range, but show the method declaration line
+					formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[methodDeclarationLine]}\n`
+					processedLines.add(lineKey)
+				} else {
+					// Normal method without annotations
+					formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[startLine]}\n`
+					processedLines.add(lineKey)
+				}
+			} else if (language === "java" && name === "definition.class") {
+				// For Java classes, skip the entire class definition to avoid duplication
+				// The class name will be handled by name.definition.class
+				return
+			} else {
+				formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[startLine]}\n`
+				processedLines.add(lineKey)
+			}
 
 			// If this is part of a larger definition, include its non-HTML context
 			if (node.parent && node.parent.lastChild) {
