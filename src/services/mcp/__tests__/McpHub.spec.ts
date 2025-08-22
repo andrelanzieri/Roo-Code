@@ -908,6 +908,162 @@ describe("McpHub", () => {
 			expect(writtenConfig.mcpServers["test-server"].alwaysAllow).toBeDefined()
 			expect(writtenConfig.mcpServers["test-server"].alwaysAllow).toContain("new-tool")
 		})
+
+		it("should skip server restart when toggling alwaysAllow during active tool execution", async () => {
+			// Mock fs.readFile to return existing config
+			vi.mocked(fs.readFile).mockResolvedValue(
+				JSON.stringify({
+					mcpServers: {
+						"test-server": {
+							type: "stdio",
+							command: "node",
+							args: ["test.js"],
+							alwaysAllow: [],
+						},
+					},
+				}),
+			)
+
+			// Create a connected server
+			const mockConnection: ConnectedMcpConnection = {
+				type: "connected",
+				server: {
+					name: "test-server",
+					config: JSON.stringify({
+						type: "stdio",
+						command: "node",
+						args: ["test.js"],
+						alwaysAllow: [],
+					}),
+					status: "connected",
+					source: "global",
+					tools: [
+						{
+							name: "test-tool",
+							description: "Test tool",
+							alwaysAllow: false,
+							enabledForPrompt: true,
+						},
+					],
+				},
+				client: {
+					request: vi.fn().mockImplementation(() => {
+						// Simulate long-running tool
+						return new Promise((resolve) => {
+							setTimeout(() => resolve({ content: [] }), 500)
+						})
+					}),
+				} as any,
+				transport: {} as any,
+			}
+
+			mcpHub.connections = [mockConnection]
+
+			// Spy on console.log to verify the skip message
+			const consoleLogSpy = vi.spyOn(console, "log")
+
+			// Start a tool execution
+			const toolPromise = mcpHub.callTool("test-server", "test-tool", {})
+
+			// While tool is running, toggle alwaysAllow
+			await mcpHub.toggleToolAlwaysAllow("test-server", "global", "test-tool", true)
+
+			// Verify that the skip message was logged
+			expect(consoleLogSpy).toHaveBeenCalledWith(
+				"Skipping server restart for test-server - tools are currently executing",
+			)
+
+			// Verify that the config was updated
+			const writeCalls = vi.mocked(fs.writeFile).mock.calls
+			const lastWriteCall = writeCalls[writeCalls.length - 1]
+			const writtenConfig = JSON.parse(lastWriteCall[1] as string)
+			expect(writtenConfig.mcpServers["test-server"].alwaysAllow).toContain("test-tool")
+
+			// Verify that the in-memory tool state was updated
+			const tool = mockConnection.server.tools?.find((t) => t.name === "test-tool")
+			expect(tool?.alwaysAllow).toBe(true)
+
+			// Wait for tool to complete
+			await toolPromise
+
+			// Verify that the server status is still connected
+			expect(mockConnection.server.status).toBe("connected")
+
+			consoleLogSpy.mockRestore()
+		})
+
+		it("should prevent server restart when tools are running", async () => {
+			const mockConnection: ConnectedMcpConnection = {
+				type: "connected",
+				server: {
+					name: "test-server",
+					config: JSON.stringify({ type: "stdio", command: "node", args: ["test.js"] }),
+					status: "connected",
+					source: "global",
+				},
+				client: {
+					request: vi.fn().mockImplementation(() => {
+						// Simulate long-running tool
+						return new Promise((resolve) => {
+							setTimeout(() => resolve({ content: [] }), 500)
+						})
+					}),
+				} as any,
+				transport: {} as any,
+			}
+
+			mcpHub.connections = [mockConnection]
+
+			// Start a tool execution
+			const toolPromise = mcpHub.callTool("test-server", "some-tool", {})
+
+			// Try to restart the server while tool is running
+			await mcpHub.restartConnection("test-server", "global")
+
+			// Verify that the server was not restarted
+			expect(mcpHub.connections[0]).toBe(mockConnection)
+			expect(mockConnection.server.status).toBe("connected")
+
+			// Wait for tool to complete
+			await toolPromise
+		})
+
+		it("should prevent toggling server disabled state when tools are running", async () => {
+			const mockConnection: ConnectedMcpConnection = {
+				type: "connected",
+				server: {
+					name: "test-server",
+					config: JSON.stringify({ type: "stdio", command: "node", args: ["test.js"] }),
+					status: "connected",
+					source: "global",
+					disabled: false,
+				},
+				client: {
+					request: vi.fn().mockImplementation(() => {
+						// Simulate long-running tool
+						return new Promise((resolve) => {
+							setTimeout(() => resolve({ content: [] }), 500)
+						})
+					}),
+				} as any,
+				transport: {} as any,
+			}
+
+			mcpHub.connections = [mockConnection]
+
+			// Start a tool execution
+			const toolPromise = mcpHub.callTool("test-server", "some-tool", {})
+
+			// Try to disable the server while tool is running
+			await mcpHub.toggleServerDisabled("test-server", true, "global")
+
+			// Verify that the server was not disabled
+			expect(mockConnection.server.disabled).toBe(false)
+			expect(mockConnection.server.status).toBe("connected")
+
+			// Wait for tool to complete
+			await toolPromise
+		})
 	})
 
 	describe("toggleToolEnabledForPrompt", () => {
