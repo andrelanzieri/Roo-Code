@@ -448,32 +448,57 @@ export class CustomModesManager {
 
 			let targetPath: string
 
-			// If mode exists and has a sourceFile, update it in the same file
+			// Determine correct target file based on desired source
+			const desiredSource = config.source === "project" ? "project" : "global"
+
 			if (existingMode && (existingMode as any).sourceFile) {
-				targetPath = (existingMode as any).sourceFile
-				logger.info(`Updating mode in original file: ${targetPath}`, { slug })
+				const existingSource = (existingMode as any).source || "global"
+				const existingSourceFile = (existingMode as any).sourceFile as string
+
+				if (existingSource === "project") {
+					// Always preserve project precedence: update in the project source file
+					targetPath = existingSourceFile
+					logger.info(`Updating mode in original file: ${targetPath}`, { slug })
+				} else {
+					// existing source is global
+					if (desiredSource === "project") {
+						// User wants a project-level import/update: write to .roomodes (do NOT overwrite global)
+						const workspaceFolders = vscode.workspace.workspaceFolders
+						if (!workspaceFolders || workspaceFolders.length === 0) {
+							logger.error("Failed to update project mode: No workspace folder found", { slug })
+							throw new Error(t("common:customModes.errors.noWorkspaceForProject"))
+						}
+						const workspaceRoot = getWorkspacePath()
+						targetPath = path.join(workspaceRoot, ROOMODES_FILENAME)
+						const exists = await fileExistsAtPath(targetPath)
+						logger.info(`${exists ? "Updating" : "Creating"} project mode in ${ROOMODES_FILENAME}`, {
+							slug,
+							workspace: workspaceRoot,
+						})
+					} else {
+						// desiredSource === "global" and existing is global -> update in the same global file
+						targetPath = existingSourceFile
+						logger.info(`Updating mode in original file: ${targetPath}`, { slug })
+					}
+				}
 			} else {
 				// For new modes or modes without sourceFile, determine target based on source
-				const isProjectMode = config.source === "project"
-
-				if (isProjectMode) {
+				if (desiredSource === "project") {
 					const workspaceFolders = vscode.workspace.workspaceFolders
-
 					if (!workspaceFolders || workspaceFolders.length === 0) {
 						logger.error("Failed to update project mode: No workspace folder found", { slug })
 						throw new Error(t("common:customModes.errors.noWorkspaceForProject"))
 					}
-
 					const workspaceRoot = getWorkspacePath()
 					targetPath = path.join(workspaceRoot, ROOMODES_FILENAME)
 					const exists = await fileExistsAtPath(targetPath)
-
 					logger.info(`${exists ? "Updating" : "Creating"} project mode in ${ROOMODES_FILENAME}`, {
 						slug,
 						workspace: workspaceRoot,
 					})
 				} else {
 					targetPath = await this.getCustomModesFilePath()
+					logger.info(`Updating global mode in settings file: ${targetPath}`, { slug })
 				}
 			}
 
@@ -562,49 +587,84 @@ export class CustomModesManager {
 					const settingsPath = await this.getCustomModesFilePath()
 					const roomodesPath = await this.getWorkspaceRoomodes()
 
-					// Try to delete from settings file
-					try {
-						const settingsModes = await this.loadModesFromFile(settingsPath)
-						if (settingsModes.find((m) => m.slug === slug)) {
-							await this.updateModesInFile(settingsPath, (modes) => modes.filter((m) => m.slug !== slug))
+					// Delete only the first occurrence found, based on precedence:
+					// 1) project .roo/modes, 2) project .roomodes, 3) global .roo/modes, 4) global settings file
+					let deleted = false
+
+					// 1) Project .roo/modes
+					const workspacePath2 = getWorkspacePath()
+					if (!deleted && workspacePath2) {
+						const projectRooModesDir = path.join(workspacePath2, ".roo", ROO_MODES_DIR)
+						try {
+							const entries = await fs.readdir(projectRooModesDir, { withFileTypes: true })
+							for (const entry of entries) {
+								if (entry.isFile() && (entry.name.endsWith(".yaml") || entry.name.endsWith(".yml"))) {
+									const filePath = path.join(projectRooModesDir, entry.name)
+									const fileModes = await this.loadModesFromFile(filePath)
+									if (fileModes.find((m) => m.slug === slug)) {
+										await this.updateModesInFile(filePath, (modes) =>
+											modes.filter((m) => m.slug !== slug),
+										)
+										deleted = true
+										break
+									}
+								}
+							}
+						} catch {
+							// ignore
 						}
-					} catch (error) {
-						// Ignore if file doesn't exist
 					}
 
-					// Try to delete from .roomodes
-					if (roomodesPath) {
+					// 2) Project .roomodes
+					if (!deleted && roomodesPath) {
 						try {
 							const roomodesModes = await this.loadModesFromFile(roomodesPath)
 							if (roomodesModes.find((m) => m.slug === slug)) {
 								await this.updateModesInFile(roomodesPath, (modes) =>
 									modes.filter((m) => m.slug !== slug),
 								)
+								deleted = true
 							}
-						} catch (error) {
-							// Ignore if file doesn't exist
+						} catch {
+							// ignore
 						}
 					}
 
-					// Check and delete from .roo/modes directories
-					const rooDirectories = getRooDirectoriesForCwd(getWorkspacePath() || process.cwd())
-					for (const rooDir of rooDirectories) {
-						const rooModesDir = path.join(rooDir, ROO_MODES_DIR)
+					// 3) Global .roo/modes
+					if (!deleted) {
+						const globalRooModesDir = path.join(getGlobalRooDirectory(), ROO_MODES_DIR)
 						try {
-							const entries = await fs.readdir(rooModesDir, { withFileTypes: true })
+							const entries = await fs.readdir(globalRooModesDir, { withFileTypes: true })
 							for (const entry of entries) {
 								if (entry.isFile() && (entry.name.endsWith(".yaml") || entry.name.endsWith(".yml"))) {
-									const filePath = path.join(rooModesDir, entry.name)
+									const filePath = path.join(globalRooModesDir, entry.name)
 									const fileModes = await this.loadModesFromFile(filePath)
 									if (fileModes.find((m) => m.slug === slug)) {
 										await this.updateModesInFile(filePath, (modes) =>
 											modes.filter((m) => m.slug !== slug),
 										)
+										deleted = true
+										break
 									}
 								}
 							}
-						} catch (error) {
-							// Directory might not exist
+						} catch {
+							// ignore
+						}
+					}
+
+					// 4) Global settings file
+					if (!deleted) {
+						try {
+							const settingsModes = await this.loadModesFromFile(settingsPath)
+							if (settingsModes.find((m) => m.slug === slug)) {
+								await this.updateModesInFile(settingsPath, (modes) =>
+									modes.filter((m) => m.slug !== slug),
+								)
+								deleted = true
+							}
+						} catch {
+							// ignore
 						}
 					}
 				}
@@ -1057,6 +1117,14 @@ export class CustomModesManager {
 					...modeConfig,
 					source: source, // Use the provided source parameter
 				})
+
+				// Verify the mode was actually written before importing rules to avoid inconsistent state
+				// This prevents cases where rules are imported but .roomodes/settings are not updated.
+				const postUpdateModes = await this.getCustomModes()
+				const updated = postUpdateModes.find((m) => m.slug === importMode.slug)
+				if (!updated) {
+					throw new Error(`Failed to write mode configuration for '${importMode.slug}'`)
+				}
 
 				// Import rules files (this also handles cleanup of existing rules folders)
 				await this.importRulesFiles(importMode, rulesFiles || [], source)
