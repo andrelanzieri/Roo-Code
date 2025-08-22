@@ -43,6 +43,7 @@ const PromptsSettings = ({
 		setCustomCondensingPrompt,
 		includeTaskHistoryInEnhance: contextIncludeTaskHistoryInEnhance,
 		setIncludeTaskHistoryInEnhance: contextSetIncludeTaskHistoryInEnhance,
+		mode,
 	} = useExtensionState()
 
 	// Use props if provided, otherwise fall back to context
@@ -52,6 +53,9 @@ const PromptsSettings = ({
 	const [testPrompt, setTestPrompt] = useState("")
 	const [isEnhancing, setIsEnhancing] = useState(false)
 	const [activeSupportOption, setActiveSupportOption] = useState<SupportPromptType>("ENHANCE")
+	const [isDialogOpen, setIsDialogOpen] = useState(false)
+	const [selectedPromptContent, setSelectedPromptContent] = useState("")
+	const [selectedPromptTitle, setSelectedPromptTitle] = useState("")
 
 	useEffect(() => {
 		const handler = (event: MessageEvent) => {
@@ -61,6 +65,12 @@ const PromptsSettings = ({
 					setTestPrompt(message.text)
 				}
 				setIsEnhancing(false)
+			} else if (message.type === "systemPrompt") {
+				if (message.text) {
+					setSelectedPromptContent(message.text)
+					setSelectedPromptTitle(`System Prompt (${message.mode} mode)`)
+					setIsDialogOpen(true)
+				}
 			}
 		}
 
@@ -122,6 +132,43 @@ const PromptsSettings = ({
 			</SectionHeader>
 
 			<Section>
+				{/* System Prompt Preview Section */}
+				<div className="mb-4">
+					<div className="flex gap-2">
+						<Button
+							variant="default"
+							onClick={() => {
+								vscode.postMessage({
+									type: "getSystemPrompt",
+									mode: mode,
+								})
+							}}
+							data-testid="preview-prompt-button">
+							{t("prompts:systemPrompt.preview")}
+						</Button>
+						<StandardTooltip content={t("prompts:systemPrompt.copy")}>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => {
+									vscode.postMessage({
+										type: "copySystemPrompt",
+										mode: mode,
+									})
+								}}
+								data-testid="copy-prompt-button">
+								<span className="codicon codicon-copy"></span>
+							</Button>
+						</StandardTooltip>
+					</div>
+					<div className="text-sm text-vscode-descriptionForeground mt-1">
+						{t("prompts:systemPrompt.previewDescription")}
+					</div>
+				</div>
+
+				<div className="border-t border-vscode-input-border my-4"></div>
+
+				{/* Support Prompts Section */}
 				<div>
 					<Select
 						value={activeSupportOption}
@@ -281,6 +328,34 @@ const PromptsSettings = ({
 					)}
 				</div>
 			</Section>
+
+			{/* System Prompt Preview Dialog */}
+			{isDialogOpen && (
+				<div className="fixed inset-0 flex justify-end bg-black/50 z-[1000]">
+					<div className="w-[calc(100vw-100px)] h-full bg-vscode-editor-background shadow-md flex flex-col relative">
+						<div className="flex-1 p-5 overflow-y-auto min-h-0">
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => setIsDialogOpen(false)}
+								className="absolute top-5 right-5">
+								<span className="codicon codicon-close"></span>
+							</Button>
+							<h2 className="mb-4">
+								{selectedPromptTitle || t("prompts:systemPrompt.title", { modeName: mode })}
+							</h2>
+							<pre className="p-2 whitespace-pre-wrap break-words font-mono text-vscode-editor-font-size text-vscode-editor-foreground bg-vscode-editor-background border border-vscode-editor-lineHighlightBorder rounded overflow-y-auto">
+								{selectedPromptContent}
+							</pre>
+						</div>
+						<div className="flex justify-end p-3 px-5 border-t border-vscode-editor-lineHighlightBorder bg-vscode-editor-background">
+							<Button variant="secondary" onClick={() => setIsDialogOpen(false)}>
+								{t("prompts:createModeDialog.close")}
+							</Button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	)
 }
