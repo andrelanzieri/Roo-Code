@@ -226,6 +226,11 @@ describe("extractErrorTitle", () => {
 			expect(extractErrorTitle(error, mockT)).toBe("Invalid Tool Arguments")
 		})
 
+		it("should handle missing required parameter tool error", () => {
+			const error = "Roo tried to use apply_diff without value for required parameter 'path'. Retrying..."
+			expect(extractErrorTitle(error, mockT)).toBe("Missing Required Parameter")
+		})
+
 		it("should handle file not found error from actual code", () => {
 			const error =
 				"File does not exist at path: /Users/test/project/src/app.ts\n\n<error_details>\nThe specified file could not be found. Please verify the file path and try again.\n</error_details>"

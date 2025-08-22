@@ -103,6 +103,17 @@ export function extractErrorTitle(errorContent: string, t: TFunction): string {
 			pattern: /^Failed to apply diff:/i,
 			title: "Diff Application Failed",
 		},
+		// Roo chat errors generated when tool args are missing/invalid
+		{
+			// Example: Roo tried to use apply_diff without value for required parameter 'path'. Retrying...
+			pattern: /^Roo tried to use .+ without value for required parameter ['"“”‘’][^'"“”‘’]+['"“”‘’]/i,
+			title: "Missing Required Parameter",
+		},
+		{
+			// Fallback without quoting the param
+			pattern: /^Roo tried to use .+ without value for required parameter/i,
+			title: "Missing Required Parameter",
+		},
 	]
 
 	// API and service error patterns
