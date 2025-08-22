@@ -42,6 +42,8 @@ describe("GroqHandler", () => {
 		const model = handler.getModel()
 		expect(model.id).toBe(groqDefaultModelId)
 		expect(model.info).toEqual(groqModels[groqDefaultModelId])
+		// Verify prompt caching is enabled
+		expect(model.info.supportsPromptCache).toBe(true)
 	})
 
 	it("should return specified model when valid model is provided", () => {
@@ -50,6 +52,8 @@ describe("GroqHandler", () => {
 		const model = handlerWithModel.getModel()
 		expect(model.id).toBe(testModelId)
 		expect(model.info).toEqual(groqModels[testModelId])
+		// Verify prompt caching is enabled
+		expect(model.info.supportsPromptCache).toBe(true)
 	})
 
 	it("completePrompt method should return text from Groq API", async () => {
@@ -108,7 +112,13 @@ describe("GroqHandler", () => {
 		const firstChunk = await stream.next()
 
 		expect(firstChunk.done).toBe(false)
-		expect(firstChunk.value).toEqual({ type: "usage", inputTokens: 10, outputTokens: 20 })
+		expect(firstChunk.value).toEqual({
+			type: "usage",
+			inputTokens: 10,
+			outputTokens: 20,
+			cacheWriteTokens: 0,
+			cacheReadTokens: 0,
+		})
 	})
 
 	it("createMessage should pass correct parameters to Groq client", async () => {
@@ -220,5 +230,95 @@ describe("GroqHandler", () => {
 			}),
 			undefined,
 		)
+	})
+
+	it("createMessage should handle cached tokens from Groq API", async () => {
+		const testContent = "This is test content from Groq stream"
+		const cachedTokens = 50
+
+		mockCreate.mockImplementationOnce(() => {
+			return {
+				[Symbol.asyncIterator]: () => ({
+					next: vitest
+						.fn()
+						.mockResolvedValueOnce({
+							done: false,
+							value: { choices: [{ delta: { content: testContent } }] },
+						})
+						.mockResolvedValueOnce({
+							done: false,
+							value: {
+								choices: [{ delta: {} }],
+								usage: {
+									prompt_tokens: 100,
+									completion_tokens: 20,
+									prompt_tokens_details: {
+										cached_tokens: cachedTokens,
+									},
+								},
+							},
+						})
+						.mockResolvedValueOnce({ done: true }),
+				}),
+			}
+		})
+
+		const stream = handler.createMessage("system prompt", [])
+		const chunks = []
+		for await (const chunk of stream) {
+			chunks.push(chunk)
+		}
+
+		// Should have text chunk and usage chunk
+		expect(chunks).toHaveLength(2)
+		expect(chunks[0]).toEqual({ type: "text", text: testContent })
+
+		// Usage chunk should properly handle cached tokens
+		expect(chunks[1]).toEqual({
+			type: "usage",
+			inputTokens: 50, // 100 total - 50 cached = 50 non-cached
+			outputTokens: 20,
+			cacheWriteTokens: 0, // Groq doesn't track cache writes
+			cacheReadTokens: 50,
+		})
+	})
+
+	it("createMessage should handle missing cache information gracefully", async () => {
+		mockCreate.mockImplementationOnce(() => {
+			return {
+				[Symbol.asyncIterator]: () => ({
+					next: vitest
+						.fn()
+						.mockResolvedValueOnce({
+							done: false,
+							value: {
+								choices: [{ delta: {} }],
+								usage: {
+									prompt_tokens: 100,
+									completion_tokens: 20,
+									// No prompt_tokens_details
+								},
+							},
+						})
+						.mockResolvedValueOnce({ done: true }),
+				}),
+			}
+		})
+
+		const stream = handler.createMessage("system prompt", [])
+		const chunks = []
+		for await (const chunk of stream) {
+			chunks.push(chunk)
+		}
+
+		// Should handle missing cache information gracefully
+		expect(chunks).toHaveLength(1)
+		expect(chunks[0]).toEqual({
+			type: "usage",
+			inputTokens: 100, // No cached tokens, so all are non-cached
+			outputTokens: 20,
+			cacheWriteTokens: 0,
+			cacheReadTokens: 0, // Default to 0 when not provided
+		})
 	})
 })

@@ -22,90 +22,100 @@ export const groqModels = {
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.05,
 		outputPrice: 0.08,
+		cacheReadsPrice: 0.01, // 80% discount on cached tokens
 		description: "Meta Llama 3.1 8B Instant model, 128K context.",
 	},
 	"llama-3.3-70b-versatile": {
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.59,
 		outputPrice: 0.79,
+		cacheReadsPrice: 0.118, // 80% discount on cached tokens
 		description: "Meta Llama 3.3 70B Versatile model, 128K context.",
 	},
 	"meta-llama/llama-4-scout-17b-16e-instruct": {
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.11,
 		outputPrice: 0.34,
+		cacheReadsPrice: 0.022, // 80% discount on cached tokens
 		description: "Meta Llama 4 Scout 17B Instruct model, 128K context.",
 	},
 	"meta-llama/llama-4-maverick-17b-128e-instruct": {
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.2,
 		outputPrice: 0.6,
+		cacheReadsPrice: 0.04, // 80% discount on cached tokens
 		description: "Meta Llama 4 Maverick 17B Instruct model, 128K context.",
 	},
 	"mistral-saba-24b": {
 		maxTokens: 8192,
 		contextWindow: 32768,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.79,
 		outputPrice: 0.79,
+		cacheReadsPrice: 0.158, // 80% discount on cached tokens
 		description: "Mistral Saba 24B model, 32K context.",
 	},
 	"qwen-qwq-32b": {
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.29,
 		outputPrice: 0.39,
+		cacheReadsPrice: 0.058, // 80% discount on cached tokens
 		description: "Alibaba Qwen QwQ 32B model, 128K context.",
 	},
 	"qwen/qwen3-32b": {
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.29,
 		outputPrice: 0.59,
+		cacheReadsPrice: 0.058, // 80% discount on cached tokens
 		description: "Alibaba Qwen 3 32B model, 128K context.",
 	},
 	"deepseek-r1-distill-llama-70b": {
 		maxTokens: 8192,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.75,
 		outputPrice: 0.99,
+		cacheReadsPrice: 0.15, // 80% discount on cached tokens
 		description: "DeepSeek R1 Distill Llama 70B model, 128K context.",
 	},
 	"moonshotai/kimi-k2-instruct": {
 		maxTokens: 16384,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 1.0,
 		outputPrice: 3.0,
+		cacheReadsPrice: 0.2, // 80% discount on cached tokens
 		description: "Moonshot AI Kimi K2 Instruct 1T model, 128K context.",
 	},
 	"openai/gpt-oss-120b": {
 		maxTokens: 32766,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.15,
 		outputPrice: 0.75,
+		cacheReadsPrice: 0.03, // 80% discount on cached tokens
 		description:
 			"GPT-OSS 120B is OpenAI's flagship open source model, built on a Mixture-of-Experts (MoE) architecture with 20 billion parameters and 128 experts.",
 	},
@@ -113,9 +123,10 @@ export const groqModels = {
 		maxTokens: 32768,
 		contextWindow: 131072,
 		supportsImages: false,
-		supportsPromptCache: false,
+		supportsPromptCache: true,
 		inputPrice: 0.1,
 		outputPrice: 0.5,
+		cacheReadsPrice: 0.02, // 80% discount on cached tokens
 		description:
 			"GPT-OSS 20B is OpenAI's flagship open source model, built on a Mixture-of-Experts (MoE) architecture with 20 billion parameters and 32 experts.",
 	},
