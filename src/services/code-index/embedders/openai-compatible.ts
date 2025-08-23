@@ -278,8 +278,15 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 					if (typeof item.embedding === "string") {
 						const buffer = Buffer.from(item.embedding, "base64")
 
-						// Create Float32Array view over the buffer
-						const float32Array = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4)
+						// Safe approach: Create Float32Array from a properly aligned copy
+						// This avoids issues with Node.js Buffers that may be views into larger ArrayBuffers
+						const float32Array = new Float32Array(buffer.length / 4)
+						const dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+
+						// Read floats with proper byte order handling (little-endian)
+						for (let i = 0; i < float32Array.length; i++) {
+							float32Array[i] = dataView.getFloat32(i * 4, true)
+						}
 
 						return {
 							...item,
