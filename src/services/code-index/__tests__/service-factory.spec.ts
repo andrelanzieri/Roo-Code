@@ -566,7 +566,7 @@ describe("CodeIndexServiceFactory", () => {
 				qdrantApiKey: "test-key",
 			}
 			mockConfigManager.getConfig.mockReturnValue(testConfig as any)
-			mockGetModelDimension.mockReturnValue(3072)
+			mockGetModelDimension.mockReturnValue(768)
 
 			// Act
 			factory.createVectorStore()
@@ -576,7 +576,7 @@ describe("CodeIndexServiceFactory", () => {
 			expect(MockedQdrantVectorStore).toHaveBeenCalledWith(
 				"/test/workspace",
 				"http://localhost:6333",
-				3072,
+				768,
 				"test-key",
 			)
 		})
@@ -590,7 +590,7 @@ describe("CodeIndexServiceFactory", () => {
 			}
 			mockConfigManager.getConfig.mockReturnValue(testConfig as any)
 			mockGetDefaultModelId.mockReturnValue("gemini-embedding-001")
-			mockGetModelDimension.mockReturnValue(3072)
+			mockGetModelDimension.mockReturnValue(768)
 
 			// Act
 			factory.createVectorStore()
@@ -601,7 +601,7 @@ describe("CodeIndexServiceFactory", () => {
 			expect(MockedQdrantVectorStore).toHaveBeenCalledWith(
 				"/test/workspace",
 				"http://localhost:6333",
-				3072,
+				768,
 				"test-key",
 			)
 		})
