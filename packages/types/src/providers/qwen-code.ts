@@ -38,7 +38,5 @@ export const getQwenCodeModelInfo = (modelId: string): ModelInfo => {
 
 export type QwenCodeProvider = {
 	id: "qwen-code"
-	apiKey?: string
-	baseUrl?: string
 	model: QwenCodeModelId
 }

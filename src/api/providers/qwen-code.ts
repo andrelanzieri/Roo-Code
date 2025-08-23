@@ -10,6 +10,7 @@ import { qwenCodeDefaultModelId, qwenCodeModels } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 import { t } from "../../i18n"
+import { logger } from "../../utils/logging"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import type { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
@@ -33,7 +34,11 @@ interface QwenOAuthCredentials {
 	resource_url?: string
 }
 
-function getQwenCachedCredentialPath(): string {
+function getQwenCachedCredentialPath(customPath?: string): string {
+	if (customPath) {
+		// If custom path is absolute, use it directly; otherwise resolve relative to home
+		return path.isAbsolute(customPath) ? customPath : path.join(os.homedir(), customPath)
+	}
 	return path.join(os.homedir(), QWEN_DIR, QWEN_CREDENTIAL_FILENAME)
 }
 
@@ -62,11 +67,12 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 
 	private async loadCachedQwenCredentials(): Promise<QwenOAuthCredentials> {
 		try {
-			const keyFile = getQwenCachedCredentialPath()
+			const keyFile = getQwenCachedCredentialPath(this.options.qwenCodeOAuthPath)
 			const credsStr = await fs.readFile(keyFile, "utf-8")
 			return JSON.parse(credsStr)
 		} catch (error) {
-			console.error(`Error reading or parsing credentials file at ${getQwenCachedCredentialPath()}`)
+			const credPath = getQwenCachedCredentialPath(this.options.qwenCodeOAuthPath)
+			logger.error(`Error reading or parsing credentials file at ${credPath}`, error)
 			throw new Error(t("common:errors.qwenCode.oauthLoadFailed", { error }))
 		}
 	}
@@ -110,7 +116,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 			expiry_date: Date.now() + tokenData.expires_in * 1000,
 		}
 
-		const filePath = getQwenCachedCredentialPath()
+		const filePath = getQwenCachedCredentialPath(this.options.qwenCodeOAuthPath)
 		await fs.writeFile(filePath, JSON.stringify(newCredentials, null, 2))
 
 		return newCredentials
@@ -188,7 +194,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 
 		this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
-		const stream = await this.callApiWithRetry(() => this.client!.chat.completions.create(requestOptions))
+		const stream = await this.callApiWithRetry(() => this.client.chat.completions.create(requestOptions))
 
 		const matcher = new XmlMatcher(
 			"think",
@@ -251,7 +257,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 
 		this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
-		const response = await this.callApiWithRetry(() => this.client!.chat.completions.create(requestOptions))
+		const response = await this.callApiWithRetry(() => this.client.chat.completions.create(requestOptions))
 
 		return response.choices[0]?.message.content || ""
 	}
