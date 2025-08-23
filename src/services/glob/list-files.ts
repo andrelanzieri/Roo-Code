@@ -627,6 +627,9 @@ async function execRipgrep(rgPath: string, args: string[], limit: number): Promi
 		let output = ""
 		let results: string[] = []
 
+		// Use a smaller buffer size to process data more frequently and reduce memory usage
+		const MAX_BUFFER_SIZE = 1024 * 64 // 64KB buffer instead of unlimited
+
 		// Set timeout to avoid hanging
 		const timeoutId = setTimeout(() => {
 			rgProcess.kill()
@@ -637,7 +640,11 @@ async function execRipgrep(rgPath: string, args: string[], limit: number): Promi
 		// Process stdout data as it comes in
 		rgProcess.stdout.on("data", (data) => {
 			output += data.toString()
-			processRipgrepOutput()
+
+			// Process output more frequently to avoid large memory buffers
+			if (output.length > MAX_BUFFER_SIZE || output.split("\n").length > 100) {
+				processRipgrepOutput()
+			}
 
 			// Kill the process if we've reached the limit
 			if (results.length >= limit) {
@@ -691,6 +698,8 @@ async function execRipgrep(rgPath: string, args: string[], limit: number): Promi
 					// Keep the relative path as returned by ripgrep
 					results.push(line)
 				} else if (results.length >= limit) {
+					// Clear the output buffer when we hit the limit to free memory
+					output = ""
 					break
 				}
 			}

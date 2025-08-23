@@ -17,6 +17,7 @@ import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { Terminal } from "../../integrations/terminal/Terminal"
 import { arePathsEqual } from "../../utils/path"
 import { formatResponse } from "../prompts/responses"
+import { getProjectFileLimit } from "../../utils/projectDetection"
 
 import { Task } from "../task/Task"
 import { formatReminderSection } from "./reminder"
@@ -252,7 +253,15 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 			if (maxFiles === 0) {
 				details += "(Workspace files context disabled. Use list_files to explore if needed.)"
 			} else {
-				const [files, didHitLimit] = await listFiles(cline.cwd, true, maxFiles)
+				// Apply project-specific file limits to prevent memory issues
+				const effectiveLimit = await getProjectFileLimit(cline.cwd, maxFiles)
+
+				// If we're using a reduced limit for a Swift project, add a note
+				if (effectiveLimit < maxFiles) {
+					details += `\n(Note: File listing limited to ${effectiveLimit} files for Swift project memory optimization)`
+				}
+
+				const [files, didHitLimit] = await listFiles(cline.cwd, true, effectiveLimit)
 				const { showRooIgnoredFiles = true } = state ?? {}
 
 				const result = formatResponse.formatFilesList(
