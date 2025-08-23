@@ -164,6 +164,44 @@ describe("GeminiHandler", () => {
 		})
 	})
 
+	describe("getModel with free tier models", () => {
+		it("should strip -free suffix from model ID for API calls", () => {
+			const freeHandler = new GeminiHandler({
+				apiModelId: "gemini-2.5-pro-free",
+				geminiApiKey: "test-key",
+			})
+			const modelInfo = freeHandler.getModel()
+			// The returned ID should have -free stripped for API calls
+			expect(modelInfo.id).toBe("gemini-2.5-pro")
+			// But the info should still be from the free model
+			expect(modelInfo.info.inputPrice).toBe(0)
+			expect(modelInfo.info.outputPrice).toBe(0)
+			expect(modelInfo.info.contextWindow).toBe(250_000)
+		})
+
+		it("should strip -free suffix from flash model", () => {
+			const freeHandler = new GeminiHandler({
+				apiModelId: "gemini-2.5-flash-free",
+				geminiApiKey: "test-key",
+			})
+			const modelInfo = freeHandler.getModel()
+			expect(modelInfo.id).toBe("gemini-2.5-flash")
+			expect(modelInfo.info.inputPrice).toBe(0)
+			expect(modelInfo.info.outputPrice).toBe(0)
+		})
+
+		it("should strip -free suffix from flash-lite model", () => {
+			const freeHandler = new GeminiHandler({
+				apiModelId: "gemini-2.5-flash-lite-free",
+				geminiApiKey: "test-key",
+			})
+			const modelInfo = freeHandler.getModel()
+			expect(modelInfo.id).toBe("gemini-2.5-flash-lite")
+			expect(modelInfo.info.inputPrice).toBe(0)
+			expect(modelInfo.info.outputPrice).toBe(0)
+		})
+	})
+
 	describe("calculateCost", () => {
 		// Mock ModelInfo based on gemini-1.5-flash-latest pricing (per 1M tokens)
 		// Removed 'id' and 'name' as they are not part of ModelInfo type directly
