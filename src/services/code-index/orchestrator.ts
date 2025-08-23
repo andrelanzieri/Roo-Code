@@ -139,11 +139,23 @@ export class CodeIndexOrchestrator {
 			const handleFileParsed = (fileBlockCount: number) => {
 				cumulativeBlocksFoundSoFar += fileBlockCount
 				this.stateManager.reportBlockIndexingProgress(cumulativeBlocksIndexed, cumulativeBlocksFoundSoFar)
+
+				// Add progress percentage to status message
+				if (cumulativeBlocksFoundSoFar > 0) {
+					const progressPercent = Math.round((cumulativeBlocksIndexed / cumulativeBlocksFoundSoFar) * 100)
+					this.stateManager.setSystemState("Indexing", `Indexing workspace... (${progressPercent}% complete)`)
+				}
 			}
 
 			const handleBlocksIndexed = (indexedCount: number) => {
 				cumulativeBlocksIndexed += indexedCount
 				this.stateManager.reportBlockIndexingProgress(cumulativeBlocksIndexed, cumulativeBlocksFoundSoFar)
+
+				// Add progress percentage to status message
+				if (cumulativeBlocksFoundSoFar > 0) {
+					const progressPercent = Math.round((cumulativeBlocksIndexed / cumulativeBlocksFoundSoFar) * 100)
+					this.stateManager.setSystemState("Indexing", `Indexing workspace... (${progressPercent}% complete)`)
+				}
 			}
 
 			const result = await this.scanner.scanDirectory(

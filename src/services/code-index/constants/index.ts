@@ -16,16 +16,16 @@ export const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024 // 1MB
 
 /**Directory Scanner */
 export const MAX_LIST_FILES_LIMIT_CODE_INDEX = 50_000
-export const BATCH_SEGMENT_THRESHOLD = 60 // Number of code segments to batch for embeddings/upserts
+export const BATCH_SEGMENT_THRESHOLD = 200 // Number of code segments to batch for embeddings/upserts - increased from 60 for better performance
 export const MAX_BATCH_RETRIES = 3
 export const INITIAL_RETRY_DELAY_MS = 500
-export const PARSING_CONCURRENCY = 10
-export const MAX_PENDING_BATCHES = 20 // Maximum number of batches to accumulate before waiting
+export const PARSING_CONCURRENCY = 20 // Increased from 10 for faster parallel file parsing
+export const MAX_PENDING_BATCHES = 30 // Maximum number of batches to accumulate before waiting - increased from 20
 
 /**OpenAI Embedder */
 export const MAX_BATCH_TOKENS = 100000
 export const MAX_ITEM_TOKENS = 8191
-export const BATCH_PROCESSING_CONCURRENCY = 10
+export const BATCH_PROCESSING_CONCURRENCY = 15 // Increased from 10 for better throughput
 
 /**Gemini Embedder */
 export const GEMINI_MAX_ITEM_TOKENS = 2048

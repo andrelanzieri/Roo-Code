@@ -89,6 +89,74 @@ export class DirectoryScanner implements IDirectoryScanner {
 		let processedCount = 0
 		let skippedCount = 0
 
+		// Early termination check: if all files are already indexed, skip processing
+		let allFilesUnchanged = true
+		let quickCheckCount = 0
+		const quickCheckLimit = Math.min(10, supportedPaths.length) // Check first 10 files for quick assessment
+
+		for (const filePath of supportedPaths.slice(0, quickCheckLimit)) {
+			try {
+				const stats = await stat(filePath)
+				if (stats.size <= MAX_FILE_SIZE_BYTES) {
+					const content = await vscode.workspace.fs
+						.readFile(vscode.Uri.file(filePath))
+						.then((buffer) => Buffer.from(buffer).toString("utf-8"))
+					const currentFileHash = createHash("sha256").update(content).digest("hex")
+					const cachedFileHash = this.cacheManager.getHash(filePath)
+
+					if (cachedFileHash !== currentFileHash) {
+						allFilesUnchanged = false
+						break
+					}
+				}
+				quickCheckCount++
+			} catch (error) {
+				// If we can't check a file, assume it might have changed
+				allFilesUnchanged = false
+				break
+			}
+		}
+
+		// If quick check shows all sampled files are unchanged and we checked a reasonable sample,
+		// do a full check to confirm
+		if (allFilesUnchanged && quickCheckCount === quickCheckLimit && supportedPaths.length > quickCheckLimit) {
+			console.log(`[DirectoryScanner] Quick check passed, verifying all ${supportedPaths.length} files...`)
+			for (const filePath of supportedPaths.slice(quickCheckLimit)) {
+				try {
+					const stats = await stat(filePath)
+					if (stats.size <= MAX_FILE_SIZE_BYTES) {
+						const content = await vscode.workspace.fs
+							.readFile(vscode.Uri.file(filePath))
+							.then((buffer) => Buffer.from(buffer).toString("utf-8"))
+						const currentFileHash = createHash("sha256").update(content).digest("hex")
+						const cachedFileHash = this.cacheManager.getHash(filePath)
+
+						if (cachedFileHash !== currentFileHash) {
+							allFilesUnchanged = false
+							break
+						}
+					}
+				} catch (error) {
+					allFilesUnchanged = false
+					break
+				}
+			}
+		}
+
+		// If all files are unchanged, we can skip the entire indexing process
+		if (allFilesUnchanged && supportedPaths.length > 0) {
+			console.log(
+				`[DirectoryScanner] All ${supportedPaths.length} files are already indexed and unchanged. Skipping indexing.`,
+			)
+			return {
+				stats: {
+					processed: 0,
+					skipped: supportedPaths.length,
+				},
+				totalBlockCount: 0,
+			}
+		}
+
 		// Initialize parallel processing tools
 		const parseLimiter = pLimit(PARSING_CONCURRENCY) // Concurrency for file parsing
 		const batchLimiter = pLimit(BATCH_PROCESSING_CONCURRENCY) // Concurrency for batch processing
