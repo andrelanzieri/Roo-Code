@@ -1,0 +1,51 @@
+
+ RUN  v3.2.4 /data/repos/Roo-Code/src
+
+··xx·
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  services/tree-sitter/__tests__/parseSourceCodeDefinitions.java-simple.spec.ts > Java parsing - duplication issue > should parse each method without duplication
+AssertionError: expected 2 to be 1 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 2[39m
+
+ ❯ services/tree-sitter/__tests__/parseSourceCodeDefinitions.java-simple.spec.ts:63:34
+     61|   const testMethodLines = lines.filter(line => line.includes("testMeth…
+     62|   console.log("testMethod lines found:", testMethodLines)
+     63|   expect(testMethodLines.length).toBe(1)
+       |                                  ^
+     64|   
+     65|   // Check getName
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  services/tree-sitter/__tests__/parseSourceCodeDefinitions.java-simple.spec.ts > Java parsing - duplication issue > should show method signatures, not annotations
+AssertionError: expected 3 to be +0 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 0[39m
+[31m+ 3[39m
+
+ ❯ services/tree-sitter/__tests__/parseSourceCodeDefinitions.java-simple.spec.ts:92:36
+     90|   
+     91|   // Should not have any lines with just @Override
+     92|   expect(overrideOnlyLines.length).toBe(0)
+       |                                    ^
+     93|  })
+     94| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 3 passed (5)
+   Start at  17:39:51
+   Duration  870ms (transform 285ms, setup 98ms, collect 333ms, tests 83ms, environment 0ms, prepare 92ms)
+

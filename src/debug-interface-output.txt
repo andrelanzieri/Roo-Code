@@ -1,0 +1,29 @@
+
+=== FULL PARSE RESULT ===
+# TestFile.java
+2--6 | interface TestInterface {
+9--29 | class TestClass implements TestInterface {
+11--14 |     public void testMethod() {
+16--19 |     public String getName() {
+21--24 |     public int calculate(int a, int b) {
+26--28 |     private void helperMethod() {
+
+========================
+
+=== INDIVIDUAL LINES ===
+Line 0: # TestFile.java
+Line 1: 2--6 | interface TestInterface {
+Line 2: 9--29 | class TestClass implements TestInterface {
+Line 3: 11--14 |     public void testMethod() {
+Line 4: 16--19 |     public String getName() {
+Line 5: 21--24 |     public int calculate(int a, int b) {
+Line 6: 26--28 |     private void helperMethod() {
+========================
+
+=== INTERFACE LINES ===
+2--6 | interface TestInterface {
+========================
+
+=== testMethod LINES ===
+11--14 |     public void testMethod() {
+========================

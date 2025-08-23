@@ -288,16 +288,50 @@ function processCaptures(captures: QueryCapture[], lines: string[], language: st
 	// Sort captures by their start position
 	captures.sort((a, b) => a.node.startPosition.row - b.node.startPosition.row)
 
-	// Track already processed lines to avoid duplicates
-	const processedLines = new Set<string>()
+	// Track already processed definitions to avoid duplicates
+	const processedDefinitions = new Map<string, { startLine: number; endLine: number; displayLine: number }>()
 
-	// First pass - categorize captures by type
+	// Process captures and group by definition type and location
 	captures.forEach((capture) => {
 		const { node, name } = capture
 
 		// Skip captures that don't represent definitions
 		if (!name.includes("definition") && !name.includes("name")) {
 			return
+		}
+
+		// For Java, skip certain captures to avoid duplication
+		if (language === "java") {
+			// Skip class body definitions as they duplicate the class declaration
+			if (name === "definition.class" && node.parent?.type === "class_body") {
+				return
+			}
+			// Skip standalone annotation type declarations
+			if (name.includes("definition.annotation")) {
+				return
+			}
+			// Skip comment definitions
+			if (name === "definition.comment") {
+				return
+			}
+			// Skip individual interface method definitions to avoid duplication
+			// The interface declaration already shows the interface with its methods
+			// Check various parent levels as the structure might vary
+			const parent = node.parent
+			const grandParent = parent?.parent
+			const greatGrandParent = grandParent?.parent
+
+			if (name === "definition.method" || name === "name.definition.method") {
+				// Check if this method is inside an interface
+				if (
+					parent?.type === "interface_body" ||
+					grandParent?.type === "interface_body" ||
+					greatGrandParent?.type === "interface_body" ||
+					(parent?.type === "method_declaration" && grandParent?.type === "interface_body")
+				) {
+					return
+				}
+			}
 		}
 
 		// Get the parent node that contains the full definition
@@ -314,90 +348,58 @@ function processCaptures(captures: QueryCapture[], lines: string[], language: st
 			return
 		}
 
-		// Create unique key for this definition based on line range
-		// This ensures we don't output the same line range multiple times
-		const lineKey = `${startLine}-${endLine}`
+		// Determine the line to display (for Java definitions with annotations, find the actual declaration line)
+		let displayLine = startLine
+		if (language === "java") {
+			// For methods, classes, interfaces, etc. with annotations, find the actual declaration line
+			if (name.includes("definition")) {
+				for (let i = startLine; i <= endLine; i++) {
+					const line = lines[i].trim()
+					// Skip empty lines, annotations, and comments
+					if (
+						line &&
+						!line.startsWith("@") &&
+						!line.startsWith("//") &&
+						!line.startsWith("/*") &&
+						!line.startsWith("*")
+					) {
+						displayLine = i
+						break
+					}
+				}
+			}
+		}
 
-		// Skip already processed lines
-		if (processedLines.has(lineKey)) {
+		// Create a unique key for this definition
+		const defKey = `${definitionNode.type}-${startLine}-${endLine}`
+
+		// Check if we've already processed a definition at this location
+		const existing = processedDefinitions.get(defKey)
+		if (existing) {
+			// For Java, prefer method definitions over other types at the same location
+			if (language === "java" && name === "definition.method" && !existing.displayLine) {
+				// Update with the method definition which has the correct display line
+				processedDefinitions.set(defKey, { startLine, endLine, displayLine })
+			}
 			return
 		}
 
 		// Check if this is a valid component definition (not an HTML element)
-		const startLineContent = lines[startLine].trim()
-
-		// Special handling for component name definitions
-		if (name.includes("name.definition")) {
-			// Extract component name
-			const componentName = node.text
-
-			// Add component name to output regardless of HTML filtering
-			if (!processedLines.has(lineKey) && componentName) {
-				formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[startLine]}\n`
-				processedLines.add(lineKey)
-			}
+		const displayLineContent = lines[displayLine].trim()
+		if (!isNotHtmlElement(displayLineContent)) {
+			return
 		}
-		// For other component definitions
-		else if (isNotHtmlElement(startLineContent)) {
-			// For Java, special handling for methods with annotations
-			if (language === "java" && name === "definition.method") {
-				// Find the actual method declaration line (skip annotation lines)
-				let methodDeclarationLine = startLine
-				for (let i = startLine; i <= endLine; i++) {
-					const line = lines[i].trim()
-					// Skip empty lines and annotation lines (lines starting with @)
-					if (line && !line.startsWith("@") && !line.startsWith("//") && !line.startsWith("/*")) {
-						methodDeclarationLine = i
-						break
-					}
-				}
-				// Output the method with its proper line range, showing the method declaration line
-				formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[methodDeclarationLine]}\n`
-				processedLines.add(lineKey)
-			} else if (language === "java" && name === "definition.class") {
-				// For Java classes, skip the entire class definition to avoid duplication
-				// The class name will be handled by name.definition.class
-				return
-			} else if (language === "java" && name.includes("definition.annotation")) {
-				// Skip standalone annotation definitions - they're not useful for code structure overview
-				// Annotations will be shown as part of the methods/fields they annotate
-				return
-			} else {
-				// For Java, check if this line is just an annotation
-				if (language === "java" && lines[startLine].trim().startsWith("@")) {
-					// Find the next non-annotation line
-					let actualDefinitionLine = startLine
-					for (let i = startLine + 1; i <= endLine; i++) {
-						const line = lines[i].trim()
-						if (line && !line.startsWith("@")) {
-							actualDefinitionLine = i
-							break
-						}
-					}
-					formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[actualDefinitionLine]}\n`
-				} else {
-					formattedOutput += `${startLine + 1}--${endLine + 1} | ${lines[startLine]}\n`
-				}
-				processedLines.add(lineKey)
-			}
 
-			// If this is part of a larger definition, include its non-HTML context
-			if (node.parent && node.parent.lastChild) {
-				const contextEnd = node.parent.lastChild.endPosition.row
-				const contextSpan = contextEnd - node.parent.startPosition.row + 1
-
-				// Only include context if it spans multiple lines
-				if (contextSpan >= getMinComponentLines()) {
-					// Add the full range first
-					const rangeKey = `${node.parent.startPosition.row}-${contextEnd}`
-					if (!processedLines.has(rangeKey)) {
-						formattedOutput += `${node.parent.startPosition.row + 1}--${contextEnd + 1} | ${lines[node.parent.startPosition.row]}\n`
-						processedLines.add(rangeKey)
-					}
-				}
-			}
-		}
+		// Store this definition
+		processedDefinitions.set(defKey, { startLine, endLine, displayLine })
 	})
+
+	// Generate output from processed definitions
+	const sortedDefinitions = Array.from(processedDefinitions.values()).sort((a, b) => a.startLine - b.startLine)
+
+	for (const def of sortedDefinitions) {
+		formattedOutput += `${def.startLine + 1}--${def.endLine + 1} | ${lines[def.displayLine]}\n`
+	}
 
 	if (formattedOutput.length > 0) {
 		return formattedOutput
