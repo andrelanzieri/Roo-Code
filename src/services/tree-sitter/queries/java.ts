@@ -42,17 +42,16 @@ export default `
 (method_declaration
   name: (identifier) @name.definition.method) @definition.method
 
-; Inner class declarations
-(class_declaration
-  (class_body
-    (class_declaration
-      name: (identifier) @name.definition.inner_class))) @definition.inner_class
+; Inner class declarations (inside class body)
+(class_body
+  (class_declaration
+    name: (identifier) @name.definition.inner_class)) @definition.inner_class
 
-; Static nested class declarations
-(class_declaration
-  (class_body
-    (class_declaration
-      name: (identifier) @name.definition.static_nested_class))) @definition.static_nested_class
+; Static nested class declarations (with static modifier)
+(class_body
+  (class_declaration
+    (modifiers "static")
+    name: (identifier) @name.definition.static_nested_class)) @definition.static_nested_class
 
 ; Lambda expressions
 (lambda_expression) @definition.lambda

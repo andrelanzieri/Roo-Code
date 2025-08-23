@@ -289,7 +289,11 @@ function processCaptures(captures: QueryCapture[], lines: string[], language: st
 	captures.sort((a, b) => a.node.startPosition.row - b.node.startPosition.row)
 
 	// Track already processed definitions to avoid duplicates
-	const processedDefinitions = new Map<string, { startLine: number; endLine: number; displayLine: number }>()
+	// Use a more comprehensive key that includes the actual content to better detect duplicates
+	const processedDefinitions = new Map<
+		string,
+		{ startLine: number; endLine: number; displayLine: number; priority: number }
+	>()
 
 	// Process captures and group by definition type and location
 	captures.forEach((capture) => {
@@ -302,40 +306,72 @@ function processCaptures(captures: QueryCapture[], lines: string[], language: st
 
 		// For Java, skip certain captures to avoid duplication
 		if (language === "java") {
-			// Skip class body definitions as they duplicate the class declaration
-			if (name === "definition.class" && node.parent?.type === "class_body") {
-				return
-			}
-			// Skip standalone annotation type declarations
-			if (name.includes("definition.annotation")) {
-				return
-			}
 			// Skip comment definitions
 			if (name === "definition.comment") {
 				return
 			}
+
 			// Skip individual interface method definitions to avoid duplication
 			// The interface declaration already shows the interface with its methods
-			// Check various parent levels as the structure might vary
 			const parent = node.parent
 			const grandParent = parent?.parent
 			const greatGrandParent = grandParent?.parent
 
-			if (name === "definition.method" || name === "name.definition.method") {
-				// Check if this method is inside an interface
+			// Check if this is a method inside an interface body
+			if (name.includes("method")) {
 				if (
 					parent?.type === "interface_body" ||
 					grandParent?.type === "interface_body" ||
-					greatGrandParent?.type === "interface_body" ||
-					(parent?.type === "method_declaration" && grandParent?.type === "interface_body")
+					greatGrandParent?.type === "interface_body"
 				) {
+					// Skip interface methods as they're part of the interface declaration
 					return
 				}
+			}
+
+			// Handle overlapping class captures
+			// Skip general class definitions if we have more specific inner/nested class captures
+			if (name === "definition.class" || name === "name.definition.class") {
+				const nodeStartRow = node.startPosition.row
+
+				// Check if this class is inside another class body (making it an inner/nested class)
+				let currentParent = parent
+				while (currentParent) {
+					if (currentParent.type === "class_body") {
+						// This is a nested class, check if we have a more specific capture
+						const hasSpecificCapture = captures.some(
+							(c) =>
+								(c.name === "definition.inner_class" ||
+									c.name === "name.definition.inner_class" ||
+									c.name === "definition.static_nested_class" ||
+									c.name === "name.definition.static_nested_class") &&
+								Math.abs(c.node.startPosition.row - nodeStartRow) <= 1,
+						)
+						if (hasSpecificCapture) {
+							return // Skip this general capture in favor of the specific one
+						}
+						break
+					}
+					currentParent = currentParent.parent
+				}
+			}
+
+			// Skip duplicate inner/static nested class captures
+			// Keep only the most specific one
+			if (name === "definition.inner_class" || name === "definition.static_nested_class") {
+				const nodeStartRow = node.startPosition.row
+				// Check if we already have a class definition at this location
+				const hasGeneralClass = captures.some(
+					(c) =>
+						(c.name === "definition.class" || c.name === "name.definition.class") &&
+						Math.abs(c.node.startPosition.row - nodeStartRow) <= 1,
+				)
+				// If we have both, we'll keep this specific one and the general one will be skipped above
 			}
 		}
 
 		// Get the parent node that contains the full definition
-		const definitionNode = name.includes("name") ? node.parent : node
+		const definitionNode = name.includes("name") && node.parent ? node.parent : node
 		if (!definitionNode) return
 
 		// Get the start and end lines of the full definition
@@ -352,46 +388,59 @@ function processCaptures(captures: QueryCapture[], lines: string[], language: st
 		let displayLine = startLine
 		if (language === "java") {
 			// For methods, classes, interfaces, etc. with annotations, find the actual declaration line
-			if (name.includes("definition")) {
-				for (let i = startLine; i <= endLine; i++) {
-					const line = lines[i].trim()
-					// Skip empty lines, annotations, and comments
-					if (
-						line &&
-						!line.startsWith("@") &&
-						!line.startsWith("//") &&
-						!line.startsWith("/*") &&
-						!line.startsWith("*")
-					) {
-						displayLine = i
-						break
-					}
+			for (let i = startLine; i <= endLine; i++) {
+				const line = lines[i]?.trim() || ""
+				// Skip empty lines, annotations, and comments
+				if (
+					line &&
+					!line.startsWith("@") &&
+					!line.startsWith("//") &&
+					!line.startsWith("/*") &&
+					!line.startsWith("*")
+				) {
+					displayLine = i
+					break
 				}
 			}
 		}
 
-		// Create a unique key for this definition
-		const defKey = `${definitionNode.type}-${startLine}-${endLine}`
-
-		// Check if we've already processed a definition at this location
-		const existing = processedDefinitions.get(defKey)
-		if (existing) {
-			// For Java, prefer method definitions over other types at the same location
-			if (language === "java" && name === "definition.method" && !existing.displayLine) {
-				// Update with the method definition which has the correct display line
-				processedDefinitions.set(defKey, { startLine, endLine, displayLine })
-			}
-			return
-		}
-
 		// Check if this is a valid component definition (not an HTML element)
-		const displayLineContent = lines[displayLine].trim()
+		const displayLineContent = lines[displayLine]?.trim() || ""
 		if (!isNotHtmlElement(displayLineContent)) {
 			return
 		}
 
+		// Create a unique key for this definition based on location and content
+		// This helps prevent duplicates when the same definition is captured multiple times
+		const defKey = `${startLine}-${endLine}-${displayLineContent.substring(0, 50)}`
+
+		// Assign priority based on capture type (more specific captures have higher priority)
+		let priority = 0
+		if (name.includes("inner_class") || name.includes("static_nested_class")) {
+			priority = 3
+		} else if (name.includes("method") || name.includes("constructor")) {
+			priority = 2
+		} else if (
+			name.includes("class") ||
+			name.includes("interface") ||
+			name.includes("enum") ||
+			name.includes("record")
+		) {
+			priority = 1
+		}
+
+		// Check if we've already processed a definition at this location
+		const existing = processedDefinitions.get(defKey)
+		if (existing) {
+			// Keep the capture with higher priority (more specific)
+			if (priority > existing.priority) {
+				processedDefinitions.set(defKey, { startLine, endLine, displayLine, priority })
+			}
+			return
+		}
+
 		// Store this definition
-		processedDefinitions.set(defKey, { startLine, endLine, displayLine })
+		processedDefinitions.set(defKey, { startLine, endLine, displayLine, priority })
 	})
 
 	// Generate output from processed definitions
