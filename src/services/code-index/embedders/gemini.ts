@@ -11,7 +11,7 @@ import { TelemetryService } from "@roo-code/telemetry"
  *
  * Supported models:
  * - text-embedding-004 (dimension: 768)
- * - gemini-embedding-001 (dimension: 768)
+ * - gemini-embedding-001 (dimension: 3072)
  */
 export class GeminiEmbedder implements IEmbedder {
 	private readonly openAICompatibleEmbedder: OpenAICompatibleEmbedder
