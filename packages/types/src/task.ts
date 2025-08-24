@@ -4,6 +4,7 @@ import { RooCodeEventName } from "./events.js"
 import { type ClineMessage, type TokenUsage } from "./message.js"
 import { type ToolUsage, type ToolName } from "./tool.js"
 import { type Experiments } from "./experiment.js"
+import type { TodoItem } from "./todo.js"
 import type { StaticAppProperties, GitProperties, TelemetryProperties } from "./telemetry.js"
 
 /**
@@ -21,6 +22,7 @@ export interface CreateTaskOptions {
 	fuzzyMatchThreshold?: number
 	consecutiveMistakeLimit?: number
 	experiments?: Experiments
+	initialTodos?: TodoItem[]
 }
 export interface TaskProviderLike {
 	readonly cwd: string
