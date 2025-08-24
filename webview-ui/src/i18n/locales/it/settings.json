@@ -388,6 +388,17 @@
 				"title": "Routing dei fornitori OpenRouter",
 				"description": "OpenRouter indirizza le richieste ai migliori fornitori disponibili per il tuo modello. Per impostazione predefinita, le richieste sono bilanciate tra i principali fornitori per massimizzare il tempo di attività. Tuttavia, puoi scegliere un fornitore specifico da utilizzare per questo modello.",
 				"learnMore": "Scopri di più sul routing dei fornitori"
+			},
+			"multiProvider": {
+				"title": "Multiple Providers (up to 4)",
+				"description": "Configure multiple providers in priority order. If the primary provider fails, the system will automatically try the next provider.",
+				"failoverEnabled": "Enable automatic failover",
+				"failoverDescription": "When enabled, automatically try backup providers if the primary provider fails",
+				"primaryProvider": "Primary Provider",
+				"secondaryProvider": "Secondary Provider",
+				"tertiaryProvider": "Tertiary Provider",
+				"quaternaryProvider": "Quaternary Provider",
+				"dragToReorder": "Drag to reorder priority"
 			}
 		},
 		"customModel": {

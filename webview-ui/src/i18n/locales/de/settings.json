@@ -388,6 +388,17 @@
 				"title": "OpenRouter Anbieter-Routing",
 				"description": "OpenRouter leitet Anfragen an die besten verfügbaren Anbieter für dein Modell weiter. Standardmäßig werden Anfragen über die Top-Anbieter lastverteilt, um maximale Verfügbarkeit zu gewährleisten. Du kannst jedoch einen bestimmten Anbieter für dieses Modell auswählen.",
 				"learnMore": "Mehr über Anbieter-Routing erfahren"
+			},
+			"multiProvider": {
+				"title": "Multiple Providers (up to 4)",
+				"description": "Configure multiple providers in priority order. If the primary provider fails, the system will automatically try the next provider.",
+				"failoverEnabled": "Enable automatic failover",
+				"failoverDescription": "When enabled, automatically try backup providers if the primary provider fails",
+				"primaryProvider": "Primary Provider",
+				"secondaryProvider": "Secondary Provider",
+				"tertiaryProvider": "Tertiary Provider",
+				"quaternaryProvider": "Quaternary Provider",
+				"dragToReorder": "Drag to reorder priority"
 			}
 		},
 		"customModel": {

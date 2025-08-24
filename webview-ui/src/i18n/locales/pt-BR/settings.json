@@ -388,6 +388,17 @@
 				"title": "Roteamento de Provedores OpenRouter",
 				"description": "OpenRouter direciona solicitações para os melhores provedores disponíveis para seu modelo. Por padrão, as solicitações são balanceadas entre os principais provedores para maximizar o tempo de atividade. No entanto, você pode escolher um provedor específico para usar com este modelo.",
 				"learnMore": "Saiba mais sobre roteamento de provedores"
+			},
+			"multiProvider": {
+				"title": "Multiple Providers (up to 4)",
+				"description": "Configure multiple providers in priority order. If the primary provider fails, the system will automatically try the next provider.",
+				"failoverEnabled": "Enable automatic failover",
+				"failoverDescription": "When enabled, automatically try backup providers if the primary provider fails",
+				"primaryProvider": "Primary Provider",
+				"secondaryProvider": "Secondary Provider",
+				"tertiaryProvider": "Tertiary Provider",
+				"quaternaryProvider": "Quaternary Provider",
+				"dragToReorder": "Drag to reorder priority"
 			}
 		},
 		"customModel": {

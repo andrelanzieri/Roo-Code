@@ -388,6 +388,17 @@
 				"title": "OpenRouter 提供商路由",
 				"description": "OpenRouter 将请求路由到适合您模型的最佳可用提供商。默认情况下，请求会在顶级提供商之间进行负载均衡以最大化正常运行时间。但是，您可以为此模型选择特定的提供商。",
 				"learnMore": "了解更多"
+			},
+			"multiProvider": {
+				"title": "Multiple Providers (up to 4)",
+				"description": "Configure multiple providers in priority order. If the primary provider fails, the system will automatically try the next provider.",
+				"failoverEnabled": "Enable automatic failover",
+				"failoverDescription": "When enabled, automatically try backup providers if the primary provider fails",
+				"primaryProvider": "Primary Provider",
+				"secondaryProvider": "Secondary Provider",
+				"tertiaryProvider": "Tertiary Provider",
+				"quaternaryProvider": "Quaternary Provider",
+				"dragToReorder": "Drag to reorder priority"
 			}
 		},
 		"customModel": {

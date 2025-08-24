@@ -388,6 +388,17 @@
 				"title": "Enrutamiento de Proveedores de OpenRouter",
 				"description": "OpenRouter dirige las solicitudes a los mejores proveedores disponibles para su modelo. Por defecto, las solicitudes se equilibran entre los principales proveedores para maximizar el tiempo de actividad. Sin embargo, puede elegir un proveedor específico para este modelo.",
 				"learnMore": "Más información sobre el enrutamiento de proveedores"
+			},
+			"multiProvider": {
+				"title": "Multiple Providers (up to 4)",
+				"description": "Configure multiple providers in priority order. If the primary provider fails, the system will automatically try the next provider.",
+				"failoverEnabled": "Enable automatic failover",
+				"failoverDescription": "When enabled, automatically try backup providers if the primary provider fails",
+				"primaryProvider": "Primary Provider",
+				"secondaryProvider": "Secondary Provider",
+				"tertiaryProvider": "Tertiary Provider",
+				"quaternaryProvider": "Quaternary Provider",
+				"dragToReorder": "Drag to reorder priority"
 			}
 		},
 		"customModel": {

@@ -388,6 +388,17 @@
 				"title": "OpenRouterプロバイダールーティング",
 				"description": "OpenRouterはあなたのモデルに最適な利用可能なプロバイダーにリクエストを転送します。デフォルトでは、稼働時間を最大化するために、リクエストはトッププロバイダー間でロードバランスされます。ただし、このモデルに使用する特定のプロバイダーを選択することもできます。",
 				"learnMore": "プロバイダールーティングについて詳しく知る"
+			},
+			"multiProvider": {
+				"title": "Multiple Providers (up to 4)",
+				"description": "Configure multiple providers in priority order. If the primary provider fails, the system will automatically try the next provider.",
+				"failoverEnabled": "Enable automatic failover",
+				"failoverDescription": "When enabled, automatically try backup providers if the primary provider fails",
+				"primaryProvider": "Primary Provider",
+				"secondaryProvider": "Secondary Provider",
+				"tertiaryProvider": "Tertiary Provider",
+				"quaternaryProvider": "Quaternary Provider",
+				"dragToReorder": "Drag to reorder priority"
 			}
 		},
 		"customModel": {

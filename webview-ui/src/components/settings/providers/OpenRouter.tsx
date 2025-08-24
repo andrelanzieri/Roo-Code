@@ -116,10 +116,10 @@ export const OpenRouter = ({
 						<Checkbox
 							checked={apiConfiguration?.openRouterFailoverEnabled ?? true}
 							onChange={handleInputChange("openRouterFailoverEnabled", noTransform)}>
-							Enable automatic failover
+							{t("settings:providers.openRouter.multiProvider.failoverEnabled")}
 						</Checkbox>
 						<div className="text-sm text-vscode-descriptionForeground mt-1">
-							When enabled, automatically try backup providers if the primary provider fails
+							{t("settings:providers.openRouter.multiProvider.failoverDescription")}
 						</div>
 					</div>
 				</>

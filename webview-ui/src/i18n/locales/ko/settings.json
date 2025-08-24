@@ -388,6 +388,17 @@
 				"title": "OpenRouter 제공자 라우팅",
 				"description": "OpenRouter는 귀하의 모델에 가장 적합한 사용 가능한 제공자에게 요청을 전달합니다. 기본적으로 요청은 가동 시간을 최대화하기 위해 상위 제공자 간에 부하 분산됩니다. 그러나 이 모델에 사용할 특정 제공자를 선택할 수 있습니다.",
 				"learnMore": "제공자 라우팅에 대해 자세히 알아보기"
+			},
+			"multiProvider": {
+				"title": "Multiple Providers (up to 4)",
+				"description": "Configure multiple providers in priority order. If the primary provider fails, the system will automatically try the next provider.",
+				"failoverEnabled": "Enable automatic failover",
+				"failoverDescription": "When enabled, automatically try backup providers if the primary provider fails",
+				"primaryProvider": "Primary Provider",
+				"secondaryProvider": "Secondary Provider",
+				"tertiaryProvider": "Tertiary Provider",
+				"quaternaryProvider": "Quaternary Provider",
+				"dragToReorder": "Drag to reorder priority"
 			}
 		},
 		"customModel": {

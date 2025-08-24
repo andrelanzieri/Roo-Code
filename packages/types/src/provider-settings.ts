@@ -132,12 +132,17 @@ const glamaSchema = baseProviderSettingsSchema.extend({
 	glamaApiKey: z.string().optional(),
 })
 
+/**
+ * Maximum number of OpenRouter providers that can be configured for failover
+ */
+export const MAX_OPENROUTER_PROVIDERS = 4
+
 const openRouterSchema = baseProviderSettingsSchema.extend({
 	openRouterApiKey: z.string().optional(),
 	openRouterModelId: z.string().optional(),
 	openRouterBaseUrl: z.string().optional(),
 	openRouterSpecificProvider: z.string().optional(), // Keep for backward compatibility
-	openRouterProviders: z.array(z.string()).max(4).optional(), // New multi-provider support
+	openRouterProviders: z.array(z.string()).max(MAX_OPENROUTER_PROVIDERS).optional(), // New multi-provider support
 	openRouterFailoverEnabled: z.boolean().optional(), // Enable automatic failover
 	openRouterUseMiddleOutTransform: z.boolean().optional(),
 })

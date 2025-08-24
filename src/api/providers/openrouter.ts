@@ -75,7 +75,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	/**
-	 * Get the list of providers to use, supporting both new multi-provider and legacy single provider config
+	 * Get the list of providers to use for requests, supporting both multi-provider and legacy configurations
+	 * @returns Array of provider names in priority order
 	 */
 	private getProvidersToUse(): string[] {
 		// New multi-provider configuration takes precedence
@@ -99,6 +100,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 
 	/**
 	 * Check if an error should trigger failover to the next provider
+	 * @param error - The error object to check
+	 * @returns true if the error is eligible for failover, false otherwise
 	 */
 	private shouldFailover(error: any): boolean {
 		if (!error) return false
@@ -131,6 +134,16 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 
 	/**
 	 * Create completion parameters for a specific provider attempt
+	 * @param modelId - The model ID to use
+	 * @param maxTokens - Maximum tokens to generate
+	 * @param temperature - Temperature for generation
+	 * @param topP - Top-p sampling parameter
+	 * @param openAiMessages - Messages in OpenAI format
+	 * @param transforms - OpenRouter transforms to apply
+	 * @param reasoning - Reasoning parameters for the model
+	 * @param providers - List of all available providers
+	 * @param providerIndex - Current provider index being attempted
+	 * @returns OpenRouter chat completion parameters
 	 */
 	private createCompletionParams(
 		modelId: string,
@@ -244,9 +257,11 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		for (let providerIndex = 0; providerIndex < providers.length; providerIndex++) {
 			try {
 				const currentProvider = providers[providerIndex]
-				console.log(
-					`[OpenRouter] Attempting request with provider: ${currentProvider} (${providerIndex + 1}/${providers.length})`,
-				)
+				if (process.env.NODE_ENV === "development") {
+					console.log(
+						`[OpenRouter] Attempting request with provider: ${currentProvider} (${providerIndex + 1}/${providers.length})`,
+					)
+				}
 
 				// Create completion parameters for this provider attempt
 				const completionParams = this.createCompletionParams(
@@ -303,29 +318,41 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				}
 
 				// Success - no need to try additional providers
-				console.log(`[OpenRouter] Request succeeded with provider: ${currentProvider}`)
+				if (process.env.NODE_ENV === "development") {
+					console.log(`[OpenRouter] Request succeeded with provider: ${currentProvider}`)
+				}
 				return
 			} catch (error) {
 				lastError = error
 				const isLastProvider = providerIndex >= providers.length - 1
 
 				if (this.shouldFailover(error) && !isLastProvider) {
-					console.warn(
-						`[OpenRouter] Provider ${providers[providerIndex]} failed with error: ${error.message}. Trying next provider...`,
-					)
+					if (process.env.NODE_ENV === "development") {
+						console.warn(
+							`[OpenRouter] Provider ${providers[providerIndex]} failed with error: ${error.message}. Trying next provider...`,
+						)
+					}
 					continue // Try next provider
 				} else {
 					// Either not a failover-eligible error, or this was the last provider
-					console.error(
-						`[OpenRouter] ${isLastProvider ? "All providers failed" : "Non-failover error"} with provider ${providers[providerIndex]}: ${error.message}`,
-					)
+					if (process.env.NODE_ENV === "development") {
+						console.error(
+							`[OpenRouter] ${isLastProvider ? "All providers failed" : "Non-failover error"} with provider ${providers[providerIndex]}: ${error.message}`,
+						)
+					}
 					throw error
 				}
 			}
 		}
 
 		// This should never be reached, but just in case
-		throw lastError || new Error("All OpenRouter providers failed")
+		const providersSummary = providers.join(", ")
+		throw (
+			lastError ||
+			new Error(
+				`All OpenRouter providers failed (tried: ${providersSummary}). Last error: ${lastError?.message || "Unknown"}`,
+			)
+		)
 	}
 
 	/**
@@ -465,9 +492,11 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		for (let providerIndex = 0; providerIndex < providers.length; providerIndex++) {
 			try {
 				const currentProvider = providers[providerIndex]
-				console.log(
-					`[OpenRouter] Attempting completePrompt with provider: ${currentProvider} (${providerIndex + 1}/${providers.length})`,
-				)
+				if (process.env.NODE_ENV === "development") {
+					console.log(
+						`[OpenRouter] Attempting completePrompt with provider: ${currentProvider} (${providerIndex + 1}/${providers.length})`,
+					)
+				}
 
 				const completionParams: OpenRouterChatCompletionParams = {
 					model: modelId,
@@ -493,29 +522,41 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				}
 
 				const completion = response as OpenAI.Chat.ChatCompletion
-				console.log(`[OpenRouter] completePrompt succeeded with provider: ${currentProvider}`)
+				if (process.env.NODE_ENV === "development") {
+					console.log(`[OpenRouter] completePrompt succeeded with provider: ${currentProvider}`)
+				}
 				return completion.choices[0]?.message?.content || ""
 			} catch (error) {
 				lastError = error
 				const isLastProvider = providerIndex >= providers.length - 1
 
 				if (this.shouldFailover(error) && !isLastProvider) {
-					console.warn(
-						`[OpenRouter] Provider ${providers[providerIndex]} failed in completePrompt: ${error.message}. Trying next provider...`,
-					)
+					if (process.env.NODE_ENV === "development") {
+						console.warn(
+							`[OpenRouter] Provider ${providers[providerIndex]} failed in completePrompt: ${error.message}. Trying next provider...`,
+						)
+					}
 					continue // Try next provider
 				} else {
 					// Either not a failover-eligible error, or this was the last provider
-					console.error(
-						`[OpenRouter] ${isLastProvider ? "All providers failed" : "Non-failover error"} in completePrompt with provider ${providers[providerIndex]}: ${error.message}`,
-					)
+					if (process.env.NODE_ENV === "development") {
+						console.error(
+							`[OpenRouter] ${isLastProvider ? "All providers failed" : "Non-failover error"} in completePrompt with provider ${providers[providerIndex]}: ${error.message}`,
+						)
+					}
 					throw error
 				}
 			}
 		}
 
 		// This should never be reached, but just in case
-		throw lastError || new Error("All OpenRouter providers failed in completePrompt")
+		const providersSummary = providers.join(", ")
+		throw (
+			lastError ||
+			new Error(
+				`All OpenRouter providers failed in completePrompt (tried: ${providersSummary}). Last error: ${lastError?.message || "Unknown"}`,
+			)
+		)
 	}
 
 	/**

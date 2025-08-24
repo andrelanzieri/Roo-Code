@@ -733,7 +733,7 @@ const ApiOptions = ({
 									{apiConfiguration?.openRouterFailoverEnabled ? (
 										<div key="multi-provider-mode">
 											<label className="block font-medium mb-2">
-												Multiple Providers (up to 4)
+												{t("settings:providers.openRouter.multiProvider.title")}
 											</label>
 											{[0, 1, 2, 3].map((index) => {
 												const currentProviders = apiConfiguration?.openRouterProviders || []
@@ -745,12 +745,20 @@ const ApiOptions = ({
 														className="mb-2">
 														<label className="block text-sm font-medium mb-1">
 															{index === 0
-																? "Primary Provider"
+																? t(
+																		"settings:providers.openRouter.multiProvider.primaryProvider",
+																	)
 																: index === 1
-																	? "Secondary Provider"
+																	? t(
+																			"settings:providers.openRouter.multiProvider.secondaryProvider",
+																		)
 																	: index === 2
-																		? "Tertiary Provider"
-																		: "Quaternary Provider"}
+																		? t(
+																				"settings:providers.openRouter.multiProvider.tertiaryProvider",
+																			)
+																		: t(
+																				"settings:providers.openRouter.multiProvider.quaternaryProvider",
+																			)}
 														</label>
 														<Select
 															value={currentValue || OPENROUTER_DEFAULT_PROVIDER_NAME}
@@ -835,7 +843,7 @@ const ApiOptions = ({
 
 									<div className="text-sm text-vscode-descriptionForeground mt-1">
 										{apiConfiguration?.openRouterFailoverEnabled ? (
-											"Configure multiple providers in priority order. If the primary provider fails, the system will automatically try the next provider."
+											t("settings:providers.openRouter.multiProvider.description")
 										) : (
 											<>
 												{t("settings:providers.openRouter.providerRouting.description")}{" "}
