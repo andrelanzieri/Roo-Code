@@ -323,9 +323,14 @@ export async function presentAssistantMessage(cline: Task) {
 				await cline.say(
 					"error",
 					`Error ${action}:\n${error.message ?? JSON.stringify(serializeError(error), null, 2)}`,
+					undefined, // images
+					undefined, // partial
+					undefined, // checkpoint
+					undefined, // progressStatus
+					{ title: `Tool Call Error: ${block.name}` }, // Custom title with tool name
 				)
 
-				pushToolResult(formatResponse.toolError(errorString))
+				pushToolResult(formatResponse.toolError(errorString, block.name))
 			}
 
 			// If block is partial, remove partial closing tag so its not
@@ -377,7 +382,7 @@ export async function presentAssistantMessage(cline: Task) {
 				)
 			} catch (error) {
 				cline.consecutiveMistakeCount++
-				pushToolResult(formatResponse.toolError(error.message))
+				pushToolResult(formatResponse.toolError(error.message, block.name))
 				break
 			}
 
@@ -416,6 +421,7 @@ export async function presentAssistantMessage(cline: Task) {
 					pushToolResult(
 						formatResponse.toolError(
 							`Tool call repetition limit reached for ${block.name}. Please try a different approach.`,
+							block.name,
 						),
 					)
 					break
