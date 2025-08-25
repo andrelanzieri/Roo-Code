@@ -87,7 +87,7 @@ export const VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS = new Set([
 
 export const vercelAiGatewayDefaultModelInfo: ModelInfo = {
 	maxTokens: 64000,
-	contextWindow: 128000,
+	contextWindow: 200000,
 	supportsImages: true,
 	supportsComputerUse: true,
 	supportsPromptCache: true,
@@ -99,4 +99,4 @@ export const vercelAiGatewayDefaultModelInfo: ModelInfo = {
 		"Claude Sonnet 4 significantly improves on Sonnet 3.7's industry-leading capabilities, excelling in coding with a state-of-the-art 72.7% on SWE-bench. The model balances performance and efficiency for internal and external use cases, with enhanced steerability for greater control over implementations. While not matching Opus 4 in most domains, it delivers an optimal mix of capability and practicality.",
 }
 
-export const VERCEL_AI_GATEWAY_DEFAULT_TEMPERATURE = 0
+export const VERCEL_AI_GATEWAY_DEFAULT_TEMPERATURE = 0.7

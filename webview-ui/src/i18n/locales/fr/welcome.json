@@ -10,6 +10,10 @@
 		},
 		"openrouter": {
 			"description": "Une interface unifiée pour les LLMs"
+		},
+		"vercelAiGateway": {
+			"description": "La passerelle IA pour les développeurs",
+			"incentive": "5 $ de crédits gratuits à utiliser avec n'importe quel modèle"
 		}
 	},
 	"chooseProvider": "Pour faire sa magie, Roo a besoin d'une clé API.",

@@ -10,6 +10,10 @@
 		},
 		"openrouter": {
 			"description": "Uma interface unificada para LLMs"
+		},
+		"vercelAiGateway": {
+			"description": "O Gateway de IA para desenvolvedores",
+			"incentive": "$5 de créditos gratuitos para usar com qualquer modelo"
 		}
 	},
 	"chooseProvider": "Para fazer sua mágica, o Roo precisa de uma chave API.",

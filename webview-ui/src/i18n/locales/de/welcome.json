@@ -10,6 +10,10 @@
 		},
 		"openrouter": {
 			"description": "Eine einheitliche Schnittstelle für LLMs"
+		},
+		"vercelAiGateway": {
+			"description": "Das AI-Gateway für Entwickler",
+			"incentive": "$5 kostenlose Credits für die Nutzung mit jedem Modell"
 		}
 	},
 	"chooseProvider": "Um seine Magie zu entfalten, benötigt Roo einen API-Schlüssel.",

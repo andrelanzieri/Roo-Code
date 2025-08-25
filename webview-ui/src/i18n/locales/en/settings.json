@@ -760,7 +760,7 @@
 		}
 	},
 	"modelPicker": {
-		"automaticFetch": "Note: Free tier users will see $0 costs as these requests are provided at no charge by Vercel AI Gateway.",
+		"automaticFetch": "The extension automatically fetches the latest list of models available on <serviceLink>{{serviceName}}</serviceLink>. If you're unsure which model to choose, Roo Code works best with <defaultModelLink>{{defaultModelId}}</defaultModelLink>. You can also try searching \"free\" for no-cost options currently available",
 		"label": "Model",
 		"searchPlaceholder": "Search",
 		"noMatchFound": "No match found",

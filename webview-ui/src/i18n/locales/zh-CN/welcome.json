@@ -10,6 +10,10 @@
 		},
 		"openrouter": {
 			"description": "统一了大语言模型的接口"
+		},
+		"vercelAiGateway": {
+			"description": "面向开发者的 AI 网关",
+			"incentive": "5美元免费额度，可用于任何模型"
 		}
 	},
 	"chooseProvider": "Roo 需要一个 API 密钥才能发挥魔力。",

@@ -10,6 +10,10 @@
 		},
 		"openrouter": {
 			"description": "LLMs के लिए एक एकीकृत इंटरफेस"
+		},
+		"vercelAiGateway": {
+			"description": "डेवलपर्स के लिए AI गेटवे",
+			"incentive": "किसी भी मॉडल के साथ उपयोग के लिए $5 मुफ्त क्रेडिट"
 		}
 	},
 	"chooseProvider": "अपना जादू दिखाने के लिए, Roo को एक API कुंजी की आवश्यकता है।",
