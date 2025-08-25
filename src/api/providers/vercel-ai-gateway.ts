@@ -23,6 +23,7 @@ interface VercelAiGatewayUsage extends OpenAI.CompletionUsage {
 	prompt_tokens_details?: {
 		cached_tokens?: number
 	}
+	cost?: number
 }
 
 export class VercelAiGatewayHandler extends RouterProvider implements SingleCompletionHandler {
@@ -83,6 +84,7 @@ export class VercelAiGatewayHandler extends RouterProvider implements SingleComp
 					outputTokens: usage.completion_tokens || 0,
 					cacheWriteTokens: usage.cache_creation_input_tokens || undefined,
 					cacheReadTokens: usage.prompt_tokens_details?.cached_tokens || undefined,
+					totalCost: usage.cost ?? 0,
 				}
 			}
 		}

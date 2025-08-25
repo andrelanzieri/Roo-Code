@@ -7,6 +7,7 @@ import type { OrganizationAllowList } from "@roo/cloud"
 import type { RouterModels } from "@roo/api"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 
 import { inputEventTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
@@ -52,6 +53,14 @@ export const VercelAiGateway = ({
 			<div className="text-sm text-vscode-descriptionForeground -mt-2">
 				{t("settings:providers.apiKeyStorageNotice")}
 			</div>
+			{!apiConfiguration?.vercelAiGatewayApiKey && (
+				<VSCodeButtonLink
+					href="https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%2Fapi-keys&title=AI+Gateway+API+Key"
+					appearance="primary"
+					style={{ width: "100%" }}>
+					{t("settings:providers.getVercelAiGatewayApiKey")}
+				</VSCodeButtonLink>
+			)}
 			<ModelPicker
 				apiConfiguration={apiConfiguration}
 				setApiConfigurationField={setApiConfigurationField}
