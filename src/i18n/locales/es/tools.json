@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "No se pudo crear una nueva tarea debido a restricciones de política."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo intentó usar {{toolName}} para '{{relPath}}' sin el valor para el parámetro requerido '{{paramName}}'. Reintentando...",
+			"withoutPath": "Roo intentó usar {{toolName}} sin el valor para el parámetro requerido '{{paramName}}'. Reintentando..."
+		},
+		"lineCountMissing": "Roo intentó usar write_to_file{{relPath}} pero el parámetro requerido 'line_count' faltaba o se truncó después de escribir {{actualLineCount}} líneas de contenido. Reintentando...",
+		"parseOperationsFailed": "No se pudieron analizar las operaciones: {{error}}",
+		"fileNotFound": "El archivo no existe en la ruta: {{path}}\n\n<error_details>\nNo se pudo encontrar el archivo especificado. Verifique la ruta del archivo e intente nuevamente.\n</error_details>",
+		"fileNotFoundSimple": "El archivo no existe en la ruta: {{path}}\nNo se pudo encontrar el archivo especificado. Verifique la ruta del archivo e intente nuevamente.",
+		"fileReadError": "Error al leer el archivo: {{path}}\nNo se pudo leer el contenido del archivo: {{error}}\nVerifique los permisos del archivo e intente nuevamente.",
+		"insertContentNewFile": "No se puede insertar contenido en la línea {{lineNumber}} en un archivo que no existe. Para archivos nuevos, 'line' debe ser 0 (para agregar) o 1 (para insertar al principio).",
+		"toolExecutionError": "Error {{action}}:\n{{error}}"
 	}
 }

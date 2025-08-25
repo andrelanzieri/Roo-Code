@@ -103,6 +103,7 @@
 		"roo": {
 			"authenticationRequired": "Roo 提供者需要雲端認證。請登入 Roo Code Cloud。"
 		},
+		"unexpectedApiResponse": "非預期的 API 回應：語言模型未提供任何助理訊息。這可能表示 API 或模型輸出有問題。",
 		"mode_import_failed": "匯入模式失敗：{{error}}"
 	},
 	"warnings": {

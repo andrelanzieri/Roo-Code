@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "Kan geen nieuwe taak aanmaken vanwege beleidsbeperkingen."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo probeerde {{toolName}} te gebruiken voor '{{relPath}}' zonder waarde voor de vereiste parameter '{{paramName}}'. Opnieuw proberen...",
+			"withoutPath": "Roo probeerde {{toolName}} te gebruiken zonder waarde voor de vereiste parameter '{{paramName}}'. Opnieuw proberen..."
+		},
+		"lineCountMissing": "Roo probeerde write_to_file{{relPath}} te gebruiken, maar de vereiste parameter 'line_count' ontbrak of was afgekapt nadat {{actualLineCount}} regels met inhoud waren geschreven. Opnieuw proberen...",
+		"parseOperationsFailed": "Kan bewerkingen niet parseren: {{error}}",
+		"fileNotFound": "Bestand bestaat niet op pad: {{path}}\n\n<error_details>\nHet opgegeven bestand kon niet worden gevonden. Controleer het bestandspad en probeer het opnieuw.\n</error_details>",
+		"fileNotFoundSimple": "Bestand bestaat niet op pad: {{path}}\nHet opgegeven bestand kon niet worden gevonden. Controleer het bestandspad en probeer het opnieuw.",
+		"fileReadError": "Fout bij het lezen van bestand: {{path}}\nKan de bestandsinhoud niet lezen: {{error}}\nControleer de bestandsrechten en probeer het opnieuw.",
+		"insertContentNewFile": "Kan geen inhoud invoegen op regel {{lineNumber}} in een niet-bestaand bestand. Voor nieuwe bestanden moet 'line' 0 (om toe te voegen) of 1 (om aan het begin in te voegen) zijn.",
+		"toolExecutionError": "Fout {{action}}:\n{{error}}"
 	}
 }

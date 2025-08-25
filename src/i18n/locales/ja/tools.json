@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "ポリシー制限により新しいタスクを作成できませんでした。"
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Rooは、必須パラメータ '{{paramName}}' の値なしで '{{relPath}}' に {{toolName}} を使用しようとしました。再試行しています...",
+			"withoutPath": "Rooは、必須パラメータ '{{paramName}}' の値なしで {{toolName}} を使用しようとしました。再試行しています..."
+		},
+		"lineCountMissing": "Rooはwrite_to_file{{relPath}}を使用しようとしましたが、必要なパラメータ 'line_count' が欠落しているか、{{actualLineCount}}行のコンテンツが書き込まれた後に切り捨てられました。再試行しています...",
+		"parseOperationsFailed": "操作の解析に失敗しました：{{error}}",
+		"fileNotFound": "パスにファイルが存在しません：{{path}}\n\n<error_details>\n指定されたファイルが見つかりませんでした。ファイルパスを確認して、もう一度お試しください。\n</error_details>",
+		"fileNotFoundSimple": "パスにファイルが存在しません：{{path}}\n指定されたファイルが見つかりませんでした。ファイルパスを確認して、もう一度お試しください。",
+		"fileReadError": "ファイルの読み取りエラー：{{path}}\nファイルの内容の読み取りに失敗しました：{{error}}\nファイル権限を確認して、もう一度お試しください。",
+		"insertContentNewFile": "存在しないファイルの{{lineNumber}}行にコンテンツを挿入できません。新しいファイルの場合、'line'は0（追加）または1（先頭に挿入）である必要があります。",
+		"toolExecutionError": "エラー {{action}}:\n{{error}}"
 	}
 }

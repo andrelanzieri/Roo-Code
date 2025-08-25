@@ -103,7 +103,8 @@
 		},
 		"roo": {
 			"authenticationRequired": "Il provider Roo richiede l'autenticazione cloud. Accedi a Roo Code Cloud."
-		}
+		},
+		"unexpectedApiResponse": "Risposta API imprevista: il modello linguistico non ha fornito alcun messaggio di assistenza. Ciò potrebbe indicare un problema con l'API o l'output del modello."
 	},
 	"warnings": {
 		"no_terminal_content": "Nessun contenuto del terminale selezionato",

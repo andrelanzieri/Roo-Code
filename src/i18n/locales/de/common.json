@@ -103,7 +103,8 @@
 		},
 		"roo": {
 			"authenticationRequired": "Roo-Anbieter erfordert Cloud-Authentifizierung. Bitte melde dich bei Roo Code Cloud an."
-		}
+		},
+		"unexpectedApiResponse": "Unerwartete API-Antwort: Das Sprachmodell hat keine Assistentennachrichten bereitgestellt. Dies kann auf ein Problem mit der API oder der Ausgabe des Modells hinweisen."
 	},
 	"warnings": {
 		"no_terminal_content": "Kein Terminal-Inhalt ausgewählt",

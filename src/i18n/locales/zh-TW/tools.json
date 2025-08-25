@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "由於政策限制，無法建立新工作。"
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo 嘗試在沒有必要參數 '{{paramName}}' 的值的情況下對 '{{relPath}}' 使用 {{toolName}}。重試中...",
+			"withoutPath": "Roo 嘗試在沒有必要參數 '{{paramName}}' 的值的情況下使用 {{toolName}}。重試中..."
+		},
+		"lineCountMissing": "Roo 嘗試使用 write_to_file{{relPath}}，但必要的參數 'line_count' 缺失或在寫入 {{actualLineCount}} 行內容後被截斷。重試中...",
+		"parseOperationsFailed": "解析操作失敗：{{error}}",
+		"fileNotFound": "檔案不存在於路徑：{{path}}\n\n<error_details>\n找不到指定的檔案。請驗證檔案路徑並重試。\n</error_details>",
+		"fileNotFoundSimple": "檔案不存在於路徑：{{path}}\n找不到指定的檔案。請驗證檔案路徑並重試。",
+		"fileReadError": "讀取檔案時發生錯誤：{{path}}\n未能讀取檔案內容：{{error}}\n請驗證檔案權限並重試。",
+		"insertContentNewFile": "無法在不存在的檔案的行 {{lineNumber}} 處插入內容。對於新檔案，'行' 必須為 0（附加）或 1（在開頭插入）。",
+		"toolExecutionError": "錯誤 {{action}}：\n{{error}}"
 	}
 }

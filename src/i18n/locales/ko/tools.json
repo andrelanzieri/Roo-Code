@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "정책 제한으로 인해 새 작업을 생성하지 못했습니다."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo가 필수 매개변수 '{{paramName}}'에 대한 값 없이 '{{relPath}}'에 대해 {{toolName}}을(를) 사용하려고 했습니다. 다시 시도하는 중...",
+			"withoutPath": "Roo가 필수 매개변수 '{{paramName}}'에 대한 값 없이 {{toolName}}을(를) 사용하려고 했습니다. 다시 시도하는 중..."
+		},
+		"lineCountMissing": "Roo가 write_to_file{{relPath}}을(를) 사용하려고 했지만 필수 매개변수 'line_count'이(가) 누락되었거나 {{actualLineCount}}줄의 콘텐츠가 작성된 후 잘렸습니다. 다시 시도하는 중...",
+		"parseOperationsFailed": "작업 구문 분석 실패: {{error}}",
+		"fileNotFound": "경로에 파일이 없습니다: {{path}}\n\n<error_details>\n지정된 파일을 찾을 수 없습니다. 파일 경로를 확인하고 다시 시도하십시오.\n</error_details>",
+		"fileNotFoundSimple": "경로에 파일이 없습니다: {{path}}\n지정된 파일을 찾을 수 없습니다. 파일 경로를 확인하고 다시 시도하십시오.",
+		"fileReadError": "파일 읽기 오류: {{path}}\n파일 내용을 읽지 못했습니다: {{error}}\n파일 권한을 확인하고 다시 시도하십시오.",
+		"insertContentNewFile": "존재하지 않는 파일의 {{lineNumber}}줄에 콘텐츠를 삽입할 수 없습니다. 새 파일의 경우 'line'은 0(추가) 또는 1(처음에 삽입)이어야 합니다.",
+		"toolExecutionError": "오류 {{action}}:\n{{error}}"
 	}
 }

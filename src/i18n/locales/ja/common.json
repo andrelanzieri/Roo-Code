@@ -103,7 +103,8 @@
 		},
 		"roo": {
 			"authenticationRequired": "Rooプロバイダーはクラウド認証が必要です。Roo Code Cloudにサインインしてください。"
-		}
+		},
+		"unexpectedApiResponse": "予期しないAPI応答：言語モデルはアシスタントメッセージを提供しませんでした。これは、APIまたはモデルの出力に問題があることを示している可能性があります。"
 	},
 	"warnings": {
 		"no_terminal_content": "選択されたターミナルコンテンツがありません",

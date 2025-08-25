@@ -103,7 +103,8 @@
 		},
 		"roo": {
 			"authenticationRequired": "Penyedia Roo memerlukan autentikasi cloud. Silakan masuk ke Roo Code Cloud."
-		}
+		},
+		"unexpectedApiResponse": "Respons API Tidak Terduga: Model bahasa tidak memberikan pesan asisten apa pun. Ini mungkin menunjukkan masalah dengan API atau output model."
 	},
 	"warnings": {
 		"no_terminal_content": "Tidak ada konten terminal yang dipilih",

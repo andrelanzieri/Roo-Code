@@ -103,7 +103,8 @@
 		},
 		"roo": {
 			"authenticationRequired": "Roo provider vereist cloud authenticatie. Log in bij Roo Code Cloud."
-		}
+		},
+		"unexpectedApiResponse": "Onverwachte API-respons: het taalmodel heeft geen assistentberichten verstrekt. Dit kan duiden op een probleem met de API of de uitvoer van het model."
 	},
 	"warnings": {
 		"no_terminal_content": "Geen terminalinhoud geselecteerd",

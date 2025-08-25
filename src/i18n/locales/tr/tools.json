@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "Politika kısıtlamaları nedeniyle yeni görev oluşturulamadı."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo, '{{relPath}}' için {{toolName}}'i gerekli '{{paramName}}' parametresi için değer olmadan kullanmaya çalıştı. Tekrar deneniyor...",
+			"withoutPath": "Roo, gerekli '{{paramName}}' parametresi için değer olmadan {{toolName}}'i kullanmaya çalıştı. Tekrar deneniyor..."
+		},
+		"lineCountMissing": "Roo, write_to_file{{relPath}}'i kullanmaya çalıştı ancak gerekli 'line_count' parametresi eksikti veya {{actualLineCount}} içerik satırı yazıldıktan sonra kesildi. Tekrar deneniyor...",
+		"parseOperationsFailed": "İşlemler ayrıştırılamadı: {{error}}",
+		"fileNotFound": "Dosya yolda mevcut değil: {{path}}\n\n<error_details>\nBelirtilen dosya bulunamadı. Lütfen dosya yolunu doğrulayın ve tekrar deneyin.\n</error_details>",
+		"fileNotFoundSimple": "Dosya yolda mevcut değil: {{path}}\nBelirtilen dosya bulunamadı. Lütfen dosya yolunu doğrulayın ve tekrar deneyin.",
+		"fileReadError": "Dosya okunurken hata oluştu: {{path}}\nDosya içeriği okunamadı: {{error}}\nLütfen dosya izinlerini doğrulayın ve tekrar deneyin.",
+		"insertContentNewFile": "Var olmayan bir dosyada {{lineNumber}} satırına içerik eklenemez. Yeni dosyalar için 'line' 0 (eklemek için) veya 1 (başa eklemek için) olmalıdır.",
+		"toolExecutionError": "Hata {{action}}:\n{{error}}"
 	}
 }

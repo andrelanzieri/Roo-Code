@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "Impossible de créer une nouvelle tâche en raison de restrictions de politique."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo a essayé d'utiliser {{toolName}} pour '{{relPath}}' sans valeur pour le paramètre requis '{{paramName}}'. Nouvelle tentative...",
+			"withoutPath": "Roo a essayé d'utiliser {{toolName}} sans valeur pour le paramètre requis '{{paramName}}'. Nouvelle tentative..."
+		},
+		"lineCountMissing": "Roo a essayé d'utiliser write_to_file{{relPath}} mais le paramètre requis 'line_count' était manquant ou tronqué après l'écriture de {{actualLineCount}} lignes de contenu. Nouvelle tentative...",
+		"parseOperationsFailed": "Impossible d'analyser les opérations : {{error}}",
+		"fileNotFound": "Le fichier n'existe pas au chemin : {{path}}\n\n<error_details>\nLe fichier spécifié est introuvable. Veuillez vérifier le chemin d'accès et réessayer.\n</error_details>",
+		"fileNotFoundSimple": "Le fichier n'existe pas au chemin : {{path}}\nLe fichier spécifié est introuvable. Veuillez vérifier le chemin d'accès et réessayer.",
+		"fileReadError": "Erreur de lecture du fichier : {{path}}\nÉchec de la lecture du contenu du fichier : {{error}}\nVeuillez vérifier les autorisations du fichier et réessayer.",
+		"insertContentNewFile": "Impossible d'insérer du contenu à la ligne {{lineNumber}} dans un fichier inexistant. Pour les nouveaux fichiers, 'line' doit être 0 (pour ajouter) ou 1 (pour insérer au début).",
+		"toolExecutionError": "Erreur {{action}} :\n{{error}}"
 	}
 }

@@ -103,7 +103,8 @@
 		},
 		"roo": {
 			"authenticationRequired": "El proveedor Roo requiere autenticación en la nube. Por favor, inicia sesión en Roo Code Cloud."
-		}
+		},
+		"unexpectedApiResponse": "Respuesta inesperada de la API: el modelo de lenguaje no proporcionó ningún mensaje de asistente. Esto puede indicar un problema con la API o el resultado del modelo."
 	},
 	"warnings": {
 		"no_terminal_content": "No hay contenido de terminal seleccionado",

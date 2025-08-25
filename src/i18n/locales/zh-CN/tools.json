@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "由于策略限制，无法创建新任务。"
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo 尝试在没有必需参数 '{{paramName}}' 的值的情况下对 '{{relPath}}' 使用 {{toolName}}。正在重试...",
+			"withoutPath": "Roo 尝试在没有必需参数 '{{paramName}}' 的值的情况下使用 {{toolName}}。正在重试..."
+		},
+		"lineCountMissing": "Roo 尝试使用 write_to_file{{relPath}}，但必需的参数 'line_count' 缺失或在写入 {{actualLineCount}} 行内容后被截断。 đang thử lại...",
+		"parseOperationsFailed": "解析操作失败：{{error}}",
+		"fileNotFound": "文件不存在于路径：{{path}}\n\n<error_details>\n找不到指定的文件。请验证文件路径并重试。\n</error_details>",
+		"fileNotFoundSimple": "文件不存在于路径：{{path}}\n找不到指定的文件。请验证文件路径并重试。",
+		"fileReadError": "读取文件时出错：{{path}}\n未能读取文件内容：{{error}}\n请验证文件权限并重试。",
+		"insertContentNewFile": "无法在不存在的文件的行 {{lineNumber}} 处插入内容。对于新文件，'line' 必须为 0（附加）或 1（在开头插入）。",
+		"toolExecutionError": "错误 {{action}}：\n{{error}}"
 	}
 }

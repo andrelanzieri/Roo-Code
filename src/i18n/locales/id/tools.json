@@ -17,5 +17,18 @@
 		"errors": {
 			"policy_restriction": "Gagal membuat tugas baru karena pembatasan kebijakan."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo mencoba menggunakan {{toolName}} untuk '{{relPath}}' tanpa nilai untuk parameter yang diperlukan '{{paramName}}'. Mencoba lagi...",
+			"withoutPath": "Roo mencoba menggunakan {{toolName}} tanpa nilai untuk parameter yang diperlukan '{{paramName}}'. Mencoba lagi..."
+		},
+		"lineCountMissing": "Roo mencoba menggunakan write_to_file{{relPath}} tetapi parameter yang diperlukan 'line_count' hilang atau terpotong setelah {{actualLineCount}} baris konten ditulis. Mencoba lagi...",
+		"parseOperationsFailed": "Gagal mengurai operasi: {{error}}",
+		"fileNotFound": "File tidak ada di path: {{path}}\n\n<error_details>\nFile yang ditentukan tidak dapat ditemukan. Harap verifikasi path file dan coba lagi.\n</error_details>",
+		"fileNotFoundSimple": "File tidak ada di path: {{path}}\nFile yang ditentukan tidak dapat ditemukan. Harap verifikasi path file dan coba lagi.",
+		"fileReadError": "Kesalahan membaca file: {{path}}\nGagal membaca konten file: {{error}}\nHarap verifikasi izin file dan coba lagi.",
+		"insertContentNewFile": "Tidak dapat menyisipkan konten di baris {{lineNumber}} ke dalam file yang tidak ada. Untuk file baru, 'line' harus 0 (untuk menambahkan) atau 1 (untuk menyisipkan di awal).",
+		"toolExecutionError": "Kesalahan {{action}}:\n{{error}}"
 	}
 }

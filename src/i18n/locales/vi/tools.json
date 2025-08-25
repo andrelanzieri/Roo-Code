@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "Không thể tạo nhiệm vụ mới do hạn chế chính sách."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo đã cố gắng sử dụng {{toolName}} cho '{{relPath}}' mà không có giá trị cho tham số bắt buộc '{{paramName}}'. Đang thử lại...",
+			"withoutPath": "Roo đã cố gắng sử dụng {{toolName}} mà không có giá trị cho tham số bắt buộc '{{paramName}}'. Đang thử lại..."
+		},
+		"lineCountMissing": "Roo đã cố gắng sử dụng write_to_file{{relPath}} nhưng tham số bắt buộc 'line_count' bị thiếu hoặc bị cắt ngắn sau khi {{actualLineCount}} dòng nội dung được ghi. Đang thử lại...",
+		"parseOperationsFailed": "Không thể phân tích cú pháp hoạt động: {{error}}",
+		"fileNotFound": "Tệp không tồn tại tại đường dẫn: {{path}}\n\n<error_details>\nKhông thể tìm thấy tệp đã chỉ định. Vui lòng xác minh đường dẫn tệp và thử lại.\n</error_details>",
+		"fileNotFoundSimple": "Tệp không tồn tại tại đường dẫn: {{path}}\nKhông thể tìm thấy tệp đã chỉ định. Vui lòng xác minh đường dẫn tệp và thử lại.",
+		"fileReadError": "Lỗi đọc tệp: {{path}}\nKhông thể đọc nội dung tệp: {{error}}\nVui lòng xác minh quyền truy cập tệp và thử lại.",
+		"insertContentNewFile": "Không thể chèn nội dung vào dòng {{lineNumber}} vào một tệp không tồn tại. Đối với các tệp mới, 'dòng' phải là 0 (để nối thêm) hoặc 1 (để chèn vào đầu).",
+		"toolExecutionError": "Lỗi {{action}}:\n{{error}}"
 	}
 }

@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "No s'ha pogut crear una nova tasca a causa de restriccions de política."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo ha intentat utilitzar {{toolName}} per a '{{relPath}}' sense el valor per al paràmetre obligatori '{{paramName}}'. Reintentant...",
+			"withoutPath": "Roo ha intentat utilitzar {{toolName}} sense el valor per al paràmetre obligatori '{{paramName}}'. Reintentant..."
+		},
+		"lineCountMissing": "Roo ha intentat utilitzar write_to_file{{relPath}} però faltava el paràmetre obligatori 'line_count' o s'ha truncat després d'escriure {{actualLineCount}} línies de contingut. Reintentant...",
+		"parseOperationsFailed": "No s'han pogut analitzar les operacions: {{error}}",
+		"fileNotFound": "El fitxer no existeix a la ruta: {{path}}\n\n<error_details>\nNo s'ha pogut trobar el fitxer especificat. Verifiqueu la ruta del fitxer i torneu-ho a provar.\n</error_details>",
+		"fileNotFoundSimple": "El fitxer no existeix a la ruta: {{path}}\nNo s'ha pogut trobar el fitxer especificat. Verifiqueu la ruta del fitxer i torneu-ho a provar.",
+		"fileReadError": "Error en llegir el fitxer: {{path}}\nNo s'ha pogut llegir el contingut del fitxer: {{error}}\nVerifiqueu els permisos del fitxer i torneu-ho a provar.",
+		"insertContentNewFile": "No es pot inserir contingut a la línia {{lineNumber}} en un fitxer inexistent. Per a fitxers nous, 'line' ha de ser 0 (per afegir) o 1 (per inserir al principi).",
+		"toolExecutionError": "Error {{action}}:\n{{error}}"
 	}
 }

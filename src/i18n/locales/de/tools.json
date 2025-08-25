@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "Neue Aufgabe konnte aufgrund von Richtlinienbeschränkungen nicht erstellt werden."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo hat versucht, {{toolName}} für '{{relPath}}' ohne Wert für den erforderlichen Parameter '{{paramName}}' zu verwenden. Erneuter Versuch...",
+			"withoutPath": "Roo hat versucht, {{toolName}} ohne Wert für den erforderlichen Parameter '{{paramName}}' zu verwenden. Erneuter Versuch..."
+		},
+		"lineCountMissing": "Roo hat versucht, write_to_file{{relPath}} zu verwenden, aber der erforderliche Parameter 'line_count' fehlte oder wurde nach dem Schreiben von {{actualLineCount}} Zeilen Inhalt abgeschnitten. Erneuter Versuch...",
+		"parseOperationsFailed": "Operationen konnten nicht analysiert werden: {{error}}",
+		"fileNotFound": "Datei existiert nicht unter Pfad: {{path}}\n\n<error_details>\nDie angegebene Datei konnte nicht gefunden werden. Bitte überprüfe den Dateipfad und versuche es erneut.\n</error_details>",
+		"fileNotFoundSimple": "Datei existiert nicht unter Pfad: {{path}}\nDie angegebene Datei konnte nicht gefunden werden. Bitte überprüfe den Dateipfad und versuche es erneut.",
+		"fileReadError": "Fehler beim Lesen der Datei: {{path}}\nDer Dateiinhalt konnte nicht gelesen werden: {{error}}\nBitte überprüfe die Dateiberechtigungen und versuche es erneut.",
+		"insertContentNewFile": "Inhalt kann nicht in Zeile {{lineNumber}} in eine nicht existierende Datei eingefügt werden. Bei neuen Dateien muss 'line' 0 (zum Anhängen) oder 1 (zum Einfügen am Anfang) sein.",
+		"toolExecutionError": "Fehler {{action}}:\n{{error}}"
 	}
 }

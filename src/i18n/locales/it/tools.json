@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "Impossibile creare una nuova attività a causa di restrizioni di policy."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo ha provato a usare {{toolName}} per '{{relPath}}' senza valore per il parametro richiesto '{{paramName}}'. Riprovo...",
+			"withoutPath": "Roo ha provato a usare {{toolName}} senza valore per il parametro richiesto '{{paramName}}'. Riprovo..."
+		},
+		"lineCountMissing": "Roo ha provato a usare write_to_file{{relPath}} ma il parametro richiesto 'line_count' mancava o è stato troncato dopo che sono state scritte {{actualLineCount}} righe di contenuto. Riprovo...",
+		"parseOperationsFailed": "Impossibile analizzare le operazioni: {{error}}",
+		"fileNotFound": "Il file non esiste nel percorso: {{path}}\n\n<error_details>\nImpossibile trovare il file specificato. Verifica il percorso del file e riprova.\n</error_details>",
+		"fileNotFoundSimple": "Il file non esiste nel percorso: {{path}}\nImpossibile trovare il file specificato. Verifica il percorso del file e riprova.",
+		"fileReadError": "Errore durante la lettura del file: {{path}}\nImpossibile leggere il contenuto del file: {{error}}\nVerifica le autorizzazioni del file e riprova.",
+		"insertContentNewFile": "Impossibile inserire contenuto alla riga {{lineNumber}} in un file inesistente. Per i file nuovi, 'line' deve essere 0 (per aggiungere) o 1 (per inserire all'inizio).",
+		"toolExecutionError": "Errore {{action}}:\n{{error}}"
 	}
 }

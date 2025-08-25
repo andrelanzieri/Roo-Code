@@ -14,5 +14,18 @@
 		"errors": {
 			"policy_restriction": "Nie udało się utworzyć nowego zadania z powodu ograniczeń polityki."
 		}
+	},
+	"errors": {
+		"missingRequiredParameter": {
+			"withPath": "Roo próbował użyć {{toolName}} dla '{{relPath}}' bez wartości dla wymaganego parametru '{{paramName}}'. Ponawianie próby...",
+			"withoutPath": "Roo próbował użyć {{toolName}} bez wartości dla wymaganego parametru '{{paramName}}'. Ponawianie próby..."
+		},
+		"lineCountMissing": "Roo próbował użyć write_to_file{{relPath}}, ale brakowało wymaganego parametru 'line_count' lub został on obcięty po zapisaniu {{actualLineCount}} linii treści. Ponawianie próby...",
+		"parseOperationsFailed": "Nie udało się przeanalizować operacji: {{error}}",
+		"fileNotFound": "Plik nie istnieje pod ścieżką: {{path}}\n\n<error_details>\nNie można znaleźć podanego pliku. Sprawdź ścieżkę pliku i spróbuj ponownie.\n</error_details>",
+		"fileNotFoundSimple": "Plik nie istnieje pod ścieżką: {{path}}\nNie można znaleźć podanego pliku. Sprawdź ścieżkę pliku i spróbuj ponownie.",
+		"fileReadError": "Błąd odczytu pliku: {{path}}\nNie udało się odczytać zawartości pliku: {{error}}\nSprawdź uprawnienia do pliku i spróbuj ponownie.",
+		"insertContentNewFile": "Nie można wstawić treści w linii {{lineNumber}} do nieistniejącego pliku. W przypadku nowych plików „wiersz” musi mieć wartość 0 (aby dołączyć) lub 1 (aby wstawić na początku).",
+		"toolExecutionError": "Błąd {{action}}:\n{{error}}"
 	}
 }

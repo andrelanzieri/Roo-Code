@@ -103,7 +103,8 @@
 		},
 		"roo": {
 			"authenticationRequired": "Dostawca Roo wymaga uwierzytelnienia w chmurze. Zaloguj się do Roo Code Cloud."
-		}
+		},
+		"unexpectedApiResponse": "Nieoczekiwana odpowiedź API: model językowy nie dostarczył żadnych komunikatów asystenta. Może to wskazywać na problem z API lub danymi wyjściowymi modelu."
 	},
 	"warnings": {
 		"no_terminal_content": "Nie wybrano zawartości terminala",

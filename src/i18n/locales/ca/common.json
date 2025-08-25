@@ -107,6 +107,7 @@
 		"roo": {
 			"authenticationRequired": "El proveïdor Roo requereix autenticació al núvol. Si us plau, inicieu sessió a Roo Code Cloud."
 		},
+		"unexpectedApiResponse": "Resposta de l'API inesperada: el model de llenguatge no ha proporcionat cap missatge d'assistent. Això pot indicar un problema amb l'API o la sortida del model.",
 		"mode_import_failed": "Ha fallat la importació del mode: {{error}}"
 	},
 	"warnings": {

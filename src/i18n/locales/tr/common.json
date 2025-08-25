@@ -103,7 +103,8 @@
 		},
 		"roo": {
 			"authenticationRequired": "Roo sağlayıcısı bulut kimlik doğrulaması gerektirir. Lütfen Roo Code Cloud'a giriş yapın."
-		}
+		},
+		"unexpectedApiResponse": "Beklenmeyen API Yanıtı: Dil modeli herhangi bir asistan mesajı sağlamadı. Bu, API veya modelin çıktısıyla ilgili bir sorunu gösterebilir."
 	},
 	"warnings": {
 		"no_terminal_content": "Seçili terminal içeriği yok",
