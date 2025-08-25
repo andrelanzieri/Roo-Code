@@ -10,9 +10,6 @@ import type { ApiHandlerCreateMessageMetadata } from "../index"
 import { OpenAiHandler } from "./openai"
 
 export class DeepSeekHandler extends OpenAiHandler {
-	// Pattern to match unwanted "极速模式" characters and its variations
-	private readonly UNWANTED_PATTERN = /[极極][速][模][式]|[极極]|[速]?[模]?[式]?/g
-
 	constructor(options: ApiHandlerOptions) {
 		super({
 			...options,
@@ -53,8 +50,10 @@ export class DeepSeekHandler extends OpenAiHandler {
 	}
 
 	/**
-	 * Removes unwanted "极速模式" characters from the content.
-	 * These characters appear to be injected by some DeepSeek V3.1 configurations.
+	 * Removes unwanted "极速模式" (speed mode) characters from the content.
+	 * These characters appear to be injected by some DeepSeek V3.1 configurations,
+	 * possibly from a Chinese language interface or prompt template.
+	 * The sanitization preserves legitimate Chinese text while removing these artifacts.
 	 */
 	private sanitizeContent(content: string): string {
 		// First, try to remove the complete phrase "极速模式"
