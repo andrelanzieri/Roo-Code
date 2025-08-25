@@ -10,10 +10,6 @@
 		},
 		"openrouter": {
 			"description": "Giao diện thống nhất cho các LLM"
-		},
-		"vercelAiGateway": {
-			"description": "Cổng AI dành cho nhà phát triển",
-			"incentive": "$5 tín dụng miễn phí để sử dụng với bất kỳ mô hình nào"
 		}
 	},
 	"chooseProvider": "Để thực hiện phép màu của mình, Roo cần một khóa API.",

@@ -10,10 +10,6 @@
 		},
 		"openrouter": {
 			"description": "LLM 的統一介面"
-		},
-		"vercelAiGateway": {
-			"description": "面向開發者的 AI 閘道",
-			"incentive": "5美元免費額度，可用於任何模型"
 		}
 	},
 	"chooseProvider": "Roo 需要 API 金鑰才能發揮魔力。",

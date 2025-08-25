@@ -10,10 +10,6 @@
 		},
 		"openrouter": {
 			"description": "LLM'ler için birleşik bir arayüz"
-		},
-		"vercelAiGateway": {
-			"description": "Geliştiriciler için AI Gateway",
-			"incentive": "Herhangi bir modelle kullanım için $5 ücretsiz kredi"
 		}
 	},
 	"chooseProvider": "Sihirini yapabilmesi için Roo'nun bir API anahtarına ihtiyacı var.",

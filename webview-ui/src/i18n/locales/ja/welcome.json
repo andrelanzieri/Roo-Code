@@ -10,10 +10,6 @@
 		},
 		"openrouter": {
 			"description": "LLMsのための統一インターフェース"
-		},
-		"vercelAiGateway": {
-			"description": "開発者向けAIゲートウェイ",
-			"incentive": "どのモデルでも使える5ドルの無料クレジット"
 		}
 	},
 	"chooseProvider": "Rooが機能するには、APIキーが必要です。",
