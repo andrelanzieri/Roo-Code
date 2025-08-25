@@ -226,7 +226,13 @@ describe("insertContentTool", () => {
 			expect(mockedFsReadFile).not.toHaveBeenCalled()
 			expect(mockCline.consecutiveMistakeCount).toBe(1)
 			expect(mockCline.recordToolError).toHaveBeenCalledWith("insert_content")
-			expect(mockCline.say).toHaveBeenCalledWith("error", expect.stringContaining("non-existent file"))
+			// Accept both legacy hardcoded text and new i18n key-based message
+			expect(mockCline.say).toHaveBeenCalledWith(
+				"error",
+				expect.stringMatching(
+					/non-existent file|errors\.insertContentNewFile|tools:errors\.insertContentNewFile/,
+				),
+			)
 			expect(mockCline.diffViewProvider.update).not.toHaveBeenCalled()
 			expect(mockCline.diffViewProvider.pushToolWriteResult).not.toHaveBeenCalled()
 		})
