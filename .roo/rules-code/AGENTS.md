@@ -1,10 +1,8 @@
-# Code Mode Rules
+# Project Coding Rules (Non-Obvious Only)
 
-## Critical Non-Obvious Patterns
-
-- **MANDATORY**: Use `safeWriteJson()` from `src/utils/safeWriteJson.ts` for ALL JSON writes (prevents corruption via atomic writes with locking)
-- Tests MUST run from workspace directory: `cd src && npx vitest run` (NOT from root)
-- VSCode CSS variables must be added to `webview-ui/src/index.css` before use
-- State management via React hooks only (external state libraries break webview isolation)
-- Providers MUST be stateless (hidden caching layer assumes this)
-- Import paths in packages/ require `.js` extensions despite TypeScript source
+- Always use `safeWriteJson()` from `src/utils/safeWriteJson.ts` instead of `JSON.stringify` for file writes (prevents corruption)
+- Extension code in `src/` directory, NOT in `apps/` (counterintuitive structure)
+- Webview UI in `webview-ui/` runs with restricted APIs - no localStorage, limited browser features
+- IPC patterns MUST follow `src/core/webview/webviewMessageHandler.ts` structure
+- Tests must be in `__tests__` folders or `.spec.ts` files (vitest won't find them otherwise)
+- VSCode API mocked differently: `src/__mocks__/vscode.js` vs `webview-ui/src/__mocks__/vscode.ts`

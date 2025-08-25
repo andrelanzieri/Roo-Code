@@ -1,13 +1,7 @@
-# Debug Mode Rules
+# Project Debug Rules (Non-Obvious Only)
 
-## Non-Obvious Debug Access
-
-- Webview DevTools: Command Palette → "Developer: Open Webview Developer Tools" (NOT F12)
-- Extension logs: VSCode Output panel → "Roo Code" channel
-- Extension Host output channel shows different logs than Debug Console
-
-## Critical Debug Patterns
-
-- IPC messages fail silently without try/catch in `packages/ipc/src/`
-- Tests MUST run from workspace directory: `cd src && npx vitest run`
-- Webview runs in restricted context (no localStorage, limited browser APIs)
+- Extension logs only visible in "Extension Host" output channel, NOT Debug Console
+- Webview dev tools accessed via Command Palette > "Developer: Open Webview Developer Tools" (not F12)
+- Database migrations MUST run from `packages/evals/` directory: `cd packages/evals && pnpm db:migrate`
+- IPC messages fail silently if not wrapped in try/catch in webview message handlers
+- Two separate mock systems: `src/__mocks__/vscode.js` for extension, `webview-ui/src/__mocks__/vscode.ts` for UI
