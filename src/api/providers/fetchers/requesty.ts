@@ -17,6 +17,8 @@ export async function getRequestyModels(baseUrl?: string, apiKey?: string): Prom
 
 		const resolvedBaseUrl = toRequestyServiceUrl(baseUrl)
 		// Ensure the base URL ends with a slash so "models" is appended correctly
+		// Without this, new URL("models", "https://custom.requesty.ai/v1") would incorrectly
+		// resolve to "https://custom.requesty.ai/models" instead of "https://custom.requesty.ai/v1/models"
 		const baseWithSlash = resolvedBaseUrl.endsWith("/") ? resolvedBaseUrl : `${resolvedBaseUrl}/`
 		const modelsUrl = new URL("models", baseWithSlash)
 
