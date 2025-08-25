@@ -2,6 +2,7 @@ import axios from "axios"
 import { z } from "zod"
 
 import type { ModelInfo } from "@roo-code/types"
+import { VERCEL_AI_GATEWAY_VISION_ONLY_MODELS, VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../../shared/api"
 import { parseApiPrice } from "../../../shared/cost"
@@ -67,8 +68,8 @@ export async function getVercelAiGatewayModels(options?: ApiHandlerOptions): Pro
 		for (const model of data) {
 			const { id } = model
 
-			// Filter out embedding models (models with "embedding" in name)
-			if (id.toLowerCase().includes("embed")) {
+			// Only include language models
+			if (model.type !== "language") {
 				continue
 			}
 
@@ -98,11 +99,15 @@ export const parseVercelAiGatewayModel = ({ id, model }: { id: string; model: Ve
 	const cacheReadsPrice = model.pricing?.input_cache_read ? parseApiPrice(model.pricing?.input_cache_read) : undefined
 
 	const supportsPromptCache = typeof cacheWritesPrice !== "undefined" && typeof cacheReadsPrice !== "undefined"
+	const supportsImages =
+		VERCEL_AI_GATEWAY_VISION_ONLY_MODELS.has(id) || VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS.has(id)
+	const supportsComputerUse = VERCEL_AI_GATEWAY_VISION_AND_TOOLS_MODELS.has(id)
 
 	const modelInfo: ModelInfo = {
 		maxTokens: model.max_tokens,
 		contextWindow: model.context_window,
-		supportsImages: false,
+		supportsImages,
+		supportsComputerUse,
 		supportsPromptCache,
 		inputPrice: parseApiPrice(model.pricing?.input),
 		outputPrice: parseApiPrice(model.pricing?.output),
