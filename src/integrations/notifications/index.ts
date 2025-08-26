@@ -1,6 +1,7 @@
 import { execa } from "execa"
 import { platform } from "os"
 import * as vscode from "vscode"
+import * as path from "path"
 
 interface NotificationOptions {
 	title?: string
@@ -10,14 +11,46 @@ interface NotificationOptions {
 }
 
 async function showMacOSNotification(options: NotificationOptions): Promise<void> {
-	const { title, subtitle = "", message } = options
-
-	const script = `display notification "${message}" with title "${title}" subtitle "${subtitle}" sound name "Tink"`
+	const { title = "Roo Code", subtitle = "", message } = options
 
 	try {
-		await execa("osascript", ["-e", script])
+		// Try to use node-notifier first (more reliable cross-platform solution)
+		const notifier = await import("node-notifier")
+
+		// Get the extension's icon path
+		const iconPath = path.join(__dirname, "..", "..", "assets", "icons", "icon.png")
+
+		await new Promise<void>((resolve, reject) => {
+			notifier.notify(
+				{
+					title: title,
+					subtitle: subtitle,
+					message: message,
+					sound: "Tink",
+					icon: iconPath,
+					wait: false,
+				},
+				(error: Error | null) => {
+					if (error) {
+						reject(error)
+					} else {
+						resolve()
+					}
+				},
+			)
+		})
 	} catch (error) {
-		throw new Error(`Failed to show macOS notification: ${error}`)
+		// Fallback to osascript if node-notifier fails
+		console.warn("node-notifier failed, falling back to osascript:", error)
+
+		const escape = (str: string = "") => str.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+		const script = `display notification "${escape(message)}" with title "${escape(title)}" subtitle "${escape(subtitle)}" sound name "Tink"`
+
+		try {
+			await execa("osascript", ["-e", script])
+		} catch (osascriptError) {
+			throw new Error(`Failed to show macOS notification: ${osascriptError}`)
+		}
 	}
 }
 
