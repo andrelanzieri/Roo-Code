@@ -6,6 +6,7 @@ import { mergePromise } from "../mergePromise"
 import { TerminalProcess } from "../TerminalProcess"
 import { Terminal } from "../Terminal"
 import { TerminalRegistry } from "../TerminalRegistry"
+import { parseCommand } from "../commandParser"
 
 vi.mock("execa", () => ({
 	execa: vi.fn(),
@@ -164,6 +165,114 @@ describe("TerminalProcess", () => {
 
 			await completePromise
 			expect(terminalProcess.isHot).toBe(false)
+		})
+
+		it("handles compound commands as single command", async () => {
+			// Test that compound commands are executed as a single command
+			// to preserve shell context between segments
+			const compoundCommand = "cd foo && npm test"
+
+			let executedCommand = ""
+
+			mockStream = (async function* () {
+				yield "\x1b]633;C\x07"
+				yield "Changed directory to foo\n"
+				yield "Running tests...\n"
+				yield "Tests passed"
+				yield "\x1b]633;D\x07"
+				terminalProcess.emit("shell_execution_complete", { exitCode: 0 })
+			})()
+
+			mockTerminal.shellIntegration.executeCommand.mockImplementation((cmd: string) => {
+				executedCommand = cmd
+				return {
+					read: vi.fn().mockReturnValue(mockStream),
+				}
+			})
+
+			const runPromise = terminalProcess.run(compoundCommand)
+
+			// Emit stream available with the mock stream
+			terminalProcess.emit("stream_available", mockStream)
+
+			await runPromise
+
+			// Verify the compound command was executed as a single command
+			expect(executedCommand).toBe(compoundCommand)
+			expect(mockTerminal.shellIntegration.executeCommand).toHaveBeenCalledTimes(1)
+			expect(mockTerminal.shellIntegration.executeCommand).toHaveBeenCalledWith(compoundCommand)
+		})
+
+		it("detects compound commands correctly", async () => {
+			// Test various compound command patterns
+			const testCases = [
+				{ command: "cd foo && npm test", isCompound: true },
+				{ command: "npm test || echo 'Tests failed'", isCompound: true },
+				{ command: "echo start; npm test; echo done", isCompound: true },
+				{ command: "ls -la | grep test", isCompound: true },
+				{ command: "npm test", isCompound: false },
+				{ command: "echo 'test && test'", isCompound: false }, // Quoted operators shouldn't be detected
+			]
+
+			for (const testCase of testCases) {
+				const parsed = parseCommand(testCase.command)
+				expect(parsed.isCompound).toBe(testCase.isCompound)
+			}
+		})
+
+		it("preserves shell context in compound commands", async () => {
+			// This test verifies that compound commands maintain context
+			// For example, cd in the first part affects the second part
+			const command = "cd /tmp && pwd"
+
+			mockStream = (async function* () {
+				yield "\x1b]633;C\x07"
+				yield "/tmp\n" // pwd should output /tmp since cd was in same shell context
+				yield "\x1b]633;D\x07"
+				terminalProcess.emit("shell_execution_complete", { exitCode: 0 })
+			})()
+
+			mockTerminal.shellIntegration.executeCommand.mockReturnValue({
+				read: vi.fn().mockReturnValue(mockStream),
+			})
+
+			let output = ""
+			terminalProcess.on("completed", (result) => {
+				output = result || ""
+			})
+
+			const runPromise = terminalProcess.run(command)
+			terminalProcess.emit("stream_available", mockStream)
+			await runPromise
+
+			expect(output.trim()).toBe("/tmp")
+			// Verify it was executed as a single command
+			expect(mockTerminal.shellIntegration.executeCommand).toHaveBeenCalledWith(command)
+		})
+
+		it("handles complex compound commands with multiple operators", async () => {
+			const complexCommand = "git add . && git commit -m 'test' && git push || echo 'Push failed'"
+
+			mockStream = (async function* () {
+				yield "\x1b]633;C\x07"
+				yield "Files added\n"
+				yield "Committed\n"
+				yield "Pushed successfully\n"
+				yield "\x1b]633;D\x07"
+				terminalProcess.emit("shell_execution_complete", { exitCode: 0 })
+			})()
+
+			mockTerminal.shellIntegration.executeCommand.mockReturnValue({
+				read: vi.fn().mockReturnValue(mockStream),
+			})
+
+			const runPromise = terminalProcess.run(complexCommand)
+			terminalProcess.emit("stream_available", mockStream)
+			await runPromise
+
+			// Should execute as single command
+			expect(mockTerminal.shellIntegration.executeCommand).toHaveBeenCalledTimes(1)
+			expect(mockTerminal.shellIntegration.executeCommand).toHaveBeenCalledWith(complexCommand)
 		})
 	})
 

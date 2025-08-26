@@ -78,7 +78,10 @@ export class TerminalProcess extends BaseTerminalProcess {
 
 		if (parsedCommand.isCompound) {
 			console.info(`[TerminalProcess] Detected compound command with ${parsedCommand.segments.length} segments`)
-			await this.runCompoundCommand(parsedCommand.segments)
+			console.info(`[TerminalProcess] Executing compound command as a single shell command to preserve context`)
+			// Execute compound commands as a single command to preserve shell context
+			// This ensures operators like && and || work correctly and state is maintained
+			await this.runSingleCommand(command)
 			return
 		}
 
@@ -87,67 +90,27 @@ export class TerminalProcess extends BaseTerminalProcess {
 	}
 
 	/**
-	 * Executes a compound command by running each segment sequentially
-	 * based on the operator logic (&&, ||, ;, |)
+	 * @deprecated This method is no longer used. Compound commands are now executed
+	 * as a single shell command to preserve context and proper operator behavior.
+	 * Keeping for reference only.
+	 *
+	 * Previously attempted to execute compound commands by splitting them into segments,
+	 * but this approach lost shell context between commands (e.g., cd wouldn't affect
+	 * subsequent commands).
 	 */
-	private async runCompoundCommand(segments: CommandSegment[]) {
-		let lastExitCode = 0
-		let accumulatedOutput = ""
-		let finalExitCode = 0
-
-		for (let i = 0; i < segments.length; i++) {
-			const segment = segments[i]
-
-			// Check if this segment should execute based on previous exit code
-			if (i > 0 && !segment.shouldExecute(lastExitCode)) {
-				console.info(`[TerminalProcess] Skipping segment "${segment.command}" due to operator logic`)
-				continue
-			}
-
-			console.info(
-				`[TerminalProcess] Executing compound segment ${i + 1}/${segments.length}: "${segment.command}"`,
-			)
-
-			// For pipe operators, we need special handling (future enhancement)
-			if (segment.operator === "|" && i < segments.length - 1) {
-				// For now, we'll execute pipes as a single command
-				// This is a limitation we can document
-				const pipeCommand = segments
-					.slice(i)
-					.map((s) => s.command)
-					.join(" | ")
-				await this.runSingleCommand(pipeCommand)
-				return
-			}
-
-			// Execute the segment
-			const segmentOutput = await this.runSingleCommand(segment.command, i === 0)
-
-			if (segmentOutput) {
-				if (accumulatedOutput && !accumulatedOutput.endsWith("\n")) {
-					accumulatedOutput += "\n"
-				}
-				accumulatedOutput += segmentOutput
-			}
-
-			// Get the exit code from the last execution
-			lastExitCode = this.lastExitCode ?? 0
-			finalExitCode = lastExitCode
-		}
-
-		// Emit the final accumulated output
-		this.fullOutput = accumulatedOutput
-		this.emit("completed", this.removeEscapeSequences(accumulatedOutput))
-		this.emit("shell_execution_complete", { exitCode: finalExitCode })
-		this.emit("continue")
+	private async runCompoundCommand_DEPRECATED(segments: CommandSegment[]) {
+		// This method is intentionally left empty and deprecated
+		// Compound commands are now handled by executing them as a single command
+		throw new Error("runCompoundCommand is deprecated. Compound commands should be executed as a single command.")
 	}
 
 	private lastExitCode?: number
 
 	/**
-	 * Executes a single command (extracted from the original run method)
+	 * Executes a command through VSCode's shell integration.
+	 * Handles both simple and compound commands.
 	 */
-	private async runSingleCommand(command: string, emitStarted: boolean = true): Promise<string> {
+	private async runSingleCommand(command: string): Promise<string> {
 		const terminal = this.terminal.terminal
 
 		// Create a promise that resolves when the stream becomes available
@@ -332,12 +295,6 @@ export class TerminalProcess extends BaseTerminalProcess {
 		// command is finished, we still want to consider it 'hot' in case
 		// so that api request stalls to let diagnostics catch up").
 		this.stopHotTimer()
-
-		// For compound commands, we handle completion differently
-		if (!emitStarted) {
-			// Return output without emitting completion (handled by runCompoundCommand)
-			return this.removeEscapeSequences(this.fullOutput)
-		}
 
 		this.emit("completed", this.removeEscapeSequences(this.fullOutput))
 		this.emit("continue")
