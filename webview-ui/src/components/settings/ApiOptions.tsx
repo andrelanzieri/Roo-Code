@@ -226,6 +226,8 @@ const ApiOptions = ({
 				vscode.postMessage({ type: "requestVsCodeLmModels" })
 			} else if (selectedProvider === "litellm") {
 				vscode.postMessage({ type: "requestRouterModels" })
+			} else if (selectedProvider === "watsonx") {
+				vscode.postMessage({ type: "requestWatsonxModels" })
 			}
 		},
 		250,
@@ -238,6 +240,9 @@ const ApiOptions = ({
 			apiConfiguration?.lmStudioBaseUrl,
 			apiConfiguration?.litellmBaseUrl,
 			apiConfiguration?.litellmApiKey,
+			apiConfiguration.watsonxApiKey,
+			apiConfiguration.watsonxProjectId,
+			apiConfiguration.watsonxBaseUrl,
 			customHeaders,
 		],
 	)
@@ -340,7 +345,7 @@ const ApiOptions = ({
 				openai: { field: "openAiModelId" },
 				ollama: { field: "ollamaModelId" },
 				lmstudio: { field: "lmStudioModelId" },
-				watsonx: { field: "apiModelId", default: watsonxAiDefaultModelId },
+				watsonx: { field: "watsonxModelId", default: watsonxAiDefaultModelId },
 			}
 
 			const config = PROVIDER_MODEL_CONFIG[value]
@@ -594,7 +599,12 @@ const ApiOptions = ({
 			)}
 
 			{selectedProvider === "watsonx" && (
-				<WatsonxAI apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
+				<WatsonxAI
+					apiConfiguration={apiConfiguration}
+					setApiConfigurationField={setApiConfigurationField}
+					organizationAllowList={organizationAllowList}
+					modelValidationError={modelValidationError}
+				/>
 			)}
 
 			{selectedProvider === "sambanova" && (
@@ -652,7 +662,7 @@ const ApiOptions = ({
 				<Featherless apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
 			)}
 
-			{selectedProviderModels.length > 0 && (
+			{selectedProviderModels.length > 0 && selectedProvider !== "watsonx" && (
 				<>
 					<div>
 						<label className="block font-medium mb-1">{t("settings:providers.model")}</label>

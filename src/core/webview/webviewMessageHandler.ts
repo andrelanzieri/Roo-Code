@@ -549,6 +549,7 @@ export const webviewMessageHandler = async (
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
+				watsonx: {},
 			}
 
 			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
@@ -574,6 +575,14 @@ export const webviewMessageHandler = async (
 					},
 				},
 				{ key: "glama", options: { provider: "glama" } },
+				{
+					key: "watsonx",
+					options: {
+						provider: "watsonx",
+						apiKey: apiConfiguration.watsonxApiKey!,
+						baseUrl: apiConfiguration.watsonxBaseUrl!,
+					},
+				},
 				{ key: "unbound", options: { provider: "unbound", apiKey: apiConfiguration.unboundApiKey } },
 			]
 
@@ -595,6 +604,16 @@ export const webviewMessageHandler = async (
 				modelFetchPromises.push({
 					key: "litellm",
 					options: { provider: "litellm", apiKey: litellmApiKey, baseUrl: litellmBaseUrl },
+				})
+			}
+
+			const watsonxApiKey = apiConfiguration.watsonxApiKey
+			const watsonxBaseUrl = apiConfiguration.watsonxBaseUrl
+
+			if (watsonxApiKey && watsonxBaseUrl) {
+				modelFetchPromises.push({
+					key: "watsonx",
+					options: { provider: "watsonx", apiKey: watsonxApiKey, baseUrl: watsonxBaseUrl },
 				})
 			}
 

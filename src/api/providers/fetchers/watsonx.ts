@@ -24,7 +24,6 @@ export async function getWatsonxModels(
 			}),
 		})
 
-		await service.getAuthenticator().authenticate()
 		let knownModels: Record<string, ModelInfo> = {}
 
 		try {
@@ -37,12 +36,7 @@ export async function getWatsonxModels(
 					for (const model of modelsList) {
 						const modelId = model.id || model.name || model.model_id
 						const modelInfo = JSON.stringify(model).toLowerCase()
-						if (
-							modelId &&
-							!modelInfo.includes("embed") &&
-							!modelInfo.includes("rtrvr") &&
-							!modelInfo.includes("retriev")
-						) {
+						if (modelId && !modelInfo.includes("embed") && !modelInfo.includes("rtrvr")) {
 							const contextWindow = model.context_length || model.max_input_tokens || 8192
 							const maxTokens = model.max_output_tokens || Math.floor(contextWindow / 2)
 

@@ -37,6 +37,7 @@ type ModelIdKey = keyof Pick<
 	| "openAiModelId"
 	| "litellmModelId"
 	| "ioIntelligenceModelId"
+	| "watsonxModelId"
 >
 
 interface ModelPickerProps {

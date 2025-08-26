@@ -212,6 +212,8 @@ function getModelIdForProvider(apiConfiguration: ProviderSettings, provider: str
 			return apiConfiguration.huggingFaceModelId
 		case "io-intelligence":
 			return apiConfiguration.ioIntelligenceModelId
+		case "watsonx":
+			return apiConfiguration.watsonxModelId
 		default:
 			return apiConfiguration.apiModelId
 	}
@@ -281,6 +283,9 @@ export function validateModelId(apiConfiguration: ProviderSettings, routerModels
 			break
 		case "litellm":
 			modelId = apiConfiguration.litellmModelId
+			break
+		case "watsonx":
+			modelId = apiConfiguration.watsonxModelId
 			break
 		case "io-intelligence":
 			modelId = apiConfiguration.ioIntelligenceModelId

@@ -36,8 +36,6 @@ import {
 	litellmDefaultModelId,
 	claudeCodeDefaultModelId,
 	claudeCodeModels,
-	watsonxAiModels,
-	watsonxAiDefaultModelId,
 	sambaNovaModels,
 	sambaNovaDefaultModelId,
 	doubaoModels,
@@ -57,6 +55,8 @@ import {
 	qwenCodeDefaultModelId,
 	qwenCodeModels,
 	BEDROCK_CLAUDE_SONNET_4_MODEL_ID,
+	watsonxAiDefaultModelId,
+	watsonxAiModels,
 } from "@roo-code/types"
 
 import type { ModelRecord, RouterModels } from "@roo/api"
@@ -71,6 +71,7 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 	const lmStudioModelId = provider === "lmstudio" ? apiConfiguration?.lmStudioModelId : undefined
 
 	const routerModels = useRouterModels()
+
 	const openRouterModelProviders = useOpenRouterModelProviders(openRouterModelId)
 	const lmStudioModels = useLmStudioModels(lmStudioModelId)
 
@@ -284,11 +285,11 @@ function getSelectedModel({
 			return { id, info: { ...openAiModelInfoSaneDefaults, ...info } }
 		}
 		case "watsonx": {
-			const id = apiConfiguration.apiModelId ?? watsonxAiDefaultModelId
+			const id = apiConfiguration.watsonxModelId ?? watsonxAiDefaultModelId
 			const info = watsonxAiModels[id as keyof typeof watsonxAiModels]
 			return {
 				id,
-				info: info || undefined,
+				info: info,
 			}
 		}
 		case "cerebras": {
