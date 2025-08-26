@@ -598,6 +598,9 @@ importers:
       '@types/lodash.debounce':
         specifier: ^4.0.9
         version: 4.0.9
+      '@types/node-notifier':
+        specifier: ^8.0.5
+        version: 8.0.5
       '@vscode/codicons':
         specifier: ^0.0.36
         version: 0.0.36
@@ -815,9 +818,6 @@ importers:
       '@types/node-ipc':
         specifier: ^9.2.3
         version: 9.2.3
-      '@types/node-notifier':
-        specifier: ^8.0.5
-        version: 8.0.5
       '@types/proper-lockfile':
         specifier: ^4.1.4
         version: 4.1.4
