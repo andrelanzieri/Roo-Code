@@ -13,6 +13,7 @@ import { inspect } from "util"
 import type { ExitCodeDetails } from "./types"
 import { BaseTerminalProcess } from "./BaseTerminalProcess"
 import { Terminal } from "./Terminal"
+import { parseCommand, CommandSegment } from "./commandParser"
 
 export class TerminalProcess extends BaseTerminalProcess {
 	private terminalRef: WeakRef<Terminal>
@@ -72,6 +73,83 @@ export class TerminalProcess extends BaseTerminalProcess {
 			return
 		}
 
+		// Parse the command to check for compound operators
+		const parsedCommand = parseCommand(command)
+
+		if (parsedCommand.isCompound) {
+			console.info(`[TerminalProcess] Detected compound command with ${parsedCommand.segments.length} segments`)
+			await this.runCompoundCommand(parsedCommand.segments)
+			return
+		}
+
+		// Execute single command as before
+		await this.runSingleCommand(command)
+	}
+
+	/**
+	 * Executes a compound command by running each segment sequentially
+	 * based on the operator logic (&&, ||, ;, |)
+	 */
+	private async runCompoundCommand(segments: CommandSegment[]) {
+		let lastExitCode = 0
+		let accumulatedOutput = ""
+		let finalExitCode = 0
+
+		for (let i = 0; i < segments.length; i++) {
+			const segment = segments[i]
+
+			// Check if this segment should execute based on previous exit code
+			if (i > 0 && !segment.shouldExecute(lastExitCode)) {
+				console.info(`[TerminalProcess] Skipping segment "${segment.command}" due to operator logic`)
+				continue
+			}
+
+			console.info(
+				`[TerminalProcess] Executing compound segment ${i + 1}/${segments.length}: "${segment.command}"`,
+			)
+
+			// For pipe operators, we need special handling (future enhancement)
+			if (segment.operator === "|" && i < segments.length - 1) {
+				// For now, we'll execute pipes as a single command
+				// This is a limitation we can document
+				const pipeCommand = segments
+					.slice(i)
+					.map((s) => s.command)
+					.join(" | ")
+				await this.runSingleCommand(pipeCommand)
+				return
+			}
+
+			// Execute the segment
+			const segmentOutput = await this.runSingleCommand(segment.command, i === 0)
+
+			if (segmentOutput) {
+				if (accumulatedOutput && !accumulatedOutput.endsWith("\n")) {
+					accumulatedOutput += "\n"
+				}
+				accumulatedOutput += segmentOutput
+			}
+
+			// Get the exit code from the last execution
+			lastExitCode = this.lastExitCode ?? 0
+			finalExitCode = lastExitCode
+		}
+
+		// Emit the final accumulated output
+		this.fullOutput = accumulatedOutput
+		this.emit("completed", this.removeEscapeSequences(accumulatedOutput))
+		this.emit("shell_execution_complete", { exitCode: finalExitCode })
+		this.emit("continue")
+	}
+
+	private lastExitCode?: number
+
+	/**
+	 * Executes a single command (extracted from the original run method)
+	 */
+	private async runSingleCommand(command: string, emitStarted: boolean = true): Promise<string> {
+		const terminal = this.terminal.terminal
+
 		// Create a promise that resolves when the stream becomes available
 		const streamAvailable = new Promise<AsyncIterable<string>>((resolve, reject) => {
 			const timeoutId = setTimeout(() => {
@@ -127,9 +205,9 @@ export class TerminalProcess extends BaseTerminalProcess {
 				commandToExecute += ` ; start-sleep -milliseconds ${Terminal.getCommandDelay()}`
 			}
 
-			terminal.shellIntegration.executeCommand(commandToExecute)
+			terminal.shellIntegration!.executeCommand(commandToExecute)
 		} else {
-			terminal.shellIntegration.executeCommand(command)
+			terminal.shellIntegration!.executeCommand(command)
 		}
 
 		this.isHot = true
@@ -153,7 +231,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 
 			// Emit continue event to allow execution to proceed
 			this.emit("continue")
-			return
+			return ""
 		}
 
 		let preOutput = ""
@@ -209,7 +287,8 @@ export class TerminalProcess extends BaseTerminalProcess {
 		this.terminal.setActiveStream(undefined)
 
 		// Wait for shell execution to complete.
-		await shellExecutionComplete
+		const exitDetails = await shellExecutionComplete
+		this.lastExitCode = exitDetails.exitCode
 
 		this.isHot = false
 
@@ -237,7 +316,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 			this.continue()
 
 			// Return early since we can't process output without shell integration markers
-			return
+			return ""
 		}
 
 		// fullOutput begins after C marker so we only need to trim off D marker
@@ -253,8 +332,16 @@ export class TerminalProcess extends BaseTerminalProcess {
 		// command is finished, we still want to consider it 'hot' in case
 		// so that api request stalls to let diagnostics catch up").
 		this.stopHotTimer()
+
+		// For compound commands, we handle completion differently
+		if (!emitStarted) {
+			// Return output without emitting completion (handled by runCompoundCommand)
+			return this.removeEscapeSequences(this.fullOutput)
+		}
+
 		this.emit("completed", this.removeEscapeSequences(this.fullOutput))
 		this.emit("continue")
+		return this.removeEscapeSequences(this.fullOutput)
 	}
 
 	public override continue() {
