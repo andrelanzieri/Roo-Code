@@ -32,6 +32,7 @@ vitest.mock("path", async () => {
 
 const mockQdrantClientInstance = {
 	getCollection: vitest.fn(),
+	getCollections: vitest.fn(), // Add this for testConnection method
 	createCollection: vitest.fn(),
 	deleteCollection: vitest.fn(),
 	createPayloadIndex: vitest.fn(),
@@ -514,6 +515,8 @@ describe("QdrantVectorStore", () => {
 
 	describe("initialize", () => {
 		it("should create a new collection if none exists and return true", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			// Mock getCollection to throw a 404-like error
 			mockQdrantClientInstance.getCollection.mockRejectedValue({
 				response: { status: 404 },
@@ -546,6 +549,8 @@ describe("QdrantVectorStore", () => {
 			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(5)
 		})
 		it("should not create a new collection if one exists with matching vectorSize and return false", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			// Mock getCollection to return existing collection info with matching vector size
 			mockQdrantClientInstance.getCollection.mockResolvedValue({
 				config: {
@@ -577,6 +582,8 @@ describe("QdrantVectorStore", () => {
 		})
 		it("should recreate collection if it exists but vectorSize mismatches and return true", async () => {
 			const differentVectorSize = 768
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			// Mock getCollection to return existing collection info with different vector size first,
 			// then return 404 to confirm deletion
 			mockQdrantClientInstance.getCollection
@@ -597,6 +604,7 @@ describe("QdrantVectorStore", () => {
 			mockQdrantClientInstance.createCollection.mockResolvedValue(true as any)
 			mockQdrantClientInstance.createPayloadIndex.mockResolvedValue({} as any)
 			vitest.spyOn(console, "warn").mockImplementation(() => {}) // Suppress console.warn
+			vitest.spyOn(console, "log").mockImplementation(() => {}) // Suppress console.log
 
 			const result = await vectorStore.initialize()
 
@@ -622,11 +630,15 @@ describe("QdrantVectorStore", () => {
 			}
 			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(5)
 			;(console.warn as any).mockRestore() // Restore console.warn
+			;(console.log as any).mockRestore() // Restore console.log
 		})
 		it("should log warning for non-404 errors but still create collection", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			const genericError = new Error("Generic Qdrant Error")
 			mockQdrantClientInstance.getCollection.mockRejectedValue(genericError)
 			vitest.spyOn(console, "warn").mockImplementation(() => {}) // Suppress console.warn
+			vitest.spyOn(console, "log").mockImplementation(() => {}) // Suppress console.log
 
 			const result = await vectorStore.initialize()
 
@@ -635,11 +647,12 @@ describe("QdrantVectorStore", () => {
 			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
 			expect(mockQdrantClientInstance.deleteCollection).not.toHaveBeenCalled()
 			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(5)
-			expect(console.warn).toHaveBeenCalledWith(
-				expect.stringContaining(`Warning during getCollectionInfo for "${expectedCollectionName}"`),
-				genericError.message,
+			// Check that the collection creation was logged
+			expect(console.log).toHaveBeenCalledWith(
+				expect.stringContaining(`Creating new collection "${expectedCollectionName}"`),
 			)
 			;(console.warn as any).mockRestore()
+			;(console.log as any).mockRestore()
 		})
 		it("should re-throw error from createCollection when no collection initially exists", async () => {
 			mockQdrantClientInstance.getCollection.mockRejectedValue({
@@ -663,6 +676,8 @@ describe("QdrantVectorStore", () => {
 			;(console.error as any).mockRestore()
 		})
 		it("should log but not fail if payload index creation errors occur", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			// Mock successful collection creation
 			mockQdrantClientInstance.getCollection.mockRejectedValue({
 				response: { status: 404 },
@@ -674,6 +689,7 @@ describe("QdrantVectorStore", () => {
 			const indexError = new Error("Index creation failed")
 			mockQdrantClientInstance.createPayloadIndex.mockRejectedValue(indexError)
 			vitest.spyOn(console, "warn").mockImplementation(() => {}) // Suppress console.warn
+			vitest.spyOn(console, "log").mockImplementation(() => {}) // Suppress console.log
 
 			const result = await vectorStore.initialize()
 
@@ -685,18 +701,19 @@ describe("QdrantVectorStore", () => {
 			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(5)
 
 			// Verify warnings were logged for each failed index
-			expect(console.warn).toHaveBeenCalledTimes(5)
-			for (let i = 0; i <= 4; i++) {
-				expect(console.warn).toHaveBeenCalledWith(
-					expect.stringContaining(`Could not create payload index for pathSegments.${i}`),
-					indexError.message,
-				)
-			}
-
+			// Note: There might be additional warnings from the new logging
+			expect(console.warn).toHaveBeenCalled()
+			// Check that warnings were logged for failed indexes
+			const warnCalls = (console.warn as any).mock.calls
+			const indexWarnings = warnCalls.filter((call: any[]) => call[0]?.includes("Could not create payload index"))
+			expect(indexWarnings).toHaveLength(5)
 			;(console.warn as any).mockRestore()
+			;(console.log as any).mockRestore()
 		})
 
 		it("should throw vectorDimensionMismatch error when deleteCollection fails during recreation", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			const differentVectorSize = 768
 			mockQdrantClientInstance.getCollection.mockResolvedValue({
 				config: {
@@ -712,6 +729,7 @@ describe("QdrantVectorStore", () => {
 			mockQdrantClientInstance.deleteCollection.mockRejectedValue(deleteError)
 			vitest.spyOn(console, "error").mockImplementation(() => {})
 			vitest.spyOn(console, "warn").mockImplementation(() => {})
+			vitest.spyOn(console, "log").mockImplementation(() => {})
 
 			// The error should have a cause property set to the original error
 			let caughtError: any
@@ -734,9 +752,12 @@ describe("QdrantVectorStore", () => {
 			expect(console.error).toHaveBeenCalledTimes(2) // One for the critical error, one for the outer catch
 			;(console.error as any).mockRestore()
 			;(console.warn as any).mockRestore()
+			;(console.log as any).mockRestore()
 		})
 
 		it("should throw vectorDimensionMismatch error when createCollection fails during recreation", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			const differentVectorSize = 768
 			mockQdrantClientInstance.getCollection
 				.mockResolvedValueOnce({
@@ -760,6 +781,7 @@ describe("QdrantVectorStore", () => {
 			mockQdrantClientInstance.createCollection.mockRejectedValue(createError)
 			vitest.spyOn(console, "error").mockImplementation(() => {})
 			vitest.spyOn(console, "warn").mockImplementation(() => {})
+			vitest.spyOn(console, "log").mockImplementation(() => {})
 
 			// Should throw an error with cause property set to the original error
 			let caughtError: any
@@ -777,14 +799,18 @@ describe("QdrantVectorStore", () => {
 			expect(mockQdrantClientInstance.deleteCollection).toHaveBeenCalledTimes(1)
 			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
 			expect(mockQdrantClientInstance.createPayloadIndex).not.toHaveBeenCalled()
-			// Should log warning, critical error, and outer error
-			expect(console.warn).toHaveBeenCalledTimes(1)
+			// Should log warnings and errors
+			expect(console.warn).toHaveBeenCalled()
+			expect(console.log).toHaveBeenCalled()
 			expect(console.error).toHaveBeenCalledTimes(2)
 			;(console.error as any).mockRestore()
 			;(console.warn as any).mockRestore()
+			;(console.log as any).mockRestore()
 		})
 
 		it("should verify collection deletion before proceeding with recreation", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			const differentVectorSize = 768
 			mockQdrantClientInstance.getCollection
 				.mockResolvedValueOnce({
@@ -806,6 +832,7 @@ describe("QdrantVectorStore", () => {
 			mockQdrantClientInstance.createCollection.mockResolvedValue(true as any)
 			mockQdrantClientInstance.createPayloadIndex.mockResolvedValue({} as any)
 			vitest.spyOn(console, "warn").mockImplementation(() => {})
+			vitest.spyOn(console, "log").mockImplementation(() => {})
 
 			const result = await vectorStore.initialize()
 
@@ -816,9 +843,12 @@ describe("QdrantVectorStore", () => {
 			expect(mockQdrantClientInstance.createCollection).toHaveBeenCalledTimes(1)
 			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(5)
 			;(console.warn as any).mockRestore()
+			;(console.log as any).mockRestore()
 		})
 
 		it("should throw error if collection still exists after deletion attempt", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			const differentVectorSize = 768
 			mockQdrantClientInstance.getCollection
 				.mockResolvedValueOnce({
@@ -844,6 +874,7 @@ describe("QdrantVectorStore", () => {
 			mockQdrantClientInstance.deleteCollection.mockResolvedValue(true as any)
 			vitest.spyOn(console, "error").mockImplementation(() => {})
 			vitest.spyOn(console, "warn").mockImplementation(() => {})
+			vitest.spyOn(console, "log").mockImplementation(() => {})
 
 			let caughtError: any
 			try {
@@ -863,9 +894,12 @@ describe("QdrantVectorStore", () => {
 			expect(mockQdrantClientInstance.createPayloadIndex).not.toHaveBeenCalled()
 			;(console.error as any).mockRestore()
 			;(console.warn as any).mockRestore()
+			;(console.log as any).mockRestore()
 		})
 
 		it("should handle dimension mismatch scenario from 2048 to 768 dimensions", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			// Simulate the exact scenario from the issue: switching from 2048 to 768 dimensions
 			const oldVectorSize = 2048
 			const newVectorSize = 768
@@ -893,6 +927,7 @@ describe("QdrantVectorStore", () => {
 			mockQdrantClientInstance.createCollection.mockResolvedValue(true as any)
 			mockQdrantClientInstance.createPayloadIndex.mockResolvedValue({} as any)
 			vitest.spyOn(console, "warn").mockImplementation(() => {})
+			vitest.spyOn(console, "log").mockImplementation(() => {})
 
 			const result = await newVectorStore.initialize()
 
@@ -907,9 +942,12 @@ describe("QdrantVectorStore", () => {
 			})
 			expect(mockQdrantClientInstance.createPayloadIndex).toHaveBeenCalledTimes(5)
 			;(console.warn as any).mockRestore()
+			;(console.log as any).mockRestore()
 		})
 
 		it("should provide detailed error context for different failure scenarios", async () => {
+			// Mock getCollections for testConnection
+			mockQdrantClientInstance.getCollections.mockResolvedValue({ collections: [] })
 			const differentVectorSize = 768
 			mockQdrantClientInstance.getCollection.mockResolvedValue({
 				config: {
@@ -926,6 +964,7 @@ describe("QdrantVectorStore", () => {
 			mockQdrantClientInstance.deleteCollection.mockRejectedValue(deleteError)
 			vitest.spyOn(console, "error").mockImplementation(() => {})
 			vitest.spyOn(console, "warn").mockImplementation(() => {})
+			vitest.spyOn(console, "log").mockImplementation(() => {})
 
 			let caughtError: any
 			try {
@@ -942,6 +981,7 @@ describe("QdrantVectorStore", () => {
 			expect(caughtError.cause).toBe(deleteError)
 			;(console.error as any).mockRestore()
 			;(console.warn as any).mockRestore()
+			;(console.log as any).mockRestore()
 		})
 	})
 
@@ -976,16 +1016,22 @@ describe("QdrantVectorStore", () => {
 		const genericError = new Error("Network error")
 		mockQdrantClientInstance.getCollection.mockRejectedValue(genericError)
 		vitest.spyOn(console, "warn").mockImplementation(() => {})
+		vitest.spyOn(console, "error").mockImplementation(() => {})
 
 		const result = await vectorStore.collectionExists()
 
 		expect(result).toBe(false)
-		expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(1)
-		expect(console.warn).toHaveBeenCalledWith(
-			expect.stringContaining(`Warning during getCollectionInfo for "${expectedCollectionName}"`),
+		// 4 calls: 1 initial + 3 retries
+		expect(mockQdrantClientInstance.getCollection).toHaveBeenCalledTimes(4)
+		// The warning is now an error after retries fail
+		expect(console.error).toHaveBeenCalledWith(
+			expect.stringContaining(
+				`Failed to connect to Qdrant after 3 retries for collection "${expectedCollectionName}"`,
+			),
 			genericError.message,
 		)
 		;(console.warn as any).mockRestore()
+		;(console.error as any).mockRestore()
 	})
 	describe("deleteCollection", () => {
 		it("should delete collection when it exists", async () => {

@@ -127,7 +127,14 @@ export class CodeIndexOrchestrator {
 			const collectionCreated = await this.vectorStore.initialize()
 
 			if (collectionCreated) {
+				console.log(
+					"[CodeIndexOrchestrator] New collection was created, clearing cache file to force full reindex",
+				)
 				await this.cacheManager.clearCacheFile()
+			} else {
+				console.log(
+					"[CodeIndexOrchestrator] Using existing collection, preserving cache for incremental updates",
+				)
 			}
 
 			this.stateManager.setSystemState("Indexing", "Services ready. Starting workspace scan...")

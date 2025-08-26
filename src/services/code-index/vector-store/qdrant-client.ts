@@ -125,19 +125,73 @@ export class QdrantVectorStore implements IVectorStore {
 		}
 	}
 
-	private async getCollectionInfo(): Promise<Schemas["CollectionInfo"] | null> {
+	private async getCollectionInfo(retryCount: number = 0): Promise<Schemas["CollectionInfo"] | null> {
+		const maxRetries = 3
+		const retryDelay = 1000 * Math.pow(2, retryCount) // Exponential backoff: 1s, 2s, 4s
+
 		try {
 			const collectionInfo = await this.client.getCollection(this.collectionName)
 			return collectionInfo
 		} catch (error: unknown) {
-			if (error instanceof Error) {
+			const errorMessage = error instanceof Error ? error.message : String(error)
+			const isConnectionError = this.isConnectionError(errorMessage)
+
+			// If it's a connection error and we haven't exceeded retries, retry
+			if (isConnectionError && retryCount < maxRetries) {
 				console.warn(
-					`[QdrantVectorStore] Warning during getCollectionInfo for "${this.collectionName}". Collection may not exist or another error occurred:`,
-					error.message,
+					`[QdrantVectorStore] Connection error during getCollectionInfo for "${this.collectionName}". Retrying in ${retryDelay}ms... (attempt ${retryCount + 1}/${maxRetries})`,
+					errorMessage,
+				)
+				await new Promise((resolve) => setTimeout(resolve, retryDelay))
+				return this.getCollectionInfo(retryCount + 1)
+			}
+
+			// Log different messages based on error type
+			if (isConnectionError) {
+				console.error(
+					`[QdrantVectorStore] Failed to connect to Qdrant after ${maxRetries} retries for collection "${this.collectionName}":`,
+					errorMessage,
+				)
+			} else if (this.isNotFoundError(errorMessage)) {
+				// Collection doesn't exist - this is expected for first-time setup
+				console.log(`[QdrantVectorStore] Collection "${this.collectionName}" does not exist. Will create it.`)
+			} else {
+				console.warn(
+					`[QdrantVectorStore] Unexpected error during getCollectionInfo for "${this.collectionName}":`,
+					errorMessage,
 				)
 			}
+
 			return null
 		}
+	}
+
+	/**
+	 * Checks if an error message indicates a connection failure
+	 */
+	private isConnectionError(errorMessage: string): boolean {
+		const connectionErrorPatterns = [
+			"ECONNREFUSED",
+			"ETIMEDOUT",
+			"ENOTFOUND",
+			"ENETUNREACH",
+			"EHOSTUNREACH",
+			"ECONNRESET",
+			"fetch failed",
+			"network",
+			"connect",
+		]
+		const lowerMessage = errorMessage.toLowerCase()
+		return connectionErrorPatterns.some((pattern) => lowerMessage.includes(pattern.toLowerCase()))
+	}
+
+	/**
+	 * Checks if an error message indicates the collection was not found
+	 */
+	private isNotFoundError(errorMessage: string): boolean {
+		const notFoundPatterns = ["404", "not found", "doesn't exist", "does not exist"]
+		const lowerMessage = errorMessage.toLowerCase()
+		return notFoundPatterns.some((pattern) => lowerMessage.includes(pattern.toLowerCase()))
 	}
 
 	/**
@@ -147,10 +201,17 @@ export class QdrantVectorStore implements IVectorStore {
 	async initialize(): Promise<boolean> {
 		let created = false
 		try {
+			// Add initial connection test with retry
+			await this.testConnection()
+
 			const collectionInfo = await this.getCollectionInfo()
 
 			if (collectionInfo === null) {
-				// Collection info not retrieved (assume not found or inaccessible), create it
+				// Only create collection if we're sure it doesn't exist (not just a connection issue)
+				// The getCollectionInfo method now handles retries for connection issues
+				console.log(
+					`[QdrantVectorStore] Creating new collection "${this.collectionName}" with vector size ${this.vectorSize}`,
+				)
 				await this.client.createCollection(this.collectionName, {
 					vectors: {
 						size: this.vectorSize,
@@ -158,7 +219,9 @@ export class QdrantVectorStore implements IVectorStore {
 					},
 				})
 				created = true
+				console.log(`[QdrantVectorStore] Successfully created collection "${this.collectionName}"`)
 			} else {
+				console.log(`[QdrantVectorStore] Collection "${this.collectionName}" already exists`)
 				// Collection exists, check vector size
 				const vectorsConfig = collectionInfo.config?.params?.vectors
 				let existingVectorSize: number
@@ -204,6 +267,41 @@ export class QdrantVectorStore implements IVectorStore {
 				t("embeddings:vectorStore.qdrantConnectionFailed", { qdrantUrl: this.qdrantUrl, errorMessage }),
 			)
 		}
+	}
+
+	/**
+	 * Tests the connection to Qdrant with retries
+	 */
+	private async testConnection(): Promise<void> {
+		const maxRetries = 3
+		let lastError: Error | null = null
+
+		for (let i = 0; i < maxRetries; i++) {
+			try {
+				// Try to get collections list as a connection test
+				await this.client.getCollections()
+				console.log(`[QdrantVectorStore] Successfully connected to Qdrant at ${this.qdrantUrl}`)
+				return
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error))
+				const retryDelay = 1000 * Math.pow(2, i) // Exponential backoff
+				console.warn(
+					`[QdrantVectorStore] Failed to connect to Qdrant (attempt ${i + 1}/${maxRetries}). Retrying in ${retryDelay}ms...`,
+					lastError.message,
+				)
+				if (i < maxRetries - 1) {
+					await new Promise((resolve) => setTimeout(resolve, retryDelay))
+				}
+			}
+		}
+
+		// If we get here, all retries failed
+		throw new Error(
+			t("embeddings:vectorStore.qdrantConnectionFailed", {
+				qdrantUrl: this.qdrantUrl,
+				errorMessage: lastError?.message || "Connection failed after multiple retries",
+			}),
+		)
 	}
 
 	/**
