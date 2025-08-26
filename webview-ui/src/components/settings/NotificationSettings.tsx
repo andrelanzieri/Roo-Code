@@ -63,7 +63,7 @@ export const NotificationSettings = ({
 					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-2">
 						{t("settings:notifications.system.description")}
 					</div>
-					{systemNotificationsEnabled && !isChangeDetected && (
+					{systemNotificationsEnabled && (
 						<VSCodeButton
 							appearance="secondary"
 							onClick={onTestNotificationClick}
