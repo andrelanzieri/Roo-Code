@@ -27,7 +27,7 @@ export abstract class BaseTerminal implements RooTerminal {
 	// Compound command tracking
 	public isCompoundCommand: boolean = false
 	public compoundProcessCompletions: CompoundProcessCompletion[] = []
-	private expectedCompoundProcessCount: number = 0
+	public expectedCompoundProcessCount: number = 0
 	private compoundCommandWaitTimeout?: NodeJS.Timeout
 
 	constructor(provider: RooTerminalProvider, id: number, cwd: string) {
@@ -80,6 +80,16 @@ export abstract class BaseTerminal implements RooTerminal {
 	 * @param command The command to check
 	 */
 	public detectCompoundCommand(command: string): void {
+		// Reset previous compound command state
+		this.compoundProcessCompletions = []
+		this.expectedCompoundProcessCount = 0
+
+		// Clear any existing timeout
+		if (this.compoundCommandWaitTimeout) {
+			clearTimeout(this.compoundCommandWaitTimeout)
+			this.compoundCommandWaitTimeout = undefined
+		}
+
 		// Common shell operators that create compound commands
 		const compoundOperators = ["&&", "||", ";", "|", "&"]
 
@@ -99,7 +109,8 @@ export abstract class BaseTerminal implements RooTerminal {
 			const orMatches = command.match(/\|\|/g)
 			const semiMatches = command.match(/;/g)
 			const pipeMatches = command.match(/\|(?!\|)/g) // Match single | but not ||
-			const bgMatches = command.match(/&(?!&)/g) // Match single & but not &&
+			// Match single & but not &&, and not preceded by &
+			const bgMatches = command.match(/(?<!&)&(?!&)/g)
 
 			if (andMatches) processCount += andMatches.length
 			if (orMatches) processCount += orMatches.length
@@ -123,9 +134,6 @@ export abstract class BaseTerminal implements RooTerminal {
 					this.finalizeCompoundCommand()
 				}
 			}, 10000) // 10 second timeout for compound commands
-		} else {
-			this.compoundProcessCompletions = []
-			this.expectedCompoundProcessCount = 0
 		}
 	}
 
@@ -152,7 +160,8 @@ export abstract class BaseTerminal implements RooTerminal {
 		)
 
 		// Check if all expected processes have completed
-		if (this.compoundProcessCompletions.length >= this.expectedCompoundProcessCount) {
+		// Note: We check this after adding, so the finalization happens after the last process is added
+		if (this.allCompoundProcessesComplete()) {
 			console.info(`[Terminal ${this.id}] All compound processes complete, finalizing`)
 			this.finalizeCompoundCommand()
 		}
@@ -201,7 +210,7 @@ export abstract class BaseTerminal implements RooTerminal {
 	/**
 	 * Finalizes a compound command execution
 	 */
-	private finalizeCompoundCommand(): void {
+	public finalizeCompoundCommand(): void {
 		// Clear the timeout if it exists
 		if (this.compoundCommandWaitTimeout) {
 			clearTimeout(this.compoundCommandWaitTimeout)
@@ -216,13 +225,18 @@ export abstract class BaseTerminal implements RooTerminal {
 			`[Terminal ${this.id}] Finalizing compound command with ${this.compoundProcessCompletions.length} processes`,
 		)
 
-		// Reset compound command tracking
+		// Reset compound command tracking BEFORE calling shellExecutionComplete
+		// to prevent re-entrance issues
+		const wasCompound = this.isCompoundCommand
 		this.isCompoundCommand = false
 		this.compoundProcessCompletions = []
 		this.expectedCompoundProcessCount = 0
 
 		// Complete the terminal process with the final exit details
-		this.shellExecutionComplete(finalExitDetails)
+		// Only if we were actually tracking a compound command
+		if (wasCompound) {
+			this.shellExecutionComplete(finalExitDetails)
+		}
 	}
 
 	/**

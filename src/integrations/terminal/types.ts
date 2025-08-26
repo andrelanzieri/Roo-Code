@@ -17,6 +17,7 @@ export interface RooTerminal {
 	process?: RooTerminalProcess
 	isCompoundCommand: boolean
 	compoundProcessCompletions: CompoundProcessCompletion[]
+	expectedCompoundProcessCount?: number
 	getCurrentWorkingDirectory(): string
 	isClosed: () => boolean
 	runCommand: (command: string, callbacks: RooTerminalCallbacks) => RooTerminalProcessResultPromise
@@ -30,6 +31,7 @@ export interface RooTerminal {
 	addCompoundProcessCompletion(exitDetails: ExitCodeDetails, command: string): void
 	allCompoundProcessesComplete(): boolean
 	getCompoundProcessOutputs(): string
+	finalizeCompoundCommand(): void
 }
 
 export interface RooTerminalCallbacks {

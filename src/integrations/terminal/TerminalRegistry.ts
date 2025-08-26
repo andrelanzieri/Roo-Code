@@ -95,16 +95,38 @@ export class TerminalRegistry {
 					}
 
 					// For compound commands, we need to track if this is just one part of a multi-process command
-					// Check if the terminal has pending compound processes
-					if (terminal.isCompoundCommand && !terminal.allCompoundProcessesComplete()) {
-						console.info(
-							"[TerminalRegistry] Compound command process completed, waiting for remaining processes:",
-							{ terminalId: terminal.id, command: e.execution?.commandLine?.value, exitCode: e.exitCode },
-						)
+					if (terminal.isCompoundCommand) {
+						// Check if this is the last process before adding the completion
+						const wasLastProcess =
+							terminal.compoundProcessCompletions.length ===
+							(terminal.expectedCompoundProcessCount || 0) - 1
 
-						// Store this process completion but don't mark terminal as not busy yet
+						// Store this process completion
+						// This may trigger finalization if it's the last process
 						terminal.addCompoundProcessCompletion(exitDetails, e.execution?.commandLine?.value || "")
-						return
+
+						// If this was the last process, the compound command has been finalized
+						// and terminal.busy has been set to false by finalizeCompoundCommand
+						if (wasLastProcess) {
+							console.info("[TerminalRegistry] All compound command processes completed and finalized:", {
+								terminalId: terminal.id,
+								busy: terminal.busy,
+							})
+							// The terminal has been finalized, just return
+							return
+						} else {
+							console.info(
+								"[TerminalRegistry] Compound command process completed, waiting for remaining processes:",
+								{
+									terminalId: terminal.id,
+									command: e.execution?.commandLine?.value,
+									exitCode: e.exitCode,
+									completedCount: terminal.compoundProcessCompletions.length,
+								},
+							)
+							// Still waiting for more processes
+							return
+						}
 					}
 
 					if (!terminal.running) {
@@ -115,8 +137,7 @@ export class TerminalRegistry {
 								"[TerminalRegistry] Shell execution end event received before terminal marked as running (compound command scenario):",
 								{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
 							)
-							// Store this completion for later processing
-							terminal.addCompoundProcessCompletion(exitDetails, e.execution?.commandLine?.value || "")
+							// Already stored this completion above
 						} else {
 							console.error(
 								"[TerminalRegistry] Shell execution end event received, but process is not running for terminal:",
@@ -137,6 +158,7 @@ export class TerminalRegistry {
 					}
 
 					// Signal completion to any waiting processes.
+					// For compound commands, this will use the finalized exit details from all processes
 					terminal.shellExecutionComplete(exitDetails)
 					terminal.busy = false // Mark terminal as not busy when shell execution ends
 				},

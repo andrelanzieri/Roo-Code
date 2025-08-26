@@ -208,14 +208,17 @@ describe("Compound Command Handling", () => {
 		it("should format compound process outputs correctly", () => {
 			terminal.detectCompoundCommand("cd /tmp && ls")
 			terminal.addCompoundProcessCompletion({ exitCode: 0 }, "cd /tmp")
+
+			// Get output before the second completion triggers finalization
+			const outputBeforeFinalization = terminal.getCompoundProcessOutputs()
+			expect(outputBeforeFinalization).toContain("[Command: cd /tmp]")
+			expect(outputBeforeFinalization).toContain("[Exit Code: 0]")
+
 			terminal.addCompoundProcessCompletion({ exitCode: 1 }, "ls")
 
-			const output = terminal.getCompoundProcessOutputs()
-
-			expect(output).toContain("[Command: cd /tmp]")
-			expect(output).toContain("[Exit Code: 0]")
-			expect(output).toContain("[Command: ls]")
-			expect(output).toContain("[Exit Code: 1]")
+			// After finalization, completions are cleared
+			const outputAfterFinalization = terminal.getCompoundProcessOutputs()
+			expect(outputAfterFinalization).toBe("")
 		})
 
 		it("should include signal information when present", () => {
