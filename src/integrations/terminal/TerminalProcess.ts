@@ -13,7 +13,6 @@ import { inspect } from "util"
 import type { ExitCodeDetails } from "./types"
 import { BaseTerminalProcess } from "./BaseTerminalProcess"
 import { Terminal } from "./Terminal"
-import { parseCommand, CommandSegment } from "./commandParser"
 
 export class TerminalProcess extends BaseTerminalProcess {
 	private terminalRef: WeakRef<Terminal>
@@ -73,35 +72,16 @@ export class TerminalProcess extends BaseTerminalProcess {
 			return
 		}
 
-		// Parse the command to check for compound operators
-		const parsedCommand = parseCommand(command)
-
-		if (parsedCommand.isCompound) {
-			console.info(`[TerminalProcess] Detected compound command with ${parsedCommand.segments.length} segments`)
-			console.info(`[TerminalProcess] Executing compound command as a single shell command to preserve context`)
-			// Execute compound commands as a single command to preserve shell context
-			// This ensures operators like && and || work correctly and state is maintained
-			await this.runSingleCommand(command)
-			return
+		// Check if command contains compound operators (&&, ||, ;, |)
+		if (this.isCompoundCommand(command)) {
+			console.info(
+				`[TerminalProcess] Detected compound command, executing as single shell command to preserve context`,
+			)
 		}
 
-		// Execute single command as before
+		// Execute all commands (simple or compound) through shell integration
+		// This preserves shell context for compound commands (e.g., cd affects subsequent commands)
 		await this.runSingleCommand(command)
-	}
-
-	/**
-	 * @deprecated This method is no longer used. Compound commands are now executed
-	 * as a single shell command to preserve context and proper operator behavior.
-	 * Keeping for reference only.
-	 *
-	 * Previously attempted to execute compound commands by splitting them into segments,
-	 * but this approach lost shell context between commands (e.g., cd wouldn't affect
-	 * subsequent commands).
-	 */
-	private async runCompoundCommand_DEPRECATED(segments: CommandSegment[]) {
-		// This method is intentionally left empty and deprecated
-		// Compound commands are now handled by executing them as a single command
-		throw new Error("runCompoundCommand is deprecated. Compound commands should be executed as a single command.")
 	}
 
 	private lastExitCode?: number
@@ -507,5 +487,64 @@ export class TerminalProcess extends BaseTerminalProcess {
 		}
 
 		return match133 !== undefined ? match133 : match633
+	}
+
+	/**
+	 * Checks if a command contains compound operators (&&, ||, ;, |)
+	 * that would typically spawn multiple processes.
+	 *
+	 * @param command The command string to check
+	 * @returns True if the command contains compound operators
+	 */
+	private isCompoundCommand(command: string): boolean {
+		// Quick check for compound operators outside of quotes
+		let inSingleQuote = false
+		let inDoubleQuote = false
+		let escaped = false
+
+		for (let i = 0; i < command.length; i++) {
+			const char = command[i]
+			const nextChar = command[i + 1]
+
+			// Handle escape sequences
+			if (escaped) {
+				escaped = false
+				continue
+			}
+
+			if (char === "\\" && !inSingleQuote) {
+				escaped = true
+				continue
+			}
+
+			// Handle quotes
+			if (char === "'" && !inDoubleQuote) {
+				inSingleQuote = !inSingleQuote
+				continue
+			}
+
+			if (char === '"' && !inSingleQuote) {
+				inDoubleQuote = !inDoubleQuote
+				continue
+			}
+
+			// If we're inside quotes, skip operator detection
+			if (inSingleQuote || inDoubleQuote) {
+				continue
+			}
+
+			// Check for operators (only outside quotes)
+			if (char === "&" && nextChar === "&") {
+				return true
+			} else if (char === "|" && nextChar === "|") {
+				return true
+			} else if (char === ";") {
+				return true
+			} else if (char === "|" && nextChar !== "|") {
+				return true
+			}
+		}
+
+		return false
 	}
 }

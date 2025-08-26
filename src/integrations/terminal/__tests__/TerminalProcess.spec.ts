@@ -6,7 +6,6 @@ import { mergePromise } from "../mergePromise"
 import { TerminalProcess } from "../TerminalProcess"
 import { Terminal } from "../Terminal"
 import { TerminalRegistry } from "../TerminalRegistry"
-import { parseCommand } from "../commandParser"
 
 vi.mock("execa", () => ({
 	execa: vi.fn(),
@@ -201,23 +200,6 @@ describe("TerminalProcess", () => {
 			expect(executedCommand).toBe(compoundCommand)
 			expect(mockTerminal.shellIntegration.executeCommand).toHaveBeenCalledTimes(1)
 			expect(mockTerminal.shellIntegration.executeCommand).toHaveBeenCalledWith(compoundCommand)
-		})
-
-		it("detects compound commands correctly", async () => {
-			// Test various compound command patterns
-			const testCases = [
-				{ command: "cd foo && npm test", isCompound: true },
-				{ command: "npm test || echo 'Tests failed'", isCompound: true },
-				{ command: "echo start; npm test; echo done", isCompound: true },
-				{ command: "ls -la | grep test", isCompound: true },
-				{ command: "npm test", isCompound: false },
-				{ command: "echo 'test && test'", isCompound: false }, // Quoted operators shouldn't be detected
-			]
-
-			for (const testCase of testCases) {
-				const parsed = parseCommand(testCase.command)
-				expect(parsed.isCompound).toBe(testCase.isCompound)
-			}
 		})
 
 		it("preserves shell context in compound commands", async () => {
