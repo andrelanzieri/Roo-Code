@@ -2267,7 +2267,12 @@ export class ClineProvider
 			return
 		}
 
-		const userInfo = CloudService.instance.getUserInfo()
+		await ExtensionBridgeService.handleRemoteControlState(
+			userInfo,
+			enabled,
+			{ ...bridgeConfig, provider: this as any, sessionId: vscode.env.sessionId },
+			(message: string) => this.log(message),
+		)
 
 		if (!userInfo) {
 			this.log("[ClineProvider#remoteControlEnabled] Failed to get user info, disconnecting")

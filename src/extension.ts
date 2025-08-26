@@ -191,6 +191,29 @@ export async function activate(context: vscode.ExtensionContext) {
 		)
 	}
 
+	const postStateListener = () => ClineProvider.getVisibleInstance()?.postStateToWebview()
+
+	cloudService.on("auth-state-changed", postStateListener)
+	cloudService.on("settings-updated", postStateListener)
+
+	cloudService.on("user-info", async ({ userInfo }) => {
+		postStateListener()
+
+		const bridgeConfig = await cloudService.cloudAPI?.bridgeConfig().catch(() => undefined)
+
+		if (!bridgeConfig) {
+			outputChannel.appendLine("[CloudService] Failed to get bridge config")
+			return
+		}
+
+		ExtensionBridgeService.handleRemoteControlState(
+			userInfo,
+			contextProxy.getValue("remoteControlEnabled"),
+			{ ...bridgeConfig, provider: provider as any, sessionId: vscode.env.sessionId },
+			(message: string) => outputChannel.appendLine(message),
+		)
+	})
+
 	// Add to subscriptions for proper cleanup on deactivate.
 	context.subscriptions.push(cloudService)
 
