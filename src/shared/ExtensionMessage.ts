@@ -7,22 +7,21 @@ import type {
 	TelemetrySetting,
 	Experiments,
 	ClineMessage,
-	OrganizationAllowList,
-	CloudUserInfo,
-	ShareVisibility,
+	MarketplaceItem,
+	TodoItem,
 } from "@roo-code/types"
+import type { CloudUserInfo, OrganizationAllowList, ShareVisibility } from "@roo-code/cloud"
 
 import { GitCommit } from "../utils/git"
 
 import { McpServer } from "./mcp"
 import { Mode } from "./modes"
-import { RouterModels } from "./api"
-import type { MarketplaceItem } from "@roo-code/types"
+import { ModelRecord, RouterModels } from "./api"
 
 // Command interface for frontend/backend communication
 export interface Command {
 	name: string
-	source: "global" | "project"
+	source: "global" | "project" | "built-in"
 	filePath?: string
 	description?: string
 	argumentHint?: string
@@ -41,6 +40,7 @@ export interface IndexingStatus {
 	processedItems: number
 	totalItems: number
 	currentItemUnit?: string
+	workspacePath?: string
 }
 
 export interface IndexingStatusUpdateMessage {
@@ -147,7 +147,7 @@ export interface ExtensionMessage {
 	routerModels?: RouterModels
 	openAiModels?: string[]
 	ollamaModels?: string[]
-	lmStudioModels?: string[]
+	lmStudioModels?: ModelRecord
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
 	watsonxModels?: Record<string, { dimension: number }>
 	huggingFaceModels?: Array<{
@@ -224,6 +224,7 @@ export type ExtensionState = Pick<
 	| "allowedCommands"
 	| "deniedCommands"
 	| "allowedMaxRequests"
+	| "allowedMaxCost"
 	| "browserToolEnabled"
 	| "browserViewportSize"
 	| "screenshotQuality"
@@ -271,10 +272,12 @@ export type ExtensionState = Pick<
 	| "profileThresholds"
 	| "includeDiagnosticMessages"
 	| "maxDiagnosticMessages"
+	| "remoteControlEnabled"
 > & {
 	version: string
 	clineMessages: ClineMessage[]
 	currentTaskItem?: HistoryItem
+	currentTaskTodos?: TodoItem[] // Initial todos for the current task
 	apiConfiguration?: ProviderSettings
 	uriScheme?: string
 	shouldShowAnnouncement: boolean
@@ -315,6 +318,7 @@ export type ExtensionState = Pick<
 	cloudApiUrl?: string
 	sharingEnabled: boolean
 	organizationAllowList: OrganizationAllowList
+	organizationSettingsVersion?: number
 
 	autoCondenseContext: boolean
 	autoCondenseContextPercent: number

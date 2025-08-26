@@ -36,18 +36,18 @@ type ShellToken = string | { op: string } | { command: string }
  *
  * ## Command Processing Pipeline:
  *
- * 1. **Subshell Detection**: Commands containing $() or `` are blocked if denylist exists
- * 2. **Command Parsing**: Split chained commands (&&, ||, ;, |) into individual commands
- * 3. **Pattern Matching**: For each command, find longest matching prefixes in both lists
- * 4. **Decision Logic**: Apply longest prefix match rule to determine approval/denial
- * 5. **Aggregation**: Combine decisions (any denial blocks the entire command chain)
+ * 1. **Dangerous Substitution Detection**: Commands containing dangerous patterns like ${var@P} are never auto-approved
+ * 2. **Command Parsing**: Split chained commands (&&, ||, ;, |, &) into individual commands for separate validation
+ * 3. **Pattern Matching**: For each individual command, find the longest matching prefix in both allowlist and denylist
+ * 4. **Decision Logic**: Apply longest prefix match rule - more specific (longer) matches take precedence
+ * 5. **Aggregation**: Combine individual decisions - if any command is denied, the entire chain is denied
  *
  * ## Security Considerations:
  *
- * - **Subshell Protection**: Prevents command injection via $(command), `command`, or process substitution
- * - **Chain Analysis**: Each command in a chain (cmd1 && cmd2) is validated separately
- * - **Case Insensitive**: All matching is case-insensitive for consistency
- * - **Whitespace Handling**: Commands are trimmed and normalized before matching
+ * - **Dangerous Substitution Protection**: Detects dangerous parameter expansions and escape sequences that could execute commands
+ * - **Chain Analysis**: Each command in a chain (cmd1 && cmd2) is validated separately to prevent bypassing via chaining
+ * - **Case Insensitive**: All pattern matching is case-insensitive for consistent behavior across different input styles
+ * - **Whitespace Handling**: Commands are trimmed and normalized before matching to prevent whitespace-based bypasses
  *
  * ## Configuration Merging:
  *
@@ -59,37 +59,62 @@ type ShellToken = string | { op: string } | { command: string }
  */
 
 /**
- * Detect subshell usage and command substitution patterns:
- * - $() - command substitution
- * - `` - backticks (legacy command substitution)
- * - <() - process substitution (input)
- * - >() - process substitution (output)
- * - $(()) - arithmetic expansion
- * - $[] - arithmetic expansion (alternative syntax)
+ * Detect dangerous parameter substitutions that could lead to command execution.
+ * These patterns are never auto-approved and always require explicit user approval.
  *
- * @example
- * ```typescript
- * containsSubshell("echo $(date)")     // true - command substitution
- * containsSubshell("echo `date`")      // true - backtick substitution
- * containsSubshell("diff <(sort f1)")  // true - process substitution
- * containsSubshell("echo $((1+2))")    // true - arithmetic expansion
- * containsSubshell("echo $[1+2]")      // true - arithmetic expansion (alt)
- * containsSubshell("echo hello")       // false - no subshells
- * ```
+ * Detected patterns:
+ * - ${var@P} - Prompt string expansion (interprets escape sequences and executes embedded commands)
+ * - ${var@Q} - Quote removal
+ * - ${var@E} - Escape sequence expansion
+ * - ${var@A} - Assignment statement
+ * - ${var@a} - Attribute flags
+ * - ${var=value} with escape sequences - Can embed commands via \140 (backtick), \x60, or \u0060
+ * - ${!var} - Indirect variable references
+ * - <<<$(...) or <<<`...` - Here-strings with command substitution
+ *
+ * @param source - The command string to analyze
+ * @returns true if dangerous substitution patterns are detected, false otherwise
  */
-export function containsSubshell(source: string): boolean {
-	return /(\$\()|`|(<\(|>\()|(\$\(\()|(\$\[)/.test(source)
+export function containsDangerousSubstitution(source: string): boolean {
+	// Check for dangerous parameter expansion operators that can execute commands
+	// ${var@P} - Prompt string expansion (interprets escape sequences and executes embedded commands)
+	// ${var@Q} - Quote removal
+	// ${var@E} - Escape sequence expansion
+	// ${var@A} - Assignment statement
+	// ${var@a} - Attribute flags
+	const dangerousParameterExpansion = /\$\{[^}]*@[PQEAa][^}]*\}/.test(source)
+
+	// Check for parameter expansions with assignments that could contain escape sequences
+	// ${var=value} or ${var:=value} can embed commands via escape sequences like \140 (backtick)
+	// Also check for ${var+value}, ${var:-value}, ${var:+value}, ${var:?value}
+	const parameterAssignmentWithEscapes =
+		/\$\{[^}]*[=+\-?][^}]*\\[0-7]{3}[^}]*\}/.test(source) || // octal escapes
+		/\$\{[^}]*[=+\-?][^}]*\\x[0-9a-fA-F]{2}[^}]*\}/.test(source) || // hex escapes
+		/\$\{[^}]*[=+\-?][^}]*\\u[0-9a-fA-F]{4}[^}]*\}/.test(source) // unicode escapes
+
+	// Check for indirect variable references that could execute commands
+	// ${!var} performs indirect expansion which can be dangerous with crafted variable names
+	const indirectExpansion = /\$\{![^}]+\}/.test(source)
+
+	// Check for here-strings with command substitution
+	// <<<$(...) or <<<`...` can execute commands
+	const hereStringWithSubstitution = /<<<\s*(\$\(|`)/.test(source)
+
+	// Return true if any dangerous pattern is detected
+	return (
+		dangerousParameterExpansion || parameterAssignmentWithEscapes || indirectExpansion || hereStringWithSubstitution
+	)
 }
 
 /**
  * Split a command string into individual sub-commands by
- * chaining operators (&&, ||, ;, or |) and newlines.
+ * chaining operators (&&, ||, ;, |, or &) and newlines.
  *
  * Uses shell-quote to properly handle:
  * - Quoted strings (preserves quotes)
  * - Subshell commands ($(cmd), `cmd`, <(cmd), >(cmd))
  * - PowerShell redirections (2>&1)
- * - Chain operators (&&, ||, ;, |)
+ * - Chain operators (&&, ||, ;, |, &)
  * - Newlines as command separators
  */
 export function parseCommand(command: string): string[] {
@@ -228,7 +253,7 @@ function parseCommandLine(command: string): string[] {
 
 		// Simple fallback: split by common operators
 		const fallbackCommands = processedCommand
-			.split(/(?:&&|\|\||;|\|)/)
+			.split(/(?:&&|\|\||;|\||&)/)
 			.map((cmd) => cmd.trim())
 			.filter((cmd) => cmd.length > 0)
 
@@ -253,13 +278,13 @@ function parseCommandLine(command: string): string[] {
 	for (const token of tokens) {
 		if (typeof token === "object" && "op" in token) {
 			// Chain operator - split command
-			if (["&&", "||", ";", "|"].includes(token.op)) {
+			if (["&&", "||", ";", "|", "&"].includes(token.op)) {
 				if (currentCommand.length > 0) {
 					commands.push(currentCommand.join(" "))
 					currentCommand = []
 				}
 			} else {
-				// Other operators (>, &) are part of the command
+				// Other operators (>) are part of the command
 				currentCommand.push(token.op)
 			}
 		} else if (typeof token === "string") {
@@ -435,21 +460,25 @@ export type CommandDecision = "auto_approve" | "auto_deny" | "ask_user"
  * to resolve conflicts between allowlist and denylist patterns.
  *
  * **Decision Logic:**
- * 1. **Subshell Protection**: If subshells ($() or ``) are present and denylist exists → auto-deny
- * 2. **Command Parsing**: Split command chains (&&, ||, ;, |) into individual commands
+ * 1. **Dangerous Substitution Protection**: Commands with dangerous parameter expansions are never auto-approved
+ * 2. **Command Parsing**: Split command chains (&&, ||, ;, |, &) into individual commands
  * 3. **Individual Validation**: For each sub-command, apply longest prefix match rule
  * 4. **Aggregation**: Combine decisions using "any denial blocks all" principle
  *
  * **Return Values:**
- * - `"auto_approve"`: All sub-commands are explicitly allowed
+ * - `"auto_approve"`: All sub-commands are explicitly allowed and no dangerous patterns detected
  * - `"auto_deny"`: At least one sub-command is explicitly denied
- * - `"ask_user"`: Mixed or no matches found, requires user decision
+ * - `"ask_user"`: Mixed or no matches found, requires user decision, or contains dangerous patterns
  *
  * **Examples:**
  * ```typescript
  * // Simple approval
  * getCommandDecision("git status", ["git"], [])
  * // Returns "auto_approve"
+ *
+ * // Dangerous pattern - never auto-approved
+ * getCommandDecision('echo "${var@P}"', ["echo"], [])
+ * // Returns "ask_user"
  *
  * // Longest prefix match - denial wins
  * getCommandDecision("git push origin", ["git"], ["git push"])
@@ -490,6 +519,11 @@ export function getCommandDecision(
 	// If any sub-command is denied, deny the whole command
 	if (decisions.includes("auto_deny")) {
 		return "auto_deny"
+	}
+
+	// Require explicit user approval for dangerous patterns
+	if (containsDangerousSubstitution(command)) {
+		return "ask_user"
 	}
 
 	// If all sub-commands are approved, approve the whole command
@@ -645,10 +679,10 @@ export class CommandValidator {
 		subCommands: string[]
 		allowedMatches: Array<{ command: string; match: string | null }>
 		deniedMatches: Array<{ command: string; match: string | null }>
-		hasSubshells: boolean
+		hasDangerousSubstitution: boolean
 	} {
 		const subCommands = parseCommand(command)
-		const hasSubshells = containsSubshell(command)
+		const hasDangerousSubstitution = containsDangerousSubstitution(command)
 
 		const allowedMatches = subCommands.map((cmd) => ({
 			command: cmd,
@@ -665,7 +699,7 @@ export class CommandValidator {
 			subCommands,
 			allowedMatches,
 			deniedMatches,
-			hasSubshells,
+			hasDangerousSubstitution,
 		}
 	}
 
