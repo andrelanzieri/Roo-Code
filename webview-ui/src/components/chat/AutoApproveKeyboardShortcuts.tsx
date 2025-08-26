@@ -1,22 +1,9 @@
-import { useEffect, useCallback, useMemo } from "react"
+import { useEffect, useCallback, useMemo, useRef } from "react"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { vscode } from "@src/utils/vscode"
 import { AutoApproveSetting } from "../settings/AutoApproveToggle"
 import { useAutoApprovalToggles } from "@src/hooks/useAutoApprovalToggles"
-
-// Keyboard shortcuts mapping for auto-approve options
-const KEYBOARD_SHORTCUTS: Record<string, AutoApproveSetting> = {
-	"1": "alwaysAllowReadOnly",
-	"2": "alwaysAllowWrite",
-	"3": "alwaysAllowBrowser",
-	"4": "alwaysAllowExecute",
-	"5": "alwaysAllowMcp",
-	"6": "alwaysAllowModeSwitch",
-	"7": "alwaysAllowSubtasks",
-	"8": "alwaysAllowFollowupQuestions",
-	"9": "alwaysAllowUpdateTodoList",
-	"0": "alwaysApproveResubmit",
-}
+import { KEYBOARD_SHORTCUTS, DEFAULT_KEYBOARD_CONFIG } from "@src/constants/autoApproveConstants"
 
 export const AutoApproveKeyboardShortcuts = () => {
 	const {
@@ -99,23 +86,39 @@ export const AutoApproveKeyboardShortcuts = () => {
 		],
 	)
 
+	// Store the handleToggle function in a ref to avoid re-registrations
+	const handleToggleRef = useRef(handleToggle)
 	useEffect(() => {
-		const handleKeyDown = (event: KeyboardEvent) => {
-			// Check if Alt/Option key is pressed along with a number key
-			if (event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-				const shortcut = KEYBOARD_SHORTCUTS[event.key]
-				if (shortcut) {
-					event.preventDefault()
-					handleToggle(shortcut)
-				}
-			}
+		handleToggleRef.current = handleToggle
+	}, [handleToggle])
+
+	// Stable event handler that uses the ref
+	const handleKeyDown = useCallback((event: KeyboardEvent) => {
+		// Check if keyboard shortcuts are enabled
+		if (!DEFAULT_KEYBOARD_CONFIG.enabled) {
+			return
 		}
 
+		// Support both Alt key and Ctrl+Shift key combinations based on configuration
+		const isValidModifier = DEFAULT_KEYBOARD_CONFIG.useCtrlShiftKey
+			? event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey
+			: event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+
+		if (isValidModifier) {
+			const shortcut = KEYBOARD_SHORTCUTS[event.key]
+			if (shortcut) {
+				event.preventDefault()
+				handleToggleRef.current(shortcut)
+			}
+		}
+	}, [])
+
+	useEffect(() => {
 		window.addEventListener("keydown", handleKeyDown)
 		return () => {
 			window.removeEventListener("keydown", handleKeyDown)
 		}
-	}, [handleToggle])
+	}, [handleKeyDown])
 
 	return null // This component doesn't render anything
 }

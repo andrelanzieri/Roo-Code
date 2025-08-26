@@ -3,6 +3,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { cn } from "@/lib/utils"
 import { StandardTooltip } from "@/components/ui"
 import { autoApproveSettingsConfig, AutoApproveSetting } from "../settings/AutoApproveToggle"
+import { KEYBOARD_SHORTCUTS_DISPLAY, DEFAULT_KEYBOARD_CONFIG } from "@/constants/autoApproveConstants"
 
 type AutoApproveToggles = Pick<
 	GlobalSettings,
@@ -22,20 +23,6 @@ type AutoApproveToggleDropdownProps = AutoApproveToggles & {
 	onToggle: (key: AutoApproveSetting, value: boolean) => void
 }
 
-// Keyboard shortcuts mapping
-const KEYBOARD_SHORTCUTS: Record<AutoApproveSetting, string> = {
-	alwaysAllowReadOnly: "Alt+1",
-	alwaysAllowWrite: "Alt+2",
-	alwaysAllowBrowser: "Alt+3",
-	alwaysAllowExecute: "Alt+4",
-	alwaysAllowMcp: "Alt+5",
-	alwaysAllowModeSwitch: "Alt+6",
-	alwaysAllowSubtasks: "Alt+7",
-	alwaysAllowFollowupQuestions: "Alt+8",
-	alwaysAllowUpdateTodoList: "Alt+9",
-	alwaysApproveResubmit: "Alt+0",
-}
-
 export const AutoApproveToggleDropdown = ({ onToggle, ...props }: AutoApproveToggleDropdownProps) => {
 	const { t } = useAppTranslation()
 
@@ -52,7 +39,14 @@ export const AutoApproveToggleDropdown = ({ onToggle, ...props }: AutoApproveTog
 		icon,
 		testId,
 	}: (typeof autoApproveSettingsConfig)[AutoApproveSetting]) => {
-		const tooltipContent = `${t(descriptionKey || "")} (${KEYBOARD_SHORTCUTS[key]})`
+		// Get the appropriate keyboard shortcut display based on configuration
+		const shortcutDisplay = DEFAULT_KEYBOARD_CONFIG.useCtrlShiftKey
+			? KEYBOARD_SHORTCUTS_DISPLAY[key].replace("Alt+", "Ctrl+Shift+")
+			: KEYBOARD_SHORTCUTS_DISPLAY[key]
+
+		const tooltipContent = DEFAULT_KEYBOARD_CONFIG.enabled
+			? `${t(descriptionKey || "")} (${shortcutDisplay})`
+			: t(descriptionKey || "")
 		return (
 			<StandardTooltip key={key} content={tooltipContent}>
 				<button
