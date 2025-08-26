@@ -152,4 +152,4 @@ export type GetModelsOptions =
 	| { provider: "ollama"; baseUrl?: string }
 	| { provider: "lmstudio"; baseUrl?: string }
 	| { provider: "io-intelligence"; apiKey: string }
-	| { provider: "watsonx"; apiKey: string }
+	| { provider: "watsonx"; apiKey: string; baseUrl: string }
