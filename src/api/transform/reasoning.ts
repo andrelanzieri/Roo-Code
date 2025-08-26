@@ -30,14 +30,21 @@ export const getOpenRouterReasoning = ({
 	reasoningBudget,
 	reasoningEffort,
 	settings,
-}: GetModelReasoningOptions): OpenRouterReasoningParams | undefined =>
-	shouldUseReasoningBudget({ model, settings })
-		? { max_tokens: reasoningBudget }
-		: shouldUseReasoningEffort({ model, settings })
-			? reasoningEffort
-				? { effort: reasoningEffort }
-				: undefined
-			: undefined
+}: GetModelReasoningOptions): OpenRouterReasoningParams | undefined => {
+	// If the model uses a budget-style reasoning config on OpenRouter, pass it through.
+	if (shouldUseReasoningBudget({ model, settings })) {
+		return { max_tokens: reasoningBudget! }
+	}
+
+	// Otherwise, if we support traditional reasoning effort, pass through the effort.
+	// Note: Some models (e.g., GPT‑5 via OpenRouter) may support "minimal".
+	if (shouldUseReasoningEffort({ model, settings })) {
+		if (!reasoningEffort) return undefined
+		return { effort: reasoningEffort }
+	}
+
+	return undefined
+}
 
 export const getAnthropicReasoning = ({
 	model,

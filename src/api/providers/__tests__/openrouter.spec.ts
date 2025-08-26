@@ -321,3 +321,71 @@ describe("OpenRouterHandler", () => {
 		})
 	})
 })
+
+describe("reasoning effort mapping (OpenRouter)", () => {
+	it("passes 'minimal' through in reasoning.effort for OpenRouter requests", async () => {
+		const handler = new OpenRouterHandler({
+			openRouterApiKey: "test-key",
+			openRouterModelId: "openai/o1-pro",
+			reasoningEffort: "minimal",
+		} as ApiHandlerOptions)
+
+		// Prepare a model that supports reasoning effort (not budget)
+		;(handler as any).models = {
+			"openai/o1-pro": {
+				maxTokens: 8192,
+				contextWindow: 200000,
+				supportsImages: true,
+				supportsPromptCache: true,
+				inputPrice: 0.0,
+				outputPrice: 0.0,
+				description: "o1-pro test",
+				supportsReasoningEffort: true,
+			},
+		}
+
+		// Ensure endpoints map is empty so base model info is used
+		;(handler as any).endpoints = {}
+
+		// Mock OpenAI client call
+		const mockCreate = vitest.fn().mockResolvedValue({
+			async *[Symbol.asyncIterator]() {
+				yield {
+					id: "openai/o1-pro",
+					choices: [{ delta: { content: "ok" } }],
+				}
+				yield {
+					id: "usage-id",
+					choices: [{ delta: {} }],
+					usage: { prompt_tokens: 1, completion_tokens: 1, cost: 0 },
+				}
+			},
+		})
+		;(OpenAI as any).prototype.chat = {
+			completions: { create: mockCreate },
+		} as any
+
+		const systemPrompt = "system"
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "hello" }]
+
+		// Stub fetchModel to use the handler's getModel (which applies getModelParams -> getOpenRouterReasoning)
+		const realGetModel = (handler as any).getModel.bind(handler)
+		;(handler as any).fetchModel = vitest.fn().mockImplementation(async () => realGetModel())
+
+		// Trigger a request
+		const gen = handler.createMessage(systemPrompt, messages)
+		// Drain iterator to ensure call is made
+		for await (const _ of gen) {
+			// noop
+		}
+
+		// Verify the API call included the normalized effort
+		expect(mockCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				model: "openai/o1-pro",
+				reasoning: { effort: "minimal" }, // 'minimal' should be preserved for OpenRouter
+				stream: true,
+			}),
+		)
+	})
+})
