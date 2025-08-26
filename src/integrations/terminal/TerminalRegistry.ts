@@ -95,10 +95,26 @@ export class TerminalRegistry {
 					}
 
 					if (!terminal.running) {
-						console.error(
-							"[TerminalRegistry] Shell execution end event received, but process is not running for terminal:",
-							{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
-						)
+						// This can happen with compound commands where shell integration
+						// attaches after the first command completes
+						const isCompoundCmd = process?.command && this.isCompoundCommand(process.command)
+
+						if (isCompoundCmd) {
+							console.warn(
+								"[TerminalRegistry] Shell execution end event received for compound command before terminal marked as running (race condition):",
+								{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
+							)
+
+							// If we have a process, complete it to prevent hanging
+							if (process) {
+								terminal.shellExecutionComplete(exitDetails)
+							}
+						} else {
+							console.error(
+								"[TerminalRegistry] Shell execution end event received, but process is not running for terminal:",
+								{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
+							)
+						}
 
 						terminal.busy = false
 						return
@@ -324,5 +340,29 @@ export class TerminalRegistry {
 	private static removeTerminal(id: number) {
 		ShellIntegrationManager.zshCleanupTmpDir(id)
 		this.terminals = this.terminals.filter((t) => t.id !== id)
+	}
+
+	/**
+	 * Detects if a command is a compound command (contains operators like &&, ||, ;, |, &)
+	 * @param command The command to check
+	 * @returns True if the command contains compound operators
+	 */
+	private static isCompoundCommand(command: string): boolean {
+		// Check for common shell operators that create compound commands
+		const compoundOperators = ["&&", "||", ";", "|"]
+
+		// Also check for background operator at the end
+		if (command.trimEnd().endsWith("&") && !command.trimEnd().endsWith("&&")) {
+			return true
+		}
+
+		return compoundOperators.some((op) => {
+			if (op === "|") {
+				// Check for pipe operator (not ||)
+				const pipeRegex = /(?<![|])\|(?![|])/
+				return pipeRegex.test(command)
+			}
+			return command.includes(op)
+		})
 	}
 }

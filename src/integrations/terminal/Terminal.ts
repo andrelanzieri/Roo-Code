@@ -11,6 +11,7 @@ export class Terminal extends BaseTerminal {
 	public terminal: vscode.Terminal
 
 	public cmdCounter: number = 0
+	private shellIntegrationReady: boolean = false
 
 	constructor(id: number, terminal: vscode.Terminal | undefined, cwd: string) {
 		super("vscode", id, cwd)
@@ -67,13 +68,29 @@ export class Terminal extends BaseTerminal {
 				reject(error)
 			})
 
+			// For compound commands or when shell integration is not ready,
+			// we need to ensure shell integration is fully attached
+			const isCompoundCommand = Terminal.isCompoundCommand(command)
+			const needsIntegrationWait = isCompoundCommand && !this.shellIntegrationReady
+
 			// Wait for shell integration before executing the command
 			pWaitFor(() => this.terminal.shellIntegration !== undefined, {
 				timeout: Terminal.getShellIntegrationTimeout(),
 			})
-				.then(() => {
+				.then(async () => {
 					// Clean up temporary directory if shell integration is available, zsh did its job:
 					ShellIntegrationManager.zshCleanupTmpDir(this.id)
+
+					// For compound commands on newly spawned terminals, add a small delay
+					// to ensure shell integration is fully attached after the terminal is created
+					if (needsIntegrationWait) {
+						console.info(
+							`[Terminal ${this.id}] Compound command detected on new terminal, ensuring shell integration is ready`,
+						)
+						await new Promise((resolve) => setTimeout(resolve, 100))
+					}
+
+					this.shellIntegrationReady = true
 
 					// Run the command in the terminal
 					process.run(command)
@@ -189,5 +206,45 @@ export class Terminal extends BaseTerminal {
 		}
 
 		return env
+	}
+
+	/**
+	 * Detects if a command is a compound command (contains operators like &&, ||, ;, |, &)
+	 * @param command The command to check
+	 * @returns True if the command contains compound operators
+	 */
+	public static isCompoundCommand(command: string): boolean {
+		// Check for common shell operators that create compound commands
+		// These operators can cause multiple processes to be spawned
+		const compoundOperators = [
+			"&&", // AND operator
+			"||", // OR operator
+			";", // Sequential operator
+			"|", // Pipe operator
+			"&", // Background operator (at end of command)
+		]
+
+		// Check if command contains any compound operators
+		// Be careful with pipe operator to avoid false positives in strings
+		for (const operator of compoundOperators) {
+			if (operator === "&") {
+				// Check for background operator at the end (not &&)
+				if (command.trimEnd().endsWith("&") && !command.trimEnd().endsWith("&&")) {
+					return true
+				}
+			} else if (operator === "|") {
+				// Check for pipe operator (not ||)
+				const pipeRegex = /(?<![|])\|(?![|])/
+				if (pipeRegex.test(command)) {
+					return true
+				}
+			} else {
+				if (command.includes(operator)) {
+					return true
+				}
+			}
+		}
+
+		return false
 	}
 }
