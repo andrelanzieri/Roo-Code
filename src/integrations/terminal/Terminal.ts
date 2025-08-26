@@ -46,6 +46,9 @@ export class Terminal extends BaseTerminal {
 		// from selecting the terminal for use during that time.
 		this.busy = true
 
+		// Detect if this is a compound command before creating the process
+		this.detectCompoundCommand(command)
+
 		const process = new TerminalProcess(this)
 		process.command = command
 		this.process = process

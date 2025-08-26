@@ -94,13 +94,36 @@ export class TerminalRegistry {
 						return
 					}
 
-					if (!terminal.running) {
-						console.error(
-							"[TerminalRegistry] Shell execution end event received, but process is not running for terminal:",
-							{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
+					// For compound commands, we need to track if this is just one part of a multi-process command
+					// Check if the terminal has pending compound processes
+					if (terminal.isCompoundCommand && !terminal.allCompoundProcessesComplete()) {
+						console.info(
+							"[TerminalRegistry] Compound command process completed, waiting for remaining processes:",
+							{ terminalId: terminal.id, command: e.execution?.commandLine?.value, exitCode: e.exitCode },
 						)
 
-						terminal.busy = false
+						// Store this process completion but don't mark terminal as not busy yet
+						terminal.addCompoundProcessCompletion(exitDetails, e.execution?.commandLine?.value || "")
+						return
+					}
+
+					if (!terminal.running) {
+						// For compound commands that spawn processes quickly, we might get the end event
+						// before the terminal is marked as running. Handle this gracefully.
+						if (terminal.process && terminal.isCompoundCommand) {
+							console.warn(
+								"[TerminalRegistry] Shell execution end event received before terminal marked as running (compound command scenario):",
+								{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
+							)
+							// Store this completion for later processing
+							terminal.addCompoundProcessCompletion(exitDetails, e.execution?.commandLine?.value || "")
+						} else {
+							console.error(
+								"[TerminalRegistry] Shell execution end event received, but process is not running for terminal:",
+								{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
+							)
+							terminal.busy = false
+						}
 						return
 					}
 

@@ -18,6 +18,9 @@ export class ExecaTerminal extends BaseTerminal {
 	public override runCommand(command: string, callbacks: RooTerminalCallbacks): RooTerminalProcessResultPromise {
 		this.busy = true
 
+		// Detect if this is a compound command before creating the process
+		this.detectCompoundCommand(command)
+
 		const process = new ExecaTerminalProcess(this)
 		process.command = command
 		this.process = process

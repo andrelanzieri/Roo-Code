@@ -2,6 +2,12 @@ import EventEmitter from "events"
 
 export type RooTerminalProvider = "vscode" | "execa"
 
+export interface CompoundProcessCompletion {
+	exitDetails: ExitCodeDetails
+	command: string
+	timestamp: number
+}
+
 export interface RooTerminal {
 	provider: RooTerminalProvider
 	id: number
@@ -9,6 +15,8 @@ export interface RooTerminal {
 	running: boolean
 	taskId?: string
 	process?: RooTerminalProcess
+	isCompoundCommand: boolean
+	compoundProcessCompletions: CompoundProcessCompletion[]
 	getCurrentWorkingDirectory(): string
 	isClosed: () => boolean
 	runCommand: (command: string, callbacks: RooTerminalCallbacks) => RooTerminalProcessResultPromise
@@ -18,6 +26,10 @@ export interface RooTerminal {
 	getUnretrievedOutput(): string
 	getLastCommand(): string
 	cleanCompletedProcessQueue(): void
+	detectCompoundCommand(command: string): void
+	addCompoundProcessCompletion(exitDetails: ExitCodeDetails, command: string): void
+	allCompoundProcessesComplete(): boolean
+	getCompoundProcessOutputs(): string
 }
 
 export interface RooTerminalCallbacks {

@@ -8,6 +8,7 @@ import type {
 	RooTerminalProcess,
 	RooTerminalProcessResultPromise,
 	ExitCodeDetails,
+	CompoundProcessCompletion,
 } from "./types"
 
 export abstract class BaseTerminal implements RooTerminal {
@@ -23,6 +24,12 @@ export abstract class BaseTerminal implements RooTerminal {
 	public process?: RooTerminalProcess
 	public completedProcesses: RooTerminalProcess[] = []
 
+	// Compound command tracking
+	public isCompoundCommand: boolean = false
+	public compoundProcessCompletions: CompoundProcessCompletion[] = []
+	private expectedCompoundProcessCount: number = 0
+	private compoundCommandWaitTimeout?: NodeJS.Timeout
+
 	constructor(provider: RooTerminalProvider, id: number, cwd: string) {
 		this.provider = provider
 		this.id = id
@@ -30,6 +37,8 @@ export abstract class BaseTerminal implements RooTerminal {
 		this.busy = false
 		this.running = false
 		this.streamClosed = false
+		this.isCompoundCommand = false
+		this.compoundProcessCompletions = []
 	}
 
 	public getCurrentWorkingDirectory(): string {
@@ -64,6 +73,156 @@ export abstract class BaseTerminal implements RooTerminal {
 		} else {
 			this.streamClosed = true
 		}
+	}
+
+	/**
+	 * Detects if a command is a compound command (contains operators like &&, ||, ;)
+	 * @param command The command to check
+	 */
+	public detectCompoundCommand(command: string): void {
+		// Common shell operators that create compound commands
+		const compoundOperators = ["&&", "||", ";", "|", "&"]
+
+		// Check if command contains any compound operators
+		this.isCompoundCommand = compoundOperators.some((op) => command.includes(op))
+
+		if (this.isCompoundCommand) {
+			// Estimate the number of processes (this is a heuristic, not exact)
+			// For && and ||, each operator adds one process
+			// For ;, each semicolon adds one process
+			// For |, each pipe adds one process
+			// For &, it's a background process indicator
+			let processCount = 1
+
+			// Count && and || operators
+			const andMatches = command.match(/&&/g)
+			const orMatches = command.match(/\|\|/g)
+			const semiMatches = command.match(/;/g)
+			const pipeMatches = command.match(/\|(?!\|)/g) // Match single | but not ||
+			const bgMatches = command.match(/&(?!&)/g) // Match single & but not &&
+
+			if (andMatches) processCount += andMatches.length
+			if (orMatches) processCount += orMatches.length
+			if (semiMatches) processCount += semiMatches.length
+			if (pipeMatches) processCount += pipeMatches.length
+			if (bgMatches) processCount += bgMatches.length
+
+			this.expectedCompoundProcessCount = processCount
+
+			console.info(
+				`[Terminal ${this.id}] Detected compound command with estimated ${processCount} processes:`,
+				command,
+			)
+
+			// Set a timeout to handle cases where we don't receive all expected completions
+			this.compoundCommandWaitTimeout = setTimeout(() => {
+				if (this.compoundProcessCompletions.length > 0) {
+					console.warn(
+						`[Terminal ${this.id}] Compound command timeout - processing ${this.compoundProcessCompletions.length} completions`,
+					)
+					this.finalizeCompoundCommand()
+				}
+			}, 10000) // 10 second timeout for compound commands
+		} else {
+			this.compoundProcessCompletions = []
+			this.expectedCompoundProcessCount = 0
+		}
+	}
+
+	/**
+	 * Adds a compound process completion
+	 * @param exitDetails The exit details of the completed process
+	 * @param command The command that completed
+	 */
+	public addCompoundProcessCompletion(exitDetails: ExitCodeDetails, command: string): void {
+		if (!this.isCompoundCommand) {
+			console.warn(`[Terminal ${this.id}] Received compound process completion but not tracking compound command`)
+			return
+		}
+
+		this.compoundProcessCompletions.push({
+			exitDetails,
+			command,
+			timestamp: Date.now(),
+		})
+
+		console.info(
+			`[Terminal ${this.id}] Added compound process completion ${this.compoundProcessCompletions.length}/${this.expectedCompoundProcessCount}:`,
+			command,
+		)
+
+		// Check if all expected processes have completed
+		if (this.compoundProcessCompletions.length >= this.expectedCompoundProcessCount) {
+			console.info(`[Terminal ${this.id}] All compound processes complete, finalizing`)
+			this.finalizeCompoundCommand()
+		}
+	}
+
+	/**
+	 * Checks if all compound processes have completed
+	 * @returns True if all expected processes have completed
+	 */
+	public allCompoundProcessesComplete(): boolean {
+		// If we're not tracking a compound command, consider it complete
+		if (!this.isCompoundCommand) {
+			return true
+		}
+
+		// Check if we've received completions for all expected processes
+		// We use >= because sometimes we might get more completions than expected
+		const isComplete = this.compoundProcessCompletions.length >= this.expectedCompoundProcessCount
+
+		console.info(
+			`[Terminal ${this.id}] Checking compound completion: ${this.compoundProcessCompletions.length}/${this.expectedCompoundProcessCount} = ${isComplete}`,
+		)
+
+		return isComplete
+	}
+
+	/**
+	 * Gets the combined output from all compound processes
+	 * @returns The combined output string
+	 */
+	public getCompoundProcessOutputs(): string {
+		// Combine outputs from all completed processes
+		const outputs: string[] = []
+
+		for (const completion of this.compoundProcessCompletions) {
+			outputs.push(`[Command: ${completion.command}]`)
+			outputs.push(`[Exit Code: ${completion.exitDetails.exitCode}]`)
+			if (completion.exitDetails.signalName) {
+				outputs.push(`[Signal: ${completion.exitDetails.signalName}]`)
+			}
+		}
+
+		return outputs.join("\n")
+	}
+
+	/**
+	 * Finalizes a compound command execution
+	 */
+	private finalizeCompoundCommand(): void {
+		// Clear the timeout if it exists
+		if (this.compoundCommandWaitTimeout) {
+			clearTimeout(this.compoundCommandWaitTimeout)
+			this.compoundCommandWaitTimeout = undefined
+		}
+
+		// Get the last exit details (from the final process in the chain)
+		const lastCompletion = this.compoundProcessCompletions[this.compoundProcessCompletions.length - 1]
+		const finalExitDetails = lastCompletion?.exitDetails || { exitCode: 0 }
+
+		console.info(
+			`[Terminal ${this.id}] Finalizing compound command with ${this.compoundProcessCompletions.length} processes`,
+		)
+
+		// Reset compound command tracking
+		this.isCompoundCommand = false
+		this.compoundProcessCompletions = []
+		this.expectedCompoundProcessCount = 0
+
+		// Complete the terminal process with the final exit details
+		this.shellExecutionComplete(finalExitDetails)
 	}
 
 	/**
