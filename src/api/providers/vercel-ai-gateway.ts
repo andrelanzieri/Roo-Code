@@ -20,9 +20,6 @@ import { RouterProvider } from "./router-provider"
 // Extend OpenAI's CompletionUsage to include Vercel AI Gateway specific fields
 interface VercelAiGatewayUsage extends OpenAI.CompletionUsage {
 	cache_creation_input_tokens?: number
-	prompt_tokens_details?: {
-		cached_tokens?: number
-	}
 	cost?: number
 }
 
@@ -61,7 +58,7 @@ export class VercelAiGatewayHandler extends RouterProvider implements SingleComp
 			temperature: this.supportsTemperature(modelId)
 				? (this.options.modelTemperature ?? VERCEL_AI_GATEWAY_DEFAULT_TEMPERATURE)
 				: undefined,
-			max_tokens: info.maxTokens,
+			max_completion_tokens: info.maxTokens,
 			stream: true,
 		}
 
@@ -104,7 +101,7 @@ export class VercelAiGatewayHandler extends RouterProvider implements SingleComp
 				requestOptions.temperature = this.options.modelTemperature ?? VERCEL_AI_GATEWAY_DEFAULT_TEMPERATURE
 			}
 
-			requestOptions.max_tokens = info.maxTokens
+			requestOptions.max_completion_tokens = info.maxTokens
 
 			const response = await this.client.chat.completions.create(requestOptions)
 			return response.choices[0]?.message.content || ""
