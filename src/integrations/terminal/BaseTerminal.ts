@@ -71,17 +71,25 @@ export abstract class BaseTerminal implements RooTerminal {
 	 * @param exitDetails The exit details of the shell execution
 	 */
 	public shellExecutionComplete(exitDetails: ExitCodeDetails) {
-		this.busy = false
-		this.running = false
-
+		// Only update state if we have an active process
+		// This prevents duplicate calls from affecting the state
 		if (this.process) {
+			this.running = false
+
 			// Add to the front of the queue (most recent first).
 			if (this.process.hasUnretrievedOutput()) {
 				this.completedProcesses.unshift(this.process)
 			}
 
+			// Emit the event before clearing the process reference
 			this.process.emit("shell_execution_complete", exitDetails)
+
+			// Clear the process reference
+			const completedProcess = this.process
 			this.process = undefined
+
+			// The busy state will be managed by the TerminalProcess itself
+			// to prevent race conditions with compound commands
 		}
 	}
 

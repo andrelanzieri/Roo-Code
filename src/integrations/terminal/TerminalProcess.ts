@@ -16,6 +16,8 @@ import { Terminal } from "./Terminal"
 
 export class TerminalProcess extends BaseTerminalProcess {
 	private terminalRef: WeakRef<Terminal>
+	private shellExecutionCompleteCount: number = 0
+	private hasCompleted: boolean = false
 
 	constructor(terminal: Terminal) {
 		super()
@@ -23,12 +25,20 @@ export class TerminalProcess extends BaseTerminalProcess {
 		this.terminalRef = new WeakRef(terminal)
 
 		this.once("completed", () => {
-			this.terminal.busy = false
+			// Only set busy to false if not already done
+			if (!this.hasCompleted) {
+				this.hasCompleted = true
+				this.terminal.busy = false
+			}
 		})
 
 		this.once("no_shell_integration", () => {
 			this.emit("completed", "<no shell integration>")
-			this.terminal.busy = false
+			// Only set busy to false if not already done
+			if (!this.hasCompleted) {
+				this.hasCompleted = true
+				this.terminal.busy = false
+			}
 			this.terminal.setActiveStream(undefined)
 			this.continue()
 		})
@@ -122,7 +132,15 @@ export class TerminalProcess extends BaseTerminalProcess {
 
 		// Create promise that resolves when shell execution completes for this terminal
 		const shellExecutionComplete = new Promise<ExitCodeDetails>((resolve) => {
-			this.once("shell_execution_complete", (details: ExitCodeDetails) => resolve(details))
+			this.once("shell_execution_complete", (details: ExitCodeDetails) => {
+				this.shellExecutionCompleteCount++
+				if (this.shellExecutionCompleteCount > 1) {
+					console.warn(
+						`[TerminalProcess] shell_execution_complete fired ${this.shellExecutionCompleteCount} times for command: ${command}`,
+					)
+				}
+				resolve(details)
+			})
 		})
 
 		// Execute command
