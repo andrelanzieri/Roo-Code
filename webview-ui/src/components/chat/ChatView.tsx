@@ -50,7 +50,6 @@ import BrowserSessionRow from "./BrowserSessionRow"
 import ChatRow from "./ChatRow"
 import ChatTextArea from "./ChatTextArea"
 import TaskHeader from "./TaskHeader"
-import AutoApproveMenu from "./AutoApproveMenu"
 import { AutoApproveKeyboardShortcuts } from "./AutoApproveKeyboardShortcuts"
 import SystemPromptWarning from "./SystemPromptWarning"
 import ProfileViolationWarning from "./ProfileViolationWarning"
@@ -2018,11 +2017,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				setMode={setMode}
 				modeShortcutText={modeShortcutText}
 			/>
-
-			{/* Auto-Approve Menu positioned below text area */}
-			<div className="px-3 pb-2">
-				<AutoApproveMenu />
-			</div>
 
 			{isProfileDisabled && (
 				<div className="px-3">
