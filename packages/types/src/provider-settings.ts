@@ -466,6 +466,7 @@ export const MODEL_ID_KEYS: Partial<keyof ProviderSettings>[] = [
 	"ioIntelligenceModelId",
 	"vercelAiGatewayModelId",
 	"deepInfraModelId",
+	"watsonxModelId",
 ]
 
 export const getModelId = (settings: ProviderSettings): string | undefined => {
@@ -605,6 +606,7 @@ export const dynamicProviders = [
 	"unbound",
 	"deepinfra",
 	"vercel-ai-gateway",
+	"watsonx",
 ] as const satisfies readonly ProviderName[]
 
 export type DynamicProvider = (typeof dynamicProviders)[number]
