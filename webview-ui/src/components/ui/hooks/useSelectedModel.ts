@@ -34,6 +34,8 @@ import {
 	litellmDefaultModelId,
 	claudeCodeDefaultModelId,
 	claudeCodeModels,
+	watsonxAiModels,
+	watsonxAiDefaultModelId,
 } from "@roo-code/types"
 
 import type { RouterModels } from "@roo/api"
@@ -223,6 +225,14 @@ function getSelectedModel({
 			const id = apiConfiguration.apiModelId ?? claudeCodeDefaultModelId
 			const info = claudeCodeModels[id as keyof typeof claudeCodeModels]
 			return { id, info: { ...openAiModelInfoSaneDefaults, ...info } }
+		}
+		case "watsonx": {
+			const id = apiConfiguration.apiModelId ?? watsonxAiDefaultModelId
+			const info = watsonxAiModels[id as keyof typeof watsonxAiModels]
+			return {
+				id,
+				info: info || undefined,
+			}
 		}
 		// case "anthropic":
 		// case "human-relay":

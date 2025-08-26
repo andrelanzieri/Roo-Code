@@ -110,6 +110,14 @@ function validateModelsAndKeysProvided(apiConfiguration: ProviderSettings): stri
 				return i18next.t("settings:validation.modelId")
 			}
 			break
+		case "watsonx":
+			if (!apiConfiguration.watsonxApiKey) {
+				return i18next.t("settings:validation.apiKey")
+			}
+			if (!apiConfiguration.watsonxProjectId) {
+				return i18next.t("settings:validation.projectId")
+			}
+			break
 	}
 
 	return undefined

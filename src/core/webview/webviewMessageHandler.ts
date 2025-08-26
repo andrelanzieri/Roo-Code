@@ -43,7 +43,6 @@ import { getVsCodeLmModels } from "../../api/providers/vscode-lm"
 import { openMention } from "../mentions"
 import { TelemetrySetting } from "../../shared/TelemetrySetting"
 import { getWorkspacePath } from "../../utils/path"
-import { ensureSettingsDirectoryExists } from "../../utils/globalContext"
 import { Mode, defaultModeSlug } from "../../shared/modes"
 import { getModels, flushModels } from "../../api/providers/fetchers/modelCache"
 import { GetModelsOptions } from "../../shared/api"
@@ -54,6 +53,7 @@ const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
 import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
 import { setPendingTodoList } from "../tools/updateTodoListTool"
+import { getWatsonxModels } from "../../api/providers/fetchers/watsonx"
 
 export const webviewMessageHandler = async (
 	provider: ClineProvider,
@@ -673,6 +673,29 @@ export const webviewMessageHandler = async (
 			const vsCodeLmModels = await getVsCodeLmModels()
 			// TODO: Cache like we do for OpenRouter, etc?
 			provider.postMessageToWebview({ type: "vsCodeLmModels", vsCodeLmModels })
+			break
+		case "requestWatsonxModels":
+			if (message?.values?.apiKey) {
+				try {
+					const watsonxModels = await getWatsonxModels(message.values.apiKey, message.values.projectId)
+					const formattedModels: Record<string, { dimension: number }> = {}
+					Object.entries(watsonxModels).forEach(([modelId]) => {
+						formattedModels[modelId] = {
+							dimension: 1536,
+						}
+					})
+					provider.postMessageToWebview({
+						type: "watsonxModels",
+						watsonxModels: formattedModels,
+					})
+				} catch (error) {
+					console.error("Failed to fetch watsonx models:", error)
+					provider.postMessageToWebview({
+						type: "watsonxModels",
+						watsonxModels: {},
+					})
+				}
+			}
 			break
 		case "requestHuggingFaceModels":
 			try {
@@ -2036,6 +2059,18 @@ export const webviewMessageHandler = async (
 						settings.codebaseIndexMistralApiKey,
 					)
 				}
+				if (settings.codebaseIndexWatsonxApiKey !== undefined) {
+					await provider.contextProxy.storeSecret(
+						"codebaseIndexWatsonxApiKey",
+						settings.codebaseIndexWatsonxApiKey,
+					)
+				}
+				if (settings.codebaseIndexWatsonxProjectId !== undefined) {
+					await provider.contextProxy.storeSecret(
+						"codebaseIndexWatsonxProjectId",
+						settings.codebaseIndexWatsonxProjectId,
+					)
+				}
 
 				// Send success response first - settings are saved regardless of validation
 				await provider.postMessageToWebview({
@@ -2157,6 +2192,7 @@ export const webviewMessageHandler = async (
 			))
 			const hasGeminiApiKey = !!(await provider.context.secrets.get("codebaseIndexGeminiApiKey"))
 			const hasMistralApiKey = !!(await provider.context.secrets.get("codebaseIndexMistralApiKey"))
+			const hasWatsonxApiKey = !!(await provider.context.secrets.get("codebaseIndexWatsonxApiKey"))
 
 			provider.postMessageToWebview({
 				type: "codeIndexSecretStatus",
@@ -2166,6 +2202,7 @@ export const webviewMessageHandler = async (
 					hasOpenAiCompatibleApiKey,
 					hasGeminiApiKey,
 					hasMistralApiKey,
+					hasWatsonxApiKey,
 				},
 			})
 			break

@@ -84,6 +84,8 @@ export class ProfileValidator {
 				return profile.ollamaModelId
 			case "requesty":
 				return profile.requestyModelId
+			case "watsonx":
+				return profile.watsonxModelId
 			case "human-relay":
 			case "fake-ai":
 			default:

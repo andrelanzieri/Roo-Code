@@ -14,6 +14,10 @@ export interface CodeIndexConfig {
 	openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
 	geminiOptions?: { apiKey: string }
 	mistralOptions?: { apiKey: string }
+	watsonxOptions?: {
+		codebaseIndexWatsonxApiKey: string
+		codebaseIndexWatsonxProjectId?: string
+	}
 	qdrantUrl?: string
 	qdrantApiKey?: string
 	searchMinScore?: number
@@ -35,6 +39,8 @@ export type PreviousConfigSnapshot = {
 	openAiCompatibleApiKey?: string
 	geminiApiKey?: string
 	mistralApiKey?: string
+	codebaseIndexWatsonxApiKey?: string
+	codebaseIndexWatsonxProjectId?: string
 	qdrantUrl?: string
 	qdrantApiKey?: string
 }

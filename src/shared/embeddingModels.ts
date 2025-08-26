@@ -2,7 +2,7 @@
  * Defines profiles for different embedding models, including their dimensions.
  */
 
-export type EmbedderProvider = "openai" | "ollama" | "openai-compatible" | "gemini" | "mistral" // Add other providers as needed
+export type EmbedderProvider = "openai" | "ollama" | "openai-compatible" | "gemini" | "mistral" | "watsonx" // Add other providers as needed
 
 export interface EmbeddingModelProfile {
 	dimension: number
@@ -52,6 +52,9 @@ export const EMBEDDING_MODEL_PROFILES: EmbeddingModelProfiles = {
 	},
 	mistral: {
 		"codestral-embed-2505": { dimension: 1536, scoreThreshold: 0.4 },
+	},
+	watsonx: {
+		"ibm/slate-125m-english-rtrvr-v2": { dimension: 768, scoreThreshold: 0.4 },
 	},
 }
 
@@ -142,6 +145,9 @@ export function getDefaultModelId(provider: EmbedderProvider): string {
 
 		case "mistral":
 			return "codestral-embed-2505"
+
+		case "watsonx":
+			return "ibm/slate-125m-english-rtrvr-v2"
 
 		default:
 			// Fallback for unknown providers

@@ -19,6 +19,10 @@ export class CodeIndexConfigManager {
 	private openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
 	private geminiOptions?: { apiKey: string }
 	private mistralOptions?: { apiKey: string }
+	private watsonxOptions?: {
+		codebaseIndexWatsonxApiKey: string
+		codebaseIndexWatsonxProjectId?: string
+	}
 	private qdrantUrl?: string = "http://localhost:6333"
 	private qdrantApiKey?: string
 	private searchMinScore?: number
@@ -69,6 +73,8 @@ export class CodeIndexConfigManager {
 		const openAiCompatibleApiKey = this.contextProxy?.getSecret("codebaseIndexOpenAiCompatibleApiKey") ?? ""
 		const geminiApiKey = this.contextProxy?.getSecret("codebaseIndexGeminiApiKey") ?? ""
 		const mistralApiKey = this.contextProxy?.getSecret("codebaseIndexMistralApiKey") ?? ""
+		const codebaseIndexWatsonxApiKey = this.contextProxy?.getSecret("codebaseIndexWatsonxApiKey") ?? ""
+		const codebaseIndexWatsonxProjectId = this.contextProxy?.getSecret("codebaseIndexWatsonxProjectId") ?? ""
 
 		// Update instance variables with configuration
 		this.codebaseIndexEnabled = codebaseIndexEnabled ?? true
@@ -96,14 +102,17 @@ export class CodeIndexConfigManager {
 		this.openAiOptions = { openAiNativeApiKey: openAiKey }
 
 		// Set embedder provider with support for openai-compatible
-		if (codebaseIndexEmbedderProvider === "ollama") {
+		const provider = codebaseIndexEmbedderProvider as string
+		if (provider === "ollama") {
 			this.embedderProvider = "ollama"
-		} else if (codebaseIndexEmbedderProvider === "openai-compatible") {
+		} else if (provider === "openai-compatible") {
 			this.embedderProvider = "openai-compatible"
-		} else if (codebaseIndexEmbedderProvider === "gemini") {
+		} else if (provider === "gemini") {
 			this.embedderProvider = "gemini"
-		} else if (codebaseIndexEmbedderProvider === "mistral") {
+		} else if (provider === "mistral") {
 			this.embedderProvider = "mistral"
+		} else if (provider === "watsonx") {
+			this.embedderProvider = "watsonx"
 		} else {
 			this.embedderProvider = "openai"
 		}
@@ -124,6 +133,15 @@ export class CodeIndexConfigManager {
 
 		this.geminiOptions = geminiApiKey ? { apiKey: geminiApiKey } : undefined
 		this.mistralOptions = mistralApiKey ? { apiKey: mistralApiKey } : undefined
+		if (codebaseIndexWatsonxApiKey) {
+			this.watsonxOptions = {
+				codebaseIndexWatsonxApiKey: codebaseIndexWatsonxApiKey,
+				codebaseIndexWatsonxProjectId: codebaseIndexWatsonxProjectId,
+			}
+			this.contextProxy.storeSecret("codebaseIndexWatsonxProjectId", codebaseIndexWatsonxProjectId)
+		} else {
+			this.watsonxOptions = undefined
+		}
 	}
 
 	/**
@@ -141,6 +159,10 @@ export class CodeIndexConfigManager {
 			openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
 			geminiOptions?: { apiKey: string }
 			mistralOptions?: { apiKey: string }
+			watsonxOptions?: {
+				codebaseIndexWatsonxApiKey: string
+				codebaseIndexWatsonxProjectId?: string
+			}
 			qdrantUrl?: string
 			qdrantApiKey?: string
 			searchMinScore?: number
@@ -160,6 +182,8 @@ export class CodeIndexConfigManager {
 			openAiCompatibleApiKey: this.openAiCompatibleOptions?.apiKey ?? "",
 			geminiApiKey: this.geminiOptions?.apiKey ?? "",
 			mistralApiKey: this.mistralOptions?.apiKey ?? "",
+			codebaseIndexWatsonxApiKey: this.watsonxOptions?.codebaseIndexWatsonxApiKey ?? "",
+			codebaseIndexWatsonxProjectId: this.watsonxOptions?.codebaseIndexWatsonxProjectId ?? "",
 			qdrantUrl: this.qdrantUrl ?? "",
 			qdrantApiKey: this.qdrantApiKey ?? "",
 		}
@@ -184,6 +208,7 @@ export class CodeIndexConfigManager {
 				openAiCompatibleOptions: this.openAiCompatibleOptions,
 				geminiOptions: this.geminiOptions,
 				mistralOptions: this.mistralOptions,
+				watsonxOptions: this.watsonxOptions,
 				qdrantUrl: this.qdrantUrl,
 				qdrantApiKey: this.qdrantApiKey,
 				searchMinScore: this.currentSearchMinScore,
@@ -221,6 +246,11 @@ export class CodeIndexConfigManager {
 			const qdrantUrl = this.qdrantUrl
 			const isConfigured = !!(apiKey && qdrantUrl)
 			return isConfigured
+		} else if (this.embedderProvider === "watsonx") {
+			const apiKey = this.watsonxOptions?.codebaseIndexWatsonxApiKey
+			const qdrantUrl = this.qdrantUrl
+			const isConfigured = !!(apiKey && qdrantUrl)
+			return isConfigured
 		}
 		return false // Should not happen if embedderProvider is always set correctly
 	}
@@ -255,6 +285,8 @@ export class CodeIndexConfigManager {
 		const prevModelDimension = prev?.modelDimension
 		const prevGeminiApiKey = prev?.geminiApiKey ?? ""
 		const prevMistralApiKey = prev?.mistralApiKey ?? ""
+		const prevWatsonxApiKey = prev?.codebaseIndexWatsonxApiKey ?? ""
+		const prevWatsonxProjectId = prev?.codebaseIndexWatsonxProjectId ?? ""
 		const prevQdrantUrl = prev?.qdrantUrl ?? ""
 		const prevQdrantApiKey = prev?.qdrantApiKey ?? ""
 
@@ -292,6 +324,8 @@ export class CodeIndexConfigManager {
 		const currentModelDimension = this.modelDimension
 		const currentGeminiApiKey = this.geminiOptions?.apiKey ?? ""
 		const currentMistralApiKey = this.mistralOptions?.apiKey ?? ""
+		const currentWatsonxApiKey = this.watsonxOptions?.codebaseIndexWatsonxApiKey ?? ""
+		const currentWatsonxProjectId = this.watsonxOptions?.codebaseIndexWatsonxProjectId ?? ""
 		const currentQdrantUrl = this.qdrantUrl ?? ""
 		const currentQdrantApiKey = this.qdrantApiKey ?? ""
 
@@ -315,6 +349,10 @@ export class CodeIndexConfigManager {
 		}
 
 		if (prevMistralApiKey !== currentMistralApiKey) {
+			return true
+		}
+
+		if (prevWatsonxApiKey !== currentWatsonxApiKey || prevWatsonxProjectId !== currentWatsonxProjectId) {
 			return true
 		}
 
@@ -375,6 +413,7 @@ export class CodeIndexConfigManager {
 			openAiCompatibleOptions: this.openAiCompatibleOptions,
 			geminiOptions: this.geminiOptions,
 			mistralOptions: this.mistralOptions,
+			watsonxOptions: this.watsonxOptions,
 			qdrantUrl: this.qdrantUrl,
 			qdrantApiKey: this.qdrantApiKey,
 			searchMinScore: this.currentSearchMinScore,

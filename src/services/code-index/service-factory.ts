@@ -4,6 +4,7 @@ import { CodeIndexOllamaEmbedder } from "./embedders/ollama"
 import { OpenAICompatibleEmbedder } from "./embedders/openai-compatible"
 import { GeminiEmbedder } from "./embedders/gemini"
 import { MistralEmbedder } from "./embedders/mistral"
+import { WatsonxEmbedder } from "./embedders/watsonx"
 import { EmbedderProvider, getDefaultModelId, getModelDimension } from "../../shared/embeddingModels"
 import { QdrantVectorStore } from "./vector-store/qdrant-client"
 import { codeParser, DirectoryScanner, FileWatcher } from "./processors"
@@ -70,6 +71,15 @@ export class CodeIndexServiceFactory {
 				throw new Error(t("embeddings:serviceFactory.mistralConfigMissing"))
 			}
 			return new MistralEmbedder(config.mistralOptions.apiKey, config.modelId)
+		} else if (provider === "watsonx") {
+			if (!config.watsonxOptions?.codebaseIndexWatsonxApiKey) {
+				throw new Error(t("embeddings:serviceFactory.watsonxConfigMissing"))
+			}
+			return new WatsonxEmbedder(
+				config.watsonxOptions.codebaseIndexWatsonxApiKey,
+				config.modelId,
+				config.watsonxOptions.codebaseIndexWatsonxProjectId,
+			)
 		}
 
 		throw new Error(

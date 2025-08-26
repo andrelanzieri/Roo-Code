@@ -33,6 +33,7 @@ export const providerNames = [
 	"chutes",
 	"litellm",
 	"huggingface",
+	"watsonx",
 ] as const
 
 export const providerNamesSchema = z.enum(providerNames)
@@ -241,6 +242,13 @@ const litellmSchema = baseProviderSettingsSchema.extend({
 	litellmUsePromptCache: z.boolean().optional(),
 })
 
+const watsonxSchema = baseProviderSettingsSchema.extend({
+	watsonxBaseUrl: z.string().optional(),
+	watsonxApiKey: z.string().optional(),
+	watsonxProjectId: z.string().optional(),
+	watsonxModelId: z.string().optional(),
+})
+
 const defaultSchema = z.object({
 	apiProvider: z.undefined(),
 })
@@ -271,6 +279,7 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 	huggingFaceSchema.merge(z.object({ apiProvider: z.literal("huggingface") })),
 	chutesSchema.merge(z.object({ apiProvider: z.literal("chutes") })),
 	litellmSchema.merge(z.object({ apiProvider: z.literal("litellm") })),
+	watsonxSchema.merge(z.object({ apiProvider: z.literal("watsonx") })),
 	defaultSchema,
 ])
 
@@ -302,6 +311,7 @@ export const providerSettingsSchema = z.object({
 	...chutesSchema.shape,
 	...litellmSchema.shape,
 	...codebaseIndexProviderSchema.shape,
+	...watsonxSchema.shape,
 })
 
 export type ProviderSettings = z.infer<typeof providerSettingsSchema>
