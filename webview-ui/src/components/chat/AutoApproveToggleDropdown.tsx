@@ -22,6 +22,20 @@ type AutoApproveToggleDropdownProps = AutoApproveToggles & {
 	onToggle: (key: AutoApproveSetting, value: boolean) => void
 }
 
+// Keyboard shortcuts mapping
+const KEYBOARD_SHORTCUTS: Record<AutoApproveSetting, string> = {
+	alwaysAllowReadOnly: "Alt+1",
+	alwaysAllowWrite: "Alt+2",
+	alwaysAllowBrowser: "Alt+3",
+	alwaysAllowExecute: "Alt+4",
+	alwaysAllowMcp: "Alt+5",
+	alwaysAllowModeSwitch: "Alt+6",
+	alwaysAllowSubtasks: "Alt+7",
+	alwaysAllowFollowupQuestions: "Alt+8",
+	alwaysAllowUpdateTodoList: "Alt+9",
+	alwaysApproveResubmit: "Alt+0",
+}
+
 export const AutoApproveToggleDropdown = ({ onToggle, ...props }: AutoApproveToggleDropdownProps) => {
 	const { t } = useAppTranslation()
 
@@ -37,32 +51,35 @@ export const AutoApproveToggleDropdown = ({ onToggle, ...props }: AutoApproveTog
 		labelKey,
 		icon,
 		testId,
-	}: (typeof autoApproveSettingsConfig)[AutoApproveSetting]) => (
-		<StandardTooltip key={key} content={t(descriptionKey || "")}>
-			<button
-				onClick={() => onToggle(key, !props[key])}
-				aria-label={t(labelKey)}
-				aria-pressed={!!props[key]}
-				data-testid={testId}
-				className={cn(
-					"w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left",
-					"transition-colors hover:bg-vscode-list-hoverBackground",
-					props[key]
-						? "bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground"
-						: "opacity-70",
-				)}>
-				<span className={cn("codicon", `codicon-${icon}`, "text-sm flex-shrink-0")} />
-				<span className="flex-1 truncate">{t(labelKey)}</span>
-				<span
+	}: (typeof autoApproveSettingsConfig)[AutoApproveSetting]) => {
+		const tooltipContent = `${t(descriptionKey || "")} (${KEYBOARD_SHORTCUTS[key]})`
+		return (
+			<StandardTooltip key={key} content={tooltipContent}>
+				<button
+					onClick={() => onToggle(key, !props[key])}
+					aria-label={t(labelKey)}
+					aria-pressed={!!props[key]}
+					data-testid={testId}
 					className={cn(
-						"text-[10px] px-1 rounded",
-						props[key] ? "bg-vscode-badge-background text-vscode-badge-foreground" : "",
+						"w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left",
+						"transition-colors hover:bg-vscode-list-hoverBackground",
+						props[key]
+							? "bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground"
+							: "opacity-70",
 					)}>
-					{props[key] ? "✓" : ""}
-				</span>
-			</button>
-		</StandardTooltip>
-	)
+					<span className={cn("codicon", `codicon-${icon}`, "text-sm flex-shrink-0")} />
+					<span className="flex-1 truncate">{t(labelKey)}</span>
+					<span
+						className={cn(
+							"text-[10px] px-1 rounded",
+							props[key] ? "bg-vscode-badge-background text-vscode-badge-foreground" : "",
+						)}>
+						{props[key] ? "✓" : ""}
+					</span>
+				</button>
+			</StandardTooltip>
+		)
+	}
 
 	return (
 		<>
