@@ -20,6 +20,8 @@ import { getOllamaModels } from "./ollama"
 import { getLMStudioModels } from "./lmstudio"
 import { getIOIntelligenceModels } from "./io-intelligence"
 import { getDeepInfraModels } from "./deepinfra"
+import { getWatsonxModels } from "./watsonx"
+
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
 async function writeModels(router: RouterName, data: ModelRecord) {
@@ -88,6 +90,9 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 				break
 			case "vercel-ai-gateway":
 				models = await getVercelAiGatewayModels()
+				break
+			case "watsonx":
+				models = await getWatsonxModels(options.apiKey)
 				break
 			default: {
 				// Ensures router is exhaustively checked if RouterName is a strict union
