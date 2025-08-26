@@ -85,6 +85,32 @@ export class AssistantMessageParser {
 					this.currentParamName = undefined
 					continue
 				} else {
+					// Check for malformed closing tags (e.g., missing slash or spaces)
+					// Some models might generate </path > or < /path> instead of </path>
+					const malformedClosingPatterns = [
+						`</ ${this.currentParamName}>`, // space after slash
+						`< /${this.currentParamName}>`, // space before slash
+						`</${this.currentParamName} >`, // space before closing bracket
+						`< / ${this.currentParamName} >`, // spaces everywhere
+					]
+					
+					for (const pattern of malformedClosingPatterns) {
+						if (currentParamValue.endsWith(pattern)) {
+							// Found a malformed closing tag, treat it as valid
+							const paramValue = currentParamValue.slice(0, -pattern.length)
+							this.currentToolUse.params[this.currentParamName] =
+								this.currentParamName === "content"
+									? paramValue.replace(/^\n/, "").replace(/\n$/, "")
+									: paramValue.trim()
+							this.currentParamName = undefined
+							break
+						}
+					}
+					
+					if (this.currentParamName === undefined) {
+						continue
+					}
+					
 					// Partial param value is accumulating.
 					// Write the currently accumulated param content in real time
 					this.currentToolUse.params[this.currentParamName] = currentParamValue
@@ -104,11 +130,22 @@ export class AssistantMessageParser {
 					this.currentToolUse = undefined
 					continue
 				} else {
+					// Check for parameter opening tags with various formats
 					const possibleParamOpeningTags = toolParamNames.map((name) => `<${name}>`)
-					for (const paramOpeningTag of possibleParamOpeningTags) {
+					// Also check for malformed opening tags
+					const malformedOpeningTags = toolParamNames.flatMap((name) => [
+						`< ${name}>`, // space after opening bracket
+						`<${name} >`, // space before closing bracket
+						`< ${name} >`, // spaces on both sides
+					])
+					
+					const allPossibleTags = [...possibleParamOpeningTags, ...malformedOpeningTags]
+					
+					for (const paramOpeningTag of allPossibleTags) {
 						if (this.accumulator.endsWith(paramOpeningTag)) {
 							// Start of a new parameter.
-							const paramName = paramOpeningTag.slice(1, -1)
+							// Extract the parameter name, handling spaces
+							const paramName = paramOpeningTag.replace(/[<>\s]/g, '')
 							if (!toolParamNames.includes(paramName as ToolParamName)) {
 								// Handle invalid parameter name gracefully
 								continue
@@ -156,11 +193,19 @@ export class AssistantMessageParser {
 
 			let didStartToolUse = false
 			const possibleToolUseOpeningTags = toolNames.map((name) => `<${name}>`)
+			// Also check for malformed tool opening tags
+			const malformedToolOpeningTags = toolNames.flatMap((name) => [
+				`< ${name}>`, // space after opening bracket
+				`<${name} >`, // space before closing bracket
+				`< ${name} >`, // spaces on both sides
+			])
+			
+			const allPossibleToolTags = [...possibleToolUseOpeningTags, ...malformedToolOpeningTags]
 
-			for (const toolUseOpeningTag of possibleToolUseOpeningTags) {
+			for (const toolUseOpeningTag of allPossibleToolTags) {
 				if (this.accumulator.endsWith(toolUseOpeningTag)) {
-					// Extract and validate the tool name
-					const extractedToolName = toolUseOpeningTag.slice(1, -1)
+					// Extract and validate the tool name, handling spaces
+					const extractedToolName = toolUseOpeningTag.replace(/[<>\s]/g, '')
 
 					// Check if the extracted tool name is valid
 					if (!toolNames.includes(extractedToolName as ToolName)) {
