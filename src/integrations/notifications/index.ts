@@ -2,6 +2,7 @@ import { execa } from "execa"
 import { platform } from "os"
 import * as vscode from "vscode"
 import * as path from "path"
+import { Notification } from "node-mac-notifier"
 
 interface NotificationOptions {
 	title?: string
@@ -14,34 +15,19 @@ async function showMacOSNotification(options: NotificationOptions): Promise<void
 	const { title = "Roo Code", subtitle = "", message } = options
 
 	try {
-		// First try terminal-notifier (native macOS tool, no compilation needed)
-		await execa("terminal-notifier", [
-			"-title",
-			title,
-			"-subtitle",
-			subtitle || "",
-			"-message",
-			message,
-			"-sound",
-			"default",
-			"-group",
-			"com.roocode.vscode",
-			"-appIcon",
-			path.join(__dirname, "..", "..", "assets", "icons", "icon.png"),
-		])
-	} catch (terminalNotifierError) {
-		// If terminal-notifier is not available, fall back to osascript
-		console.log("terminal-notifier not available, falling back to osascript")
+		// Use node-mac-notifier for native macOS notifications
+		const notification = new Notification(title, {
+			body: message,
+			subtitle: subtitle || undefined,
+			sound: "default",
+			icon: path.join(__dirname, "..", "..", "assets", "icons", "icon.png"),
+		})
 
-		const escape = (str: string = "") => str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/'/g, "\\'")
-		const script = `display notification "${escape(message)}" with title "${escape(title)}" subtitle "${escape(subtitle)}" sound name "default"`
-
-		try {
-			await execa("osascript", ["-e", script])
-		} catch (osascriptError) {
-			console.error("Failed to show macOS notification:", osascriptError)
-			throw new Error(`Failed to show macOS notification: ${osascriptError}`)
-		}
+		// Show the notification immediately
+		notification.show()
+	} catch (error) {
+		console.error("Failed to show macOS notification:", error)
+		throw new Error(`Failed to show macOS notification: ${error}`)
 	}
 }
 
