@@ -225,6 +225,8 @@ function getModelIdForProvider(apiConfiguration: ProviderSettings, provider: str
 			return apiConfiguration.ioIntelligenceModelId
 		case "vercel-ai-gateway":
 			return apiConfiguration.vercelAiGatewayModelId
+		case "watsonx":
+			return apiConfiguration.watsonxModelId
 		default:
 			return apiConfiguration.apiModelId
 	}
@@ -297,6 +299,9 @@ export function validateModelId(apiConfiguration: ProviderSettings, routerModels
 			break
 		case "litellm":
 			modelId = apiConfiguration.litellmModelId
+			break
+		case "watsonx":
+			modelId = apiConfiguration.watsonxModelId
 			break
 		case "io-intelligence":
 			modelId = apiConfiguration.ioIntelligenceModelId

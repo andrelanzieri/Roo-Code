@@ -25,7 +25,6 @@ import {
 	vscodeLlmModels,
 	xaiModels,
 	internationalZAiModels,
-	watsonxAiModels,
 } from "./providers/index.js"
 
 /**
@@ -578,11 +577,6 @@ export const MODELS_BY_PROVIDER: Record<
 		label: "VS Code LM API",
 		models: Object.keys(vscodeLlmModels),
 	},
-	watsonx: {
-		id: "watsonx",
-		label: "IBM watsonx",
-		models: Object.keys(watsonxAiModels),
-	},
 	xai: { id: "xai", label: "xAI (Grok)", models: Object.keys(xaiModels) },
 	zai: { id: "zai", label: "Zai", models: Object.keys(internationalZAiModels) },
 
@@ -595,6 +589,7 @@ export const MODELS_BY_PROVIDER: Record<
 	unbound: { id: "unbound", label: "Unbound", models: [] },
 	deepinfra: { id: "deepinfra", label: "DeepInfra", models: [] },
 	"vercel-ai-gateway": { id: "vercel-ai-gateway", label: "Vercel AI Gateway", models: [] },
+	watsonx: { id: "watsonx", label: "IBM watsonx", models: [] },
 }
 
 export const dynamicProviders = [
