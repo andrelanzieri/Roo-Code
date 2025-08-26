@@ -1882,11 +1882,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			//    This ensures it takes its natural height when there's space
 			//    but becomes scrollable when the viewport is too small
 			*/}
-			{!task && (
-				<div className="mb-1 flex-initial min-h-0">
-					<AutoApproveMenu />
-				</div>
-			)}
 
 			{task && (
 				<>
@@ -1908,9 +1903,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							atBottomThreshold={10}
 							initialTopMostItemIndex={groupedMessages.length - 1}
 						/>
-					</div>
-					<div className={`flex-initial min-h-0 ${!areButtonsVisible ? "mb-1" : ""}`}>
-						<AutoApproveMenu />
 					</div>
 					{areButtonsVisible && (
 						<div
@@ -2024,6 +2016,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				setMode={setMode}
 				modeShortcutText={modeShortcutText}
 			/>
+
+			{/* Auto-Approve Menu positioned below text area */}
+			<div className="px-3 pb-2">
+				<AutoApproveMenu />
+			</div>
 
 			{isProfileDisabled && (
 				<div className="px-3">

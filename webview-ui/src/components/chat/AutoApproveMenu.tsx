@@ -1,14 +1,18 @@
 import { memo, useCallback, useMemo, useState } from "react"
 import { Trans } from "react-i18next"
 import { VSCodeCheckbox, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { Stamp, ListChecks, LayoutList } from "lucide-react"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { AutoApproveToggle, AutoApproveSetting, autoApproveSettingsConfig } from "../settings/AutoApproveToggle"
-import { StandardTooltip } from "@src/components/ui"
+import { AutoApproveSetting, autoApproveSettingsConfig } from "../settings/AutoApproveToggle"
+import { AutoApproveToggleDropdown } from "./AutoApproveToggleDropdown"
+import { StandardTooltip, Popover, PopoverContent, PopoverTrigger } from "@src/components/ui"
 import { useAutoApprovalState } from "@src/hooks/useAutoApprovalState"
 import { useAutoApprovalToggles } from "@src/hooks/useAutoApprovalToggles"
+import { cn } from "@src/lib/utils"
+import { useRooPortal } from "@src/components/ui/hooks/useRooPortal"
 
 interface AutoApproveMenuProps {
 	style?: React.CSSProperties
@@ -16,6 +20,7 @@ interface AutoApproveMenuProps {
 
 const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 	const [isExpanded, setIsExpanded] = useState(false)
+	const portalContainer = useRooPortal("roo-portal")
 
 	const {
 		autoApprovalEnabled,
@@ -123,10 +128,6 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 		],
 	)
 
-	const toggleExpanded = useCallback(() => {
-		setIsExpanded((prev) => !prev)
-	}, [])
-
 	const enabledActionsList = Object.entries(toggles)
 		.filter(([_key, value]) => !!value)
 		.map(([key]) => t(autoApproveSettingsConfig[key as AutoApproveSetting].labelKey))
@@ -146,101 +147,118 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 		[],
 	)
 
+	// Handler for Select All
+	const handleSelectAll = useCallback(() => {
+		const allSettings: AutoApproveSetting[] = Object.keys(toggles) as AutoApproveSetting[]
+		allSettings.forEach((key) => {
+			if (!toggles[key]) {
+				onAutoApproveToggle(key, true)
+			}
+		})
+	}, [toggles, onAutoApproveToggle])
+
+	// Handler for Select None
+	const handleSelectNone = useCallback(() => {
+		const allSettings: AutoApproveSetting[] = Object.keys(toggles) as AutoApproveSetting[]
+		allSettings.forEach((key) => {
+			if (toggles[key]) {
+				onAutoApproveToggle(key, false)
+			}
+		})
+	}, [toggles, onAutoApproveToggle])
+
+	const trigger = (
+		<PopoverTrigger
+			className={cn(
+				"inline-flex items-center gap-1.5 relative whitespace-nowrap px-2 py-1 text-xs",
+				"bg-transparent border border-[rgba(255,255,255,0.08)] rounded-md text-vscode-foreground",
+				"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
+				"opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)] cursor-pointer",
+			)}
+			style={style}>
+			<Stamp className="size-3.5 opacity-80 flex-shrink-0" />
+			<span className="font-medium">{t("chat:autoApprove.title")}</span>
+			<span className="text-vscode-descriptionForeground truncate max-w-[200px]">{displayText}</span>
+		</PopoverTrigger>
+	)
+
 	return (
-		<div
-			style={{
-				padding: "0 15px",
-				userSelect: "none",
-				borderTop: isExpanded
-					? `0.5px solid color-mix(in srgb, var(--vscode-titleBar-inactiveForeground) 20%, transparent)`
-					: "none",
-				overflowY: "auto",
-				...style,
-			}}>
-			{isExpanded && (
-				<div className="flex flex-col gap-2 py-4">
-					<div
-						style={{
-							color: "var(--vscode-descriptionForeground)",
-							fontSize: "12px",
-						}}>
-						<Trans
-							i18nKey="chat:autoApprove.description"
-							components={{
-								settingsLink: <VSCodeLink href="#" onClick={handleOpenSettings} />,
-							}}
-						/>
+		<Popover open={isExpanded} onOpenChange={setIsExpanded}>
+			<StandardTooltip content={t("chat:autoApprove.tooltip")}>{trigger}</StandardTooltip>
+
+			<PopoverContent
+				align="start"
+				sideOffset={4}
+				container={portalContainer}
+				className="p-0 overflow-hidden min-w-[400px] max-w-[500px]">
+				<div className="flex flex-col w-full">
+					{/* Header with master toggle */}
+					<div className="flex items-center justify-between p-3 border-b border-vscode-dropdown-border">
+						<div className="flex items-center gap-2">
+							<StandardTooltip
+								content={!hasEnabledOptions ? t("chat:autoApprove.selectOptionsFirst") : undefined}>
+								<VSCodeCheckbox
+									checked={effectiveAutoApprovalEnabled}
+									disabled={!hasEnabledOptions}
+									aria-label={
+										hasEnabledOptions
+											? t("chat:autoApprove.toggleAriaLabel")
+											: t("chat:autoApprove.disabledAriaLabel")
+									}
+									onChange={() => {
+										if (hasEnabledOptions) {
+											const newValue = !(autoApprovalEnabled ?? false)
+											setAutoApprovalEnabled(newValue)
+											vscode.postMessage({ type: "autoApprovalEnabled", bool: newValue })
+										}
+									}}
+								/>
+							</StandardTooltip>
+							<h4 className="m-0 font-medium text-sm">{t("chat:autoApprove.title")}</h4>
+						</div>
+						<div className="flex items-center gap-1">
+							<StandardTooltip content={t("chat:autoApprove.selectAll")}>
+								<button
+									onClick={handleSelectAll}
+									className="p-1 rounded hover:bg-vscode-list-hoverBackground transition-colors">
+									<ListChecks className="size-4" />
+								</button>
+							</StandardTooltip>
+							<StandardTooltip content={t("chat:autoApprove.selectNone")}>
+								<button
+									onClick={handleSelectNone}
+									className="p-1 rounded hover:bg-vscode-list-hoverBackground transition-colors">
+									<LayoutList className="size-4" />
+								</button>
+							</StandardTooltip>
+						</div>
 					</div>
 
-					<AutoApproveToggle {...toggles} onToggle={onAutoApproveToggle} />
-				</div>
-			)}
+					{/* Description */}
+					<div className="px-3 py-2 border-b border-vscode-dropdown-border">
+						<div
+							style={{
+								color: "var(--vscode-descriptionForeground)",
+								fontSize: "12px",
+							}}>
+							<Trans
+								i18nKey="chat:autoApprove.description"
+								components={{
+									settingsLink: <VSCodeLink href="#" onClick={handleOpenSettings} />,
+								}}
+							/>
+						</div>
+					</div>
 
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "8px",
-					padding: "2px 0 0 0",
-					cursor: "pointer",
-				}}
-				onClick={toggleExpanded}>
-				<div onClick={(e) => e.stopPropagation()}>
-					<StandardTooltip
-						content={!hasEnabledOptions ? t("chat:autoApprove.selectOptionsFirst") : undefined}>
-						<VSCodeCheckbox
-							checked={effectiveAutoApprovalEnabled}
-							disabled={!hasEnabledOptions}
-							aria-label={
-								hasEnabledOptions
-									? t("chat:autoApprove.toggleAriaLabel")
-									: t("chat:autoApprove.disabledAriaLabel")
-							}
-							onChange={() => {
-								if (hasEnabledOptions) {
-									const newValue = !(autoApprovalEnabled ?? false)
-									setAutoApprovalEnabled(newValue)
-									vscode.postMessage({ type: "autoApprovalEnabled", bool: newValue })
-								}
-								// If no options enabled, do nothing
-							}}
-						/>
-					</StandardTooltip>
+					{/* Two-column layout for toggles */}
+					<div className="p-3 max-h-[400px] overflow-y-auto">
+						<div className="grid grid-cols-2 gap-x-4">
+							<AutoApproveToggleDropdown {...toggles} onToggle={onAutoApproveToggle} />
+						</div>
+					</div>
 				</div>
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "4px",
-						flex: 1,
-						minWidth: 0,
-					}}>
-					<span
-						style={{
-							color: "var(--vscode-foreground)",
-							flexShrink: 0,
-						}}>
-						{t("chat:autoApprove.title")}
-					</span>
-					<span
-						style={{
-							color: "var(--vscode-descriptionForeground)",
-							overflow: "hidden",
-							textOverflow: "ellipsis",
-							whiteSpace: "nowrap",
-							flex: 1,
-							minWidth: 0,
-						}}>
-						{displayText}
-					</span>
-					<span
-						className={`codicon codicon-chevron-right flex-shrink-0 transition-transform duration-200 ease-in-out ${
-							isExpanded ? "-rotate-90 ml-[2px]" : "rotate-0 -ml-[2px]"
-						}`}
-					/>
-				</div>
-			</div>
-		</div>
+			</PopoverContent>
+		</Popover>
 	)
 }
 
