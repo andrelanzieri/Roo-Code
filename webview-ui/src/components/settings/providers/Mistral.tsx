@@ -62,7 +62,9 @@ export const Mistral = ({ apiConfiguration, setApiConfigurationField }: MistralP
 				<div className="flex flex-col gap-2">
 					<Checkbox
 						checked={apiConfiguration?.useMaximumContextWindow || false}
-						onChange={(checked: boolean) => setApiConfigurationField("useMaximumContextWindow", checked)}>
+						onCheckedChange={(checked) =>
+							setApiConfigurationField("useMaximumContextWindow", checked === true)
+						}>
 						{t("settings:providers.mistral.useMaximumContextWindow")}
 					</Checkbox>
 					{apiConfiguration?.useMaximumContextWindow && (
