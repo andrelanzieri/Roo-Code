@@ -120,51 +120,61 @@ const TaskHeader = ({
 						</div>
 					</div>
 				</div>
-				{!isTaskExpanded && contextWindow > 0 && (
+				{!isTaskExpanded && (
 					<div className="flex items-center gap-2 text-sm" onClick={(e) => e.stopPropagation()}>
-						<StandardTooltip
-							content={
-								<div className="space-y-1">
-									<div>
-										{t("chat:tokenProgress.tokensUsed", {
-											used: formatLargeNumber(contextTokens || 0),
-											total: formatLargeNumber(contextWindow),
-										})}
-									</div>
-									{(() => {
-										const maxTokens = model
-											? getModelMaxOutputTokens({ modelId, model, settings: apiConfiguration })
-											: 0
-										const reservedForOutput = maxTokens || 0
-										const availableSpace = contextWindow - (contextTokens || 0) - reservedForOutput
+						{/* Model display */}
+						{modelId && <span className="text-vscode-descriptionForeground opacity-80">{modelId}</span>}
+						{/* Token progress */}
+						{contextWindow > 0 && (
+							<StandardTooltip
+								content={
+									<div className="space-y-1">
+										<div>
+											{t("chat:tokenProgress.tokensUsed", {
+												used: formatLargeNumber(contextTokens || 0),
+												total: formatLargeNumber(contextWindow),
+											})}
+										</div>
+										{(() => {
+											const maxTokens = model
+												? getModelMaxOutputTokens({
+														modelId,
+														model,
+														settings: apiConfiguration,
+													})
+												: 0
+											const reservedForOutput = maxTokens || 0
+											const availableSpace =
+												contextWindow - (contextTokens || 0) - reservedForOutput
 
-										return (
-											<>
-												{reservedForOutput > 0 && (
-													<div>
-														{t("chat:tokenProgress.reservedForResponse", {
-															amount: formatLargeNumber(reservedForOutput),
-														})}
-													</div>
-												)}
-												{availableSpace > 0 && (
-													<div>
-														{t("chat:tokenProgress.availableSpace", {
-															amount: formatLargeNumber(availableSpace),
-														})}
-													</div>
-												)}
-											</>
-										)
-									})()}
-								</div>
-							}
-							side="top"
-							sideOffset={8}>
-							<span className="mr-1">
-								{formatLargeNumber(contextTokens || 0)} / {formatLargeNumber(contextWindow)}
-							</span>
-						</StandardTooltip>
+											return (
+												<>
+													{reservedForOutput > 0 && (
+														<div>
+															{t("chat:tokenProgress.reservedForResponse", {
+																amount: formatLargeNumber(reservedForOutput),
+															})}
+														</div>
+													)}
+													{availableSpace > 0 && (
+														<div>
+															{t("chat:tokenProgress.availableSpace", {
+																amount: formatLargeNumber(availableSpace),
+															})}
+														</div>
+													)}
+												</>
+											)
+										})()}
+									</div>
+								}
+								side="top"
+								sideOffset={8}>
+								<span className="mr-1">
+									{formatLargeNumber(contextTokens || 0)} / {formatLargeNumber(contextWindow)}
+								</span>
+							</StandardTooltip>
+						)}
 						{!!totalCost && <span>${totalCost.toFixed(2)}</span>}
 					</div>
 				)}
@@ -190,6 +200,18 @@ const TaskHeader = ({
 						<div className="border-t border-b border-vscode-panel-border/50 py-4 mt-2 mb-1">
 							<table className="w-full">
 								<tbody>
+									{/* Model row */}
+									{modelId && (
+										<tr>
+											<th className="font-bold text-left align-top w-1 whitespace-nowrap pl-1 pr-3 h-[24px]">
+												{t("chat:task.model")}
+											</th>
+											<td className="align-top">
+												<span>{modelId}</span>
+											</td>
+										</tr>
+									)}
+
 									{contextWindow > 0 && (
 										<tr>
 											<th
