@@ -8,6 +8,7 @@
 		"seeLess": "收起",
 		"tokens": "Token 用量",
 		"cache": "缓存",
+		"cacheSize": "缓存大小",
 		"apiCost": "API 费用",
 		"size": "大小",
 		"contextWindow": "上下文长度",

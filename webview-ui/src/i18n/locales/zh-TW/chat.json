@@ -8,6 +8,7 @@
 		"seeLess": "顯示較少",
 		"tokens": "Token",
 		"cache": "快取",
+		"cacheSize": "快取大小",
 		"apiCost": "API 費用",
 		"size": "大小",
 		"condenseContext": "智慧壓縮內容",

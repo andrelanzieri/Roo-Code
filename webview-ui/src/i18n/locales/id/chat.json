@@ -8,6 +8,7 @@
 		"seeLess": "Lihat lebih sedikit",
 		"tokens": "Token",
 		"cache": "Cache",
+		"cacheSize": "Ukuran Cache",
 		"apiCost": "Biaya API",
 		"size": "Ukuran",
 		"condenseContext": "Kondensasi konteks secara cerdas",

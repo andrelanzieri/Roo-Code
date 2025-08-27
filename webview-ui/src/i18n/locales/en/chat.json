@@ -8,6 +8,7 @@
 		"seeLess": "See less",
 		"tokens": "Tokens",
 		"cache": "Cache",
+		"cacheSize": "Cache Size",
 		"apiCost": "API Cost",
 		"size": "Size",
 		"condenseContext": "Intelligently condense context",

@@ -8,6 +8,7 @@
 		"seeLess": "Показать меньше",
 		"tokens": "Токенов",
 		"cache": "Кэш",
+		"cacheSize": "Размер кэша",
 		"apiCost": "Стоимость API",
 		"size": "Размер",
 		"contextWindow": "Длина контекста",

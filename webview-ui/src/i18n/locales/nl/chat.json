@@ -8,6 +8,7 @@
 		"seeLess": "Minder weergeven",
 		"tokens": "Tokens",
 		"cache": "Cache",
+		"cacheSize": "Cachegrootte",
 		"apiCost": "API-kosten",
 		"size": "Grootte",
 		"contextWindow": "Contextlengte",

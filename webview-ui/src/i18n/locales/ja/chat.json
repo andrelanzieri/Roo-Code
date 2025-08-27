@@ -8,6 +8,7 @@
 		"seeLess": "表示を減らす",
 		"tokens": "トークン",
 		"cache": "キャッシュ",
+		"cacheSize": "キャッシュサイズ",
 		"apiCost": "APIコスト",
 		"size": "サイズ",
 		"contextWindow": "コンテキストウィンドウ",

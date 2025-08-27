@@ -8,6 +8,7 @@
 		"seeLess": "Thu gọn",
 		"tokens": "Tokens",
 		"cache": "Bộ nhớ đệm",
+		"cacheSize": "Kích thước bộ nhớ đệm",
 		"apiCost": "Chi phí API",
 		"size": "Kích thước",
 		"contextWindow": "Chiều dài bối cảnh",
