@@ -1,17 +1,13 @@
 import { useCallback, useState, useEffect, useRef } from "react"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-
-import { watsonxAiDefaultModelId, type ProviderSettings } from "@roo-code/types"
-
+import { ModelInfo, watsonxAiDefaultModelId, type ProviderSettings } from "@roo-code/types"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 import { vscode } from "@src/utils/vscode"
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 import { ExtensionMessage } from "@roo/ExtensionMessage"
-
 import { inputEventTransform } from "../transforms"
 import { OrganizationAllowList } from "@roo/cloud"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { RouterName } from "@roo/api"
 import { ModelPicker } from "../ModelPicker"
 
@@ -50,10 +46,11 @@ export const WatsonxAI = ({
 	modelValidationError,
 }: WatsonxAIProps) => {
 	const { t } = useAppTranslation()
-	const { routerModels } = useExtensionState()
+	const [watsonxModels, setWatsonxModels] = useState<Record<string, ModelInfo> | null>(null)
 	const [refreshStatus, setRefreshStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
 	const [refreshError, setRefreshError] = useState<string | undefined>()
 	const watsonxErrorJustReceived = useRef(false)
+	const initialModelFetchAttempted = useRef(false)
 
 	useEffect(() => {
 		if (!apiConfiguration.watsonxPlatform) {
@@ -116,17 +113,27 @@ export const WatsonxAI = ({
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent<ExtensionMessage>) => {
 			const message = event.data
+			console.log("Received message:", message.type, message)
+
 			if (message.type === "singleRouterModelFetchResponse" && !message.success) {
 				const providerName = message.values?.provider as RouterName
 				if (providerName === "watsonx") {
+					console.log("Received error response for watsonx:", message.error)
 					watsonxErrorJustReceived.current = true
 					setRefreshStatus("error")
 					setRefreshError(message.error)
 				}
-			} else if (message.type === "routerModels") {
+			} else if (message.type === "watsonxModels") {
+				console.log("Received watsonxModels:", message.watsonxModels)
+				setWatsonxModels(message.watsonxModels ?? {})
 				if (refreshStatus === "loading") {
 					if (!watsonxErrorJustReceived.current) {
+						console.log("Setting refresh status to success")
 						setRefreshStatus("success")
+					} else {
+						// Reset the flag after handling the error
+						console.log("Resetting error flag")
+						watsonxErrorJustReceived.current = false
 					}
 				}
 			}
@@ -147,23 +154,35 @@ export const WatsonxAI = ({
 	)
 
 	const handleRefreshModels = useCallback(() => {
+		console.log("Refresh models clicked")
 		setRefreshStatus("loading")
 		setRefreshError(undefined)
+		watsonxErrorJustReceived.current = false
 
 		const apiKey = apiConfiguration.watsonxApiKey
 		const platform = apiConfiguration.watsonxPlatform
-		const customUrl = apiConfiguration.watsonxBaseUrl || ""
 		const username = apiConfiguration.watsonxUsername
 		const authType = apiConfiguration.watsonxAuthType
 		const password = apiConfiguration.watsonxPassword
+		const projectId = apiConfiguration.watsonxProjectId
 
 		let baseUrl = ""
 		if (platform === "ibmCloud") {
 			baseUrl = REGION_TO_URL[selectedRegion as keyof typeof REGION_TO_URL]
 		} else {
-			baseUrl = customUrl
-			setApiConfigurationField("watsonxBaseUrl", baseUrl)
+			baseUrl = apiConfiguration.watsonxBaseUrl || ""
 		}
+
+		console.log("Refresh models config:", {
+			platform,
+			baseUrl,
+			hasApiKey: !!apiKey,
+			hasUsername: !!username,
+			authType,
+			hasPassword: !!password,
+			hasProjectId: !!projectId,
+			selectedRegion,
+		})
 
 		if (platform === "ibmCloud" && (!apiKey || !baseUrl)) {
 			setRefreshStatus("error")
@@ -197,21 +216,33 @@ export const WatsonxAI = ({
 			}
 		}
 
+		console.log("Sending requestWatsonxModels message")
 		vscode.postMessage({
-			type: "requestRouterModels",
+			type: "requestWatsonxModels",
 			values: {
-				watsonxPlatform: apiConfiguration.watsonxPlatform,
-				watsonxBaseUrl: apiConfiguration.watsonxBaseUrl,
-				watsonxApiKey: apiConfiguration.watsonxApiKey,
-				watsonxProjectId: apiConfiguration.watsonxProjectId,
-				watsonxModelId: apiConfiguration.watsonxModelId,
-				watsonxUsername: apiConfiguration.watsonxUsername,
-				watsonxAuthType: apiConfiguration.watsonxAuthType,
-				watsonxPassword: apiConfiguration.watsonxPassword,
-				watsonxRegion: apiConfiguration.watsonxRegion,
+				apiKey: apiKey,
+				projectId: projectId,
+				platform: platform,
+				baseUrl: baseUrl,
+				username: username,
+				authType: authType,
+				password: password,
+				region: selectedRegion,
 			},
 		})
-	}, [apiConfiguration, setRefreshStatus, setRefreshError, t, selectedRegion, setApiConfigurationField])
+	}, [apiConfiguration, setRefreshStatus, setRefreshError, t, selectedRegion])
+
+	// Refresh models when component mounts if API key is available
+	useEffect(() => {
+		if (
+			!initialModelFetchAttempted.current &&
+			apiConfiguration.watsonxApiKey &&
+			(!watsonxModels || Object.keys(watsonxModels).length === 0)
+		) {
+			initialModelFetchAttempted.current = true
+			handleRefreshModels()
+		}
+	}, [apiConfiguration.watsonxApiKey, watsonxModels, handleRefreshModels])
 
 	return (
 		<>
@@ -348,7 +379,10 @@ export const WatsonxAI = ({
 
 			<Button
 				variant="outline"
-				onClick={handleRefreshModels}
+				onClick={() => {
+					console.log("Refresh button clicked")
+					handleRefreshModels()
+				}}
 				disabled={
 					refreshStatus === "loading" ||
 					(apiConfiguration.watsonxPlatform === "ibmCloud" && !apiConfiguration.watsonxApiKey) ||
@@ -358,7 +392,8 @@ export const WatsonxAI = ({
 							(apiConfiguration.watsonxAuthType === "apiKey" && !apiConfiguration.watsonxApiKey) ||
 							(apiConfiguration.watsonxAuthType === "password" && !apiConfiguration.watsonxPassword)))
 				}
-				className="w-full mt-4">
+				className="w-full mt-4"
+				title={t("settings:providers.refreshModels.tooltip") || "Refresh available models"}>
 				<div className="flex items-center gap-2">
 					{refreshStatus === "loading" ? (
 						<span className="codicon codicon-loading codicon-modifier-spin" />
@@ -387,7 +422,7 @@ export const WatsonxAI = ({
 			<ModelPicker
 				apiConfiguration={apiConfiguration}
 				defaultModelId={watsonxAiDefaultModelId}
-				models={routerModels?.watsonx ?? {}}
+				models={watsonxModels && Object.keys(watsonxModels).length > 0 ? watsonxModels : {}}
 				modelIdKey="watsonxModelId"
 				serviceName="IBM watsonx"
 				serviceUrl="https://cloud.ibm.com/apidocs/watsonx-ai#list-foundation-model-specs"

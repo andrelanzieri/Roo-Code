@@ -4,7 +4,7 @@ export type WatsonxAIModelId = keyof typeof watsonxAiModels
 export const watsonxAiDefaultModelId: WatsonxAIModelId = "ibm/granite-3-3-8b-instruct"
 
 // Common model properties
-const baseModelInfo: ModelInfo = {
+export const baseModelInfo: ModelInfo = {
 	maxTokens: 4096,
 	contextWindow: 128000,
 	supportsImages: false,

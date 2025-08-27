@@ -9,6 +9,7 @@ import type {
 	ClineMessage,
 	MarketplaceItem,
 	TodoItem,
+	ModelInfo,
 } from "@roo-code/types"
 import type { CloudUserInfo, OrganizationAllowList, ShareVisibility } from "@roo-code/cloud"
 
@@ -77,6 +78,7 @@ export interface ExtensionMessage {
 		| "lmStudioModels"
 		| "vsCodeLmModels"
 		| "watsonxModels"
+		| "embeddedWatsonxModels"
 		| "huggingFaceModels"
 		| "vsCodeLmApiAvailable"
 		| "updatePrompt"
@@ -149,7 +151,8 @@ export interface ExtensionMessage {
 	ollamaModels?: string[]
 	lmStudioModels?: ModelRecord
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
-	watsonxModels?: Record<string, { dimension: number }>
+	watsonxModels?: Record<string, ModelInfo>
+	embeddedWatsonxModels?: Record<string, ModelInfo>
 	huggingFaceModels?: Array<{
 		id: string
 		object: string

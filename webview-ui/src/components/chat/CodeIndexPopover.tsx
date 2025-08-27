@@ -72,6 +72,12 @@ interface LocalCodeIndexSettings {
 	codebaseIndexMistralApiKey?: string
 	codebaseIndexWatsonxApiKey?: string
 	codebaseIndexWatsonxProjectId?: string
+	watsonxPlatform?: "ibmCloud" | "cloudPak"
+	watsonxBaseUrl?: string
+	watsonxRegion?: string
+	watsonxUsername?: string
+	watsonxPassword?: string
+	watsonxAuthType?: "apiKey" | "password"
 }
 
 // Validation schema for codebase index settings
@@ -145,6 +151,12 @@ const createValidationSchema = (provider: EmbedderProvider, t: any) => {
 				codebaseIndexEmbedderModelId: z
 					.string()
 					.min(1, t("settings:codeIndex.validation.modelSelectionRequired")),
+				watsonxPlatform: z.enum(["ibmCloud", "cloudPak"]).optional().default("ibmCloud"),
+				watsonxRegion: z.string().optional(),
+				watsonxBaseUrl: z.string().optional(),
+				watsonxUsername: z.string().optional(),
+				watsonxPassword: z.string().optional(),
+				watsonxAuthType: z.enum(["apiKey", "password"]).optional().default("apiKey"),
 			})
 
 		default:
@@ -167,6 +179,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 
 	const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
 	const [saveError, setSaveError] = useState<string | null>(null)
+	const [refreshingModels, setRefreshingModels] = useState(false)
 
 	// Form validation state
 	const [formErrors, setFormErrors] = useState<Record<string, string>>({})
@@ -193,6 +206,12 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		codebaseIndexMistralApiKey: "",
 		codebaseIndexWatsonxApiKey: "",
 		codebaseIndexWatsonxProjectId: "",
+		watsonxPlatform: "ibmCloud",
+		watsonxBaseUrl: "https://us-south.ml.cloud.ibm.com",
+		watsonxRegion: "us-south",
+		watsonxUsername: "",
+		watsonxPassword: "",
+		watsonxAuthType: "apiKey",
 	})
 
 	// Initial settings state - stores the settings when popover opens
@@ -229,6 +248,12 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 				codebaseIndexMistralApiKey: "",
 				codebaseIndexWatsonxApiKey: "",
 				codebaseIndexWatsonxProjectId: "",
+				watsonxPlatform: "ibmCloud" as "ibmCloud" | "cloudPak",
+				watsonxBaseUrl: "https://us-south.ml.cloud.ibm.com",
+				watsonxRegion: "us-south",
+				watsonxUsername: "",
+				watsonxPassword: "",
+				watsonxAuthType: "apiKey" as "apiKey" | "password",
 			}
 			setInitialSettings(settings)
 			setCurrentSettings(settings)
@@ -257,27 +282,6 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		window.addEventListener("message", handleMessage)
 		return () => window.removeEventListener("message", handleMessage)
 	}, [open])
-
-	// Request WatsonX models when provider is selected and API key is available
-	useEffect(() => {
-		if (
-			currentSettings.codebaseIndexEmbedderProvider === "watsonx" &&
-			currentSettings.codebaseIndexWatsonxApiKey &&
-			currentSettings.codebaseIndexWatsonxApiKey !== SECRET_PLACEHOLDER
-		) {
-			vscode.postMessage({
-				type: "requestWatsonxModels",
-				values: {
-					apiKey: currentSettings.codebaseIndexWatsonxApiKey,
-					projectId: currentSettings.codebaseIndexWatsonxProjectId,
-				},
-			})
-		}
-	}, [
-		currentSettings.codebaseIndexEmbedderProvider,
-		currentSettings.codebaseIndexWatsonxApiKey,
-		currentSettings.codebaseIndexWatsonxProjectId,
-	])
 
 	// Use a ref to capture current settings for the save handler
 	const currentSettingsRef = useRef(currentSettings)
@@ -318,16 +322,47 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					setSaveStatus("idle")
 					setSaveError(null)
 				}
-			} else if (event.data.type === "watsonxModels" && event.data.watsonxModels) {
-				// Update the extension state context with the watsonx models
-				// The models will be automatically available through the codebaseIndexModels context
-				console.log("Received WatsonX models:", event.data.watsonxModels)
+			} else if (event.data.type === "embeddedWatsonxModels" && event.data.embeddedWatsonxModels) {
+				try {
+					console.log("Received IBM Embeded watsonx models:", event.data.embeddedWatsonxModels)
+					const embeddedWatsonxModels: Record<string, { dimension: number }> = {}
+					if (
+						!event.data.embeddedWatsonxModels ||
+						Object.keys(event.data.embeddedWatsonxModels).length === 0
+					) {
+						console.warn("No models received from server, adding default model")
+						embeddedWatsonxModels["ibm/slate-125m-english-rtrvr-v2"] = { dimension: 1536 }
+					} else {
+						Object.keys(event.data.embeddedWatsonxModels).forEach((modelId) => {
+							embeddedWatsonxModels[modelId] = {
+								dimension: 1536,
+							}
+						})
+					}
+					if (codebaseIndexModels) {
+						codebaseIndexModels.watsonx = { ...embeddedWatsonxModels }
+						console.log("Updated watsonx models in context:", codebaseIndexModels.watsonx)
+					}
+					setCurrentSettings((prev) => ({ ...prev }))
+				} catch (error) {
+					console.error("Error processing watsonx models:", error)
+					if (codebaseIndexModels) {
+						codebaseIndexModels.watsonx = {
+							"ibm/slate-125m-english-rtrvr-v2": { dimension: 1536 },
+						}
+					}
+				} finally {
+					setRefreshingModels(false)
+				}
+			} else if (event.data.type === "embeddedWatsonxModelsError") {
+				console.error("Error fetching watsonx models:", event.data.error)
+				setRefreshingModels(false)
 			}
 		}
 
 		window.addEventListener("message", handleMessage)
 		return () => window.removeEventListener("message", handleMessage)
-	}, [t, cwd])
+	}, [t, cwd, codebaseIndexModels, currentSettings.codebaseIndexEmbedderProvider])
 
 	// Listen for secret status
 	useEffect(() => {
@@ -732,7 +767,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 												)}
 											</div>
 
-											<div className="space-y-2">
+											<div className="space-y-2 mt-4">
 												<label className="text-sm font-medium">
 													{t("settings:codeIndex.modelLabel")}
 												</label>
@@ -1097,28 +1132,211 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 
 									{currentSettings.codebaseIndexEmbedderProvider === "watsonx" && (
 										<>
+											{/* IBM watsonx Platform Selection */}
 											<div className="space-y-2">
-												<label className="text-sm font-medium">
-													{t("settings:codeIndex.watsonxApiKeyLabel")}
-												</label>
-												<VSCodeTextField
-													type="password"
-													value={currentSettings.codebaseIndexWatsonxApiKey || ""}
-													onInput={(e: any) =>
-														updateSetting("codebaseIndexWatsonxApiKey", e.target.value)
-													}
-													placeholder={t("settings:codeIndex.watsonxApiKeyPlaceholder")}
-													className={cn("w-full", {
-														"border-red-500": formErrors.watsonxApiKey,
-													})}
-												/>
-												{formErrors.watsonxApiKey && (
-													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
-														{formErrors.watsonxApiKey}
-													</p>
-												)}
+												<label className="text-sm font-medium">IBM watsonx Platform</label>
+												<Select
+													value={currentSettings.watsonxPlatform || "ibmCloud"}
+													onValueChange={(value) => {
+														updateSetting("watsonxPlatform", value)
+														if (value === "ibmCloud") {
+															// Set IBM Cloud defaults
+															updateSetting("watsonxRegion", "us-south")
+															updateSetting(
+																"watsonxBaseUrl",
+																"https://us-south.ml.cloud.ibm.com",
+															)
+															updateSetting("watsonxUsername", "")
+															updateSetting("watsonxPassword", "")
+															updateSetting("watsonxAuthType", "apiKey")
+														} else {
+															// Set Cloud Pak for Data defaults
+															updateSetting("watsonxRegion", "")
+															updateSetting("watsonxBaseUrl", "")
+															updateSetting("watsonxAuthType", "apiKey")
+														}
+													}}>
+													<SelectTrigger className="w-full">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="ibmCloud">IBM Cloud</SelectItem>
+														<SelectItem value="cloudPak">IBM Cloud Pak for Data</SelectItem>
+													</SelectContent>
+												</Select>
 											</div>
 
+											{/* IBM Cloud specific fields */}
+											{(!currentSettings.watsonxPlatform ||
+												currentSettings.watsonxPlatform === "ibmCloud") && (
+												<>
+													<div className="space-y-2">
+														<label className="text-sm font-medium">
+															{t("settings:codeIndex.watsonxApiKeyLabel")}
+														</label>
+														<VSCodeTextField
+															type="password"
+															value={currentSettings.codebaseIndexWatsonxApiKey || ""}
+															onInput={(e: any) =>
+																updateSetting(
+																	"codebaseIndexWatsonxApiKey",
+																	e.target.value,
+																)
+															}
+															placeholder={t(
+																"settings:codeIndex.watsonxApiKeyPlaceholder",
+															)}
+															className={cn("w-full", {
+																"border-red-500": formErrors.watsonxApiKey,
+															})}
+														/>
+														{formErrors.watsonxApiKey && (
+															<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+																{formErrors.watsonxApiKey}
+															</p>
+														)}
+													</div>
+
+													<div className="space-y-2">
+														<label className="text-sm font-medium">
+															IBM watsonx Region
+														</label>
+														<Select
+															value={currentSettings.watsonxRegion || "us-south"}
+															onValueChange={(region: string) => {
+																updateSetting("watsonxRegion", region)
+																const regionToUrl: Record<string, string> = {
+																	"us-south": "https://us-south.ml.cloud.ibm.com",
+																	"eu-de": "https://eu-de.ml.cloud.ibm.com",
+																	"eu-gb": "https://eu-gb.ml.cloud.ibm.com",
+																	"jp-tok": "https://jp-tok.ml.cloud.ibm.com",
+																	"au-syd": "https://au-syd.ml.cloud.ibm.com",
+																	"ca-tor": "https://ca-tor.ml.cloud.ibm.com",
+																	"ap-south-1": "https://ap-south-1.aws.wxai.ibm.com",
+																}
+																updateSetting(
+																	"watsonxBaseUrl",
+																	regionToUrl[region] || "",
+																)
+															}}>
+															<SelectTrigger className="w-full">
+																<SelectValue />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value="us-south">
+																	Dallas (us-south.ml.cloud.ibm.com)
+																</SelectItem>
+																<SelectItem value="eu-de">
+																	Frankfurt (eu-de.ml.cloud.ibm.com)
+																</SelectItem>
+																<SelectItem value="eu-gb">
+																	London (eu-gb.ml.cloud.ibm.com)
+																</SelectItem>
+																<SelectItem value="jp-tok">
+																	Tokyo (jp-tok.ml.cloud.ibm.com)
+																</SelectItem>
+																<SelectItem value="au-syd">
+																	Sydney (au-syd.ml.cloud.ibm.com)
+																</SelectItem>
+																<SelectItem value="ca-tor">
+																	Toronto (ca-tor.ml.cloud.ibm.com)
+																</SelectItem>
+																<SelectItem value="ap-south-1">
+																	Mumbai (ap-south-1.aws.wxai.ibm.com)
+																</SelectItem>
+															</SelectContent>
+														</Select>
+													</div>
+												</>
+											)}
+
+											{/* Cloud Pak for Data specific fields */}
+											{currentSettings.watsonxPlatform === "cloudPak" && (
+												<>
+													<div className="space-y-2">
+														<label className="text-sm font-medium">
+															IBM Cloud Pak for Data URL
+														</label>
+														<VSCodeTextField
+															value={currentSettings.watsonxBaseUrl || ""}
+															onInput={(e: any) =>
+																updateSetting("watsonxBaseUrl", e.target.value)
+															}
+															placeholder="https://your-cp4d-instance.example.com"
+															className="w-full"
+														/>
+													</div>
+
+													<div className="space-y-2">
+														<label className="text-sm font-medium">Username</label>
+														<VSCodeTextField
+															value={currentSettings.watsonxUsername || ""}
+															onInput={(e: any) =>
+																updateSetting("watsonxUsername", e.target.value)
+															}
+															placeholder="Username"
+															className="w-full"
+														/>
+													</div>
+
+													<div className="space-y-2">
+														<label className="text-sm font-medium">
+															Authentication Type
+														</label>
+														<Select
+															value={currentSettings.watsonxAuthType || "apiKey"}
+															onValueChange={(authType) => {
+																updateSetting("watsonxAuthType", authType)
+																if (authType === "apiKey") {
+																	updateSetting("watsonxPassword", "")
+																} else {
+																	updateSetting("codebaseIndexWatsonxApiKey", "")
+																}
+															}}>
+															<SelectTrigger className="w-full">
+																<SelectValue />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value="apiKey">API Key</SelectItem>
+																<SelectItem value="password">Password</SelectItem>
+															</SelectContent>
+														</Select>
+													</div>
+
+													{currentSettings.watsonxAuthType === "apiKey" ? (
+														<div className="space-y-2">
+															<label className="text-sm font-medium">API Key</label>
+															<VSCodeTextField
+																type="password"
+																value={currentSettings.codebaseIndexWatsonxApiKey || ""}
+																onInput={(e: any) =>
+																	updateSetting(
+																		"codebaseIndexWatsonxApiKey",
+																		e.target.value,
+																	)
+																}
+																placeholder="API Key"
+																className="w-full"
+															/>
+														</div>
+													) : (
+														<div className="space-y-2">
+															<label className="text-sm font-medium">Password</label>
+															<VSCodeTextField
+																type="password"
+																value={currentSettings.watsonxPassword || ""}
+																onInput={(e: any) =>
+																	updateSetting("watsonxPassword", e.target.value)
+																}
+																placeholder="Password"
+																className="w-full"
+															/>
+														</div>
+													)}
+												</>
+											)}
+
+											{/* Common fields for both platforms */}
 											<div className="space-y-2">
 												<label className="text-sm font-medium">
 													{t("settings:codeIndex.watsonxProjectIdLabel") || "Project ID"}
@@ -1130,7 +1348,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													}
 													placeholder={
 														t("settings:codeIndex.watsonxProjectIdPlaceholder") ||
-														"Optional IBM Cloud project ID"
+														"IBM Cloud project ID"
 													}
 													className={cn("w-full", {
 														"border-red-500": formErrors.watsonxProjectId,
@@ -1141,6 +1359,45 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 														{formErrors.watsonxProjectId}
 													</p>
 												)}
+											</div>
+
+											{/* Refresh Models Button for IBM watsonx */}
+											<div className="space-y-2 mt-4">
+												<VSCodeButton
+													appearance="secondary"
+													onClick={() => {
+														setRefreshingModels(true)
+														vscode.postMessage({
+															type: "requestEmbeddedWatsonxModels",
+															values: {
+																apiKey: currentSettings.codebaseIndexWatsonxApiKey,
+																projectId:
+																	currentSettings.codebaseIndexWatsonxProjectId,
+																platform: currentSettings.watsonxPlatform,
+																baseUrl: currentSettings.watsonxBaseUrl,
+																username: currentSettings.watsonxUsername,
+																authType: currentSettings.watsonxAuthType,
+																password: currentSettings.watsonxPassword,
+																region: currentSettings.watsonxRegion,
+															},
+														})
+													}}
+													disabled={
+														refreshingModels ||
+														!currentSettings.codebaseIndexWatsonxApiKey ||
+														currentSettings.codebaseIndexWatsonxApiKey ===
+															SECRET_PLACEHOLDER
+													}
+													className="w-full">
+													<div className="flex items-center gap-2">
+														{refreshingModels ? (
+															<span className="codicon codicon-loading codicon-modifier-spin" />
+														) : (
+															<span className="codicon codicon-refresh" />
+														)}
+														{refreshingModels ? "Loading Models..." : "Refresh Models"}
+													</div>
+												</VSCodeButton>
 											</div>
 
 											<div className="space-y-2">
