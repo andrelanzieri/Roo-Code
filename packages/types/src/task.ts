@@ -68,7 +68,6 @@ export type TaskProviderEvents = {
 	[RooCodeEventName.TaskInteractive]: [taskId: string]
 	[RooCodeEventName.TaskResumable]: [taskId: string]
 	[RooCodeEventName.TaskIdle]: [taskId: string]
-
 	[RooCodeEventName.TaskPaused]: [taskId: string]
 	[RooCodeEventName.TaskUnpaused]: [taskId: string]
 	[RooCodeEventName.TaskSpawned]: [taskId: string]
@@ -82,8 +81,8 @@ export type TaskProviderEvents = {
 }
 
 /**
- * TaskLike
- */
+	* TaskLike
+	*/
 
 export interface CreateTaskOptions {
 	enableDiff?: boolean

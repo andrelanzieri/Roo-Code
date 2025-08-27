@@ -158,6 +158,9 @@ describe("newTaskTool", () => {
 		)
 
 		// Verify side effects
+		expect(mockEmit).toHaveBeenCalledWith("taskSpawned", "mock-subtask-id")
+		expect(mockCline.isPaused).toBe(true)
+		expect(mockEmit).toHaveBeenCalledWith("taskPaused", "mock-parent-task-id")
 		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Successfully created new task"))
 	})
 
