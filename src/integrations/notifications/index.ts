@@ -2,7 +2,7 @@ import { execa } from "execa"
 import { platform } from "os"
 import * as vscode from "vscode"
 import * as path from "path"
-import { Notification } from "node-mac-notifier"
+import Notification from "node-mac-notifier"
 
 interface NotificationOptions {
 	title?: string
@@ -23,8 +23,7 @@ async function showMacOSNotification(options: NotificationOptions): Promise<void
 			icon: path.join(__dirname, "..", "..", "assets", "icons", "icon.png"),
 		})
 
-		// Show the notification immediately
-		notification.show()
+		// Instantiating Notification displays it immediately on macOS (node-mac-notifier)
 	} catch (error) {
 		console.error("Failed to show macOS notification:", error)
 		throw new Error(`Failed to show macOS notification: ${error}`)
