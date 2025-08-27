@@ -102,8 +102,8 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 			// Create a modified info object with reduced context window for better performance
 			info = {
 				...info,
-				contextWindow: 41000,
-				maxTokens: 41000,
+				contextWindow: 41000 as any, // Use reduced context for better performance
+				maxTokens: 41000 as any, // Match the context window limit
 			}
 		}
 
