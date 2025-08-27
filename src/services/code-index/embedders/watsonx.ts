@@ -4,7 +4,7 @@ import { t } from "../../../i18n"
 import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { WatsonXAI } from "@ibm-cloud/watsonx-ai"
-import { IamAuthenticator } from "ibm-cloud-sdk-core"
+import { IamAuthenticator, CloudPakForDataAuthenticator } from "ibm-cloud-sdk-core"
 
 /**
  * IBM watsonx embedder implementation using the native IBM Cloud watsonx.ai package.
@@ -25,21 +25,59 @@ export class WatsonxEmbedder implements IEmbedder {
 	 * @param apiKey The watsonx API key for authentication
 	 * @param modelId The model ID to use (defaults to ibm/slate-125m-english-rtrvr-v2)
 	 * @param projectId Optional IBM Cloud project ID for watsonx
-	 * @param proxyUrl Optional proxy URL for connecting through MCP servers
+	 * @param platform Optional platform type (ibmCloud or cloudPak)
+	 * @param baseUrl Optional base URL for the service (required for cloudPak)
+	 * @param region Optional region for IBM Cloud (defaults to us-south)
+	 * @param username Optional username for Cloud Pak for Data
+	 * @param password Optional password for Cloud Pak for Data
 	 */
-	constructor(apiKey: string, modelId?: string, projectId?: string) {
-		if (!apiKey) {
+	constructor(
+		apiKey: string,
+		modelId?: string,
+		projectId?: string,
+		platform: "ibmCloud" | "cloudPak" = "ibmCloud",
+		baseUrl?: string,
+		region: string = "us-south",
+		username?: string,
+		password?: string,
+	) {
+		if (!apiKey && !(username && password)) {
 			throw new Error(t("embeddings:validation.apiKeyRequired"))
 		}
 		this.modelId = modelId || WatsonxEmbedder.DEFAULT_MODEL
 		this.projectId = projectId
 
-		const options: any = {
+		let options: any = {
 			version: WatsonxEmbedder.WATSONX_VERSION,
-			authenticator: new IamAuthenticator({
+		}
+
+		if (platform === "ibmCloud") {
+			options.authenticator = new IamAuthenticator({
 				apikey: apiKey,
-			}),
-			serviceUrl: `https://${WatsonxEmbedder.WATSONX_REGION}.ml.cloud.ibm.com`,
+			})
+			options.serviceUrl = baseUrl || `https://${region}.ml.cloud.ibm.com`
+		} else if (platform === "cloudPak") {
+			if (!baseUrl) {
+				throw new Error("Base URL is required for IBM Cloud Pak for Data")
+			}
+
+			if (username) {
+				if (password) {
+					options.authenticator = new CloudPakForDataAuthenticator({
+						url: baseUrl,
+						username: username,
+						password: password,
+					})
+				} else if (apiKey) {
+					options.authenticator = new CloudPakForDataAuthenticator({
+						url: baseUrl,
+						username: username,
+						apikey: apiKey,
+					})
+				}
+			}
+
+			options.serviceUrl = baseUrl
 		}
 
 		this.watsonxClient = new WatsonXAI(options)

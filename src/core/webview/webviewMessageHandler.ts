@@ -11,7 +11,7 @@ import {
 	type ClineMessage,
 	type TelemetrySetting,
 	TelemetryEventName,
-	UserSettingsConfig,
+	UserSettingsConfig
 } from "@roo-code/types"
 import { CloudService } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -964,24 +964,121 @@ export const webviewMessageHandler = async (
 			provider.postMessageToWebview({ type: "vsCodeLmModels", vsCodeLmModels })
 			break
 		case "requestWatsonxModels":
-			if (message?.values?.apiKey) {
+			if (message?.values) {
 				try {
-					const watsonxModels = await getWatsonxModels(message.values.apiKey, message.values.projectId)
-					const formattedModels: Record<string, { dimension: number }> = {}
-					Object.entries(watsonxModels).forEach(([modelId]) => {
-						formattedModels[modelId] = {
-							dimension: 1536,
+					const {
+						apiKey,
+						projectId,
+						platform = "ibmCloud",
+						baseUrl,
+						username,
+						authType = "apiKey",
+						password,
+						region,
+					} = message.values
+
+					if (!apiKey && !(username && (authType === "password" ? password : apiKey))) {
+						console.error("Missing authentication credentials for IBM watsonx models")
+						provider.postMessageToWebview({
+							type: "watsonxModels",
+							watsonxModels: {},
+						})
+						return
+					}
+
+					let effectiveBaseUrl = baseUrl
+					if (platform === "ibmCloud" && region && !baseUrl) {
+						const regionToUrl: Record<string, string> = {
+							"us-south": "https://us-south.ml.cloud.ibm.com",
+							"eu-de": "https://eu-de.ml.cloud.ibm.com",
+							"eu-gb": "https://eu-gb.ml.cloud.ibm.com",
+							"jp-tok": "https://jp-tok.ml.cloud.ibm.com",
+							"au-syd": "https://au-syd.ml.cloud.ibm.com",
+							"ca-tor": "https://ca-tor.ml.cloud.ibm.com",
+							"ap-south-1": "https://ap-south-1.aws.wxai.ibm.com",
 						}
-					})
+						effectiveBaseUrl = regionToUrl[region] || "https://us-south.ml.cloud.ibm.com"
+					}
+
+					const watsonxModels = await getWatsonxModels(
+						apiKey,
+						false,
+						projectId,
+						effectiveBaseUrl,
+						platform,
+						username,
+						authType === "password" ? password : undefined,
+					)
+
 					provider.postMessageToWebview({
 						type: "watsonxModels",
-						watsonxModels: formattedModels,
+						watsonxModels: watsonxModels,
 					})
 				} catch (error) {
-					console.error("Failed to fetch watsonx models:", error)
+					console.error("Failed to fetch IBM watsonx models:", error)
 					provider.postMessageToWebview({
 						type: "watsonxModels",
 						watsonxModels: {},
+					})
+				}
+			}
+			break
+		case "requestEmbeddedWatsonxModels":
+			if (message?.values) {
+				try {
+					const {
+						apiKey,
+						projectId,
+						platform = "ibmCloud",
+						baseUrl,
+						username,
+						authType = "apiKey",
+						password,
+						region,
+					} = message.values
+
+					if (!apiKey && !(username && (authType === "password" ? password : apiKey))) {
+						console.error("Missing authentication credentials for IBM watsonx embedded models")
+						provider.postMessageToWebview({
+							type: "embeddedWatsonxModels",
+							embeddedWatsonxModels: {},
+						})
+						return
+					}
+
+					let effectiveBaseUrl = baseUrl
+					if (platform === "ibmCloud" && region && !baseUrl) {
+						const regionToUrl: Record<string, string> = {
+							"us-south": "https://us-south.ml.cloud.ibm.com",
+							"eu-de": "https://eu-de.ml.cloud.ibm.com",
+							"eu-gb": "https://eu-gb.ml.cloud.ibm.com",
+							"jp-tok": "https://jp-tok.ml.cloud.ibm.com",
+							"au-syd": "https://au-syd.ml.cloud.ibm.com",
+							"ca-tor": "https://ca-tor.ml.cloud.ibm.com",
+							"ap-south-1": "https://ap-south-1.aws.wxai.ibm.com",
+						}
+						effectiveBaseUrl = regionToUrl[region] || "https://us-south.ml.cloud.ibm.com"
+					}
+
+					const watsonxModels = await getWatsonxModels(
+						apiKey,
+						true,
+						projectId,
+						effectiveBaseUrl,
+						platform as "ibmCloud" | "cloudPak",
+						username,
+						authType === "password" ? password : undefined,
+					)
+
+					provider.postMessageToWebview({
+						type: "embeddedWatsonxModels",
+						embeddedWatsonxModels: watsonxModels,
+					})
+				} catch (error) {
+					console.error("Failed to fetch IBM watsonx embedded models:", error)
+					provider.postMessageToWebview({
+						type: "embeddedWatsonxModels",
+						embeddedWatsonxModels: {},
 					})
 				}
 			}
