@@ -15,7 +15,6 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { RouterName } from "@roo/api"
 import { ModelPicker } from "../ModelPicker"
 
-// Define the available regions
 const WATSONX_REGIONS = {
 	"us-south": "Dallas (us-south.ml.cloud.ibm.com)",
 	"eu-de": "Frankfurt (eu-de.ml.cloud.ibm.com)",
@@ -26,7 +25,6 @@ const WATSONX_REGIONS = {
 	"ap-south-1": "Mumbai (ap-south-1.aws.wxai.ibm.com)",
 }
 
-// Map region codes to full URLs
 const REGION_TO_URL = {
 	"us-south": "https://us-south.ml.cloud.ibm.com",
 	"eu-de": "https://eu-de.ml.cloud.ibm.com",
@@ -35,7 +33,7 @@ const REGION_TO_URL = {
 	"au-syd": "https://au-syd.ml.cloud.ibm.com",
 	"ca-tor": "https://ca-tor.ml.cloud.ibm.com",
 	"ap-south-1": "https://ap-south-1.aws.wxai.ibm.com",
-	custom: "", // For custom URL input
+	custom: "",
 }
 
 type WatsonxAIProps = {
@@ -57,27 +55,60 @@ export const WatsonxAI = ({
 	const [refreshError, setRefreshError] = useState<string | undefined>()
 	const watsonxErrorJustReceived = useRef(false)
 
-	// Determine the current region based on the base URL
+	useEffect(() => {
+		if (!apiConfiguration.watsonxPlatform) {
+			setApiConfigurationField("watsonxPlatform", "ibmCloud")
+		}
+	}, [apiConfiguration.watsonxPlatform, setApiConfigurationField])
+
 	const getCurrentRegion = () => {
 		const baseUrl = apiConfiguration?.watsonxBaseUrl || ""
-
-		// Find the region that matches the current base URL
 		const regionEntry = Object.entries(REGION_TO_URL).find(([_, url]) => url === baseUrl)
-
-		// Return the region code or 'us-south' as default if not found
 		return regionEntry ? regionEntry[0] : "us-south"
 	}
 
 	const [selectedRegion, setSelectedRegion] = useState(getCurrentRegion())
 
-	// Handle region selection
 	const handleRegionSelect = useCallback(
 		(region: string) => {
 			setSelectedRegion(region)
-
-			// Update the base URL in the API configuration
 			const baseUrl = REGION_TO_URL[region as keyof typeof REGION_TO_URL] || ""
 			setApiConfigurationField("watsonxBaseUrl", baseUrl)
+			setApiConfigurationField("watsonxRegion", region)
+		},
+		[setApiConfigurationField],
+	)
+
+	const handlePlatformChange = useCallback(
+		(newPlatform: "ibmCloud" | "cloudPak") => {
+			setApiConfigurationField("watsonxPlatform", newPlatform)
+
+			if (newPlatform === "ibmCloud") {
+				const defaultRegion = "us-south"
+				setSelectedRegion(defaultRegion)
+				setApiConfigurationField("watsonxRegion", defaultRegion)
+				setApiConfigurationField("watsonxBaseUrl", REGION_TO_URL[defaultRegion])
+				setApiConfigurationField("watsonxUsername", "")
+				setApiConfigurationField("watsonxPassword", "")
+				setApiConfigurationField("watsonxAuthType", "apiKey")
+			} else {
+				setSelectedRegion("custom")
+				setApiConfigurationField("watsonxBaseUrl", "")
+				setApiConfigurationField("watsonxAuthType", "apiKey")
+				setApiConfigurationField("watsonxRegion", "")
+			}
+		},
+		[setApiConfigurationField],
+	)
+
+	const handleAuthTypeChange = useCallback(
+		(newAuthType: "apiKey" | "password") => {
+			setApiConfigurationField("watsonxAuthType", newAuthType)
+			if (newAuthType === "apiKey") {
+				setApiConfigurationField("watsonxPassword", "")
+			} else {
+				setApiConfigurationField("watsonxApiKey", "")
+			}
 		},
 		[setApiConfigurationField],
 	)
@@ -93,7 +124,6 @@ export const WatsonxAI = ({
 					setRefreshError(message.error)
 				}
 			} else if (message.type === "routerModels") {
-				// When router models are updated, update the refresh status
 				if (refreshStatus === "loading") {
 					if (!watsonxErrorJustReceived.current) {
 						setRefreshStatus("success")
@@ -121,44 +151,190 @@ export const WatsonxAI = ({
 		setRefreshError(undefined)
 
 		const apiKey = apiConfiguration.watsonxApiKey
-		const projectId = apiConfiguration.watsonxProjectId
-		const baseUrl = REGION_TO_URL[selectedRegion as keyof typeof REGION_TO_URL]
+		const platform = apiConfiguration.watsonxPlatform
+		const customUrl = apiConfiguration.watsonxBaseUrl || ""
+		const username = apiConfiguration.watsonxUsername
+		const authType = apiConfiguration.watsonxAuthType
+		const password = apiConfiguration.watsonxPassword
 
-		if (!apiKey) {
+		let baseUrl = ""
+		if (platform === "ibmCloud") {
+			baseUrl = REGION_TO_URL[selectedRegion as keyof typeof REGION_TO_URL]
+		} else {
+			baseUrl = customUrl
+			setApiConfigurationField("watsonxBaseUrl", baseUrl)
+		}
+
+		if (platform === "ibmCloud" && (!apiKey || !baseUrl)) {
 			setRefreshStatus("error")
 			setRefreshError(t("settings:providers.refreshModels.missingConfig"))
 			return
 		}
 
+		if (platform === "cloudPak") {
+			if (!baseUrl) {
+				setRefreshStatus("error")
+				setRefreshError("URL is required for IBM Cloud Pak for Data")
+				return
+			}
+
+			if (!username) {
+				setRefreshStatus("error")
+				setRefreshError("Username is required for IBM Cloud Pak for Data")
+				return
+			}
+
+			if (authType === "apiKey" && !apiKey) {
+				setRefreshStatus("error")
+				setRefreshError("API Key is required for IBM Cloud Pak for Data")
+				return
+			}
+
+			if (authType === "password" && !password) {
+				setRefreshStatus("error")
+				setRefreshError("Password is required for IBM Cloud Pak for Data")
+				return
+			}
+		}
+
 		vscode.postMessage({
 			type: "requestRouterModels",
 			values: {
-				watsonxApiKey: apiKey,
-				watsonxProjectId: projectId,
-				watsonxBaseUrl: baseUrl,
+				watsonxPlatform: apiConfiguration.watsonxPlatform,
+				watsonxBaseUrl: apiConfiguration.watsonxBaseUrl,
+				watsonxApiKey: apiConfiguration.watsonxApiKey,
+				watsonxProjectId: apiConfiguration.watsonxProjectId,
+				watsonxModelId: apiConfiguration.watsonxModelId,
+				watsonxUsername: apiConfiguration.watsonxUsername,
+				watsonxAuthType: apiConfiguration.watsonxAuthType,
+				watsonxPassword: apiConfiguration.watsonxPassword,
+				watsonxRegion: apiConfiguration.watsonxRegion,
 			},
 		})
-	}, [apiConfiguration, setRefreshStatus, setRefreshError, t, selectedRegion])
+	}, [apiConfiguration, setRefreshStatus, setRefreshError, t, selectedRegion, setApiConfigurationField])
 
 	return (
 		<>
-			<VSCodeTextField
-				value={apiConfiguration?.watsonxApiKey || ""}
-				type="password"
-				onInput={handleInputChange("watsonxApiKey")}
-				placeholder={t("settings:placeholders.apiKey")}
-				className="w-full">
-				<label className="block font-medium mb-1">IBM watsonx API Key</label>
-			</VSCodeTextField>
-			<div className="text-sm text-vscode-descriptionForeground -mt-2">
-				{t("settings:providers.apiKeyStorageNotice")}
+			{/* Platform Selection */}
+			<div className="w-full mb-4">
+				<label className="block font-medium mb-1">IBM watsonx Platform</label>
+				<Select
+					value={apiConfiguration.watsonxPlatform}
+					onValueChange={(value) => handlePlatformChange(value as "ibmCloud" | "cloudPak")}>
+					<SelectTrigger className="w-full">
+						<SelectValue placeholder="Select a platform" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="ibmCloud">IBM Cloud</SelectItem>
+						<SelectItem value="cloudPak">IBM Cloud Pak for Data</SelectItem>
+					</SelectContent>
+				</Select>
 			</div>
-			{!apiConfiguration?.watsonxApiKey && (
-				<VSCodeButtonLink href="https://cloud.ibm.com/iam/apikeys" appearance="secondary">
-					Get WatsonX API Key
-				</VSCodeButtonLink>
+
+			{/* IBM Cloud specific fields */}
+			{apiConfiguration.watsonxPlatform === "ibmCloud" && (
+				<>
+					<VSCodeTextField
+						value={apiConfiguration?.watsonxApiKey || ""}
+						type="password"
+						onInput={handleInputChange("watsonxApiKey")}
+						placeholder={t("settings:placeholders.apiKey")}
+						className="w-full">
+						<label className="block font-medium mb-1">IBM watsonx API Key</label>
+					</VSCodeTextField>
+					<div className="text-sm text-vscode-descriptionForeground -mt-2">
+						{t("settings:providers.apiKeyStorageNotice")}
+					</div>
+					{!apiConfiguration?.watsonxApiKey && (
+						<VSCodeButtonLink href="https://cloud.ibm.com/iam/apikeys" appearance="secondary">
+							Get WatsonX API Key
+						</VSCodeButtonLink>
+					)}
+
+					<div className="w-full mt-4">
+						<label className="block font-medium mb-1">IBM watsonx Region</label>
+						<Select value={selectedRegion} onValueChange={handleRegionSelect}>
+							<SelectTrigger className="w-full">
+								<SelectValue placeholder="Select a region" />
+							</SelectTrigger>
+							<SelectContent>
+								{Object.entries(WATSONX_REGIONS).map(([regionCode, regionName]) => (
+									<SelectItem key={regionCode} value={regionCode}>
+										{regionName}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<div className="text-sm text-vscode-descriptionForeground mt-1">
+							Selected endpoint: {REGION_TO_URL[selectedRegion as keyof typeof REGION_TO_URL]}
+						</div>
+					</div>
+				</>
 			)}
 
+			{/* IBM Cloud Pak for Data specific fields */}
+			{apiConfiguration.watsonxPlatform === "cloudPak" && (
+				<>
+					<VSCodeTextField
+						value={apiConfiguration.watsonxBaseUrl}
+						onInput={handleInputChange("watsonxBaseUrl")}
+						placeholder="https://your-cp4d-instance.example.com"
+						className="w-full">
+						<label className="block font-medium mb-1">IBM Cloud Pak for Data URL</label>
+					</VSCodeTextField>
+					<div className="text-sm text-vscode-descriptionForeground -mt-2 mb-4">
+						Enter the full URL of your IBM Cloud Pak for Data instance
+					</div>
+
+					<VSCodeTextField
+						value={apiConfiguration.watsonxUsername}
+						onInput={handleInputChange("watsonxUsername")}
+						placeholder="Username"
+						className="w-full">
+						<label className="block font-medium mb-1">Username</label>
+					</VSCodeTextField>
+
+					<div className="w-full mt-4">
+						<label className="block font-medium mb-1">Authentication Type</label>
+						<Select
+							value={apiConfiguration.watsonxAuthType}
+							onValueChange={(value) => handleAuthTypeChange(value as "apiKey" | "password")}>
+							<SelectTrigger className="w-full">
+								<SelectValue placeholder="Select authentication type" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="apiKey">API Key</SelectItem>
+								<SelectItem value="password">Password</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
+					{apiConfiguration.watsonxAuthType === "apiKey" ? (
+						<VSCodeTextField
+							value={apiConfiguration?.watsonxApiKey || ""}
+							type="password"
+							onInput={handleInputChange("watsonxApiKey")}
+							placeholder="API Key"
+							className="w-full mt-4">
+							<label className="block font-medium mb-1">API Key</label>
+						</VSCodeTextField>
+					) : (
+						<VSCodeTextField
+							value={apiConfiguration.watsonxPassword}
+							type="password"
+							onInput={handleInputChange("watsonxPassword")}
+							placeholder="Password"
+							className="w-full mt-4">
+							<label className="block font-medium mb-1">Password</label>
+						</VSCodeTextField>
+					)}
+					<div className="text-sm text-vscode-descriptionForeground -mt-2">
+						{t("settings:providers.apiKeyStorageNotice")}
+					</div>
+				</>
+			)}
+
+			{/* Common fields for both platforms */}
 			<VSCodeTextField
 				value={apiConfiguration?.watsonxProjectId || ""}
 				onInput={handleInputChange("watsonxProjectId")}
@@ -170,29 +346,18 @@ export const WatsonxAI = ({
 				Project ID is required for IBM watsonx integration
 			</div>
 
-			<div className="w-full mt-4">
-				<label className="block font-medium mb-1">IBM watsonx Region</label>
-				<Select value={selectedRegion} onValueChange={handleRegionSelect}>
-					<SelectTrigger className="w-full">
-						<SelectValue placeholder="Select a region" />
-					</SelectTrigger>
-					<SelectContent>
-						{Object.entries(WATSONX_REGIONS).map(([regionCode, regionName]) => (
-							<SelectItem key={regionCode} value={regionCode}>
-								{regionName}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-				<div className="text-sm text-vscode-descriptionForeground mt-1">
-					Selected endpoint: {REGION_TO_URL[selectedRegion as keyof typeof REGION_TO_URL]}
-				</div>
-			</div>
-
 			<Button
 				variant="outline"
 				onClick={handleRefreshModels}
-				disabled={refreshStatus === "loading" || !apiConfiguration.watsonxApiKey}
+				disabled={
+					refreshStatus === "loading" ||
+					(apiConfiguration.watsonxPlatform === "ibmCloud" && !apiConfiguration.watsonxApiKey) ||
+					(apiConfiguration.watsonxPlatform === "cloudPak" &&
+						(!apiConfiguration.watsonxBaseUrl ||
+							!apiConfiguration.watsonxUsername ||
+							(apiConfiguration.watsonxAuthType === "apiKey" && !apiConfiguration.watsonxApiKey) ||
+							(apiConfiguration.watsonxAuthType === "password" && !apiConfiguration.watsonxPassword)))
+				}
 				className="w-full mt-4">
 				<div className="flex items-center gap-2">
 					{refreshStatus === "loading" ? (

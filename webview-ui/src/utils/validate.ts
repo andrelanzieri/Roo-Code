@@ -112,11 +112,29 @@ function validateModelsAndKeysProvided(apiConfiguration: ProviderSettings): stri
 			}
 			break
 		case "watsonx":
-			if (!apiConfiguration.watsonxApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
 			if (!apiConfiguration.watsonxProjectId) {
-				return i18next.t("settings:validation.projectId")
+				return i18next.t("settings:validation.watsonx.projectId")
+			}
+			if (apiConfiguration.watsonxPlatform === "ibmCloud") {
+				if (!apiConfiguration.watsonxApiKey) {
+					return i18next.t("settings:validation.watsonx.apiKey")
+				}
+				if (!apiConfiguration.watsonxRegion) {
+					return i18next.t("settings:validation.watsonx.region")
+				}
+			} else if (apiConfiguration.watsonxPlatform === "cloudPak") {
+				if (!apiConfiguration.watsonxBaseUrl) {
+					return i18next.t("settings:validation.watsonx.baseUrl")
+				}
+				if (!apiConfiguration.watsonxUsername) {
+					return i18next.t("settings:validation.watsonx.username")
+				}
+				if (apiConfiguration.watsonxAuthType === "apiKey" && !apiConfiguration.watsonxApiKey) {
+					return i18next.t("settings:validation.watsonx.apiKey")
+				}
+				if (apiConfiguration.watsonxAuthType === "password" && !apiConfiguration.watsonxPassword) {
+					return i18next.t("settings:validation.watsonx.password")
+				}
 			}
 			break
 		case "cerebras":

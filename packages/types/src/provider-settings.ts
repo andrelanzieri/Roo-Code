@@ -289,10 +289,15 @@ const litellmSchema = baseProviderSettingsSchema.extend({
 })
 
 const watsonxSchema = baseProviderSettingsSchema.extend({
+	watsonxPlatform: z.string().optional(),
 	watsonxBaseUrl: z.string().optional(),
 	watsonxApiKey: z.string().optional(),
 	watsonxProjectId: z.string().optional(),
 	watsonxModelId: z.string().optional(),
+	watsonxUsername: z.string().optional(),
+	watsonxAuthType: z.string().optional(),
+	watsonxPassword: z.string().optional(),
+	watsonxRegion: z.string().optional(),
 })
 
 const cerebrasSchema = apiModelIdProviderModelSchema.extend({
