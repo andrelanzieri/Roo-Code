@@ -457,6 +457,12 @@
 			"low": "Low",
 			"description": "Controls how detailed the model's responses are. Low verbosity produces concise answers, while high verbosity provides thorough explanations."
 		},
+		"priorityProcessing": {
+			"label": "Enable Priority Processing (Fast Mode)",
+			"warning": "Higher costs will apply!",
+			"description": "Priority processing significantly reduces response time for GPT-5 and GPT-5-mini models by using dedicated compute resources. This feature increases costs substantially compared to standard processing.",
+			"viewPricing": "View pricing details"
+		},
 		"setReasoningLevel": "Enable Reasoning Effort",
 		"claudeCode": {
 			"pathLabel": "Claude Code Path",

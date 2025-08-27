@@ -57,7 +57,14 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			this.options.enableGpt5ReasoningSummary = true
 		}
 		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
-		this.client = new OpenAI({ baseURL: this.options.openAiNativeBaseUrl, apiKey })
+		const baseURL = this.options.openAiNativeBaseUrl
+
+		// If priority processing is enabled, modify the base URL to use the priority endpoint
+		// This is a workaround since the OpenAI SDK doesn't directly support the priority parameter
+		const finalBaseURL =
+			this.options.enablePriorityProcessing && !baseURL ? "https://api.openai.com/v1/priority" : baseURL
+
+		this.client = new OpenAI({ baseURL: finalBaseURL, apiKey })
 	}
 
 	private normalizeGpt5Usage(usage: any, model: OpenAiNativeModel): ApiStreamUsageChunk | undefined {
@@ -276,6 +283,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			temperature?: number
 			max_output_tokens?: number
 			previous_response_id?: string
+			priority?: boolean
 		}
 
 		const requestBody: Gpt5RequestBody = {
@@ -294,6 +302,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			// Use the per-request reserved output computed by Roo (params.maxTokens from getModelParams).
 			...(model.maxTokens ? { max_output_tokens: model.maxTokens } : {}),
 			...(requestPreviousResponseId && { previous_response_id: requestPreviousResponseId }),
+			// Add priority processing if enabled for GPT-5 models
+			...(this.options.enablePriorityProcessing && this.isGpt5Model(model.id) ? { priority: true } : {}),
 		}
 
 		try {

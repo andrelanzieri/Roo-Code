@@ -101,6 +101,7 @@ import { ModelInfoView } from "./ModelInfoView"
 import { ApiErrorMessage } from "./ApiErrorMessage"
 import { ThinkingBudget } from "./ThinkingBudget"
 import { Verbosity } from "./Verbosity"
+import { PriorityProcessing } from "./PriorityProcessing"
 import { DiffSettingsControl } from "./DiffSettingsControl"
 import { TodoListSettingsControl } from "./TodoListSettingsControl"
 import { TemperatureControl } from "./TemperatureControl"
@@ -721,6 +722,15 @@ const ApiOptions = ({
 			{/* Gate Verbosity UI by capability flag */}
 			{selectedModelInfo?.supportsVerbosity && (
 				<Verbosity
+					apiConfiguration={apiConfiguration}
+					setApiConfigurationField={setApiConfigurationField}
+					modelInfo={selectedModelInfo}
+				/>
+			)}
+
+			{/* Priority Processing for GPT-5 models */}
+			{selectedProvider === "openai-native" && (
+				<PriorityProcessing
 					apiConfiguration={apiConfiguration}
 					setApiConfigurationField={setApiConfigurationField}
 					modelInfo={selectedModelInfo}

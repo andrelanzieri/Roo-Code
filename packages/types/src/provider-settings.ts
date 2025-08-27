@@ -111,6 +111,9 @@ const baseProviderSettingsSchema = z.object({
 
 	// Model verbosity.
 	verbosity: verbosityLevelsSchema.optional(),
+
+	// Priority processing for GPT-5 models.
+	enablePriorityProcessing: z.boolean().optional(),
 })
 
 // Several of the providers share common model config properties.
