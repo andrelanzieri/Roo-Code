@@ -62,8 +62,14 @@ export const getOpenAiReasoning = ({
 		return undefined
 	}
 
-	// If model has reasoning effort capability, return object with the effort
-	// OpenAI models (including GPT-5) support all effort levels including "minimal"
+	// Note: The OpenAI SDK doesn't include "minimal" in its type definitions,
+	// but GPT-5 via OpenRouter does support it. Since this function is for
+	// direct OpenAI API usage (not OpenRouter), we filter out "minimal" here.
+	// OpenRouter handles "minimal" correctly in getOpenRouterReasoning.
+	if (reasoningEffort === "minimal") {
+		return undefined
+	}
+
 	return { reasoning_effort: reasoningEffort }
 }
 

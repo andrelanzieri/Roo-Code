@@ -530,8 +530,8 @@ describe("reasoning.ts", () => {
 			expect(result).toEqual({ reasoning_effort: undefined })
 		})
 
-		it("should handle all reasoning effort values including minimal", () => {
-			const efforts: Array<ReasoningEffortWithMinimal> = ["minimal", "low", "medium", "high"]
+		it("should handle standard reasoning effort values", () => {
+			const efforts: Array<"low" | "medium" | "high"> = ["low", "medium", "high"]
 
 			efforts.forEach((effort) => {
 				const modelWithEffort: ModelInfo = {
@@ -550,12 +550,11 @@ describe("reasoning.ts", () => {
 					reasoningEffort: effort,
 				}
 				const result = getOpenAiReasoning(options)
-				// All effort values including "minimal" should be passed through for OpenAI (e.g., GPT-5)
 				expect(result).toEqual({ reasoning_effort: effort })
 			})
 		})
 
-		it("should handle minimal reasoning effort specifically", () => {
+		it("should filter out minimal reasoning effort for OpenAI SDK compatibility", () => {
 			const modelWithEffort: ModelInfo = {
 				...baseModel,
 				supportsReasoningEffort: true,
@@ -574,8 +573,9 @@ describe("reasoning.ts", () => {
 
 			const result = getOpenAiReasoning(options)
 
-			// "minimal" should be passed through for OpenAI models like GPT-5
-			expect(result).toEqual({ reasoning_effort: "minimal" })
+			// "minimal" is filtered out for OpenAI SDK compatibility
+			// OpenRouter handles "minimal" correctly in its own function
+			expect(result).toBeUndefined()
 		})
 
 		it("should not be affected by reasoningBudget parameter", () => {
