@@ -50,8 +50,9 @@ import {
 } from "@src/components/ui"
 
 import { Tab, TabContent, TabHeader, TabList, TabTrigger } from "../common/Tab"
-import { SetCachedStateField, SetExperimentEnabled } from "./types"
+import { SetExperimentEnabled } from "./types"
 import { SectionHeader } from "./SectionHeader"
+import type { SetCachedStateField } from "./types"
 import ApiConfigManager from "./ApiConfigManager"
 import ApiOptions from "./ApiOptions"
 import { AutoApproveSettings } from "./AutoApproveSettings"
@@ -730,7 +731,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					{activeTab === "ui" && (
 						<UISettings
 							filesChangedEnabled={filesChangedEnabled}
-							setCachedStateField={setCachedStateField}
+							setCachedStateField={setCachedStateField as SetCachedStateField<"filesChangedEnabled">}
 						/>
 					)}
 
@@ -777,6 +778,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							}
 							setOpenRouterImageApiKey={setOpenRouterImageApiKey}
 							setImageGenerationSelectedModel={setImageGenerationSelectedModel}
+							filesChangedEnabled={filesChangedEnabled}
+							setCachedStateField={setCachedStateField as SetCachedStateField<"filesChangedEnabled">}
 						/>
 					)}
 
