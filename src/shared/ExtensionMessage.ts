@@ -13,6 +13,8 @@ import type {
 	OrganizationAllowList,
 	ShareVisibility,
 	QueuedMessage,
+	ClineSay,
+	FileChangeset,
 } from "@roo-code/types"
 
 import { GitCommit } from "../utils/git"
@@ -123,6 +125,10 @@ export interface ExtensionMessage {
 		| "showEditMessageDialog"
 		| "commands"
 		| "insertTextIntoTextarea"
+		| "filesChanged"
+		| "checkpoint_created"
+		| "checkpoint_restored"
+		| "say"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -199,6 +205,10 @@ export interface ExtensionMessage {
 	context?: string
 	commands?: Command[]
 	queuedMessages?: QueuedMessage[]
+	filesChanged?: FileChangeset // Added filesChanged property
+	checkpoint?: string // For checkpoint_created and checkpoint_restored messages
+	previousCheckpoint?: string // For checkpoint_created message
+	say?: ClineSay // Added say property
 }
 
 export type ExtensionState = Pick<
@@ -342,6 +352,7 @@ export type ExtensionState = Pick<
 	mcpServers?: McpServer[]
 	hasSystemPromptOverride?: boolean
 	mdmCompliant?: boolean
+	filesChangedEnabled: boolean
 }
 
 export interface ClineSayTool {

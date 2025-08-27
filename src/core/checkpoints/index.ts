@@ -2,6 +2,7 @@ import pWaitFor from "p-wait-for"
 import * as vscode from "vscode"
 
 import { TelemetryService } from "@roo-code/telemetry"
+import { FileChangeType } from "@roo-code/types"
 
 import { Task } from "../task/Task"
 
@@ -15,6 +16,8 @@ import { getApiMetrics } from "../../shared/getApiMetrics"
 import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider"
 
 import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../../services/checkpoints"
+import { FileChangeManager } from "../../services/file-changes/FileChangeManager"
+import { CheckpointResult } from "../../services/checkpoints/types"
 
 export async function getCheckpointService(
 	task: Task,
@@ -126,36 +129,167 @@ async function checkGitInstallation(
 		}
 
 		// Git is installed, proceed with initialization
-		service.on("initialize", () => {
+		service.on("initialize", async () => {
 			log("[Task#getCheckpointService] service initialized")
-			task.checkpointServiceInitializing = false
+
+			try {
+				// Debug logging to understand checkpoint detection
+				console.log("[DEBUG] Checkpoint detection - total messages:", task.clineMessages.length)
+				console.log(
+					"[DEBUG] Checkpoint detection - message types:",
+					task.clineMessages.map((m) => ({ ts: m.ts, type: m.type, say: m.say, ask: m.ask })),
+				)
+
+				const checkpointMessages = task.clineMessages.filter(({ say }) => say === "checkpoint_saved")
+				console.log(
+					"[DEBUG] Found checkpoint messages:",
+					checkpointMessages.length,
+					checkpointMessages.map((m) => ({ ts: m.ts, text: m.text })),
+				)
+
+				const isCheckpointNeeded = checkpointMessages.length === 0
+				console.log("[DEBUG] isCheckpointNeeded result:", isCheckpointNeeded)
+
+				task.checkpointService = service
+				task.checkpointServiceInitializing = false
+
+				// Update FileChangeManager baseline to match checkpoint service
+				try {
+					const fileChangeManager = provider?.getFileChangeManager()
+					if (fileChangeManager) {
+						const currentBaseline = fileChangeManager.getChanges().baseCheckpoint
+						if (currentBaseline === "HEAD") {
+							if (isCheckpointNeeded) {
+								// New task: set baseline to initial checkpoint
+								if (service.baseHash && service.baseHash !== "HEAD") {
+									await fileChangeManager.updateBaseline(service.baseHash)
+									log(
+										`[Task#getCheckpointService] New task: Updated FileChangeManager baseline from HEAD to ${service.baseHash}`,
+									)
+								}
+							} else {
+								// Existing task: set baseline to current checkpoint (HEAD of checkpoint history)
+								const currentCheckpoint = service.baseHash
+								if (currentCheckpoint && currentCheckpoint !== "HEAD") {
+									await fileChangeManager.updateBaseline(currentCheckpoint)
+									log(
+										`[Task#getCheckpointService] Existing task: Updated FileChangeManager baseline from HEAD to current checkpoint ${currentCheckpoint}`,
+									)
+								}
+							}
+						}
+					}
+				} catch (error) {
+					log(`[Task#getCheckpointService] Failed to update FileChangeManager baseline: ${error}`)
+					// Don't throw - allow checkpoint service to continue initializing
+				}
+
+				if (isCheckpointNeeded) {
+					log("[Task#getCheckpointService] no checkpoints found, saving initial checkpoint")
+					checkpointSave(task, true)
+				} else {
+					log("[Task#getCheckpointService] existing checkpoints found, skipping initial checkpoint")
+				}
+			} catch (err) {
+				log("[Task#getCheckpointService] caught error in on('initialize'), disabling checkpoints")
+				task.enableCheckpoints = false
+			}
 		})
 
-		service.on("checkpoint", ({ fromHash: from, toHash: to, suppressMessage }) => {
+		service.on("checkpoint", async ({ fromHash: fromHash, toHash: toHash, suppressMessage }) => {
 			try {
 				// Always update the current checkpoint hash in the webview, including the suppress flag
 				provider?.postMessageToWebview({
 					type: "currentCheckpointUpdated",
-					text: to,
+					text: toHash,
 					suppressMessage: !!suppressMessage,
 				})
 
 				// Always create the chat message but include the suppress flag in the payload
 				// so the chatview can choose not to render it while keeping it in history.
-				task.say(
+				await task.say(
 					"checkpoint_saved",
-					to,
+					toHash,
 					undefined,
 					undefined,
-					{ from, to, suppressMessage: !!suppressMessage },
+					{ from: fromHash, to: toHash, suppressMessage: !!suppressMessage },
 					undefined,
 					{ isNonInteractive: true },
-				).catch((err) => {
-					log("[Task#getCheckpointService] caught unexpected error in say('checkpoint_saved')")
-					console.error(err)
-				})
+				)
+
+				// Calculate changes using checkpoint service directly
+				try {
+					const checkpointFileChangeManager = provider?.getFileChangeManager()
+					if (checkpointFileChangeManager) {
+						// Get the initial baseline (preserve for cumulative diff tracking)
+						const initialBaseline = checkpointFileChangeManager.getChanges().baseCheckpoint
+						log(
+							`[Task#checkpointCreated] Calculating cumulative changes from initial baseline ${initialBaseline} to ${toHash}`,
+						)
+
+						// Calculate cumulative diff from initial baseline to new checkpoint using checkpoint service
+						const changes = await service.getDiff({ from: initialBaseline, to: toHash })
+
+						if (changes && changes.length > 0) {
+							// Convert to FileChange format with correct checkpoint references
+							const fileChanges = changes.map((change: any) => ({
+								uri: change.paths.relative,
+								type: (change.paths.newFile
+									? "create"
+									: change.paths.deletedFile
+										? "delete"
+										: "edit") as FileChangeType,
+								fromCheckpoint: initialBaseline, // Always reference initial baseline for cumulative view
+								toCheckpoint: toHash, // Current checkpoint for comparison
+								linesAdded: change.content.after ? change.content.after.split("\n").length : 0,
+								linesRemoved: change.content.before ? change.content.before.split("\n").length : 0,
+							}))
+
+							log(`[Task#checkpointCreated] Found ${fileChanges.length} cumulative file changes`)
+
+							// Update FileChangeManager with the new files so view diff can find them
+							checkpointFileChangeManager.setFiles(fileChanges)
+
+							// DON'T clear accepted/rejected state here - preserve user's accept/reject decisions
+							// The state should only be cleared on baseline changes (checkpoint restore) or task restart
+
+							// Get filtered changeset that excludes already accepted/rejected files and only shows LLM-modified files
+							const filteredChangeset = await checkpointFileChangeManager.getLLMOnlyChanges(
+								task.taskId,
+								task.fileContextTracker,
+							)
+
+							// Create changeset and send to webview (only LLM-modified, unaccepted files)
+							const serializableChangeset = {
+								baseCheckpoint: filteredChangeset.baseCheckpoint,
+								files: filteredChangeset.files,
+							}
+
+							log(
+								`[Task#checkpointCreated] Sending ${filteredChangeset.files.length} LLM-only file changes to webview`,
+							)
+
+							provider?.postMessageToWebview({
+								type: "filesChanged",
+								filesChanged: serializableChangeset,
+							})
+						} else {
+							log(`[Task#checkpointCreated] No changes found between ${initialBaseline} and ${toHash}`)
+						}
+
+						// DON'T update the baseline - keep it at initial baseline for cumulative tracking
+						// The baseline should only change when explicitly requested (e.g., checkpoint restore)
+						log(
+							`[Task#checkpointCreated] Keeping FileChangeManager baseline at ${initialBaseline} for cumulative tracking`,
+						)
+					}
+				} catch (error) {
+					log(`[Task#checkpointCreated] Error calculating/sending file changes: ${error}`)
+				}
 			} catch (err) {
-				log("[Task#getCheckpointService] caught unexpected error in on('checkpoint'), disabling checkpoints")
+				log(
+					"[Task#getCheckpointService] caught unexpected error in on('checkpointCreated'), disabling checkpoints",
+				)
 				console.error(err)
 				task.enableCheckpoints = false
 			}
@@ -177,8 +311,51 @@ async function checkGitInstallation(
 	}
 }
 
-export async function checkpointSave(task: Task, force = false, suppressMessage = false) {
-	const service = await getCheckpointService(task)
+export async function getInitializedCheckpointService(
+	task: Task,
+	{ interval = 250, timeout = 15_000 }: { interval?: number; timeout?: number } = {},
+) {
+	const service = await getCheckpointService(task, { interval, timeout })
+
+	if (!service || service.isInitialized) {
+		return service
+	}
+
+	try {
+		await pWaitFor(
+			() => {
+				console.log("[Task#getCheckpointService] waiting for service to initialize")
+				return service.isInitialized
+			},
+			{ interval, timeout },
+		)
+
+		return service
+	} catch (err) {
+		return undefined
+	}
+}
+
+// Track ongoing checkpoint saves per task to prevent duplicates
+const ongoingCheckpointSaves = new Map<string, Promise<void | CheckpointResult | undefined>>()
+
+export async function checkpointSave(task: Task, force = false, files?: vscode.Uri[], suppressMessage = false) {
+	// Create a unique key for this checkpoint save operation
+	const filesKey = files
+		? files
+				.map((f) => f.fsPath)
+				.sort()
+				.join("|")
+		: "all"
+	const saveKey = `${task.taskId}-${force}-${filesKey}`
+
+	// If there's already an ongoing checkpoint save for this exact operation, return the existing promise
+	if (ongoingCheckpointSaves.has(saveKey)) {
+		const provider = task.providerRef.deref()
+		provider?.log(`[checkpointSave] duplicate checkpoint save detected for ${saveKey}, using existing operation`)
+		return ongoingCheckpointSaves.get(saveKey)
+	}
+	const service = await getInitializedCheckpointService(task)
 
 	if (!service) {
 		return
@@ -186,13 +363,52 @@ export async function checkpointSave(task: Task, force = false, suppressMessage 
 
 	TelemetryService.instance.captureCheckpointCreated(task.taskId)
 
-	// Start the checkpoint process in the background.
-	return service
-		.saveCheckpoint(`Task: ${task.taskId}, Time: ${Date.now()}`, { allowEmpty: force, suppressMessage })
-		.catch((err) => {
+	// Get provider for messaging
+	const provider = task.providerRef.deref()
+
+	// Capture the previous checkpoint BEFORE saving the new one
+	const previousCheckpoint = service.baseHash
+	console.log(`[checkpointSave] Previous checkpoint: ${previousCheckpoint}`)
+
+	// Start the checkpoint process in the background and track it
+	const savePromise = service
+		.saveCheckpoint(`Task: ${task.taskId}, Time: ${Date.now()}`, { allowEmpty: force, files, suppressMessage })
+		.then(async (result: any) => {
+			console.log(`[checkpointSave] New checkpoint created: ${result?.commit}`)
+
+			// Notify FCO that checkpoint was created
+			if (provider && result) {
+				try {
+					provider.postMessageToWebview({
+						type: "checkpoint_created",
+						checkpoint: result.commit,
+						previousCheckpoint: previousCheckpoint,
+					} as any)
+
+					// NOTE: Don't send filesChanged here - it's handled by the checkpoint event
+					// to avoid duplicate/conflicting messages that override cumulative tracking.
+					// The checkpoint event handler calculates cumulative changes from the baseline
+					// and sends the complete filesChanged message with all accumulated changes.
+					console.log(
+						`[checkpointSave] FCO update delegated to checkpoint event for cumulative tracking`,
+					)
+				} catch (error) {
+					console.error("[Task#checkpointSave] Failed to notify FCO of checkpoint creation:", error)
+				}
+			}
+			return result
+		})
+		.catch((err: any) => {
 			console.error("[Task#checkpointSave] caught unexpected error, disabling checkpoints", err)
 			task.enableCheckpoints = false
 		})
+		.finally(() => {
+			// Clean up the tracking once completed
+			ongoingCheckpointSaves.delete(saveKey)
+		})
+
+	ongoingCheckpointSaves.set(saveKey, savePromise)
+	return savePromise
 }
 
 export type CheckpointRestoreOptions = {
@@ -224,6 +440,44 @@ export async function checkpointRestore(
 		await service.restoreCheckpoint(commitHash)
 		TelemetryService.instance.captureCheckpointRestored(task.taskId)
 		await provider?.postMessageToWebview({ type: "currentCheckpointUpdated", text: commitHash })
+
+		// Update FileChangeManager baseline to restored checkpoint and clear accept/reject state
+		try {
+			const fileChangeManager = provider?.getFileChangeManager()
+			if (fileChangeManager) {
+				// Reset baseline to restored checkpoint (fresh start from this point)
+				await fileChangeManager.updateBaseline(commitHash)
+				provider?.log(
+					`[checkpointRestore] Reset FileChangeManager baseline to restored checkpoint ${commitHash}`,
+				)
+
+				// Clear accept/reject state - checkpoint restore is time travel, start with clean slate
+				if (typeof fileChangeManager.clearAcceptedRejectedState === "function") {
+					fileChangeManager.clearAcceptedRejectedState()
+					provider?.log(`[checkpointRestore] Cleared accept/reject state for fresh start`)
+				}
+
+				// Calculate and send current changes (should be empty immediately after restore)
+				const changes = fileChangeManager.getChanges()
+				provider?.postMessageToWebview({
+					type: "filesChanged",
+					filesChanged: changes.files.length > 0 ? changes : undefined,
+				})
+			}
+		} catch (error) {
+			provider?.log(`[checkpointRestore] Failed to update FileChangeManager baseline: ${error}`)
+			// Don't throw - allow restore to continue even if FCO sync fails
+		}
+
+		// Notify FCO that checkpoint was restored
+		try {
+			await provider?.postMessageToWebview({
+				type: "checkpoint_restored",
+				checkpoint: commitHash,
+			} as any)
+		} catch (error) {
+			console.error("[checkpointRestore] Failed to notify FCO of checkpoint restore:", error)
+		}
 
 		if (mode === "restore") {
 			await task.overwriteApiConversationHistory(task.apiConversationHistory.filter((m) => !m.ts || m.ts < ts))
@@ -309,7 +563,7 @@ export async function checkpointDiff(task: Task, { ts, previousCommitHash, commi
 		await vscode.commands.executeCommand(
 			"vscode.changes",
 			mode === "full" ? "Changes since task started" : "Changes compare with next checkpoint",
-			changes.map((change) => [
+			changes.map((change: any) => [
 				vscode.Uri.file(change.paths.absolute),
 				vscode.Uri.parse(`${DIFF_VIEW_URI_SCHEME}:${change.paths.relative}`).with({
 					query: Buffer.from(change.content.before ?? "").toString("base64"),
