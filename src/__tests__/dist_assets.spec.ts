@@ -32,6 +32,7 @@ describe("dist assets", () => {
 			"tree-sitter-lua.wasm",
 			"tree-sitter-objc.wasm",
 			"tree-sitter-ocaml.wasm",
+			"tree-sitter-perl.wasm",
 			"tree-sitter-php.wasm",
 			"tree-sitter-python.wasm",
 			"tree-sitter-ql.wasm",

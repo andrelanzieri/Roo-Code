@@ -89,6 +89,9 @@ const extensions = [
 	// Embedded Template
 	"ejs",
 	"erb",
+	// Perl
+	"pl",
+	"pm",
 ].map((e) => `.${e}`)
 
 export { extensions }
