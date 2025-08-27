@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import { Anthropic } from "@anthropic-ai/sdk"
 import { ModelInfo, watsonxAiDefaultModelId, watsonxAiModels, WatsonxAIModelId } from "@roo-code/types"
 import type { ApiHandlerOptions } from "../../shared/api"
-import { IamAuthenticator } from "ibm-cloud-sdk-core"
+import { IamAuthenticator, CloudPakForDataAuthenticator } from "ibm-cloud-sdk-core"
 import { ApiStream } from "../transform/stream"
 import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
@@ -17,26 +17,66 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 	constructor(options: ApiHandlerOptions) {
 		super()
 		this.options = options
+
 		this.projectId = (this.options as any).watsonxProjectId
 		if (!this.projectId) {
 			throw new Error("You must provide a valid IBM watsonx project ID.")
 		}
-		const apiKey = (this.options as any).watsonxApiKey
-		if (!apiKey) {
-			throw new Error("You must provide a valid IBM watsonx API key.")
-		}
-		const serviceUrl = (this.options as any).watsonxBaseUrl || "https://us-south.ml.cloud.ibm.com"
+
+		const serviceUrl = (this.options as any).watsonxBaseUrl
+		const platform = (this.options as any).watsonxPlatform
 
 		try {
 			const serviceOptions: any = {
 				version: "2024-05-31",
 				serviceUrl: serviceUrl,
-				authenticator: new IamAuthenticator({
-					apikey: apiKey,
-				}),
 			}
-			this.service = WatsonXAI.newInstance(serviceOptions)
 
+			// Choose authenticator based on platform
+			if (platform === "cloudPak") {
+				const username = this.options.watsonxUsername
+				if (!username) {
+					throw new Error("You must provide a valid username for IBM Cloud Pak for Data.")
+				}
+
+				const authType = this.options.watsonxAuthType
+
+				if (authType === "apiKey") {
+					const apiKey = this.options.watsonxApiKey
+					if (!apiKey) {
+						throw new Error("You must provide a valid API key for IBM Cloud Pak for Data.")
+					}
+
+					serviceOptions.authenticator = new CloudPakForDataAuthenticator({
+						username: username,
+						apikey: apiKey,
+						url: serviceUrl,
+					})
+				} else {
+					const password = this.options.watsonxPassword
+					if (!password) {
+						throw new Error("You must provide a valid password for IBM Cloud Pak for Data.")
+					}
+
+					serviceOptions.authenticator = new CloudPakForDataAuthenticator({
+						username: username,
+						password: password,
+						url: serviceUrl,
+					})
+				}
+			} else {
+				// Default to IBM Cloud with IAM authentication
+				const apiKey = this.options.watsonxApiKey
+				if (!apiKey) {
+					throw new Error("You must provide a valid IBM watsonx API key.")
+				}
+
+				serviceOptions.authenticator = new IamAuthenticator({
+					apikey: apiKey,
+				})
+			}
+
+			this.service = WatsonXAI.newInstance(serviceOptions)
 			this.service.getAuthenticator().authenticate()
 		} catch (error) {
 			throw new Error(
