@@ -62,12 +62,8 @@ export const getOpenAiReasoning = ({
 		return undefined
 	}
 
-	// If model has reasoning effort capability, return object even if effort is undefined
-	// This preserves the reasoning_effort field in the API call
-	if (reasoningEffort === "minimal") {
-		return undefined
-	}
-
+	// If model has reasoning effort capability, return object with the effort
+	// OpenAI models (including GPT-5) support all effort levels including "minimal"
 	return { reasoning_effort: reasoningEffort }
 }
 

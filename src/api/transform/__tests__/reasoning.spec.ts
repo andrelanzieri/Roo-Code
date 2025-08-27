@@ -530,19 +530,52 @@ describe("reasoning.ts", () => {
 			expect(result).toEqual({ reasoning_effort: undefined })
 		})
 
-		it("should handle all reasoning effort values", () => {
-			const efforts: Array<"low" | "medium" | "high"> = ["low", "medium", "high"]
+		it("should handle all reasoning effort values including minimal", () => {
+			const efforts: Array<ReasoningEffortWithMinimal> = ["minimal", "low", "medium", "high"]
 
 			efforts.forEach((effort) => {
 				const modelWithEffort: ModelInfo = {
 					...baseModel,
+					supportsReasoningEffort: true,
+				}
+
+				const settingsWithEffort: ProviderSettings = {
 					reasoningEffort: effort,
 				}
 
-				const options = { ...baseOptions, model: modelWithEffort, reasoningEffort: effort }
+				const options = {
+					...baseOptions,
+					model: modelWithEffort,
+					settings: settingsWithEffort,
+					reasoningEffort: effort,
+				}
 				const result = getOpenAiReasoning(options)
+				// All effort values including "minimal" should be passed through for OpenAI (e.g., GPT-5)
 				expect(result).toEqual({ reasoning_effort: effort })
 			})
+		})
+
+		it("should handle minimal reasoning effort specifically", () => {
+			const modelWithEffort: ModelInfo = {
+				...baseModel,
+				supportsReasoningEffort: true,
+			}
+
+			const settingsWithMinimal: ProviderSettings = {
+				reasoningEffort: "minimal",
+			}
+
+			const options = {
+				...baseOptions,
+				model: modelWithEffort,
+				settings: settingsWithMinimal,
+				reasoningEffort: "minimal" as ReasoningEffortWithMinimal,
+			}
+
+			const result = getOpenAiReasoning(options)
+
+			// "minimal" should be passed through for OpenAI models like GPT-5
+			expect(result).toEqual({ reasoning_effort: "minimal" })
 		})
 
 		it("should not be affected by reasoningBudget parameter", () => {
