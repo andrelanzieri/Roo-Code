@@ -30,9 +30,13 @@ export async function getWatsonxModels(
 		}
 
 		if (platform === "ibmCloud" || !platform) {
-			options.authenticator = new IamAuthenticator({
-				apikey: apiKey,
-			})
+			if (apiKey) {
+				options.authenticator = new IamAuthenticator({
+					apikey: apiKey,
+				})
+			} else {
+				return {}
+			}
 		} else if (platform === "cloudPak") {
 			if (!baseUrl) {
 				throw new Error("Base URL is required for IBM Cloud Pak for Data")
@@ -52,10 +56,6 @@ export async function getWatsonxModels(
 						apikey: apiKey,
 					})
 				}
-			} else {
-				options.authenticator = new IamAuthenticator({
-					apikey: apiKey,
-				})
 			}
 		}
 
