@@ -375,8 +375,6 @@
 		"ollama": {
 			"baseUrl": "URL bazowy (opcjonalnie)",
 			"modelId": "ID modelu",
-			"apiKey": "Klucz API Ollama",
-			"apiKeyHelp": "Opcjonalny klucz API dla uwierzytelnionych instancji Ollama lub usług chmurowych. Pozostaw puste dla instalacji lokalnych.",
 			"description": "Ollama pozwala na lokalne uruchamianie modeli na twoim komputerze. Aby rozpocząć, zapoznaj się z przewodnikiem szybkiego startu.",
 			"warning": "Uwaga: Roo Code używa złożonych podpowiedzi i działa najlepiej z modelami Claude. Modele o niższych możliwościach mogą nie działać zgodnie z oczekiwaniami."
 		},
@@ -751,10 +749,6 @@
 			"modelSelectionDescription": "Wybierz model do generowania obrazów",
 			"warningMissingKey": "⚠️ Klucz API OpenRouter jest wymagany do generowania obrazów. Skonfiguruj go powyżej.",
 			"successConfigured": "✓ Generowanie obrazów jest skonfigurowane i gotowe do użycia"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Włącz polecenia slash inicjowane przez model",
-			"description": "Gdy włączone, Roo może uruchamiać twoje polecenia slash w celu wykonywania przepływów pracy."
 		}
 	},
 	"promptCaching": {
@@ -867,19 +861,5 @@
 	"includeMaxOutputTokensDescription": "Wyślij parametr maksymalnych tokenów wyjściowych w żądaniach API. Niektórzy dostawcy mogą tego nie obsługiwać.",
 	"limitMaxTokensDescription": "Ogranicz maksymalną liczbę tokenów w odpowiedzi",
 	"maxOutputTokensLabel": "Maksymalne tokeny wyjściowe",
-	"maxTokensGenerateDescription": "Maksymalne tokeny do wygenerowania w odpowiedzi",
-	"serviceTier": {
-		"label": "Poziom usług",
-		"tooltip": "Aby szybciej przetwarzać żądania API, wypróbuj priorytetowy poziom usług. Aby uzyskać niższe ceny przy wyższej latencji, wypróbuj elastyczny poziom usług.",
-		"standard": "Standardowy",
-		"flex": "Elastyczny",
-		"priority": "Priorytetowy",
-		"pricingTableTitle": "Cennik według poziomu usług (cena za 1 mln tokenów)",
-		"columns": {
-			"tier": "Poziom",
-			"input": "Wejście",
-			"output": "Wyjście",
-			"cacheReads": "Odczyty z pamięci podręcznej"
-		}
-	}
+	"maxTokensGenerateDescription": "Maksymalne tokeny do wygenerowania w odpowiedzi"
 }

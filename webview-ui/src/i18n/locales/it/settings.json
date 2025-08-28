@@ -375,8 +375,6 @@
 		"ollama": {
 			"baseUrl": "URL base (opzionale)",
 			"modelId": "ID modello",
-			"apiKey": "Chiave API Ollama",
-			"apiKeyHelp": "Chiave API opzionale per istanze Ollama autenticate o servizi cloud. Lascia vuoto per installazioni locali.",
 			"description": "Ollama ti permette di eseguire modelli localmente sul tuo computer. Per iniziare, consulta la guida rapida.",
 			"warning": "Nota: Roo Code utilizza prompt complessi e funziona meglio con i modelli Claude. I modelli con capacità inferiori potrebbero non funzionare come previsto."
 		},
@@ -751,10 +749,6 @@
 			"modelSelectionDescription": "Seleziona il modello per la generazione di immagini",
 			"warningMissingKey": "⚠️ La chiave API OpenRouter è richiesta per la generazione di immagini. Configurala sopra.",
 			"successConfigured": "✓ La generazione di immagini è configurata e pronta per l'uso"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Abilita comandi slash avviati dal modello",
-			"description": "Quando abilitato, Roo può eseguire i tuoi comandi slash per eseguire flussi di lavoro."
 		}
 	},
 	"promptCaching": {
@@ -867,19 +861,5 @@
 	"includeMaxOutputTokensDescription": "Invia il parametro dei token di output massimi nelle richieste API. Alcuni provider potrebbero non supportarlo.",
 	"limitMaxTokensDescription": "Limita il numero massimo di token nella risposta",
 	"maxOutputTokensLabel": "Token di output massimi",
-	"maxTokensGenerateDescription": "Token massimi da generare nella risposta",
-	"serviceTier": {
-		"label": "Livello di servizio",
-		"tooltip": "Per un'elaborazione più rapida delle richieste API, prova il livello di servizio di elaborazione prioritaria. Per prezzi più bassi con una latenza maggiore, prova il livello di elaborazione flessibile.",
-		"standard": "Standard",
-		"flex": "Flessibile",
-		"priority": "Priorità",
-		"pricingTableTitle": "Prezzi per livello di servizio (prezzo per 1 milione di token)",
-		"columns": {
-			"tier": "Livello",
-			"input": "Input",
-			"output": "Output",
-			"cacheReads": "Letture cache"
-		}
-	}
+	"maxTokensGenerateDescription": "Token massimi da generare nella risposta"
 }

@@ -66,7 +66,6 @@ export const toolParamNames = [
 	"args",
 	"todos",
 	"prompt",
-	"image",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -160,11 +159,6 @@ export interface NewTaskToolUse extends ToolUse {
 	params: Partial<Pick<Record<ToolParamName, string>, "mode" | "message" | "todos">>
 }
 
-export interface RunSlashCommandToolUse extends ToolUse {
-	name: "run_slash_command"
-	params: Partial<Pick<Record<ToolParamName, string>, "command" | "args">>
-}
-
 export interface SearchAndReplaceToolUse extends ToolUse {
 	name: "search_and_replace"
 	params: Required<Pick<Record<ToolParamName, string>, "path" | "search" | "replace">> &
@@ -173,7 +167,7 @@ export interface SearchAndReplaceToolUse extends ToolUse {
 
 export interface GenerateImageToolUse extends ToolUse {
 	name: "generate_image"
-	params: Partial<Pick<Record<ToolParamName, string>, "prompt" | "path" | "image">>
+	params: Partial<Pick<Record<ToolParamName, string>, "prompt" | "path">>
 }
 
 // Define tool group configuration
@@ -202,7 +196,6 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	search_and_replace: "search and replace",
 	codebase_search: "codebase search",
 	update_todo_list: "update todo list",
-	run_slash_command: "run slash command",
 	generate_image: "generate images",
 } as const
 
@@ -243,7 +236,6 @@ export const ALWAYS_AVAILABLE_TOOLS: ToolName[] = [
 	"switch_mode",
 	"new_task",
 	"update_todo_list",
-	"run_slash_command",
 ] as const
 
 export type DiffResult =

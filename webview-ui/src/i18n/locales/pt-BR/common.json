@@ -51,8 +51,7 @@
 	"image": {
 		"tabs": {
 			"view": "Imagem"
-		},
-		"noData": "Nenhum dado de imagem"
+		}
 	},
 	"file": {
 		"errors": {
@@ -72,13 +71,7 @@
 		"deleteWarning": "Excluir esta mensagem irá excluir todas as mensagens subsequentes na conversa. Deseja prosseguir?",
 		"editMessage": "Editar Mensagem",
 		"editWarning": "Editar esta mensagem irá excluir todas as mensagens subsequentes na conversa. Deseja prosseguir?",
-		"editQuestionWithCheckpoint": "Editar esta mensagem irá excluir todas as mensagens posteriores na conversa. Você também deseja desfazer todas as alterações até este checkpoint?",
-		"deleteQuestionWithCheckpoint": "Excluir esta mensagem irá excluir todas as mensagens posteriores na conversa. Você também deseja desfazer todas as alterações até este checkpoint?",
-		"editOnly": "Não, apenas editar a mensagem",
-		"deleteOnly": "Não, apenas excluir a mensagem",
-		"restoreToCheckpoint": "Sim, restaurar o checkpoint",
-		"proceed": "Prosseguir",
-		"dontShowAgain": "Não mostrar novamente"
+		"proceed": "Prosseguir"
 	},
 	"time_ago": {
 		"just_now": "agora mesmo",

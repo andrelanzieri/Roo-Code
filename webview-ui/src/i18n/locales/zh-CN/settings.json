@@ -375,8 +375,6 @@
 		"ollama": {
 			"baseUrl": "基础 URL（可选）",
 			"modelId": "模型 ID",
-			"apiKey": "Ollama API 密钥",
-			"apiKeyHelp": "用于已认证 Ollama 实例或云服务的可选 API 密钥。本地安装请留空。",
 			"description": "Ollama 允许您在本地计算机上运行模型。有关如何开始使用的说明，请参阅其快速入门指南。",
 			"warning": "注意：Roo Code 使用复杂的提示，与 Claude 模型配合最佳。功能较弱的模型可能无法按预期工作。"
 		},
@@ -751,10 +749,6 @@
 			"modelSelectionDescription": "选择用于图像生成的模型",
 			"warningMissingKey": "⚠️ 图像生成需要 OpenRouter API 密钥。请在上方配置。",
 			"successConfigured": "✓ 图像生成已配置完成，可以使用"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "启用模型发起的斜杠命令",
-			"description": "启用后 Roo 可运行斜杠命令执行工作流程。"
 		}
 	},
 	"promptCaching": {
@@ -867,19 +861,5 @@
 	"includeMaxOutputTokensDescription": "在 API 请求中发送最大输出 Token 参数。某些提供商可能不支持此功能。",
 	"limitMaxTokensDescription": "限制响应中的最大 Token 数量",
 	"maxOutputTokensLabel": "最大输出 Token 数",
-	"maxTokensGenerateDescription": "响应中生成的最大 Token 数",
-	"serviceTier": {
-		"label": "服务等级",
-		"tooltip": "为加快API请求处理速度，请尝试优先处理服务等级。为获得更低价格但延迟较高，请尝试灵活处理等级。",
-		"standard": "标准",
-		"flex": "灵活",
-		"priority": "优先",
-		"pricingTableTitle": "按服务等级定价 (每百万Token价格)",
-		"columns": {
-			"tier": "等级",
-			"input": "输入",
-			"output": "输出",
-			"cacheReads": "缓存读取"
-		}
-	}
+	"maxTokensGenerateDescription": "响应中生成的最大 Token 数"
 }

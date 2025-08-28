@@ -51,8 +51,7 @@
 	"image": {
 		"tabs": {
 			"view": "图像"
-		},
-		"noData": "无图片数据"
+		}
 	},
 	"file": {
 		"errors": {
@@ -72,13 +71,7 @@
 		"deleteWarning": "删除此消息将删除对话中的所有后续消息。是否继续？",
 		"editMessage": "编辑消息",
 		"editWarning": "编辑此消息将删除对话中的所有后续消息。是否继续？",
-		"editQuestionWithCheckpoint": "编辑此消息将删除对话中的所有后续消息。是否同时将所有变更撤销到此存档点？",
-		"deleteQuestionWithCheckpoint": "删除此消息将删除对话中的所有后续消息。是否同时将所有变更撤销到此存档点？",
-		"editOnly": "否，仅编辑消息",
-		"deleteOnly": "否，仅删除消息",
-		"restoreToCheckpoint": "是，恢复存档点",
-		"proceed": "继续",
-		"dontShowAgain": "不再显示"
+		"proceed": "继续"
 	},
 	"time_ago": {
 		"just_now": "刚刚",

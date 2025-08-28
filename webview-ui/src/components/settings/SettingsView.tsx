@@ -113,11 +113,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			: "providers",
 	)
 
-	const scrollPositions = useRef<Record<SectionName, number>>(
-		Object.fromEntries(sectionNames.map((s) => [s, 0])) as Record<SectionName, number>,
-	)
-	const contentRef = useRef<HTMLDivElement | null>(null)
-
 	const prevApiConfigName = useRef(currentApiConfigName)
 	const confirmDialogHandler = useRef<() => void>()
 
@@ -187,8 +182,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		includeDiagnosticMessages,
 		maxDiagnosticMessages,
 		includeTaskHistoryInEnhance,
-		openRouterImageApiKey,
-		openRouterImageGenerationSelectedModel,
 		filesChangedEnabled,
 	} = cachedState
 
@@ -266,20 +259,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 			setChangeDetected(true)
 			return { ...prevState, telemetrySetting: setting }
-		})
-	}, [])
-
-	const setOpenRouterImageApiKey = useCallback((apiKey: string) => {
-		setCachedState((prevState) => {
-			setChangeDetected(true)
-			return { ...prevState, openRouterImageApiKey: apiKey }
-		})
-	}, [])
-
-	const setImageGenerationSelectedModel = useCallback((model: string) => {
-		setCachedState((prevState) => {
-			setChangeDetected(true)
-			return { ...prevState, openRouterImageGenerationSelectedModel: model }
 		})
 	}, [])
 
@@ -367,11 +346,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
 			vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
 			vscode.postMessage({ type: "profileThresholds", values: profileThresholds })
-			vscode.postMessage({ type: "openRouterImageApiKey", text: openRouterImageApiKey })
-			vscode.postMessage({
-				type: "openRouterImageGenerationSelectedModel",
-				text: openRouterImageGenerationSelectedModel,
-			})
 			setChangeDetected(false)
 		}
 	}
@@ -406,19 +380,11 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	// Handle tab changes with unsaved changes check
 	const handleTabChange = useCallback(
 		(newTab: SectionName) => {
-			if (contentRef.current) {
-				scrollPositions.current[activeTab] = contentRef.current.scrollTop
-			}
+			// Directly switch tab without checking for unsaved changes
 			setActiveTab(newTab)
 		},
-		[activeTab],
+		[], // No dependency on isChangeDetected needed anymore
 	)
-
-	useLayoutEffect(() => {
-		if (contentRef.current) {
-			contentRef.current.scrollTop = scrollPositions.current[activeTab] ?? 0
-		}
-	}, [activeTab])
 
 	// Store direct DOM element refs for each tab
 	const tabRefs = useRef<Record<SectionName, HTMLButtonElement | null>>(
@@ -595,7 +561,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 				</TabList>
 
 				{/* Content area */}
-				<TabContent ref={contentRef} className="p-0 flex-1 overflow-auto">
+				<TabContent className="p-0 flex-1 overflow-auto">
 					{/* Providers Section */}
 					{activeTab === "providers" && (
 						<div>
@@ -758,16 +724,10 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						<ExperimentalSettings
 							setExperimentEnabled={setExperimentEnabled}
 							experiments={experiments}
-							apiConfiguration={apiConfiguration}
-							setApiConfigurationField={setApiConfigurationField}
-							openRouterImageApiKey={openRouterImageApiKey as string | undefined}
-							openRouterImageGenerationSelectedModel={
-								openRouterImageGenerationSelectedModel as string | undefined
-							}
-							setOpenRouterImageApiKey={setOpenRouterImageApiKey}
-							setImageGenerationSelectedModel={setImageGenerationSelectedModel}
-							filesChangedEnabled={filesChangedEnabled}
-							setCachedStateField={setCachedStateField as SetCachedStateField<"filesChangedEnabled">}
+			filesChangedEnabled={filesChangedEnabled}
+			setCachedStateField={setCachedStateField as SetCachedStateField<"filesChangedEnabled">}
+			apiConfiguration={apiConfiguration}
+			setApiConfigurationField={setApiConfigurationField}
 						/>
 					)}
 

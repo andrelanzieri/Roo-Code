@@ -13,17 +13,17 @@ const MIN_ZOOM = 0.5
 const MAX_ZOOM = 20
 
 export interface ImageViewerProps {
-	imageUri: string // The URI to use for rendering (webview URI, base64, or regular URL)
-	imagePath?: string // The actual file path for display and opening
+	imageData: string // base64 data URL or regular URL
 	alt?: string
+	path?: string
 	showControls?: boolean
 	className?: string
 }
 
 export function ImageViewer({
-	imageUri,
-	imagePath,
+	imageData,
 	alt = "Generated image",
+	path,
 	showControls = true,
 	className = "",
 }: ImageViewerProps) {
@@ -33,7 +33,6 @@ export function ImageViewer({
 	const [isHovering, setIsHovering] = useState(false)
 	const [isDragging, setIsDragging] = useState(false)
 	const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 })
-	const [imageError, setImageError] = useState<string | null>(null)
 	const { copyWithFeedback } = useCopyToClipboard()
 	const { t } = useAppTranslation()
 
@@ -54,13 +53,12 @@ export function ImageViewer({
 		e.stopPropagation()
 
 		try {
-			// Copy the file path if available
-			if (imagePath) {
-				await copyWithFeedback(imagePath, e)
-				// Show feedback
-				setCopyFeedback(true)
-				setTimeout(() => setCopyFeedback(false), 2000)
-			}
+			const textToCopy = path || imageData
+			await copyWithFeedback(textToCopy, e)
+
+			// Show feedback
+			setCopyFeedback(true)
+			setTimeout(() => setCopyFeedback(false), 2000)
 		} catch (err) {
 			console.error("Error copying:", err instanceof Error ? err.message : String(err))
 		}
@@ -73,10 +71,10 @@ export function ImageViewer({
 		e.stopPropagation()
 
 		try {
-			// Request VSCode to save the image
+			// Send message to VSCode to save the image
 			vscode.postMessage({
 				type: "saveImage",
-				dataUri: imageUri,
+				dataUri: imageData,
 			})
 		} catch (error) {
 			console.error("Error saving image:", error)
@@ -88,21 +86,10 @@ export function ImageViewer({
 	 */
 	const handleOpenInEditor = (e: React.MouseEvent) => {
 		e.stopPropagation()
-		// Use openImage for both file paths and data URIs
-		// The backend will handle both cases appropriately
-		if (imagePath) {
-			// Use the actual file path for opening
-			vscode.postMessage({
-				type: "openImage",
-				text: imagePath,
-			})
-		} else if (imageUri) {
-			// Fallback to opening image URI if no path is available (for Mermaid diagrams)
-			vscode.postMessage({
-				type: "openImage",
-				text: imageUri,
-			})
-		}
+		vscode.postMessage({
+			type: "openImage",
+			text: imageData,
+		})
 	}
 
 	/**
@@ -142,86 +129,24 @@ export function ImageViewer({
 		setIsHovering(false)
 	}
 
-	const handleImageError = useCallback(() => {
-		setImageError("Failed to load image")
-	}, [])
-
-	const handleImageLoad = useCallback(() => {
-		setImageError(null)
-	}, [])
-
-	/**
-	 * Format the display path for the image
-	 */
-	const formatDisplayPath = (path: string): string => {
-		// If it's already a relative path starting with ./, keep it
-		if (path.startsWith("./")) return path
-		// If it's an absolute path, extract the relative portion
-		// Look for workspace patterns - match the last segment after any directory separator
-		const workspaceMatch = path.match(/\/([^/]+)\/(.+)$/)
-		if (workspaceMatch && workspaceMatch[2]) {
-			// Return relative path from what appears to be the workspace root
-			return `./${workspaceMatch[2]}`
-		}
-		// Otherwise, just get the filename
-		const filename = path.split("/").pop()
-		return filename || path
-	}
-
-	// Handle missing image URI
-	if (!imageUri) {
-		return (
-			<div
-				className={`relative w-full ${className}`}
-				style={{
-					minHeight: "100px",
-					backgroundColor: "var(--vscode-editor-background)",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-				}}>
-				<span style={{ color: "var(--vscode-descriptionForeground)" }}>{t("common:image.noData")}</span>
-			</div>
-		)
-	}
-
 	return (
 		<>
 			<div
 				className={`relative w-full ${className}`}
 				onMouseEnter={handleMouseEnter}
 				onMouseLeave={handleMouseLeave}>
-				{imageError ? (
-					<div
-						style={{
-							minHeight: "100px",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							backgroundColor: "var(--vscode-editor-background)",
-							borderRadius: "4px",
-							padding: "20px",
-						}}>
-						<span style={{ color: "var(--vscode-errorForeground)" }}>⚠️ {imageError}</span>
-					</div>
-				) : (
-					<img
-						src={imageUri}
-						alt={alt}
-						className="w-full h-auto rounded cursor-pointer"
-						onClick={handleOpenInEditor}
-						onError={handleImageError}
-						onLoad={handleImageLoad}
-						style={{
-							maxHeight: "400px",
-							objectFit: "contain",
-							backgroundColor: "var(--vscode-editor-background)",
-						}}
-					/>
-				)}
-				{imagePath && (
-					<div className="mt-1 text-xs text-vscode-descriptionForeground">{formatDisplayPath(imagePath)}</div>
-				)}
+				<img
+					src={imageData}
+					alt={alt}
+					className="w-full h-auto rounded cursor-pointer"
+					onClick={handleOpenInEditor}
+					style={{
+						maxHeight: "400px",
+						objectFit: "contain",
+						backgroundColor: "var(--vscode-editor-background)",
+					}}
+				/>
+				{path && <div className="mt-1 text-xs text-vscode-descriptionForeground">{path}</div>}
 				{showControls && isHovering && (
 					<div className="absolute bottom-2 right-2 flex gap-1 bg-vscode-editor-background/90 rounded p-0.5 z-10 opacity-100 transition-opacity duration-200 ease-in-out">
 						<MermaidActionButtons
@@ -277,7 +202,7 @@ export function ImageViewer({
 						onMouseUp={() => setIsDragging(false)}
 						onMouseLeave={() => setIsDragging(false)}>
 						<img
-							src={imageUri}
+							src={imageData}
 							alt={alt}
 							style={{
 								maxWidth: "90vw",
@@ -300,7 +225,7 @@ export function ImageViewer({
 						zoomInStep={0.2}
 						zoomOutStep={-0.2}
 					/>
-					{imagePath && (
+					{path && (
 						<StandardTooltip content={t("common:mermaid.buttons.copy")}>
 							<IconButton icon={copyFeedback ? "check" : "copy"} onClick={handleCopy} />
 						</StandardTooltip>

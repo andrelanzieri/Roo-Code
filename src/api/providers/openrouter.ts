@@ -25,7 +25,6 @@ import { getModelEndpoints } from "./fetchers/modelEndpointCache"
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler } from "../index"
-import { handleOpenAIError } from "./utils/openai-error-handler"
 
 // Image generation types
 interface ImageGenerationResponse {
@@ -86,7 +85,6 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	private client: OpenAI
 	protected models: ModelRecord = {}
 	protected endpoints: ModelRecord = {}
-	private readonly providerName = "OpenRouter"
 
 	constructor(options: ApiHandlerOptions) {
 		super()
@@ -163,12 +161,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			...(reasoning && { reasoning }),
 		}
 
-		let stream
-		try {
-			stream = await this.client.chat.completions.create(completionParams)
-		} catch (error) {
-			throw handleOpenAIError(error, this.providerName)
-		}
+		const stream = await this.client.chat.completions.create(completionParams)
 
 		let lastUsage: CompletionUsage | undefined = undefined
 
@@ -266,12 +259,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			...(reasoning && { reasoning }),
 		}
 
-		let response
-		try {
-			response = await this.client.chat.completions.create(completionParams)
-		} catch (error) {
-			throw handleOpenAIError(error, this.providerName)
-		}
+		const response = await this.client.chat.completions.create(completionParams)
 
 		if ("error" in response) {
 			const error = response.error as { message?: string; code?: number }
@@ -287,15 +275,9 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	 * @param prompt The text prompt for image generation
 	 * @param model The model to use for generation
 	 * @param apiKey The OpenRouter API key (must be explicitly provided)
-	 * @param inputImage Optional base64 encoded input image data URL
 	 * @returns The generated image data and format, or an error
 	 */
-	async generateImage(
-		prompt: string,
-		model: string,
-		apiKey: string,
-		inputImage?: string,
-	): Promise<ImageGenerationResult> {
+	async generateImage(prompt: string, model: string, apiKey: string): Promise<ImageGenerationResult> {
 		if (!apiKey) {
 			return {
 				success: false,
@@ -317,20 +299,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 					messages: [
 						{
 							role: "user",
-							content: inputImage
-								? [
-										{
-											type: "text",
-											text: prompt,
-										},
-										{
-											type: "image_url",
-											image_url: {
-												url: inputImage,
-											},
-										},
-									]
-								: prompt,
+							content: prompt,
 						},
 					],
 					modalities: ["image", "text"],

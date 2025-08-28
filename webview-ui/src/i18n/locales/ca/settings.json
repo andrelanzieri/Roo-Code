@@ -375,8 +375,6 @@
 		"ollama": {
 			"baseUrl": "URL base (opcional)",
 			"modelId": "ID del model",
-			"apiKey": "Clau API d'Ollama",
-			"apiKeyHelp": "Clau API opcional per a instàncies d'Ollama autenticades o serveis al núvol. Deixa-ho buit per a instal·lacions locals.",
 			"description": "Ollama permet executar models localment al vostre ordinador. Per a instruccions sobre com començar, consulteu la Guia d'inici ràpid.",
 			"warning": "Nota: Roo Code utilitza prompts complexos i funciona millor amb models Claude. Els models menys capaços poden no funcionar com s'espera."
 		},
@@ -750,10 +748,6 @@
 			"modelSelectionDescription": "Selecciona el model per a la generació d'imatges",
 			"warningMissingKey": "⚠️ La clau API d'OpenRouter és necessària per a la generació d'imatges. Si us plau, configura-la a dalt.",
 			"successConfigured": "✓ La generació d'imatges està configurada i llesta per utilitzar"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Habilitar comandes de barra diagonal iniciades pel model",
-			"description": "Quan està habilitat, Roo pot executar les vostres comandes de barra diagonal per executar fluxos de treball."
 		}
 	},
 	"promptCaching": {
@@ -866,19 +860,5 @@
 	"includeMaxOutputTokensDescription": "Enviar el paràmetre de tokens màxims de sortida a les sol·licituds API. Alguns proveïdors poden no admetre això.",
 	"limitMaxTokensDescription": "Limitar el nombre màxim de tokens en la resposta",
 	"maxOutputTokensLabel": "Tokens màxims de sortida",
-	"maxTokensGenerateDescription": "Tokens màxims a generar en la resposta",
-	"serviceTier": {
-		"label": "Nivell de servei",
-		"tooltip": "Per a un processament més ràpid de les sol·licituds de l'API, proveu el nivell de servei de processament prioritari. Per a preus més baixos amb una latència més alta, proveu el nivell de processament flexible.",
-		"standard": "Estàndard",
-		"flex": "Flex",
-		"priority": "Prioritat",
-		"pricingTableTitle": "Preus per nivell de servei (preu per 1M de fitxes)",
-		"columns": {
-			"tier": "Nivell",
-			"input": "Entrada",
-			"output": "Sortida",
-			"cacheReads": "Lectures de memòria cau"
-		}
-	}
+	"maxTokensGenerateDescription": "Tokens màxims a generar en la resposta"
 }

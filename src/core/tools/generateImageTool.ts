@@ -8,10 +8,14 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
+import { safeWriteJson } from "../../utils/safeWriteJson"
 import { OpenRouterHandler } from "../../api/providers/openrouter"
 
 // Hardcoded list of image generation models for now
-const IMAGE_GENERATION_MODELS = ["google/gemini-2.5-flash-image-preview", "google/gemini-2.5-flash-image-preview:free"]
+const IMAGE_GENERATION_MODELS = [
+	"google/gemini-2.5-flash-image-preview",
+	// Add more models as they become available
+]
 
 export async function generateImageTool(
 	cline: Task,
@@ -23,7 +27,6 @@ export async function generateImageTool(
 ) {
 	const prompt: string | undefined = block.params.prompt
 	const relPath: string | undefined = block.params.path
-	const inputImagePath: string | undefined = block.params.image
 
 	// Check if the experiment is enabled
 	const provider = cline.providerRef.deref()
@@ -39,7 +42,8 @@ export async function generateImageTool(
 		return
 	}
 
-	if (block.partial) {
+	if (block.partial && (!prompt || !relPath)) {
+		// Wait for complete parameters
 		return
 	}
 
@@ -65,71 +69,13 @@ export async function generateImageTool(
 		return
 	}
 
-	// If input image is provided, validate it exists and can be read
-	let inputImageData: string | undefined
-	if (inputImagePath) {
-		const inputImageFullPath = path.resolve(cline.cwd, inputImagePath)
-
-		// Check if input image exists
-		const inputImageExists = await fileExistsAtPath(inputImageFullPath)
-		if (!inputImageExists) {
-			await cline.say("error", `Input image not found: ${getReadablePath(cline.cwd, inputImagePath)}`)
-			pushToolResult(
-				formatResponse.toolError(`Input image not found: ${getReadablePath(cline.cwd, inputImagePath)}`),
-			)
-			return
-		}
-
-		// Validate input image access permissions
-		const inputImageAccessAllowed = cline.rooIgnoreController?.validateAccess(inputImagePath)
-		if (!inputImageAccessAllowed) {
-			await cline.say("rooignore_error", inputImagePath)
-			pushToolResult(formatResponse.toolError(formatResponse.rooIgnoreError(inputImagePath)))
-			return
-		}
-
-		// Read the input image file
-		try {
-			const imageBuffer = await fs.readFile(inputImageFullPath)
-			const imageExtension = path.extname(inputImageFullPath).toLowerCase().replace(".", "")
-
-			// Validate image format
-			const supportedFormats = ["png", "jpg", "jpeg", "gif", "webp"]
-			if (!supportedFormats.includes(imageExtension)) {
-				await cline.say(
-					"error",
-					`Unsupported image format: ${imageExtension}. Supported formats: ${supportedFormats.join(", ")}`,
-				)
-				pushToolResult(
-					formatResponse.toolError(
-						`Unsupported image format: ${imageExtension}. Supported formats: ${supportedFormats.join(", ")}`,
-					),
-				)
-				return
-			}
-
-			// Convert to base64 data URL
-			const mimeType = imageExtension === "jpg" ? "jpeg" : imageExtension
-			inputImageData = `data:image/${mimeType};base64,${imageBuffer.toString("base64")}`
-		} catch (error) {
-			await cline.say(
-				"error",
-				`Failed to read input image: ${error instanceof Error ? error.message : "Unknown error"}`,
-			)
-			pushToolResult(
-				formatResponse.toolError(
-					`Failed to read input image: ${error instanceof Error ? error.message : "Unknown error"}`,
-				),
-			)
-			return
-		}
-	}
-
 	// Check if file is write-protected
 	const isWriteProtected = cline.rooProtectedController?.isWriteProtected(relPath) || false
 
-	// Get OpenRouter API key from global settings (experimental image generation)
-	const openRouterApiKey = state?.openRouterImageApiKey
+	// Get OpenRouter API key from experimental settings ONLY (no fallback to profile)
+	const apiConfiguration = state?.apiConfiguration
+	const imageGenerationSettings = apiConfiguration?.openRouterImageGenerationSettings
+	const openRouterApiKey = imageGenerationSettings?.openRouterApiKey
 
 	if (!openRouterApiKey) {
 		await cline.say(
@@ -145,7 +91,7 @@ export async function generateImageTool(
 	}
 
 	// Get selected model from settings or use default
-	const selectedModel = state?.openRouterImageGenerationSelectedModel || IMAGE_GENERATION_MODELS[0]
+	const selectedModel = imageGenerationSettings?.selectedModel || IMAGE_GENERATION_MODELS[0]
 
 	// Determine if the path is outside the workspace
 	const fullPath = path.resolve(cline.cwd, removeClosingTag("path", relPath))
@@ -167,7 +113,6 @@ export async function generateImageTool(
 			const approvalMessage = JSON.stringify({
 				...sharedMessageProps,
 				content: prompt,
-				...(inputImagePath && { inputImage: getReadablePath(cline.cwd, inputImagePath) }),
 			})
 
 			const didApprove = await askApproval("tool", approvalMessage, undefined, isWriteProtected)
@@ -179,13 +124,8 @@ export async function generateImageTool(
 			// Create a temporary OpenRouter handler with minimal options
 			const openRouterHandler = new OpenRouterHandler({} as any)
 
-			// Call the generateImage method with the explicit API key and optional input image
-			const result = await openRouterHandler.generateImage(
-				prompt,
-				selectedModel,
-				openRouterApiKey,
-				inputImageData,
-			)
+			// Call the generateImage method with the explicit API key
+			const result = await openRouterHandler.generateImage(prompt, selectedModel, openRouterApiKey)
 
 			if (!result.success) {
 				await cline.say("error", result.error || "Failed to generate image")
@@ -236,18 +176,12 @@ export async function generateImageTool(
 
 			cline.didEditFile = true
 
+			// Display the generated image in the chat using a text message with the image
+			await cline.say("text", getReadablePath(cline.cwd, finalPath), [result.imageData])
+
 			// Record successful tool usage
 			cline.recordToolUsage("generate_image")
 
-			// Get the webview URI for the image
-			const provider = cline.providerRef.deref()
-			const fullImagePath = path.join(cline.cwd, finalPath)
-
-			// Convert to webview URI if provider is available
-			const imageUri = provider?.convertToWebviewUri?.(fullImagePath) ?? vscode.Uri.file(fullImagePath).toString()
-
-			// Send the image with the webview URI
-			await cline.say("image", JSON.stringify({ imageUri, imagePath: fullImagePath }))
 			pushToolResult(formatResponse.toolResult(getReadablePath(cline.cwd, finalPath)))
 
 			return

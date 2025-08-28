@@ -375,8 +375,6 @@
 		"ollama": {
 			"baseUrl": "URL Base (opcional)",
 			"modelId": "ID do Modelo",
-			"apiKey": "Chave API Ollama",
-			"apiKeyHelp": "Chave API opcional para instâncias Ollama autenticadas ou serviços em nuvem. Deixe vazio para instalações locais.",
 			"description": "O Ollama permite que você execute modelos localmente em seu computador. Para instruções sobre como começar, veja o guia de início rápido deles.",
 			"warning": "Nota: O Roo Code usa prompts complexos e funciona melhor com modelos Claude. Modelos menos capazes podem não funcionar como esperado."
 		},
@@ -751,10 +749,6 @@
 			"modelSelectionDescription": "Selecione o modelo para geração de imagens",
 			"warningMissingKey": "⚠️ A chave de API do OpenRouter é necessária para geração de imagens. Configure-a acima.",
 			"successConfigured": "✓ A geração de imagens está configurada e pronta para uso"
-		},
-		"RUN_SLASH_COMMAND": {
-			"name": "Ativar comandos slash iniciados pelo modelo",
-			"description": "Quando ativado, Roo pode executar seus comandos slash para executar fluxos de trabalho."
 		}
 	},
 	"promptCaching": {
@@ -867,19 +861,5 @@
 	"includeMaxOutputTokensDescription": "Enviar parâmetro de tokens máximos de saída nas solicitações de API. Alguns provedores podem não suportar isso.",
 	"limitMaxTokensDescription": "Limitar o número máximo de tokens na resposta",
 	"maxOutputTokensLabel": "Tokens máximos de saída",
-	"maxTokensGenerateDescription": "Tokens máximos para gerar na resposta",
-	"serviceTier": {
-		"label": "Nível de serviço",
-		"tooltip": "Para um processamento mais rápido das solicitações de API, experimente o nível de serviço de processamento prioritário. Para preços mais baixos com maior latência, experimente o nível de processamento flexível.",
-		"standard": "Padrão",
-		"flex": "Flexível",
-		"priority": "Prioritário",
-		"pricingTableTitle": "Preços por nível de serviço (preço por 1 milhão de tokens)",
-		"columns": {
-			"tier": "Nível",
-			"input": "Entrada",
-			"output": "Saída",
-			"cacheReads": "Leituras de cache"
-		}
-	}
+	"maxTokensGenerateDescription": "Tokens máximos para gerar na resposta"
 }

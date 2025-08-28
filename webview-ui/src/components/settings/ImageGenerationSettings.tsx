@@ -1,55 +1,48 @@
 import React, { useState, useEffect } from "react"
 import { VSCodeCheckbox, VSCodeTextField, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
+import type { ProviderSettings } from "@roo-code/types"
 
 interface ImageGenerationSettingsProps {
 	enabled: boolean
 	onChange: (enabled: boolean) => void
-	openRouterImageApiKey?: string
-	openRouterImageGenerationSelectedModel?: string
-	setOpenRouterImageApiKey: (apiKey: string) => void
-	setImageGenerationSelectedModel: (model: string) => void
+	apiConfiguration: ProviderSettings
+	setApiConfigurationField: <K extends keyof ProviderSettings>(
+		field: K,
+		value: ProviderSettings[K],
+		isUserAction?: boolean,
+	) => void
 }
 
 // Hardcoded list of image generation models
 const IMAGE_GENERATION_MODELS = [
 	{ value: "google/gemini-2.5-flash-image-preview", label: "Gemini 2.5 Flash Image Preview" },
-	{ value: "google/gemini-2.5-flash-image-preview:free", label: "Gemini 2.5 Flash Image Preview (Free)" },
 	// Add more models as they become available
 ]
 
 export const ImageGenerationSettings = ({
 	enabled,
 	onChange,
-	openRouterImageApiKey,
-	openRouterImageGenerationSelectedModel,
-	setOpenRouterImageApiKey,
-	setImageGenerationSelectedModel,
+	apiConfiguration,
+	setApiConfigurationField,
 }: ImageGenerationSettingsProps) => {
 	const { t } = useAppTranslation()
 
-	const [apiKey, setApiKey] = useState(openRouterImageApiKey || "")
+	// Get image generation settings from apiConfiguration
+	const imageGenerationSettings = apiConfiguration?.openRouterImageGenerationSettings || {}
+	const [openRouterApiKey, setOpenRouterApiKey] = useState(imageGenerationSettings.openRouterApiKey || "")
 	const [selectedModel, setSelectedModel] = useState(
-		openRouterImageGenerationSelectedModel || IMAGE_GENERATION_MODELS[0].value,
+		imageGenerationSettings.selectedModel || IMAGE_GENERATION_MODELS[0].value,
 	)
 
-	// Update local state when props change (e.g., when switching profiles)
+	// Update parent state when local state changes
 	useEffect(() => {
-		setApiKey(openRouterImageApiKey || "")
-		setSelectedModel(openRouterImageGenerationSelectedModel || IMAGE_GENERATION_MODELS[0].value)
-	}, [openRouterImageApiKey, openRouterImageGenerationSelectedModel])
-
-	// Handle API key changes
-	const handleApiKeyChange = (value: string) => {
-		setApiKey(value)
-		setOpenRouterImageApiKey(value)
-	}
-
-	// Handle model selection changes
-	const handleModelChange = (value: string) => {
-		setSelectedModel(value)
-		setImageGenerationSelectedModel(value)
-	}
+		const newSettings = {
+			openRouterApiKey,
+			selectedModel,
+		}
+		setApiConfigurationField("openRouterImageGenerationSettings", newSettings)
+	}, [openRouterApiKey, selectedModel, setApiConfigurationField])
 
 	return (
 		<div className="space-y-4">
@@ -72,8 +65,8 @@ export const ImageGenerationSettings = ({
 							{t("settings:experimental.IMAGE_GENERATION.openRouterApiKeyLabel")}
 						</label>
 						<VSCodeTextField
-							value={apiKey}
-							onInput={(e: any) => handleApiKeyChange(e.target.value)}
+							value={openRouterApiKey}
+							onInput={(e: any) => setOpenRouterApiKey(e.target.value)}
 							placeholder={t("settings:experimental.IMAGE_GENERATION.openRouterApiKeyPlaceholder")}
 							className="w-full"
 							type="password"
@@ -97,10 +90,10 @@ export const ImageGenerationSettings = ({
 						</label>
 						<VSCodeDropdown
 							value={selectedModel}
-							onChange={(e: any) => handleModelChange(e.target.value)}
+							onChange={(e: any) => setSelectedModel(e.target.value)}
 							className="w-full">
 							{IMAGE_GENERATION_MODELS.map((model) => (
-								<VSCodeOption key={model.value} value={model.value} className="py-2 px-3">
+								<VSCodeOption key={model.value} value={model.value}>
 									{model.label}
 								</VSCodeOption>
 							))}
@@ -111,13 +104,13 @@ export const ImageGenerationSettings = ({
 					</div>
 
 					{/* Status Message */}
-					{enabled && !apiKey && (
+					{enabled && !openRouterApiKey && (
 						<div className="p-2 bg-vscode-editorWarning-background text-vscode-editorWarning-foreground rounded text-sm">
 							{t("settings:experimental.IMAGE_GENERATION.warningMissingKey")}
 						</div>
 					)}
 
-					{enabled && apiKey && (
+					{enabled && openRouterApiKey && (
 						<div className="p-2 bg-vscode-editorInfo-background text-vscode-editorInfo-foreground rounded text-sm">
 							{t("settings:experimental.IMAGE_GENERATION.successConfigured")}
 						</div>
