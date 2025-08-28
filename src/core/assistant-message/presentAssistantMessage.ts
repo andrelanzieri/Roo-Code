@@ -285,11 +285,27 @@ export async function presentAssistantMessage(cline: Task) {
 				)
 
 				if (response !== "yesButtonClicked") {
-					// Handle both messageResponse and noButtonClicked with text.
-					if (text) {
+					// Check if this is a file change tool and user provided feedback via messageResponse
+					const isFileChangeTool = [
+						"write_to_file",
+						"apply_diff",
+						"insert_content",
+						"search_and_replace",
+					].includes(block.name)
+					const isImplicitRejection = response === "messageResponse" && text && isFileChangeTool
+
+					if (isImplicitRejection) {
+						// User provided feedback without explicitly accepting - treat as implicit rejection with improvement request
+						await cline.say("user_feedback", text, images)
+						pushToolResult(
+							formatResponse.toolResult(formatResponse.toolImplicitlyRejectedWithFeedback(text), images),
+						)
+					} else if (text) {
+						// Explicit rejection with feedback
 						await cline.say("user_feedback", text, images)
 						pushToolResult(formatResponse.toolResult(formatResponse.toolDeniedWithFeedback(text), images))
 					} else {
+						// Explicit rejection without feedback
 						pushToolResult(formatResponse.toolDenied())
 					}
 					cline.didRejectTool = true

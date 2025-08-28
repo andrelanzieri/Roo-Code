@@ -13,6 +13,9 @@ export const formatResponse = {
 	toolApprovedWithFeedback: (feedback?: string) =>
 		`The user approved this operation and provided the following context:\n<feedback>\n${feedback}\n</feedback>`,
 
+	toolImplicitlyRejectedWithFeedback: (feedback?: string) =>
+		`The user implicitly rejected the current file change proposal by providing improvement feedback instead of explicitly accepting it. The proposed change was NOT applied. The user wants you to create a NEW, improved proposal based on their feedback:\n<feedback>\n${feedback}\n</feedback>\n\nIMPORTANT: The previous file change proposal was rejected. Do not attempt to revert any changes. Instead, read the current file content and create a new proposal incorporating the user's feedback.`,
+
 	toolError: (error?: string) => `The tool execution failed with the following error:\n<error>\n${error}\n</error>`,
 
 	rooIgnoreError: (path: string) =>
