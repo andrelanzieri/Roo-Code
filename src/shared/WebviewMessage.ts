@@ -86,7 +86,6 @@ export interface WebviewMessage {
 		| "allowedMaxRequests"
 		| "allowedMaxCost"
 		| "alwaysAllowSubtasks"
-		| "alwaysAllowUpdateTodoList"
 		| "autoCondenseContext"
 		| "autoCondenseContextPercent"
 		| "condensingApiConfigId"
@@ -189,7 +188,6 @@ export interface WebviewMessage {
 		| "indexCleared"
 		| "focusPanelRequest"
 		| "profileThresholds"
-		| "setHistoryPreviewCollapsed"
 		| "openExternal"
 		| "filterMarketplaceItems"
 		| "marketplaceButtonClicked"
@@ -200,7 +198,6 @@ export interface WebviewMessage {
 		| "marketplaceInstallResult"
 		| "fetchMarketplaceData"
 		| "switchTab"
-		| "profileThresholds"
 		| "shareTaskSuccess"
 		| "exportMode"
 		| "exportModeResult"
@@ -358,3 +355,6 @@ export type WebViewMessagePayload =
 	| InstallMarketplaceItemWithParametersPayload
 	| UpdateTodoListPayload
 	| EditQueuedMessagePayload
+
+// Alias for consistent naming (prefer 'Webview' spelling in new code)
+export type WebviewMessagePayload = WebViewMessagePayload
