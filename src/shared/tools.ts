@@ -65,6 +65,7 @@ export const toolParamNames = [
 	"query",
 	"args",
 	"todos",
+	"slash_command",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -164,6 +165,11 @@ export interface SearchAndReplaceToolUse extends ToolUse {
 		Partial<Pick<Record<ToolParamName, string>, "use_regex" | "ignore_case" | "start_line" | "end_line">>
 }
 
+export interface ExecuteSlashCommandToolUse extends ToolUse {
+	name: "execute_slash_command"
+	params: Partial<Pick<Record<ToolParamName, string>, "slash_command" | "args">>
+}
+
 // Define tool group configuration
 export type ToolGroupConfig = {
 	tools: readonly string[]
@@ -190,6 +196,7 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	search_and_replace: "search and replace",
 	codebase_search: "codebase search",
 	update_todo_list: "update todo list",
+	execute_slash_command: "execute slash commands",
 } as const
 
 // Define available tool groups.
@@ -211,7 +218,7 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 		tools: ["browser_action"],
 	},
 	command: {
-		tools: ["execute_command"],
+		tools: ["execute_command", "execute_slash_command"],
 	},
 	mcp: {
 		tools: ["use_mcp_tool", "access_mcp_resource"],

@@ -26,6 +26,7 @@ import { askFollowupQuestionTool } from "../tools/askFollowupQuestionTool"
 import { switchModeTool } from "../tools/switchModeTool"
 import { attemptCompletionTool } from "../tools/attemptCompletionTool"
 import { newTaskTool } from "../tools/newTaskTool"
+import { executeSlashCommandTool } from "../tools/executeSlashCommandTool"
 
 import { updateTodoListTool } from "../tools/updateTodoListTool"
 
@@ -220,6 +221,11 @@ export async function presentAssistantMessage(cline: Task) {
 						const message = block.params.message ?? "(no message)"
 						const modeName = getModeBySlug(mode, customModes)?.name ?? mode
 						return `[${block.name} in ${modeName} mode: '${message}']`
+					}
+					case "execute_slash_command": {
+						const command = block.params.slash_command ?? "(no command)"
+						const args = block.params.args
+						return `[${block.name}: /${command}${args ? ` ${args}` : ""}]`
 					}
 				}
 			}
@@ -544,6 +550,16 @@ export async function presentAssistantMessage(cline: Task) {
 						removeClosingTag,
 						toolDescription,
 						askFinishSubTaskApproval,
+					)
+					break
+				case "execute_slash_command":
+					await executeSlashCommandTool(
+						cline,
+						block,
+						askApproval,
+						handleError,
+						pushToolResult,
+						removeClosingTag,
 					)
 					break
 			}
