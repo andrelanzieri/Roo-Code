@@ -470,6 +470,7 @@
 		"google-auth-library": "^9.15.1",
 		"gray-matter": "^4.0.3",
 		"i18next": "^25.0.0",
+		"ibm-cloud-sdk-core": "^5.4.2",
 		"ignore": "^7.0.3",
 		"isbinaryfile": "^5.0.2",
 		"jwt-decode": "^4.0.0",
