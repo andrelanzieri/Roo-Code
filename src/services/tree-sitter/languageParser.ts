@@ -52,6 +52,11 @@ async function loadLanguage(langName: string, sourceDirectory?: string) {
 
 let isParserInitialized = false
 
+// Global cache for parser instances to avoid recreating them
+const parserInstanceCache: Map<string, ParserT> = new Map()
+// Global cache for loaded languages to avoid reloading WASM files
+const languageCache: Map<string, LanguageT> = new Map()
+
 /*
 Using node bindings for tree-sitter is problematic in vscode extensions 
 because of incompatibility with electron. Going the .wasm route has the 
@@ -96,134 +101,157 @@ export async function loadRequiredLanguageParsers(filesToParse: string[], source
 		let query: QueryT
 		let parserKey = ext // Default to using extension as key
 
+		// Determine the language name for caching
+		let languageName: string
+		let queryString: string
+
 		switch (ext) {
 			case "js":
 			case "jsx":
 			case "json":
-				language = await loadLanguage("javascript", sourceDirectory)
-				query = new Query(language, javascriptQuery)
+				languageName = "javascript"
+				queryString = javascriptQuery
 				break
 			case "ts":
-				language = await loadLanguage("typescript", sourceDirectory)
-				query = new Query(language, typescriptQuery)
+				languageName = "typescript"
+				queryString = typescriptQuery
 				break
 			case "tsx":
-				language = await loadLanguage("tsx", sourceDirectory)
-				query = new Query(language, tsxQuery)
+				languageName = "tsx"
+				queryString = tsxQuery
 				break
 			case "py":
-				language = await loadLanguage("python", sourceDirectory)
-				query = new Query(language, pythonQuery)
+				languageName = "python"
+				queryString = pythonQuery
 				break
 			case "rs":
-				language = await loadLanguage("rust", sourceDirectory)
-				query = new Query(language, rustQuery)
+				languageName = "rust"
+				queryString = rustQuery
 				break
 			case "go":
-				language = await loadLanguage("go", sourceDirectory)
-				query = new Query(language, goQuery)
+				languageName = "go"
+				queryString = goQuery
 				break
 			case "cpp":
 			case "hpp":
-				language = await loadLanguage("cpp", sourceDirectory)
-				query = new Query(language, cppQuery)
+				languageName = "cpp"
+				queryString = cppQuery
 				break
 			case "c":
 			case "h":
-				language = await loadLanguage("c", sourceDirectory)
-				query = new Query(language, cQuery)
+				languageName = "c"
+				queryString = cQuery
 				break
 			case "cs":
-				language = await loadLanguage("c_sharp", sourceDirectory)
-				query = new Query(language, csharpQuery)
+				languageName = "c_sharp"
+				queryString = csharpQuery
 				break
 			case "rb":
-				language = await loadLanguage("ruby", sourceDirectory)
-				query = new Query(language, rubyQuery)
+				languageName = "ruby"
+				queryString = rubyQuery
 				break
 			case "java":
-				language = await loadLanguage("java", sourceDirectory)
-				query = new Query(language, javaQuery)
+				languageName = "java"
+				queryString = javaQuery
 				break
 			case "php":
-				language = await loadLanguage("php", sourceDirectory)
-				query = new Query(language, phpQuery)
+				languageName = "php"
+				queryString = phpQuery
 				break
 			case "swift":
-				language = await loadLanguage("swift", sourceDirectory)
-				query = new Query(language, swiftQuery)
+				languageName = "swift"
+				queryString = swiftQuery
 				break
 			case "kt":
 			case "kts":
-				language = await loadLanguage("kotlin", sourceDirectory)
-				query = new Query(language, kotlinQuery)
+				languageName = "kotlin"
+				queryString = kotlinQuery
 				break
 			case "css":
-				language = await loadLanguage("css", sourceDirectory)
-				query = new Query(language, cssQuery)
+				languageName = "css"
+				queryString = cssQuery
 				break
 			case "html":
-				language = await loadLanguage("html", sourceDirectory)
-				query = new Query(language, htmlQuery)
+				languageName = "html"
+				queryString = htmlQuery
 				break
 			case "ml":
 			case "mli":
-				language = await loadLanguage("ocaml", sourceDirectory)
-				query = new Query(language, ocamlQuery)
+				languageName = "ocaml"
+				queryString = ocamlQuery
 				break
 			case "scala":
-				language = await loadLanguage("scala", sourceDirectory)
-				query = new Query(language, luaQuery) // Temporarily use Lua query until Scala is implemented
+				languageName = "scala"
+				queryString = luaQuery // Temporarily use Lua query until Scala is implemented
 				break
 			case "sol":
-				language = await loadLanguage("solidity", sourceDirectory)
-				query = new Query(language, solidityQuery)
+				languageName = "solidity"
+				queryString = solidityQuery
 				break
 			case "toml":
-				language = await loadLanguage("toml", sourceDirectory)
-				query = new Query(language, tomlQuery)
+				languageName = "toml"
+				queryString = tomlQuery
 				break
 			case "vue":
-				language = await loadLanguage("vue", sourceDirectory)
-				query = new Query(language, vueQuery)
+				languageName = "vue"
+				queryString = vueQuery
 				break
 			case "lua":
-				language = await loadLanguage("lua", sourceDirectory)
-				query = new Query(language, luaQuery)
+				languageName = "lua"
+				queryString = luaQuery
 				break
 			case "rdl":
-				language = await loadLanguage("systemrdl", sourceDirectory)
-				query = new Query(language, systemrdlQuery)
+				languageName = "systemrdl"
+				queryString = systemrdlQuery
 				break
 			case "tla":
-				language = await loadLanguage("tlaplus", sourceDirectory)
-				query = new Query(language, tlaPlusQuery)
+				languageName = "tlaplus"
+				queryString = tlaPlusQuery
 				break
 			case "zig":
-				language = await loadLanguage("zig", sourceDirectory)
-				query = new Query(language, zigQuery)
+				languageName = "zig"
+				queryString = zigQuery
 				break
 			case "ejs":
 			case "erb":
 				parserKey = "embedded_template" // Use same key for both extensions.
-				language = await loadLanguage("embedded_template", sourceDirectory)
-				query = new Query(language, embeddedTemplateQuery)
+				languageName = "embedded_template"
+				queryString = embeddedTemplateQuery
 				break
 			case "el":
-				language = await loadLanguage("elisp", sourceDirectory)
-				query = new Query(language, elispQuery)
+				languageName = "elisp"
+				queryString = elispQuery
 				break
 			case "ex":
 			case "exs":
-				language = await loadLanguage("elixir", sourceDirectory)
-				query = new Query(language, elixirQuery)
+				languageName = "elixir"
+				queryString = elixirQuery
 				break
 			default:
 				throw new Error(`Unsupported language: ${ext}`)
 		}
 
-		const parser = new Parser()
-		parser.setLanguage(language)
+		// Load language from cache or load it fresh
+		if (languageCache.has(languageName)) {
+			language = languageCache.get(languageName)!
+		} else {
+			language = await loadLanguage(languageName, sourceDirectory)
+			languageCache.set(languageName, language)
+		}
+
+		// Create query
+		query = new Query(language, queryString)
+
+		// Reuse parser instance from cache or create new one
+		let parser: ParserT
+		if (parserInstanceCache.has(languageName)) {
+			parser = parserInstanceCache.get(languageName)!
+		} else {
+			parser = new Parser()
+			parser.setLanguage(language)
+			parserInstanceCache.set(languageName, parser)
+		}
+
 		parsers[parserKey] = { parser, query }
 	}
 
