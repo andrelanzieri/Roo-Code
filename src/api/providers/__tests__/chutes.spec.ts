@@ -307,7 +307,7 @@ describe("ChutesHandler", () => {
 	it("should handle errors in completePrompt", async () => {
 		const errorMessage = "Chutes API error"
 		mockCreate.mockRejectedValueOnce(new Error(errorMessage))
-		await expect(handler.completePrompt("test prompt")).rejects.toThrow(`Chutes completion error: ${errorMessage}`)
+		await expect(handler.completePrompt("test prompt")).rejects.toThrow("OpenAI Compatible API Error (Chutes)")
 	})
 
 	it("createMessage should yield text content from stream", async () => {

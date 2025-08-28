@@ -283,7 +283,7 @@ describe("RooHandler", () => {
 		it("should handle API errors", async () => {
 			mockCreate.mockRejectedValueOnce(new Error("API Error"))
 			await expect(handler.completePrompt("Test prompt")).rejects.toThrow(
-				"Roo Code Cloud completion error: API Error",
+				"OpenAI Compatible API Error (Roo Code Cloud)",
 			)
 		})
 

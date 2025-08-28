@@ -94,26 +94,95 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		const stream = await this.createStream(systemPrompt, messages, metadata)
+		try {
+			const stream = await this.createStream(systemPrompt, messages, metadata)
 
-		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			for await (const chunk of stream) {
+				const delta = chunk.choices[0]?.delta
 
-			if (delta?.content) {
-				yield {
-					type: "text",
-					text: delta.content,
+				if (delta?.content) {
+					yield {
+						type: "text",
+						text: delta.content,
+					}
+				}
+
+				if (chunk.usage) {
+					yield {
+						type: "usage",
+						inputTokens: chunk.usage.prompt_tokens || 0,
+						outputTokens: chunk.usage.completion_tokens || 0,
+					}
 				}
 			}
-
-			if (chunk.usage) {
-				yield {
-					type: "usage",
-					inputTokens: chunk.usage.prompt_tokens || 0,
-					outputTokens: chunk.usage.completion_tokens || 0,
-				}
-			}
+		} catch (error) {
+			// Enhance error messages for OpenAI Compatible providers
+			const enhancedError = this.enhanceErrorMessage(error)
+			throw enhancedError
 		}
+	}
+
+	/**
+	 * Enhances error messages with helpful guidance for OpenAI Compatible API issues
+	 */
+	private enhanceErrorMessage(error: any): Error {
+		const baseUrl = this.baseURL
+		const modelId = this.options.apiModelId || this.defaultProviderModelId
+
+		let errorMessage = error?.message || "Unknown error occurred"
+		let suggestions: string[] = []
+
+		// Check for common error patterns
+		if (error?.status === 401 || errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+			suggestions.push("• Verify your API key is correct and has proper permissions")
+			suggestions.push("• Check if the API key format matches your provider's requirements")
+		} else if (error?.status === 404 || errorMessage.includes("404") || errorMessage.includes("Not Found")) {
+			suggestions.push(`• Verify the base URL is correct: ${baseUrl}`)
+			suggestions.push(`• Check if the model '${modelId}' is available on your provider`)
+			suggestions.push("• Ensure the API endpoint path is correct (some providers use /v1, others don't)")
+		} else if (error?.status === 429 || errorMessage.includes("429") || errorMessage.includes("rate limit")) {
+			suggestions.push("• You've hit the rate limit for this API")
+			suggestions.push("• Wait a moment before retrying")
+			suggestions.push("• Consider upgrading your API plan for higher limits")
+		} else if (error?.status === 500 || error?.status === 502 || error?.status === 503) {
+			suggestions.push("• The API server is experiencing issues")
+			suggestions.push("• Try again in a few moments")
+			suggestions.push("• Check your provider's status page for outages")
+		} else if (errorMessage.includes("ECONNREFUSED") || errorMessage.includes("ENOTFOUND")) {
+			suggestions.push(`• Cannot connect to ${baseUrl}`)
+			suggestions.push("• Verify the server is running and accessible")
+			suggestions.push("• Check your network connection and firewall settings")
+		} else if (errorMessage.includes("timeout") || errorMessage.includes("ETIMEDOUT")) {
+			suggestions.push("• The request timed out")
+			suggestions.push("• The server might be overloaded or the model is taking too long to respond")
+			suggestions.push("• Try with a simpler request or a different model")
+		} else if (errorMessage.includes("model") && errorMessage.includes("not")) {
+			suggestions.push(`• The model '${modelId}' may not be available`)
+			suggestions.push("• Check the available models for your provider")
+			suggestions.push("• Try using a different model")
+		}
+
+		// Add general suggestions if no specific ones were added
+		if (suggestions.length === 0) {
+			suggestions.push("• Verify your API configuration (base URL, API key, model)")
+			suggestions.push("• Check if the provider service is operational")
+			suggestions.push("• Try breaking down your request into smaller parts")
+			suggestions.push("• Consult your provider's documentation for specific requirements")
+		}
+
+		// Create enhanced error message
+		const enhancedMessage = `OpenAI Compatible API Error (${this.providerName}):\n${errorMessage}\n\nSuggestions to resolve:\n${suggestions.join("\n")}`
+
+		const enhancedError = new Error(enhancedMessage)
+		// Preserve original error properties
+		if (error?.status) {
+			;(enhancedError as any).status = error.status
+		}
+		if (error?.code) {
+			;(enhancedError as any).code = error.code
+		}
+
+		return enhancedError
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
@@ -127,11 +196,8 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 			return response.choices[0]?.message.content || ""
 		} catch (error) {
-			if (error instanceof Error) {
-				throw new Error(`${this.providerName} completion error: ${error.message}`)
-			}
-
-			throw error
+			// Use the same enhanced error handling
+			throw this.enhanceErrorMessage(error)
 		}
 	}
 

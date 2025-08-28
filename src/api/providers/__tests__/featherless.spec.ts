@@ -178,9 +178,7 @@ describe("FeatherlessHandler", () => {
 	it("should handle errors in completePrompt", async () => {
 		const errorMessage = "Featherless API error"
 		mockCreate.mockRejectedValueOnce(new Error(errorMessage))
-		await expect(handler.completePrompt("test prompt")).rejects.toThrow(
-			`Featherless completion error: ${errorMessage}`,
-		)
+		await expect(handler.completePrompt("test prompt")).rejects.toThrow("OpenAI Compatible API Error (Featherless)")
 	})
 
 	it("createMessage should yield text content from stream", async () => {

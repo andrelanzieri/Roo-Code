@@ -137,9 +137,7 @@ describe("ZAiHandler", () => {
 		it("should handle errors in completePrompt", async () => {
 			const errorMessage = "Z AI API error"
 			mockCreate.mockRejectedValueOnce(new Error(errorMessage))
-			await expect(handler.completePrompt("test prompt")).rejects.toThrow(
-				`Z AI completion error: ${errorMessage}`,
-			)
+			await expect(handler.completePrompt("test prompt")).rejects.toThrow("OpenAI Compatible API Error (Z AI)")
 		})
 
 		it("createMessage should yield text content from stream", async () => {

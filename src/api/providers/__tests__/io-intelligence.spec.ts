@@ -196,7 +196,7 @@ describe("IOIntelligenceHandler", () => {
 		const errorMessage = "IO Intelligence API error"
 		mockCreate.mockRejectedValueOnce(new Error(errorMessage))
 		await expect(handler.completePrompt("test prompt")).rejects.toThrow(
-			`IO Intelligence completion error: ${errorMessage}`,
+			"OpenAI Compatible API Error (IO Intelligence)",
 		)
 	})
 
