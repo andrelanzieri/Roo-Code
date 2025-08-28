@@ -1,27 +1,26 @@
 import { render, screen } from "@/utils/test-utils"
 
-import { CloudView } from "../CloudView"
+import { AccountView } from "../AccountView"
 
 // Mock the translation context
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
 		t: (key: string) => {
 			const translations: Record<string, string> = {
-				"cloud:title": "Cloud",
+				"account:title": "Account",
 				"settings:common.done": "Done",
-				"cloud:signIn": "Connect to Roo Code Cloud",
-				"cloud:cloudBenefitsTitle": "Connect to Roo Code Cloud",
-				"cloud:cloudBenefitSharing": "Share tasks with others",
-				"cloud:cloudBenefitHistory": "Access your task history",
-				"cloud:cloudBenefitMetrics": "Get a holistic view of your token consumption",
-				"cloud:logOut": "Log out",
-				"cloud:connect": "Connect Now",
-				"cloud:visitCloudWebsite": "Visit Roo Code Cloud",
-				"cloud:remoteControl": "Roomote Control",
-				"cloud:remoteControlDescription":
+				"account:signIn": "Connect to Roo Code Cloud",
+				"account:cloudBenefitsTitle": "Connect to Roo Code Cloud",
+				"account:cloudBenefitSharing": "Share tasks with others",
+				"account:cloudBenefitHistory": "Access your task history",
+				"account:cloudBenefitMetrics": "Get a holistic view of your token consumption",
+				"account:logOut": "Log out",
+				"account:connect": "Connect Now",
+				"account:visitCloudWebsite": "Visit Roo Code Cloud",
+				"account:remoteControl": "Roomote Control",
+				"account:remoteControlDescription":
 					"Enable following and interacting with tasks in this workspace with Roo Code Cloud",
-				"cloud:profilePicture": "Profile picture",
-				"cloud:cloudUrlPillLabel": "Roo Code Cloud URL: ",
+				"account:profilePicture": "Profile picture",
 			}
 			return translations[key] || key
 		},
@@ -56,10 +55,10 @@ Object.defineProperty(window, "IMAGES_BASE_URI", {
 	writable: true,
 })
 
-describe("CloudView", () => {
+describe("AccountView", () => {
 	it("should display benefits when user is not authenticated", () => {
 		render(
-			<CloudView
+			<AccountView
 				userInfo={null}
 				isAuthenticated={false}
 				cloudApiUrl="https://app.roocode.com"
@@ -84,7 +83,7 @@ describe("CloudView", () => {
 		}
 
 		render(
-			<CloudView
+			<AccountView
 				userInfo={mockUserInfo}
 				isAuthenticated={true}
 				cloudApiUrl="https://app.roocode.com"
@@ -113,7 +112,7 @@ describe("CloudView", () => {
 		}
 
 		render(
-			<CloudView
+			<AccountView
 				userInfo={mockUserInfo}
 				isAuthenticated={true}
 				cloudApiUrl="https://app.roocode.com"
@@ -137,7 +136,7 @@ describe("CloudView", () => {
 		}
 
 		render(
-			<CloudView
+			<AccountView
 				userInfo={mockUserInfo}
 				isAuthenticated={true}
 				cloudApiUrl="https://app.roocode.com"
@@ -148,71 +147,5 @@ describe("CloudView", () => {
 		// Check that the remote control toggle is NOT displayed
 		expect(screen.queryByTestId("remote-control-toggle")).not.toBeInTheDocument()
 		expect(screen.queryByText("Roomote Control")).not.toBeInTheDocument()
-	})
-
-	it("should not display cloud URL pill when pointing to production", () => {
-		const mockUserInfo = {
-			name: "Test User",
-			email: "test@example.com",
-		}
-
-		render(
-			<CloudView
-				userInfo={mockUserInfo}
-				isAuthenticated={true}
-				cloudApiUrl="https://app.roocode.com"
-				onDone={() => {}}
-			/>,
-		)
-
-		// Check that the cloud URL pill is NOT displayed for production URL
-		expect(screen.queryByText(/Roo Code Cloud URL:/)).not.toBeInTheDocument()
-	})
-
-	it("should display cloud URL pill when pointing to non-production environment", () => {
-		const mockUserInfo = {
-			name: "Test User",
-			email: "test@example.com",
-		}
-
-		render(
-			<CloudView
-				userInfo={mockUserInfo}
-				isAuthenticated={true}
-				cloudApiUrl="https://staging.roocode.com"
-				onDone={() => {}}
-			/>,
-		)
-
-		// Check that the cloud URL pill is displayed with the staging URL
-		expect(screen.getByText(/Roo Code Cloud URL:/)).toBeInTheDocument()
-		expect(screen.getByText("https://staging.roocode.com")).toBeInTheDocument()
-	})
-
-	it("should display cloud URL pill for non-authenticated users when not pointing to production", () => {
-		render(
-			<CloudView
-				userInfo={null}
-				isAuthenticated={false}
-				cloudApiUrl="https://dev.roocode.com"
-				onDone={() => {}}
-			/>,
-		)
-
-		// Check that the cloud URL pill is displayed even when not authenticated
-		expect(screen.getByText(/Roo Code Cloud URL:/)).toBeInTheDocument()
-		expect(screen.getByText("https://dev.roocode.com")).toBeInTheDocument()
-	})
-
-	it("should not display cloud URL pill when cloudApiUrl is undefined", () => {
-		const mockUserInfo = {
-			name: "Test User",
-			email: "test@example.com",
-		}
-
-		render(<CloudView userInfo={mockUserInfo} isAuthenticated={true} onDone={() => {}} />)
-
-		// Check that the cloud URL pill is NOT displayed when cloudApiUrl is undefined
-		expect(screen.queryByText(/Roo Code Cloud URL:/)).not.toBeInTheDocument()
 	})
 })

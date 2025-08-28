@@ -13,10 +13,6 @@ export const Uri = {
 	parse: vi.fn((uri: string) => ({ toString: () => uri })),
 }
 
-export const commands = {
-	executeCommand: vi.fn().mockResolvedValue(undefined),
-}
-
 export interface ExtensionContext {
 	secrets: {
 		get: (key: string) => Promise<string | undefined>

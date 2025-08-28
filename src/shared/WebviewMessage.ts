@@ -7,7 +7,6 @@ import {
 	type InstallMarketplaceItemOptions,
 	type MarketplaceItem,
 	type ShareVisibility,
-	type QueuedMessage,
 	marketplaceItemSchema,
 } from "@roo-code/types"
 
@@ -22,8 +21,6 @@ export type AudioType = "notification" | "celebration" | "progress_loop"
 export interface UpdateTodoListPayload {
 	todos: any[]
 }
-
-export type EditQueuedMessagePayload = Pick<QueuedMessage, "id" | "text" | "images">
 
 export interface WebviewMessage {
 	type:
@@ -177,7 +174,7 @@ export interface WebviewMessage {
 		| "toggleApiConfigPin"
 		| "setHistoryPreviewCollapsed"
 		| "hasOpenedModeSelector"
-		| "cloudButtonClicked"
+		| "accountButtonClicked"
 		| "rooCloudSignIn"
 		| "rooCloudSignOut"
 		| "condenseTaskContextRequest"
@@ -213,12 +210,6 @@ export interface WebviewMessage {
 		| "createCommand"
 		| "insertTextIntoTextarea"
 		| "showMdmAuthRequiredNotification"
-		| "imageGenerationSettings"
-		| "openRouterImageApiKey"
-		| "openRouterImageGenerationSelectedModel"
-		| "queueMessage"
-		| "removeQueuedMessage"
-		| "editQueuedMessage"
 		| "viewDiff"
 		| "acceptFileChange"
 		| "rejectFileChange"
@@ -229,7 +220,7 @@ export interface WebviewMessage {
 		| "filesChangedBaselineUpdate"
 	text?: string
 	editedMessageContent?: string
-	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
+	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "account"
 	disabled?: boolean
 	context?: string
 	dataUri?: string
@@ -261,10 +252,8 @@ export interface WebviewMessage {
 	hasSystemPromptOverride?: boolean
 	terminalOperation?: "continue" | "abort"
 	messageTs?: number
-	restoreCheckpoint?: boolean
 	historyPreviewCollapsed?: boolean
 	filters?: { type?: string; search?: string; tags?: string[] }
-	settings?: any
 	url?: string // For openExternal
 	mpItem?: MarketplaceItem
 	mpInstallOptions?: InstallMarketplaceItemOptions
@@ -354,7 +343,6 @@ export type WebViewMessagePayload =
 	| IndexClearedPayload
 	| InstallMarketplaceItemWithParametersPayload
 	| UpdateTodoListPayload
-	| EditQueuedMessagePayload
 
 // Alias for consistent naming (prefer 'Webview' spelling in new code)
 export type WebviewMessagePayload = WebViewMessagePayload

@@ -7,7 +7,7 @@ import { TaskStatus, taskMetadataSchema } from "./task.js"
 import { globalSettingsSchema } from "./global-settings.js"
 import { providerSettingsWithIdSchema } from "./provider-settings.js"
 import { mcpMarketplaceItemSchema } from "./marketplace.js"
-import { clineMessageSchema, queuedMessageSchema, tokenUsageSchema } from "./message.js"
+import { clineMessageSchema } from "./message.js"
 import { staticAppPropertiesSchema, gitPropertiesSchema } from "./telemetry.js"
 
 /**
@@ -359,11 +359,6 @@ export const INSTANCE_TTL_SECONDS = 60
 const extensionTaskSchema = z.object({
 	taskId: z.string(),
 	taskStatus: z.nativeEnum(TaskStatus),
-	taskAsk: clineMessageSchema.optional(),
-	queuedMessages: z.array(queuedMessageSchema).optional(),
-	parentTaskId: z.string().optional(),
-	childTaskId: z.string().optional(),
-	tokenUsage: tokenUsageSchema.optional(),
 	...taskMetadataSchema.shape,
 })
 
@@ -383,10 +378,6 @@ export const extensionInstanceSchema = z.object({
 	task: extensionTaskSchema,
 	taskAsk: clineMessageSchema.optional(),
 	taskHistory: z.array(z.string()),
-	mode: z.string().optional(),
-	modes: z.array(z.object({ slug: z.string(), name: z.string() })).optional(),
-	providerProfile: z.string().optional(),
-	providerProfiles: z.array(z.object({ name: z.string(), provider: z.string().optional() })).optional(),
 })
 
 export type ExtensionInstance = z.infer<typeof extensionInstanceSchema>
@@ -406,17 +397,6 @@ export enum ExtensionBridgeEventName {
 	TaskInteractive = RooCodeEventName.TaskInteractive,
 	TaskResumable = RooCodeEventName.TaskResumable,
 	TaskIdle = RooCodeEventName.TaskIdle,
-
-	TaskPaused = RooCodeEventName.TaskPaused,
-	TaskUnpaused = RooCodeEventName.TaskUnpaused,
-	TaskSpawned = RooCodeEventName.TaskSpawned,
-
-	TaskUserMessage = RooCodeEventName.TaskUserMessage,
-
-	TaskTokenUsageUpdated = RooCodeEventName.TaskTokenUsageUpdated,
-
-	ModeChanged = RooCodeEventName.ModeChanged,
-	ProviderProfileChanged = RooCodeEventName.ProviderProfileChanged,
 
 	InstanceRegistered = "instance_registered",
 	InstanceUnregistered = "instance_unregistered",
@@ -474,48 +454,6 @@ export const extensionBridgeEventSchema = z.discriminatedUnion("type", [
 		instance: extensionInstanceSchema,
 		timestamp: z.number(),
 	}),
-
-	z.object({
-		type: z.literal(ExtensionBridgeEventName.TaskPaused),
-		instance: extensionInstanceSchema,
-		timestamp: z.number(),
-	}),
-	z.object({
-		type: z.literal(ExtensionBridgeEventName.TaskUnpaused),
-		instance: extensionInstanceSchema,
-		timestamp: z.number(),
-	}),
-	z.object({
-		type: z.literal(ExtensionBridgeEventName.TaskSpawned),
-		instance: extensionInstanceSchema,
-		timestamp: z.number(),
-	}),
-
-	z.object({
-		type: z.literal(ExtensionBridgeEventName.TaskUserMessage),
-		instance: extensionInstanceSchema,
-		timestamp: z.number(),
-	}),
-
-	z.object({
-		type: z.literal(ExtensionBridgeEventName.TaskTokenUsageUpdated),
-		instance: extensionInstanceSchema,
-		timestamp: z.number(),
-	}),
-
-	z.object({
-		type: z.literal(ExtensionBridgeEventName.ModeChanged),
-		instance: extensionInstanceSchema,
-		mode: z.string(),
-		timestamp: z.number(),
-	}),
-	z.object({
-		type: z.literal(ExtensionBridgeEventName.ProviderProfileChanged),
-		instance: extensionInstanceSchema,
-		providerProfile: z.object({ name: z.string(), provider: z.string().optional() }),
-		timestamp: z.number(),
-	}),
-
 	z.object({
 		type: z.literal(ExtensionBridgeEventName.InstanceRegistered),
 		instance: extensionInstanceSchema,
@@ -552,8 +490,6 @@ export const extensionBridgeCommandSchema = z.discriminatedUnion("type", [
 		payload: z.object({
 			text: z.string(),
 			images: z.array(z.string()).optional(),
-			mode: z.string().optional(),
-			providerProfile: z.string().optional(),
 		}),
 		timestamp: z.number(),
 	}),
@@ -566,7 +502,9 @@ export const extensionBridgeCommandSchema = z.discriminatedUnion("type", [
 	z.object({
 		type: z.literal(ExtensionBridgeCommandName.ResumeTask),
 		instanceId: z.string(),
-		payload: z.object({ taskId: z.string() }),
+		payload: z.object({
+			taskId: z.string(),
+		}),
 		timestamp: z.number(),
 	}),
 ])
@@ -620,8 +558,6 @@ export const taskBridgeCommandSchema = z.discriminatedUnion("type", [
 		payload: z.object({
 			text: z.string(),
 			images: z.array(z.string()).optional(),
-			mode: z.string().optional(),
-			providerProfile: z.string().optional(),
 		}),
 		timestamp: z.number(),
 	}),
@@ -651,49 +587,32 @@ export type TaskBridgeCommand = z.infer<typeof taskBridgeCommandSchema>
  * ExtensionSocketEvents
  */
 
-export enum ExtensionSocketEvents {
-	CONNECTED = "extension:connected",
+export const ExtensionSocketEvents = {
+	CONNECTED: "extension:connected",
 
-	REGISTER = "extension:register",
-	UNREGISTER = "extension:unregister",
+	REGISTER: "extension:register",
+	UNREGISTER: "extension:unregister",
 
-	HEARTBEAT = "extension:heartbeat",
+	HEARTBEAT: "extension:heartbeat",
 
-	EVENT = "extension:event", // event from extension instance
-	RELAYED_EVENT = "extension:relayed_event", // relay from server
+	EVENT: "extension:event", // event from extension instance
+	RELAYED_EVENT: "extension:relayed_event", // relay from server
 
-	COMMAND = "extension:command", // command from user
-	RELAYED_COMMAND = "extension:relayed_command", // relay from server
-}
+	COMMAND: "extension:command", // command from user
+	RELAYED_COMMAND: "extension:relayed_command", // relay from server
+} as const
 
 /**
  * TaskSocketEvents
  */
 
-export enum TaskSocketEvents {
-	JOIN = "task:join",
-	LEAVE = "task:leave",
+export const TaskSocketEvents = {
+	JOIN: "task:join",
+	LEAVE: "task:leave",
 
-	EVENT = "task:event", // event from extension task
-	RELAYED_EVENT = "task:relayed_event", // relay from server
+	EVENT: "task:event", // event from extension task
+	RELAYED_EVENT: "task:relayed_event", // relay from server
 
-	COMMAND = "task:command", // command from user
-	RELAYED_COMMAND = "task:relayed_command", // relay from server
-}
-
-/**
- * `emit()` Response Types
- */
-
-export type JoinResponse = {
-	success: boolean
-	error?: string
-	taskId?: string
-	timestamp?: string
-}
-
-export type LeaveResponse = {
-	success: boolean
-	taskId?: string
-	timestamp?: string
-}
+	COMMAND: "task:command", // command from user
+	RELAYED_COMMAND: "task:relayed_command", // relay from server
+} as const

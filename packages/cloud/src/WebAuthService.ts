@@ -129,7 +129,6 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 	private changeState(newState: AuthState): void {
 		const previousState = this.state
 		this.state = newState
-		this.log(`[auth] changeState: ${previousState} -> ${newState}`)
 		this.emit("auth-state-changed", { state: newState, previousState })
 	}
 
@@ -163,6 +162,8 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 		this.userInfo = null
 
 		this.changeState("logged-out")
+
+		this.log("[auth] Transitioned to logged-out state")
 	}
 
 	private transitionToAttemptingSession(credentials: AuthCredentials): void {
@@ -175,6 +176,8 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 		this.changeState("attempting-session")
 
 		this.timer.start()
+
+		this.log("[auth] Transitioned to attempting-session state")
 	}
 
 	private transitionToInactiveSession(): void {
@@ -182,6 +185,8 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 		this.userInfo = null
 
 		this.changeState("inactive-session")
+
+		this.log("[auth] Transitioned to inactive-session state")
 	}
 
 	/**
@@ -417,6 +422,7 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 
 			if (previousState !== "active-session") {
 				this.changeState("active-session")
+				this.log("[auth] Transitioned to active-session state")
 				this.fetchUserInfo()
 			} else {
 				this.state = "active-session"
@@ -563,7 +569,11 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 			)?.email_address
 		}
 
-		let extensionBridgeEnabled = true
+		// Check for extension_bridge_enabled in user's public metadata
+		let extensionBridgeEnabled = false
+		if (userData.public_metadata?.extension_bridge_enabled === true) {
+			extensionBridgeEnabled = true
+		}
 
 		// Fetch organization info if user is in organization context
 		try {
@@ -579,7 +589,11 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 					if (userMembership) {
 						this.setUserOrganizationInfo(userInfo, userMembership)
 
-						extensionBridgeEnabled = await this.isExtensionBridgeEnabledForOrganization(storedOrgId)
+						// Check organization public metadata for extension_bridge_enabled
+						// Organization setting takes precedence over user setting
+						if (await this.isExtensionBridgeEnabledForOrganization(storedOrgId)) {
+							extensionBridgeEnabled = true
+						}
 
 						this.log("[auth] User in organization context:", {
 							id: userMembership.organization.id,
@@ -600,9 +614,10 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 				if (primaryOrgMembership) {
 					this.setUserOrganizationInfo(userInfo, primaryOrgMembership)
 
-					extensionBridgeEnabled = await this.isExtensionBridgeEnabledForOrganization(
-						primaryOrgMembership.organization.id,
-					)
+					// Check organization public metadata for extension_bridge_enabled
+					if (await this.isExtensionBridgeEnabledForOrganization(primaryOrgMembership.organization.id)) {
+						extensionBridgeEnabled = true
+					}
 
 					this.log("[auth] Legacy credentials: Found organization membership:", {
 						id: primaryOrgMembership.organization.id,
