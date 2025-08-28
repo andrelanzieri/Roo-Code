@@ -2791,7 +2791,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Checkpoints
 
 	public async checkpointSave(force: boolean = false, suppressMessage: boolean = false) {
-		return checkpointSave(this, force, suppressMessage)
+		return checkpointSave(this, force, undefined, suppressMessage)
 	}
 
 	public async checkpointRestore(options: CheckpointRestoreOptions) {

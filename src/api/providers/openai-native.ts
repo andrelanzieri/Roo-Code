@@ -1197,9 +1197,9 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	}
 
 	/**
-	 * Returns a shallow-cloned ModelInfo with pricing overridden for the given tier, if available.
-	 * If no tier or no overrides exist, the original ModelInfo is returned.
-	 */
+		* Returns a shallow-cloned ModelInfo with pricing overridden for the given tier, if available.
+		* If no tier or no overrides exist, the original ModelInfo is returned.
+		*/
 	private applyServiceTierPricing(info: ModelInfo, tier?: ServiceTier): ModelInfo {
 		if (!tier || tier === "default") return info
 
