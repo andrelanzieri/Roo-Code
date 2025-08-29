@@ -584,6 +584,8 @@ describe("ClineProvider", () => {
 			openRouterImageApiKey: undefined,
 			openRouterImageGenerationSelectedModel: undefined,
 			filesChangedEnabled: true,
+			openRouterImageApiKey: undefined,
+			openRouterImageGenerationSelectedModel: undefined,
 		}
 
 		const message: ExtensionMessage = {
