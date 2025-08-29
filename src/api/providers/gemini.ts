@@ -78,6 +78,18 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			tools.push({ googleSearch: {} })
 		}
 
+		if (this.options.enableStructuredOutput) {
+			// Structured output configuration
+			// This would typically be configured with response schemas
+			// For now, we're adding the capability placeholder
+			tools.push({ responseSchema: {} })
+		}
+
+		if (this.options.enableCodeExecution) {
+			// Code execution tool configuration
+			tools.push({ codeExecution: {} })
+		}
+
 		const config: GenerateContentConfig = {
 			systemInstruction,
 			httpOptions: this.options.googleGeminiBaseUrl ? { baseUrl: this.options.googleGeminiBaseUrl } : undefined,
@@ -209,6 +221,12 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			}
 			if (this.options.enableGrounding) {
 				tools.push({ googleSearch: {} })
+			}
+			if (this.options.enableStructuredOutput) {
+				tools.push({ responseSchema: {} })
+			}
+			if (this.options.enableCodeExecution) {
+				tools.push({ codeExecution: {} })
 			}
 			const promptConfig: GenerateContentConfig = {
 				httpOptions: this.options.googleGeminiBaseUrl
