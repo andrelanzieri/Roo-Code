@@ -65,6 +65,13 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 		}
 	}
 
+	/**
+	 * Creates a streaming message response using the Gemini CLI client.
+	 * @param systemInstruction - System prompt to guide the model's behavior
+	 * @param messages - Array of conversation messages
+	 * @param metadata - Optional metadata for the API call
+	 * @yields Stream of response chunks including text, reasoning, and usage data
+	 */
 	async *createMessage(
 		systemInstruction: string,
 		messages: Anthropic.Messages.MessageParam[],
@@ -76,7 +83,7 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 			throw new Error("Gemini CLI client not initialized")
 		}
 
-		const { id: model, info, maxTokens } = this.getModel()
+		const { id: model, info } = this.getModel()
 		const contents = messages.map(convertAnthropicMessageToGemini)
 
 		try {
@@ -114,7 +121,7 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 
 			for await (const event of stream) {
 				// The stream returns Turn objects at the end
-				turnResult = event
+				turnResult = event as any
 
 				// Handle content events
 				if (event.type === "content" && event.value) {
@@ -170,6 +177,10 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 		}
 	}
 
+	/**
+	 * Gets the model configuration for the current provider settings.
+	 * @returns Model ID and information including pricing and capabilities
+	 */
 	override getModel() {
 		const modelId = this.options.apiModelId
 		let id = modelId && modelId in geminiCliModels ? (modelId as GeminiCliModelId) : geminiCliDefaultModelId
@@ -179,6 +190,11 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 		return { id, info, ...params }
 	}
 
+	/**
+	 * Completes a single prompt without streaming.
+	 * @param prompt - The prompt text to complete
+	 * @returns The completed text response
+	 */
 	async completePrompt(prompt: string): Promise<string> {
 		await this.ensureInitialized()
 
@@ -232,6 +248,13 @@ export class GeminiCliHandler extends BaseProvider implements SingleCompletionHa
 		}
 	}
 
+	/**
+	 * Counts tokens for the given content blocks.
+	 * Note: The Gemini CLI library doesn't expose a direct token counting method,
+	 * so this falls back to the base implementation using tiktoken.
+	 * @param content - Array of content blocks to count tokens for
+	 * @returns The estimated token count
+	 */
 	override async countTokens(content: Array<Anthropic.Messages.ContentBlockParam>): Promise<number> {
 		// The Gemini CLI library doesn't expose a direct token counting method
 		// Fall back to the base implementation
