@@ -20,6 +20,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Tab, TabContent, TabHeader } from "../common/Tab"
 import { useTaskSearch } from "./useTaskSearch"
 import TaskItem from "./TaskItem"
+import { useTaskHierarchy } from "./useTaskHierarchy"
 
 type HistoryViewProps = {
 	onDone: () => void
@@ -44,6 +45,13 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 	const [isSelectionMode, setIsSelectionMode] = useState(false)
 	const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([])
 	const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState<boolean>(false)
+	const [showHierarchical, setShowHierarchical] = useState(true)
+
+	// Use the hierarchical task hook
+	const { flattenedTasks, expandedIds, toggleExpanded, expandAll, collapseAll } = useTaskHierarchy(tasks)
+
+	// Use either flat or hierarchical tasks based on toggle
+	const displayTasks = showHierarchical ? flattenedTasks : tasks
 
 	// Toggle selection mode
 	const toggleSelectionMode = () => {
@@ -65,7 +73,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 	// Toggle select all tasks
 	const toggleSelectAll = (selectAll: boolean) => {
 		if (selectAll) {
-			setSelectedTaskIds(tasks.map((task) => task.id))
+			setSelectedTaskIds(displayTasks.map((task) => task.id))
 		} else {
 			setSelectedTaskIds([])
 		}
@@ -84,6 +92,29 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 				<div className="flex justify-between items-center">
 					<h3 className="text-vscode-foreground m-0">{t("history:history")}</h3>
 					<div className="flex gap-2">
+						{showHierarchical && (
+							<>
+								<StandardTooltip content={t("history:expandAll")}>
+									<Button variant="secondary" onClick={expandAll}>
+										<span className="codicon codicon-expand-all" />
+									</Button>
+								</StandardTooltip>
+								<StandardTooltip content={t("history:collapseAll")}>
+									<Button variant="secondary" onClick={collapseAll}>
+										<span className="codicon codicon-collapse-all" />
+									</Button>
+								</StandardTooltip>
+							</>
+						)}
+						<StandardTooltip
+							content={showHierarchical ? t("history:showFlat") : t("history:showHierarchical")}>
+							<Button variant="secondary" onClick={() => setShowHierarchical(!showHierarchical)}>
+								<span
+									className={`codicon ${showHierarchical ? "codicon-list-flat" : "codicon-list-tree"} mr-1`}
+								/>
+								{showHierarchical ? t("history:flatView") : t("history:treeView")}
+							</Button>
+						</StandardTooltip>
 						<StandardTooltip
 							content={
 								isSelectionMode
@@ -197,23 +228,23 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 					</div>
 
 					{/* Select all control in selection mode */}
-					{isSelectionMode && tasks.length > 0 && (
+					{isSelectionMode && displayTasks.length > 0 && (
 						<div className="flex items-center py-1">
 							<div className="flex items-center gap-2">
 								<Checkbox
-									checked={tasks.length > 0 && selectedTaskIds.length === tasks.length}
+									checked={displayTasks.length > 0 && selectedTaskIds.length === displayTasks.length}
 									onCheckedChange={(checked) => toggleSelectAll(checked === true)}
 									variant="description"
 								/>
 								<span className="text-vscode-foreground">
-									{selectedTaskIds.length === tasks.length
+									{selectedTaskIds.length === displayTasks.length
 										? t("history:deselectAll")
 										: t("history:selectAll")}
 								</span>
 								<span className="ml-auto text-vscode-descriptionForeground text-xs">
 									{t("history:selectedItems", {
 										selected: selectedTaskIds.length,
-										total: tasks.length,
+										total: displayTasks.length,
 									})}
 								</span>
 							</div>
@@ -225,7 +256,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 			<TabContent className="px-2 py-0">
 				<Virtuoso
 					className="flex-1 overflow-y-scroll"
-					data={tasks}
+					data={displayTasks}
 					data-testid="virtuoso-container"
 					initialTopMostItemIndex={0}
 					components={{
@@ -244,6 +275,11 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 							onToggleSelection={toggleTaskSelection}
 							onDelete={setDeleteTaskId}
 							className="m-2"
+							isHierarchical={showHierarchical}
+							level={showHierarchical ? (item as any).level || 0 : 0}
+							hasChildren={showHierarchical && (item as any).children?.length > 0}
+							isExpanded={showHierarchical && expandedIds.has(item.id)}
+							onToggleExpanded={showHierarchical ? () => toggleExpanded(item.id) : undefined}
 						/>
 					)}
 				/>
@@ -253,7 +289,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 			{isSelectionMode && selectedTaskIds.length > 0 && (
 				<div className="fixed bottom-0 left-0 right-2 bg-vscode-editor-background border-t border-vscode-panel-border p-2 flex justify-between items-center">
 					<div className="text-vscode-foreground">
-						{t("history:selectedItems", { selected: selectedTaskIds.length, total: tasks.length })}
+						{t("history:selectedItems", { selected: selectedTaskIds.length, total: displayTasks.length })}
 					</div>
 					<div className="flex gap-2">
 						<Button variant="secondary" onClick={() => setSelectedTaskIds([])}>

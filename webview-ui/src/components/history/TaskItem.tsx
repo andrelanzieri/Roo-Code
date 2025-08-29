@@ -9,6 +9,8 @@ import TaskItemFooter from "./TaskItemFooter"
 
 interface DisplayHistoryItem extends HistoryItem {
 	highlight?: string
+	level?: number
+	children?: DisplayHistoryItem[]
 }
 
 interface TaskItemProps {
@@ -20,6 +22,11 @@ interface TaskItemProps {
 	onToggleSelection?: (taskId: string, isSelected: boolean) => void
 	onDelete?: (taskId: string) => void
 	className?: string
+	isHierarchical?: boolean
+	level?: number
+	hasChildren?: boolean
+	isExpanded?: boolean
+	onToggleExpanded?: () => void
 }
 
 const TaskItem = ({
@@ -31,12 +38,24 @@ const TaskItem = ({
 	onToggleSelection,
 	onDelete,
 	className,
+	isHierarchical = false,
+	level = 0,
+	hasChildren = false,
+	isExpanded = false,
+	onToggleExpanded,
 }: TaskItemProps) => {
 	const handleClick = () => {
 		if (isSelectionMode && onToggleSelection) {
 			onToggleSelection(item.id, !isSelected)
-		} else {
+		} else if (!isHierarchical || !hasChildren) {
 			vscode.postMessage({ type: "showTaskWithId", text: item.id })
+		}
+	}
+
+	const handleExpandClick = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		if (onToggleExpanded) {
+			onToggleExpanded()
 		}
 	}
 
@@ -50,8 +69,28 @@ const TaskItem = ({
 				"cursor-pointer group bg-vscode-editor-background rounded relative overflow-hidden border border-transparent hover:bg-vscode-list-hoverBackground transition-colors",
 				className,
 			)}
+			style={isHierarchical ? { marginLeft: `${level * 24}px` } : undefined}
 			onClick={handleClick}>
 			<div className={(!isCompact && isSelectionMode ? "pl-3 pb-3" : "pl-4") + " flex gap-3 px-3 pt-3 pb-1"}>
+				{/* Expand/collapse button for hierarchical view */}
+				{isHierarchical && hasChildren && (
+					<button
+						className="flex items-center justify-center w-5 h-5 mt-1 hover:bg-vscode-list-hoverBackground rounded"
+						onClick={handleExpandClick}
+						aria-label={isExpanded ? "Collapse" : "Expand"}>
+						<span
+							className={cn(
+								"codicon",
+								isExpanded ? "codicon-chevron-down" : "codicon-chevron-right",
+								"text-xs",
+							)}
+						/>
+					</button>
+				)}
+
+				{/* Spacer for items without children in hierarchical view */}
+				{isHierarchical && !hasChildren && <div className="w-5" />}
+
 				{/* Selection checkbox - only in full variant */}
 				{!isCompact && isSelectionMode && (
 					<div
