@@ -46,8 +46,12 @@ describe("generateImageTool", () => {
 						experiments: {
 							[EXPERIMENT_IDS.IMAGE_GENERATION]: true,
 						},
-						openRouterImageApiKey: "test-api-key",
-						openRouterImageGenerationSelectedModel: "google/gemini-2.5-flash-image-preview",
+						apiConfiguration: {
+							openRouterImageGenerationSettings: {
+								openRouterApiKey: "test-api-key",
+								selectedModel: "google/gemini-2.5-flash-image-preview",
+							},
+						},
 					}),
 				}),
 			},
