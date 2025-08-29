@@ -29,6 +29,7 @@ import { newTaskTool } from "../tools/newTaskTool"
 
 import { updateTodoListTool } from "../tools/updateTodoListTool"
 import { generateImageTool } from "../tools/generateImageTool"
+import { memorySearchTool } from "../tools/memorySearchTool"
 
 import { formatResponse } from "../prompts/responses"
 import { validateToolUse } from "../tools/validateToolUse"
@@ -224,6 +225,8 @@ export async function presentAssistantMessage(cline: Task) {
 					}
 					case "generate_image":
 						return `[${block.name} for '${block.params.path}']`
+					case "memory_search":
+						return `[${block.name} for '${block.params.query}']`
 				}
 			}
 
@@ -551,6 +554,16 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "generate_image":
 					await generateImageTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
+					break
+				case "memory_search":
+					await memorySearchTool(
+						cline,
+						block as any,
+						askApproval,
+						handleError,
+						pushToolResult,
+						removeClosingTag,
+					)
 					break
 			}
 

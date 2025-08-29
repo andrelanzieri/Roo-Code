@@ -104,6 +104,7 @@ import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { restoreTodoListForTask } from "../tools/updateTodoListTool"
 import { AutoApprovalHandler } from "./AutoApprovalHandler"
 import { Gpt5Metadata, ClineMessageWithMetadata } from "./types"
+import { MemoryService } from "../../services/memory/MemoryService"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -641,6 +642,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.emit(RooCodeEventName.TaskTokenUsageUpdated, this.taskId, tokenUsage)
 
 			await this.providerRef.deref()?.updateTaskHistory(historyItem)
+
+			// Check if we should store a memory after saving messages
+			await this.checkAndStoreMemory()
 		} catch (error) {
 			console.error("Failed to save Roo messages:", error)
 		}
@@ -1526,6 +1530,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async initiateTaskLoop(userContent: Anthropic.Messages.ContentBlockParam[]): Promise<void> {
 		// Kicks off the checkpoints initialization process in the background.
 		getCheckpointService(this)
+
+		// Search for relevant memories at the start of the conversation
+		await this.injectRelevantMemories(userContent)
 
 		let nextUserContent = userContent
 		let includeFileDetails = true
@@ -2700,6 +2707,179 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			console.error(`[Task#${this.taskId}] Error persisting GPT-5 metadata:`, error)
 			// Non-fatal error in metadata persistence
 		}
+	}
+
+	/**
+	 * Search for and inject relevant memories into the conversation
+	 */
+	private async injectRelevantMemories(userContent: Anthropic.Messages.ContentBlockParam[]): Promise<void> {
+		try {
+			const provider = this.providerRef.deref()
+			if (!provider) {
+				return
+			}
+
+			// Extract query from user content
+			const textContent = userContent
+				.filter((block) => block.type === "text")
+				.map((block) => (block as Anthropic.TextBlockParam).text)
+				.join(" ")
+
+			if (!textContent) {
+				return
+			}
+
+			const globalStoragePath = provider.context.globalStorageUri.fsPath
+			const memoryService = MemoryService.getInstance(globalStoragePath)
+
+			// Search for relevant memories
+			const memories = await memoryService.searchMemories(
+				textContent,
+				this.cwd,
+				5, // Get top 5 memories
+			)
+
+			if (memories.length > 0) {
+				// Format memories for injection
+				const memoryContext = this.formatMemoriesForInjection(memories)
+
+				// Add memory context to the conversation
+				const memoryBlock: Anthropic.TextBlockParam = {
+					type: "text",
+					text: memoryContext,
+				}
+
+				// Inject at the beginning of user content
+				userContent.unshift(memoryBlock)
+
+				// Log that memories were injected
+				await this.say(
+					"text",
+					`Found ${memories.length} relevant memories from previous conversations. Using this context to better assist you.`,
+					undefined,
+					false,
+				)
+			}
+		} catch (error) {
+			console.error("Failed to inject memories:", error)
+			// Non-fatal error, continue without memories
+		}
+	}
+
+	/**
+	 * Format memories for injection into the conversation
+	 */
+	private formatMemoriesForInjection(memories: Array<{ memory: any; score: number }>): string {
+		const formatted = memories
+			.map((result, index) => {
+				const { memory } = result
+				const date = new Date(memory.timestamp).toLocaleDateString()
+				return `[Memory ${index + 1} from ${date}]:\n${memory.summary}\n\nDetails: ${memory.content.substring(0, 500)}...`
+			})
+			.join("\n\n---\n\n")
+
+		return `<relevant_memories>
+The following memories from previous conversations may be relevant to this task:
+
+${formatted}
+</relevant_memories>`
+	}
+
+	/**
+	 * Store a memory for significant conversation milestones
+	 */
+	private async storeMemory(content: string, summary: string, importance?: "low" | "medium" | "high"): Promise<void> {
+		try {
+			const provider = this.providerRef.deref()
+			if (!provider) {
+				return
+			}
+
+			const globalStoragePath = provider.context.globalStorageUri.fsPath
+			const memoryService = MemoryService.getInstance(globalStoragePath)
+
+			// Get the current mode for metadata
+			const mode = await this.getTaskMode()
+
+			await memoryService.storeMemory(content, summary, this.taskId, this.cwd, {
+				mode,
+				importance,
+				tags: [],
+			})
+		} catch (error) {
+			console.error("Failed to store memory:", error)
+			// Non-fatal error, don't interrupt the task
+		}
+	}
+
+	/**
+	 * Check if we should store a memory based on the current conversation state
+	 */
+	private async checkAndStoreMemory(): Promise<void> {
+		try {
+			// Store memory on significant milestones
+			const lastMessage = this.clineMessages[this.clineMessages.length - 1]
+
+			if (!lastMessage) {
+				return
+			}
+
+			// Store memory on task completion
+			if (lastMessage.type === "ask" && lastMessage.ask === "completion_result") {
+				const taskDescription = this.metadata.task || "Task completed"
+				const summary = `Completed task: ${taskDescription}`
+				const content = this.getRecentConversationContext()
+				await this.storeMemory(content, summary, "high")
+			}
+
+			// Store memory on significant tool uses (text messages that contain tool usage)
+			if (
+				lastMessage.type === "say" &&
+				lastMessage.say === "text" &&
+				lastMessage.text?.includes("[") &&
+				lastMessage.text?.includes("]")
+			) {
+				const toolPattern = /\[([a-z_]+).*?\]/
+				const match = lastMessage.text?.match(toolPattern)
+				if (match) {
+					const toolName = match[1]
+					// Store memory for significant tools
+					if (["write_to_file", "apply_diff", "execute_command"].includes(toolName)) {
+						const summary = `Used ${toolName} tool: ${lastMessage.text?.substring(0, 100)}`
+						const content = this.getRecentConversationContext(5) // Last 5 messages
+						await this.storeMemory(content, summary, "medium")
+					}
+				}
+			}
+
+			// Store memory on error recovery
+			if (lastMessage.type === "say" && lastMessage.say === "error") {
+				const summary = `Error encountered and resolved: ${lastMessage.text?.substring(0, 100)}`
+				const content = this.getRecentConversationContext(10)
+				await this.storeMemory(content, summary, "medium")
+			}
+		} catch (error) {
+			console.error("Failed to check and store memory:", error)
+			// Non-fatal error
+		}
+	}
+
+	/**
+	 * Get recent conversation context for memory storage
+	 */
+	private getRecentConversationContext(messageCount: number = 20): string {
+		const recentMessages = this.clineMessages.slice(-messageCount)
+		return recentMessages
+			.map((msg) => {
+				if (msg.type === "say") {
+					return `Assistant (${msg.say}): ${msg.text || ""}`
+				} else if (msg.type === "ask") {
+					return `User (${msg.ask}): ${msg.text || ""}`
+				}
+				return ""
+			})
+			.filter(Boolean)
+			.join("\n\n")
 	}
 
 	// Getters

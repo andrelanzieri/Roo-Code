@@ -26,6 +26,7 @@ import { getNewTaskDescription } from "./new-task"
 import { getCodebaseSearchDescription } from "./codebase-search"
 import { getUpdateTodoListDescription } from "./update-todo-list"
 import { getGenerateImageDescription } from "./generate-image"
+import { getMemorySearchDescription } from "./memory-search"
 import { CodeIndexManager } from "../../../services/code-index/manager"
 
 // Map of tool names to their description functions
@@ -58,6 +59,7 @@ const toolDescriptionMap: Record<string, (args: ToolArgs) => string | undefined>
 		args.diffStrategy ? args.diffStrategy.getToolDescription({ cwd: args.cwd, toolOptions: args.toolOptions }) : "",
 	update_todo_list: (args) => getUpdateTodoListDescription(args),
 	generate_image: (args) => getGenerateImageDescription(args),
+	memory_search: (args) => getMemorySearchDescription(args),
 }
 
 export function getToolDescriptionsForMode(
@@ -172,4 +174,5 @@ export {
 	getSearchAndReplaceDescription,
 	getCodebaseSearchDescription,
 	getGenerateImageDescription,
+	getMemorySearchDescription,
 }

@@ -67,6 +67,7 @@ export const toolParamNames = [
 	"todos",
 	"prompt",
 	"image",
+	"project_context",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -171,6 +172,11 @@ export interface GenerateImageToolUse extends ToolUse {
 	params: Partial<Pick<Record<ToolParamName, string>, "prompt" | "path" | "image">>
 }
 
+export interface MemorySearchToolUse extends ToolUse {
+	name: "memory_search"
+	params: Partial<Pick<Record<ToolParamName, string>, "query" | "project_context">>
+}
+
 // Define tool group configuration
 export type ToolGroupConfig = {
 	tools: readonly string[]
@@ -198,6 +204,7 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	codebase_search: "codebase search",
 	update_todo_list: "update todo list",
 	generate_image: "generate images",
+	memory_search: "search memories",
 } as const
 
 // Define available tool groups.
@@ -210,6 +217,7 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 			"list_files",
 			"list_code_definition_names",
 			"codebase_search",
+			"memory_search",
 		],
 	},
 	edit: {
