@@ -14,7 +14,7 @@ import {
 	TaskSocketEvents,
 } from "@roo-code/types"
 
-import { type BaseChannelOptions, BaseChannel } from "./BaseChannel.js"
+import { BaseChannel } from "./BaseChannel.js"
 
 type TaskEventListener = {
 	[K in keyof TaskEvents]: (...args: TaskEvents[K]) => void | Promise<void>
@@ -25,9 +25,6 @@ type TaskEventMapping = {
 	to: TaskBridgeEventName
 	createPayload: (task: TaskLike, ...args: any[]) => any // eslint-disable-line @typescript-eslint/no-explicit-any
 }
-
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface TaskChannelOptions extends BaseChannelOptions {}
 
 /**
  * Manages task-level communication channels.
@@ -72,11 +69,11 @@ export class TaskChannel extends BaseChannel<
 		},
 	] as const
 
-	constructor(options: TaskChannelOptions) {
-		super(options)
+	constructor(instanceId: string) {
+		super(instanceId)
 	}
 
-	protected async handleCommandImplementation(command: TaskBridgeCommand): Promise<void> {
+	public handleCommand(command: TaskBridgeCommand): void {
 		const task = this.subscribedTasks.get(command.taskId)
 
 		if (!task) {
@@ -90,14 +87,7 @@ export class TaskChannel extends BaseChannel<
 					`[TaskChannel] ${TaskBridgeCommandName.Message} ${command.taskId} -> submitUserMessage()`,
 					command,
 				)
-
-				await task.submitUserMessage(
-					command.payload.text,
-					command.payload.images,
-					command.payload.mode,
-					command.payload.providerProfile,
-				)
-
+				task.submitUserMessage(command.payload.text, command.payload.images)
 				break
 
 			case TaskBridgeCommandName.ApproveAsk:
@@ -105,7 +95,6 @@ export class TaskChannel extends BaseChannel<
 					`[TaskChannel] ${TaskBridgeCommandName.ApproveAsk} ${command.taskId} -> approveAsk()`,
 					command,
 				)
-
 				task.approveAsk(command.payload)
 				break
 
@@ -174,27 +163,25 @@ export class TaskChannel extends BaseChannel<
 	public async unsubscribeFromTask(taskId: string, _socket: Socket): Promise<void> {
 		const task = this.subscribedTasks.get(taskId)
 
-		if (!task) {
-			return
-		}
-
 		await this.publish(TaskSocketEvents.LEAVE, { taskId }, (response: LeaveResponse) => {
 			if (response.success) {
-				console.log(`[TaskChannel#unsubscribeFromTask] unsubscribed from ${taskId}`)
+				console.log(`[TaskChannel#unsubscribeFromTask] unsubscribed from ${taskId}`, response)
 			} else {
 				console.error(`[TaskChannel#unsubscribeFromTask] failed to unsubscribe from ${taskId}`)
 			}
 
 			// If we failed to unsubscribe then something is probably wrong and
 			// we should still discard this task from `subscribedTasks`.
-			this.removeTaskListeners(task)
-			this.subscribedTasks.delete(taskId)
+			if (task) {
+				this.removeTaskListeners(task)
+				this.subscribedTasks.delete(taskId)
+			}
 		})
 	}
 
 	private setupTaskListeners(task: TaskLike): void {
 		if (this.taskListeners.has(task.taskId)) {
-			console.warn(`[TaskChannel] Listeners already exist for task, removing old listeners for ${task.taskId}`)
+			console.warn("[TaskChannel] Listeners already exist for task, removing old listeners:", task.taskId)
 			this.removeTaskListeners(task)
 		}
 

@@ -1,5 +1,4 @@
 import crypto from "crypto"
-import os from "os"
 
 import {
 	type TaskProviderLike,
@@ -7,8 +6,6 @@ import {
 	type CloudUserInfo,
 	type ExtensionBridgeCommand,
 	type TaskBridgeCommand,
-	type StaticAppProperties,
-	type GitProperties,
 	ConnectionState,
 	ExtensionSocketEvents,
 	TaskSocketEvents,
@@ -34,16 +31,12 @@ export interface BridgeOrchestratorOptions {
 export class BridgeOrchestrator {
 	private static instance: BridgeOrchestrator | null = null
 
-	private static pendingTask: TaskLike | null = null
-
 	// Core
 	private readonly userId: string
 	private readonly socketBridgeUrl: string
 	private readonly token: string
 	private readonly provider: TaskProviderLike
 	private readonly instanceId: string
-	private readonly appProperties: StaticAppProperties
-	private readonly gitProperties?: GitProperties
 
 	// Components
 	private socketTransport: SocketTransport
@@ -68,86 +61,58 @@ export class BridgeOrchestrator {
 		remoteControlEnabled: boolean | undefined,
 		options: BridgeOrchestratorOptions,
 	): Promise<void> {
-		if (BridgeOrchestrator.isEnabled(userInfo, remoteControlEnabled)) {
-			await BridgeOrchestrator.connect(options)
-		} else {
-			await BridgeOrchestrator.disconnect()
-		}
-	}
-
-	public static async connect(options: BridgeOrchestratorOptions) {
+		const isEnabled = BridgeOrchestrator.isEnabled(userInfo, remoteControlEnabled)
 		const instance = BridgeOrchestrator.instance
 
-		if (!instance) {
-			try {
-				console.log(`[BridgeOrchestrator#connectOrDisconnect] Connecting...`)
-				// Populate telemetry properties before registering the instance.
-				await options.provider.getTelemetryProperties()
-
-				BridgeOrchestrator.instance = new BridgeOrchestrator(options)
-				await BridgeOrchestrator.instance.connect()
-			} catch (error) {
-				console.error(
-					`[BridgeOrchestrator#connectOrDisconnect] connect() failed: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			}
-		} else {
-			if (
-				instance.connectionState === ConnectionState.FAILED ||
-				instance.connectionState === ConnectionState.DISCONNECTED
-			) {
-				console.log(
-					`[BridgeOrchestrator#connectOrDisconnect] Re-connecting... (state: ${instance.connectionState})`,
-				)
-
-				instance.reconnect().catch((error) => {
+		if (isEnabled) {
+			if (!instance) {
+				try {
+					console.log(`[BridgeOrchestrator#connectOrDisconnect] Connecting...`)
+					BridgeOrchestrator.instance = new BridgeOrchestrator(options)
+					await BridgeOrchestrator.instance.connect()
+				} catch (error) {
 					console.error(
-						`[BridgeOrchestrator#connectOrDisconnect] reconnect() failed: ${error instanceof Error ? error.message : String(error)}`,
+						`[BridgeOrchestrator#connectOrDisconnect] connect() failed: ${error instanceof Error ? error.message : String(error)}`,
 					)
-				})
+				}
 			} else {
-				console.log(
-					`[BridgeOrchestrator#connectOrDisconnect] Already connected or connecting (state: ${instance.connectionState})`,
-				)
-			}
-		}
-	}
+				if (
+					instance.connectionState === ConnectionState.FAILED ||
+					instance.connectionState === ConnectionState.DISCONNECTED
+				) {
+					console.log(
+						`[BridgeOrchestrator#connectOrDisconnect] Re-connecting... (state: ${instance.connectionState})`,
+					)
 
-	public static async disconnect() {
-		const instance = BridgeOrchestrator.instance
-
-		if (instance) {
-			try {
-				console.log(
-					`[BridgeOrchestrator#connectOrDisconnect] Disconnecting... (state: ${instance.connectionState})`,
-				)
-
-				await instance.disconnect()
-			} catch (error) {
-				console.error(
-					`[BridgeOrchestrator#connectOrDisconnect] disconnect() failed: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			} finally {
-				BridgeOrchestrator.instance = null
+					instance.reconnect().catch((error) => {
+						console.error(
+							`[BridgeOrchestrator#connectOrDisconnect] reconnect() failed: ${error instanceof Error ? error.message : String(error)}`,
+						)
+					})
+				} else {
+					console.log(
+						`[BridgeOrchestrator#connectOrDisconnect] Already connected or connecting (state: ${instance.connectionState})`,
+					)
+				}
 			}
 		} else {
-			console.log(`[BridgeOrchestrator#connectOrDisconnect] Already disconnected`)
-		}
-	}
+			if (instance) {
+				try {
+					console.log(
+						`[BridgeOrchestrator#connectOrDisconnect] Disconnecting... (state: ${instance.connectionState})`,
+					)
 
-	/**
-	 * @TODO: What if subtasks also get spawned? We'd probably want deferred
-	 * subscriptions for those too.
-	 */
-	public static async subscribeToTask(task: TaskLike): Promise<void> {
-		const instance = BridgeOrchestrator.instance
-
-		if (instance && instance.socketTransport.isConnected()) {
-			console.log(`[BridgeOrchestrator#subscribeToTask] Subscribing to task ${task.taskId}`)
-			await instance.subscribeToTask(task)
-		} else {
-			console.log(`[BridgeOrchestrator#subscribeToTask] Deferring subscription for task ${task.taskId}`)
-			BridgeOrchestrator.pendingTask = task
+					await instance.disconnect()
+				} catch (error) {
+					console.error(
+						`[BridgeOrchestrator#connectOrDisconnect] disconnect() failed: ${error instanceof Error ? error.message : String(error)}`,
+					)
+				} finally {
+					BridgeOrchestrator.instance = null
+				}
+			} else {
+				console.log(`[BridgeOrchestrator#connectOrDisconnect] Already disconnected`)
+			}
 		}
 	}
 
@@ -157,8 +122,6 @@ export class BridgeOrchestrator {
 		this.token = options.token
 		this.provider = options.provider
 		this.instanceId = options.sessionId || crypto.randomUUID()
-		this.appProperties = { ...options.provider.appProperties, hostname: os.hostname() }
-		this.gitProperties = options.provider.gitProperties
 
 		this.socketTransport = new SocketTransport({
 			url: this.socketBridgeUrl,
@@ -179,19 +142,8 @@ export class BridgeOrchestrator {
 			onReconnect: () => this.handleReconnect(),
 		})
 
-		this.extensionChannel = new ExtensionChannel({
-			instanceId: this.instanceId,
-			appProperties: this.appProperties,
-			gitProperties: this.gitProperties,
-			userId: this.userId,
-			provider: this.provider,
-		})
-
-		this.taskChannel = new TaskChannel({
-			instanceId: this.instanceId,
-			appProperties: this.appProperties,
-			gitProperties: this.gitProperties,
-		})
+		this.extensionChannel = new ExtensionChannel(this.instanceId, this.userId, this.provider)
+		this.taskChannel = new TaskChannel(this.instanceId)
 	}
 
 	private setupSocketListeners() {
@@ -228,27 +180,12 @@ export class BridgeOrchestrator {
 		const socket = this.socketTransport.getSocket()
 
 		if (!socket) {
-			console.error("[BridgeOrchestrator#handleConnect] Socket not available")
+			console.error("[BridgeOrchestrator] Socket not available after connect")
 			return
 		}
 
 		await this.extensionChannel.onConnect(socket)
 		await this.taskChannel.onConnect(socket)
-
-		if (BridgeOrchestrator.pendingTask) {
-			console.log(
-				`[BridgeOrchestrator#handleConnect] Subscribing to task ${BridgeOrchestrator.pendingTask.taskId}`,
-			)
-
-			try {
-				await this.subscribeToTask(BridgeOrchestrator.pendingTask)
-				BridgeOrchestrator.pendingTask = null
-			} catch (error) {
-				console.error(
-					`[BridgeOrchestrator#handleConnect] subscribeToTask() failed: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			}
-		}
 	}
 
 	private handleDisconnect() {
@@ -312,6 +249,9 @@ export class BridgeOrchestrator {
 	}
 
 	private async connect(): Promise<void> {
+		// Populate the app and git properties before registering the instance.
+		await this.provider.getTelemetryProperties()
+
 		await this.socketTransport.connect()
 		this.setupSocketListeners()
 	}
@@ -321,7 +261,6 @@ export class BridgeOrchestrator {
 		await this.taskChannel.cleanup(this.socketTransport.getSocket())
 		await this.socketTransport.disconnect()
 		BridgeOrchestrator.instance = null
-		BridgeOrchestrator.pendingTask = null
 	}
 
 	public async reconnect(): Promise<void> {

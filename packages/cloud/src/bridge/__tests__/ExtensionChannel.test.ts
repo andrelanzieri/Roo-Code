@@ -5,7 +5,6 @@ import type { Socket } from "socket.io-client"
 import {
 	type TaskProviderLike,
 	type TaskProviderEvents,
-	type StaticAppProperties,
 	RooCodeEventName,
 	ExtensionBridgeEventName,
 	ExtensionSocketEvents,
@@ -19,15 +18,6 @@ describe("ExtensionChannel", () => {
 	let extensionChannel: ExtensionChannel
 	const instanceId = "test-instance-123"
 	const userId = "test-user-456"
-
-	const appProperties: StaticAppProperties = {
-		appName: "roo-code",
-		appVersion: "1.0.0",
-		vscodeVersion: "1.0.0",
-		platform: "darwin",
-		editorName: "Roo Code",
-		hostname: "test-host",
-	}
 
 	// Track registered event listeners
 	const eventListeners = new Map<keyof TaskProviderEvents, Set<(...args: unknown[]) => unknown>>()
@@ -63,13 +53,6 @@ describe("ExtensionChannel", () => {
 			postStateToWebview: vi.fn(),
 			postMessageToWebview: vi.fn(),
 			getTelemetryProperties: vi.fn(),
-			getMode: vi.fn().mockResolvedValue("code"),
-			getModes: vi.fn().mockResolvedValue([
-				{ slug: "code", name: "Code", description: "Code mode" },
-				{ slug: "architect", name: "Architect", description: "Architect mode" },
-			]),
-			getProviderProfile: vi.fn().mockResolvedValue("default"),
-			getProviderProfiles: vi.fn().mockResolvedValue([{ name: "default", description: "Default profile" }]),
 			on: vi.fn((event: keyof TaskProviderEvents, listener: (...args: unknown[]) => unknown) => {
 				if (!eventListeners.has(event)) {
 					eventListeners.set(event, new Set())
@@ -90,12 +73,7 @@ describe("ExtensionChannel", () => {
 		} as unknown as TaskProviderLike
 
 		// Create extension channel instance
-		extensionChannel = new ExtensionChannel({
-			instanceId,
-			appProperties,
-			userId,
-			provider: mockProvider,
-		})
+		extensionChannel = new ExtensionChannel(instanceId, userId, mockProvider)
 	})
 
 	afterEach(() => {
@@ -116,11 +94,6 @@ describe("ExtensionChannel", () => {
 				RooCodeEventName.TaskInteractive,
 				RooCodeEventName.TaskResumable,
 				RooCodeEventName.TaskIdle,
-				RooCodeEventName.TaskPaused,
-				RooCodeEventName.TaskUnpaused,
-				RooCodeEventName.TaskSpawned,
-				RooCodeEventName.TaskUserMessage,
-				RooCodeEventName.TaskTokenUsageUpdated,
 			]
 
 			// Check that on() was called for each event
@@ -171,12 +144,7 @@ describe("ExtensionChannel", () => {
 
 		it("should not have duplicate listeners after multiple channel creations", () => {
 			// Create a second channel with the same provider
-			const secondChannel = new ExtensionChannel({
-				instanceId: "instance-2",
-				appProperties,
-				userId,
-				provider: mockProvider,
-			})
+			const secondChannel = new ExtensionChannel("instance-2", userId, mockProvider)
 
 			// Each event should have exactly 2 listeners (one from each channel)
 			eventListeners.forEach((listeners) => {
@@ -216,9 +184,6 @@ describe("ExtensionChannel", () => {
 			// Connect the socket to enable publishing
 			await extensionChannel.onConnect(mockSocket)
 
-			// Clear the mock calls from the connection (which emits a register event)
-			;(mockSocket.emit as any).mockClear()
-
 			// Get a listener that was registered for TaskStarted
 			const taskStartedListeners = eventListeners.get(RooCodeEventName.TaskStarted)
 			expect(taskStartedListeners).toBeDefined()
@@ -227,7 +192,7 @@ describe("ExtensionChannel", () => {
 			// Trigger the listener
 			const listener = Array.from(taskStartedListeners!)[0]
 			if (listener) {
-				await listener("test-task-id")
+				listener("test-task-id")
 			}
 
 			// Verify the event was published to the socket
@@ -255,7 +220,8 @@ describe("ExtensionChannel", () => {
 			}
 
 			// Listeners should still be the same count (not accumulated)
-			expect(eventListeners.size).toBe(15)
+			const expectedEventCount = 10 // Number of events we listen to
+			expect(eventListeners.size).toBe(expectedEventCount)
 
 			// Each event should have exactly 1 listener
 			eventListeners.forEach((listeners) => {

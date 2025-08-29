@@ -14,12 +14,7 @@ import {
 	HEARTBEAT_INTERVAL_MS,
 } from "@roo-code/types"
 
-import { type BaseChannelOptions, BaseChannel } from "./BaseChannel.js"
-
-interface ExtensionChannelOptions extends BaseChannelOptions {
-	userId: string
-	provider: TaskProviderLike
-}
+import { BaseChannel } from "./BaseChannel.js"
 
 /**
  * Manages the extension-level communication channel.
@@ -36,36 +31,36 @@ export class ExtensionChannel extends BaseChannel<
 	private heartbeatInterval: NodeJS.Timeout | null = null
 	private eventListeners: Map<RooCodeEventName, (...args: unknown[]) => void> = new Map()
 
-	constructor(options: ExtensionChannelOptions) {
-		super({
-			instanceId: options.instanceId,
-			appProperties: options.appProperties,
-			gitProperties: options.gitProperties,
-		})
-
-		this.userId = options.userId
-		this.provider = options.provider
+	constructor(instanceId: string, userId: string, provider: TaskProviderLike) {
+		super(instanceId)
+		this.userId = userId
+		this.provider = provider
 
 		this.extensionInstance = {
 			instanceId: this.instanceId,
 			userId: this.userId,
 			workspacePath: this.provider.cwd,
-			appProperties: this.appProperties,
-			gitProperties: this.gitProperties,
+			appProperties: this.provider.appProperties,
+			gitProperties: this.provider.gitProperties,
 			lastHeartbeat: Date.now(),
-			task: { taskId: "", taskStatus: TaskStatus.None },
+			task: {
+				taskId: "",
+				taskStatus: TaskStatus.None,
+			},
 			taskHistory: [],
 		}
 
 		this.setupListeners()
 	}
 
-	protected async handleCommandImplementation(command: ExtensionBridgeCommand): Promise<void> {
+	/**
+	 * Handle extension-specific commands from the web app
+	 */
+	public handleCommand(command: ExtensionBridgeCommand): void {
 		if (command.instanceId !== this.instanceId) {
 			console.log(`[ExtensionChannel] command -> instance id mismatch | ${this.instanceId}`, {
 				messageInstanceId: command.instanceId,
 			})
-
 			return
 		}
 
@@ -74,22 +69,13 @@ export class ExtensionChannel extends BaseChannel<
 				console.log(`[ExtensionChannel] command -> createTask() | ${command.instanceId}`, {
 					text: command.payload.text?.substring(0, 100) + "...",
 					hasImages: !!command.payload.images,
-					mode: command.payload.mode,
-					providerProfile: command.payload.providerProfile,
 				})
 
-				this.provider.createTask(
-					command.payload.text,
-					command.payload.images,
-					undefined, // parentTask
-					undefined, // options
-					{ mode: command.payload.mode, currentApiConfigName: command.payload.providerProfile },
-				)
-
+				this.provider.createTask(command.payload.text, command.payload.images)
 				break
 			}
 			case ExtensionBridgeCommandName.StopTask: {
-				const instance = await this.updateInstance()
+				const instance = this.updateInstance()
 
 				if (instance.task.taskStatus === TaskStatus.Running) {
 					console.log(`[ExtensionChannel] command -> cancelTask() | ${command.instanceId}`)
@@ -100,7 +86,6 @@ export class ExtensionChannel extends BaseChannel<
 					this.provider.clearTask()
 					this.provider.postStateToWebview()
 				}
-
 				break
 			}
 			case ExtensionBridgeCommandName.ResumeTask: {
@@ -108,6 +93,7 @@ export class ExtensionChannel extends BaseChannel<
 					taskId: command.payload.taskId,
 				})
 
+				// Resume the task from history by taskId
 				this.provider.resumeTask(command.payload.taskId)
 				this.provider.postStateToWebview()
 				break
@@ -136,12 +122,12 @@ export class ExtensionChannel extends BaseChannel<
 	}
 
 	private async registerInstance(_socket: Socket): Promise<void> {
-		const instance = await this.updateInstance()
+		const instance = this.updateInstance()
 		await this.publish(ExtensionSocketEvents.REGISTER, instance)
 	}
 
 	private async unregisterInstance(_socket: Socket): Promise<void> {
-		const instance = await this.updateInstance()
+		const instance = this.updateInstance()
 		await this.publish(ExtensionSocketEvents.UNREGISTER, instance)
 	}
 
@@ -149,7 +135,7 @@ export class ExtensionChannel extends BaseChannel<
 		this.stopHeartbeat()
 
 		this.heartbeatInterval = setInterval(async () => {
-			const instance = await this.updateInstance()
+			const instance = this.updateInstance()
 
 			try {
 				socket.emit(ExtensionSocketEvents.HEARTBEAT, instance)
@@ -183,19 +169,14 @@ export class ExtensionChannel extends BaseChannel<
 			{ from: RooCodeEventName.TaskInteractive, to: ExtensionBridgeEventName.TaskInteractive },
 			{ from: RooCodeEventName.TaskResumable, to: ExtensionBridgeEventName.TaskResumable },
 			{ from: RooCodeEventName.TaskIdle, to: ExtensionBridgeEventName.TaskIdle },
-			{ from: RooCodeEventName.TaskPaused, to: ExtensionBridgeEventName.TaskPaused },
-			{ from: RooCodeEventName.TaskUnpaused, to: ExtensionBridgeEventName.TaskUnpaused },
-			{ from: RooCodeEventName.TaskSpawned, to: ExtensionBridgeEventName.TaskSpawned },
-			{ from: RooCodeEventName.TaskUserMessage, to: ExtensionBridgeEventName.TaskUserMessage },
-			{ from: RooCodeEventName.TaskTokenUsageUpdated, to: ExtensionBridgeEventName.TaskTokenUsageUpdated },
 		] as const
 
 		eventMapping.forEach(({ from, to }) => {
-			// Create and store the listener function for cleanup.
-			const listener = async (..._args: unknown[]) => {
+			// Create and store the listener function for cleanup/
+			const listener = (..._args: unknown[]) => {
 				this.publish(ExtensionSocketEvents.EVENT, {
 					type: to,
-					instance: await this.updateInstance(),
+					instance: this.updateInstance(),
 					timestamp: Date.now(),
 				})
 			}
@@ -214,37 +195,24 @@ export class ExtensionChannel extends BaseChannel<
 		this.eventListeners.clear()
 	}
 
-	private async updateInstance(): Promise<ExtensionInstance> {
+	private updateInstance(): ExtensionInstance {
 		const task = this.provider?.getCurrentTask()
 		const taskHistory = this.provider?.getRecentTasks() ?? []
 
-		const mode = await this.provider?.getMode()
-		const modes = (await this.provider?.getModes()) ?? []
-
-		const providerProfile = await this.provider?.getProviderProfile()
-		const providerProfiles = (await this.provider?.getProviderProfiles()) ?? []
-
 		this.extensionInstance = {
 			...this.extensionInstance,
+			appProperties: this.extensionInstance.appProperties ?? this.provider.appProperties,
+			gitProperties: this.extensionInstance.gitProperties ?? this.provider.gitProperties,
 			lastHeartbeat: Date.now(),
 			task: task
 				? {
 						taskId: task.taskId,
-						parentTaskId: task.parentTaskId,
-						childTaskId: task.childTaskId,
 						taskStatus: task.taskStatus,
-						taskAsk: task?.taskAsk,
-						queuedMessages: task.queuedMessages,
-						tokenUsage: task.tokenUsage,
 						...task.metadata,
 					}
 				: { taskId: "", taskStatus: TaskStatus.None },
 			taskAsk: task?.taskAsk,
 			taskHistory,
-			mode,
-			providerProfile,
-			modes,
-			providerProfiles,
 		}
 
 		return this.extensionInstance

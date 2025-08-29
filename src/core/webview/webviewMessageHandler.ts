@@ -16,21 +16,14 @@ import { CloudService } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { type ApiMessage } from "../task-persistence/apiMessages"
-import { saveTaskMessages } from "../task-persistence"
 
 import { ClineProvider } from "./ClineProvider"
-import { handleCheckpointRestoreOperation } from "./checkpointRestoreHandler"
 import { changeLanguage, t } from "../../i18n"
 import { Package } from "../../shared/package"
 import { RouterName, toRouterName, ModelRecord } from "../../shared/api"
 import { MessageEnhancer } from "./messageEnhancer"
 
-import {
-	type WebviewMessage,
-	type EditQueuedMessagePayload,
-	checkoutDiffPayloadSchema,
-	checkoutRestorePayloadSchema,
-} from "../../shared/WebviewMessage"
+import { checkoutDiffPayloadSchema, checkoutRestorePayloadSchema, WebviewMessage } from "../../shared/WebviewMessage"
 import { checkExistKey } from "../../shared/checkExistApiConfig"
 import { experimentDefault } from "../../shared/experiments"
 import { Terminal } from "../../integrations/terminal/Terminal"
@@ -69,17 +62,14 @@ export const webviewMessageHandler = async (
 	const updateGlobalState = async <K extends keyof GlobalState>(key: K, value: GlobalState[K]) =>
 		await provider.contextProxy.setValue(key, value)
 
-	const getCurrentCwd = () => {
-		return provider.getCurrentTask()?.cwd || provider.cwd
-	}
 	/**
 	 * Shared utility to find message indices based on timestamp
 	 */
 	const findMessageIndices = (messageTs: number, currentCline: any) => {
-		// Find the exact message by timestamp, not the first one after a cutoff
-		const messageIndex = currentCline.clineMessages.findIndex((msg: ClineMessage) => msg.ts === messageTs)
+		const timeCutoff = messageTs - 1000 // 1 second buffer before the message
+		const messageIndex = currentCline.clineMessages.findIndex((msg: ClineMessage) => msg.ts && msg.ts >= timeCutoff)
 		const apiConversationHistoryIndex = currentCline.apiConversationHistory.findIndex(
-			(msg: ApiMessage) => msg.ts === messageTs,
+			(msg: ApiMessage) => msg.ts && msg.ts >= timeCutoff,
 		)
 		return { messageIndex, apiConversationHistoryIndex }
 	}
@@ -106,110 +96,38 @@ export const webviewMessageHandler = async (
 	 * Handles message deletion operations with user confirmation
 	 */
 	const handleDeleteOperation = async (messageTs: number): Promise<void> => {
-		// Check if there's a checkpoint before this message
-		const currentCline = provider.getCurrentTask()
-		let hasCheckpoint = false
-		if (currentCline) {
-			const { messageIndex } = findMessageIndices(messageTs, currentCline)
-			if (messageIndex !== -1) {
-				// Find the last checkpoint before this message
-				const checkpoints = currentCline.clineMessages.filter(
-					(msg) => msg.say === "checkpoint_saved" && msg.ts > messageTs,
-				)
-
-				hasCheckpoint = checkpoints.length > 0
-			} else {
-				console.log("[webviewMessageHandler] Message not found! Looking for ts:", messageTs)
-			}
-		}
-
 		// Send message to webview to show delete confirmation dialog
 		await provider.postMessageToWebview({
 			type: "showDeleteMessageDialog",
 			messageTs,
-			hasCheckpoint,
 		})
 	}
 
 	/**
 	 * Handles confirmed message deletion from webview dialog
 	 */
-	const handleDeleteMessageConfirm = async (messageTs: number, restoreCheckpoint?: boolean): Promise<void> => {
-		const currentCline = provider.getCurrentTask()
-		if (!currentCline) {
-			console.error("[handleDeleteMessageConfirm] No current cline available")
-			return
-		}
+	const handleDeleteMessageConfirm = async (messageTs: number): Promise<void> => {
+		// Only proceed if we have a current task.
+		if (provider.getCurrentTask()) {
+			const currentCline = provider.getCurrentTask()!
+			const { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
 
-		const { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
+			if (messageIndex !== -1) {
+				try {
+					const { historyItem } = await provider.getTaskWithId(currentCline.taskId)
 
-		if (messageIndex === -1) {
-			const errorMessage = `Message with timestamp ${messageTs} not found`
-			console.error("[handleDeleteMessageConfirm]", errorMessage)
-			await vscode.window.showErrorMessage(errorMessage)
-			return
-		}
+					// Delete this message and all subsequent messages
+					await removeMessagesThisAndSubsequent(currentCline, messageIndex, apiConversationHistoryIndex)
 
-		try {
-			const targetMessage = currentCline.clineMessages[messageIndex]
-
-			// If checkpoint restoration is requested, find and restore to the last checkpoint before this message
-			if (restoreCheckpoint) {
-				// Find the last checkpoint before this message
-				const checkpoints = currentCline.clineMessages.filter(
-					(msg) => msg.say === "checkpoint_saved" && msg.ts > messageTs,
-				)
-
-				const nextCheckpoint = checkpoints[0]
-
-				if (nextCheckpoint && nextCheckpoint.text) {
-					await handleCheckpointRestoreOperation({
-						provider,
-						currentCline,
-						messageTs: targetMessage.ts!,
-						messageIndex,
-						checkpoint: { hash: nextCheckpoint.text },
-						operation: "delete",
-					})
-				} else {
-					// No checkpoint found before this message
-					console.log("[handleDeleteMessageConfirm] No checkpoint found before message")
-					vscode.window.showWarningMessage("No checkpoint found before this message")
+					// Initialize with history item after deletion
+					await provider.createTaskWithHistoryItem(historyItem)
+				} catch (error) {
+					console.error("Error in delete message:", error)
+					vscode.window.showErrorMessage(
+						`Error deleting message: ${error instanceof Error ? error.message : String(error)}`,
+					)
 				}
-			} else {
-				// For non-checkpoint deletes, preserve checkpoint associations for remaining messages
-				// Store checkpoints from messages that will be preserved
-				const preservedCheckpoints = new Map<number, any>()
-				for (let i = 0; i < messageIndex; i++) {
-					const msg = currentCline.clineMessages[i]
-					if (msg?.checkpoint && msg.ts) {
-						preservedCheckpoints.set(msg.ts, msg.checkpoint)
-					}
-				}
-
-				// Delete this message and all subsequent messages
-				await removeMessagesThisAndSubsequent(currentCline, messageIndex, apiConversationHistoryIndex)
-
-				// Restore checkpoint associations for preserved messages
-				for (const [ts, checkpoint] of preservedCheckpoints) {
-					const msgIndex = currentCline.clineMessages.findIndex((msg) => msg.ts === ts)
-					if (msgIndex !== -1) {
-						currentCline.clineMessages[msgIndex].checkpoint = checkpoint
-					}
-				}
-
-				// Save the updated messages with restored checkpoints
-				await saveTaskMessages({
-					messages: currentCline.clineMessages,
-					taskId: currentCline.taskId,
-					globalStoragePath: provider.contextProxy.globalStorageUri.fsPath,
-				})
 			}
-		} catch (error) {
-			console.error("Error in delete message:", error)
-			vscode.window.showErrorMessage(
-				`Error deleting message: ${error instanceof Error ? error.message : String(error)}`,
-			)
 		}
 	}
 
@@ -217,31 +135,11 @@ export const webviewMessageHandler = async (
 	 * Handles message editing operations with user confirmation
 	 */
 	const handleEditOperation = async (messageTs: number, editedContent: string, images?: string[]): Promise<void> => {
-		// Check if there's a checkpoint before this message
-		const currentCline = provider.getCurrentTask()
-		let hasCheckpoint = false
-		if (currentCline) {
-			const { messageIndex } = findMessageIndices(messageTs, currentCline)
-			if (messageIndex !== -1) {
-				// Find the last checkpoint before this message
-				const checkpoints = currentCline.clineMessages.filter(
-					(msg) => msg.say === "checkpoint_saved" && msg.ts > messageTs,
-				)
-
-				hasCheckpoint = checkpoints.length > 0
-			} else {
-				console.log("[webviewMessageHandler] Edit - Message not found in clineMessages!")
-			}
-		} else {
-			console.log("[webviewMessageHandler] Edit - No currentCline available!")
-		}
-
 		// Send message to webview to show edit confirmation dialog
 		await provider.postMessageToWebview({
 			type: "showEditMessageDialog",
 			messageTs,
 			text: editedContent,
-			hasCheckpoint,
 			images,
 		})
 	}
@@ -252,105 +150,38 @@ export const webviewMessageHandler = async (
 	const handleEditMessageConfirm = async (
 		messageTs: number,
 		editedContent: string,
-		restoreCheckpoint?: boolean,
 		images?: string[],
 	): Promise<void> => {
-		const currentCline = provider.getCurrentTask()
-		if (!currentCline) {
-			console.error("[handleEditMessageConfirm] No current cline available")
-			return
-		}
+		// Only proceed if we have a current task.
+		if (provider.getCurrentTask()) {
+			const currentCline = provider.getCurrentTask()!
 
-		// Use findMessageIndices to find messages based on timestamp
-		const { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
+			// Use findMessageIndices to find messages based on timestamp
+			const { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
 
-		if (messageIndex === -1) {
-			const errorMessage = `Message with timestamp ${messageTs} not found`
-			console.error("[handleEditMessageConfirm]", errorMessage)
-			await vscode.window.showErrorMessage(errorMessage)
-			return
-		}
+			if (messageIndex !== -1) {
+				try {
+					// Edit this message and delete subsequent
+					await removeMessagesThisAndSubsequent(currentCline, messageIndex, apiConversationHistoryIndex)
 
-		try {
-			const targetMessage = currentCline.clineMessages[messageIndex]
-
-			// If checkpoint restoration is requested, find and restore to the last checkpoint before this message
-			if (restoreCheckpoint) {
-				// Find the last checkpoint before this message
-				const checkpoints = currentCline.clineMessages.filter(
-					(msg) => msg.say === "checkpoint_saved" && msg.ts > messageTs,
-				)
-
-				const nextCheckpoint = checkpoints[0]
-
-				if (nextCheckpoint && nextCheckpoint.text) {
-					await handleCheckpointRestoreOperation({
-						provider,
-						currentCline,
-						messageTs: targetMessage.ts!,
-						messageIndex,
-						checkpoint: { hash: nextCheckpoint.text },
-						operation: "edit",
-						editData: {
-							editedContent,
-							images,
-							apiConversationHistoryIndex,
-						},
+					// Process the edited message as a regular user message
+					// This will add it to the conversation and trigger an AI response
+					webviewMessageHandler(provider, {
+						type: "askResponse",
+						askResponse: "messageResponse",
+						text: editedContent,
+						images,
 					})
-					// The task will be cancelled and reinitialized by checkpointRestore
-					// The pending edit will be processed in the reinitialized task
-					return
-				} else {
-					// No checkpoint found before this message
-					console.log("[handleEditMessageConfirm] No checkpoint found before message")
-					vscode.window.showWarningMessage("No checkpoint found before this message")
-					// Continue with non-checkpoint edit
+
+					// Don't initialize with history item for edit operations
+					// The webviewMessageHandler will handle the conversation state
+				} catch (error) {
+					console.error("Error in edit message:", error)
+					vscode.window.showErrorMessage(
+						`Error editing message: ${error instanceof Error ? error.message : String(error)}`,
+					)
 				}
 			}
-
-			// For non-checkpoint edits, preserve checkpoint associations for remaining messages
-			// Store checkpoints from messages that will be preserved
-			const preservedCheckpoints = new Map<number, any>()
-			for (let i = 0; i < messageIndex; i++) {
-				const msg = currentCline.clineMessages[i]
-				if (msg?.checkpoint && msg.ts) {
-					preservedCheckpoints.set(msg.ts, msg.checkpoint)
-				}
-			}
-
-			// Edit this message and delete subsequent
-			await removeMessagesThisAndSubsequent(currentCline, messageIndex, apiConversationHistoryIndex)
-
-			// Restore checkpoint associations for preserved messages
-			for (const [ts, checkpoint] of preservedCheckpoints) {
-				const msgIndex = currentCline.clineMessages.findIndex((msg) => msg.ts === ts)
-				if (msgIndex !== -1) {
-					currentCline.clineMessages[msgIndex].checkpoint = checkpoint
-				}
-			}
-
-			// Save the updated messages with restored checkpoints
-			await saveTaskMessages({
-				messages: currentCline.clineMessages,
-				taskId: currentCline.taskId,
-				globalStoragePath: provider.contextProxy.globalStorageUri.fsPath,
-			})
-
-			// Process the edited message as a regular user message
-			webviewMessageHandler(provider, {
-				type: "askResponse",
-				askResponse: "messageResponse",
-				text: editedContent,
-				images,
-			})
-
-			// Don't initialize with history item for edit operations
-			// The webviewMessageHandler will handle the conversation state
-		} catch (error) {
-			console.error("Error in edit message:", error)
-			vscode.window.showErrorMessage(
-				`Error editing message: ${error instanceof Error ? error.message : String(error)}`,
-			)
 		}
 	}
 
@@ -714,7 +545,6 @@ export const webviewMessageHandler = async (
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
-				deepinfra: {},
 			}
 
 			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
@@ -742,14 +572,6 @@ export const webviewMessageHandler = async (
 				{ key: "glama", options: { provider: "glama" } },
 				{ key: "unbound", options: { provider: "unbound", apiKey: apiConfiguration.unboundApiKey } },
 				{ key: "vercel-ai-gateway", options: { provider: "vercel-ai-gateway" } },
-				{
-					key: "deepinfra",
-					options: {
-						provider: "deepinfra",
-						apiKey: apiConfiguration.deepInfraApiKey,
-						baseUrl: apiConfiguration.deepInfraBaseUrl,
-					},
-				},
 			]
 
 			// Add IO Intelligence if API key is provided
@@ -915,14 +737,10 @@ export const webviewMessageHandler = async (
 			saveImage(message.dataUri!)
 			break
 		case "openFile":
-			let filePath: string = message.text!
-			if (!path.isAbsolute(filePath)) {
-				filePath = path.join(getCurrentCwd(), filePath)
-			}
-			openFile(filePath, message.values as { create?: boolean; content?: string; line?: number })
+			openFile(message.text!, message.values as { create?: boolean; content?: string; line?: number })
 			break
 		case "openMention":
-			openMention(getCurrentCwd(), message.text)
+			openMention(message.text)
 			break
 		case "openExternal":
 			if (message.url) {
@@ -1017,8 +835,8 @@ export const webviewMessageHandler = async (
 				return
 			}
 
-			const workspaceFolder = getCurrentCwd()
-			const rooDir = path.join(workspaceFolder, ".roo")
+			const workspaceFolder = vscode.workspace.workspaceFolders[0]
+			const rooDir = path.join(workspaceFolder.uri.fsPath, ".roo")
 			const mcpPath = path.join(rooDir, "mcp.json")
 
 			try {
@@ -1132,22 +950,8 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			break
 		case "remoteControlEnabled":
-			try {
-				await CloudService.instance.updateUserSettings({ extensionBridgeEnabled: message.bool ?? false })
-			} catch (error) {
-				provider.log(
-					`CloudService#updateUserSettings failed: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			}
-
-			try {
-				await provider.remoteControlEnabled(message.bool ?? false)
-			} catch (error) {
-				provider.log(
-					`ClineProvider#remoteControlEnabled failed: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			}
-
+			await updateGlobalState("remoteControlEnabled", message.bool ?? false)
+			await provider.remoteControlEnabled(message.bool ?? false)
 			await provider.postStateToWebview()
 			break
 		case "refreshAllMcpServers": {
@@ -1504,14 +1308,6 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("language", message.text as Language)
 			await provider.postStateToWebview()
 			break
-		case "openRouterImageApiKey":
-			await provider.contextProxy.setValue("openRouterImageApiKey", message.text)
-			await provider.postStateToWebview()
-			break
-		case "openRouterImageGenerationSelectedModel":
-			await provider.contextProxy.setValue("openRouterImageGenerationSelectedModel", message.text)
-			await provider.postStateToWebview()
-			break
 		case "showRooIgnoredFiles":
 			await updateGlobalState("showRooIgnoredFiles", message.bool ?? false)
 			await provider.postStateToWebview()
@@ -1603,7 +1399,7 @@ export const webviewMessageHandler = async (
 					const {
 						apiConfiguration,
 						customSupportPrompts,
-						listApiConfigMeta = [],
+						listApiConfigMeta,
 						enhancementApiConfigId,
 						includeTaskHistoryInEnhance,
 					} = state
@@ -1668,7 +1464,7 @@ export const webviewMessageHandler = async (
 			}
 			break
 		case "searchCommits": {
-			const cwd = getCurrentCwd()
+			const cwd = provider.cwd
 			if (cwd) {
 				try {
 					const commits = await searchCommits(message.query || "", cwd)
@@ -1686,7 +1482,7 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "searchFiles": {
-			const workspacePath = getCurrentCwd()
+			const workspacePath = getWorkspacePath()
 
 			if (!workspacePath) {
 				// Handle case where workspace path is not available
@@ -1848,17 +1644,12 @@ export const webviewMessageHandler = async (
 			break
 		case "deleteMessageConfirm":
 			if (message.messageTs) {
-				await handleDeleteMessageConfirm(message.messageTs, message.restoreCheckpoint)
+				await handleDeleteMessageConfirm(message.messageTs)
 			}
 			break
 		case "editMessageConfirm":
 			if (message.messageTs && message.text) {
-				await handleEditMessageConfirm(
-					message.messageTs,
-					message.text,
-					message.restoreCheckpoint,
-					message.images,
-				)
+				await handleEditMessageConfirm(message.messageTs, message.text, message.images)
 			}
 			break
 		case "getListApiConfiguration":
@@ -2229,9 +2020,9 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			break
 		}
-		case "cloudButtonClicked": {
-			// Navigate to the cloud tab.
-			provider.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
+		case "accountButtonClicked": {
+			// Navigate to the account tab.
+			provider.postMessageToWebview({ type: "action", action: "accountButtonClicked" })
 			break
 		}
 		case "rooCloudSignIn": {
@@ -2675,7 +2466,7 @@ export const webviewMessageHandler = async (
 		case "requestCommands": {
 			try {
 				const { getCommands } = await import("../../services/command/commands")
-				const commands = await getCommands(getCurrentCwd())
+				const commands = await getCommands(provider.cwd || "")
 
 				// Convert to the format expected by the frontend
 				const commandList = commands.map((command) => ({
@@ -2704,7 +2495,7 @@ export const webviewMessageHandler = async (
 			try {
 				if (message.text) {
 					const { getCommand } = await import("../../services/command/commands")
-					const command = await getCommand(getCurrentCwd(), message.text)
+					const command = await getCommand(provider.cwd || "", message.text)
 
 					if (command && command.filePath) {
 						openFile(command.filePath)
@@ -2724,7 +2515,7 @@ export const webviewMessageHandler = async (
 			try {
 				if (message.text && message.values?.source) {
 					const { getCommand } = await import("../../services/command/commands")
-					const command = await getCommand(getCurrentCwd(), message.text)
+					const command = await getCommand(provider.cwd || "", message.text)
 
 					if (command && command.filePath) {
 						// Delete the command file
@@ -2756,12 +2547,8 @@ export const webviewMessageHandler = async (
 					const globalConfigDir = path.join(os.homedir(), ".roo")
 					commandsDir = path.join(globalConfigDir, "commands")
 				} else {
-					if (!vscode.workspace.workspaceFolders?.length) {
-						vscode.window.showErrorMessage(t("common:errors.no_workspace"))
-						return
-					}
 					// Project commands
-					const workspaceRoot = getCurrentCwd()
+					const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
 					if (!workspaceRoot) {
 						vscode.window.showErrorMessage(t("common:errors.no_workspace_for_project_command"))
 						break
@@ -2841,7 +2628,7 @@ export const webviewMessageHandler = async (
 
 				// Refresh commands list
 				const { getCommands } = await import("../../services/command/commands")
-				const commands = await getCommands(getCurrentCwd() || "")
+				const commands = await getCommands(provider.cwd || "")
 				const commandList = commands.map((command) => ({
 					name: command.name,
 					source: command.source,
@@ -2874,27 +2661,6 @@ export const webviewMessageHandler = async (
 		case "showMdmAuthRequiredNotification": {
 			// Show notification that organization requires authentication
 			vscode.window.showWarningMessage(t("common:mdm.info.organization_requires_auth"))
-			break
-		}
-
-		/**
-		 * Chat Message Queue
-		 */
-
-		case "queueMessage": {
-			provider.getCurrentTask()?.messageQueueService.addMessage(message.text ?? "", message.images)
-			break
-		}
-		case "removeQueuedMessage": {
-			provider.getCurrentTask()?.messageQueueService.removeMessage(message.text ?? "")
-			break
-		}
-		case "editQueuedMessage": {
-			if (message.payload) {
-				const { id, text, images } = message.payload as EditQueuedMessagePayload
-				provider.getCurrentTask()?.messageQueueService.updateMessage(id, text, images)
-			}
-
 			break
 		}
 	}
