@@ -65,17 +65,18 @@ export class ConversationMemoryServiceFactory {
 
 	private createEmbedder(): IEmbedder {
 		// TODO: Create actual embedder based on configuration
-		// For now, return a stub
+		// For now, return a stub that properly implements IEmbedder
 		return {
-			embed: async (text: string) => {
-				// Return a dummy embedding vector
-				return new Array(384).fill(0).map(() => Math.random())
-			},
-			embedBatch: async (texts: string[]) => {
-				return texts.map(() => new Array(384).fill(0).map(() => Math.random()))
-			},
 			createEmbeddings: async (texts: string[]) => {
-				return texts.map(() => new Array(384).fill(0).map(() => Math.random()))
+				// Return proper EmbeddingResponse format
+				return {
+					embeddings: texts.map(() => new Array(384).fill(0).map(() => Math.random())),
+					model: "stub",
+					usage: {
+						prompt_tokens: texts.join("").length,
+						total_tokens: texts.join("").length,
+					},
+				}
 			},
 			validateConfiguration: async () => {
 				return { valid: true }
@@ -85,7 +86,7 @@ export class ConversationMemoryServiceFactory {
 				dimensions: 384,
 				maxInputTokens: 8192,
 			},
-		} as IEmbedder
+		} as unknown as IEmbedder
 	}
 
 	private createVectorStore(): IMemoryVectorStore {
