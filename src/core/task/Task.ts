@@ -1489,7 +1489,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 	}
 
-/**
+	/**
 	 * Aborts the current task and optionally saves messages.
 	 *
 	 * @param isAbandoned - If true, marks the task as abandoned (no cleanup needed)
@@ -1544,16 +1544,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.didFinishAbortingStream = true
 		this.didCompleteReadingStream = false
 
-		// Clear streaming content
-		this.currentStreamingContentIndex = 0
-		this.currentStreamingDidCheckpoint = false
-		this.assistantMessageContent = []
-		this.userMessageContent = []
-		this.userMessageContentReady = false
-		this.didRejectTool = false
-		this.didAlreadyUseTool = false
-		this.presentAssistantMessageLocked = false
-		this.presentAssistantMessageHasPendingUpdates = false
+		// Centralized streaming reset to avoid duplication
+		await this.resetStreamingState({ resetDiffView: "ifEditing" })
 
 		// Reset API state
 		this.consecutiveMistakeCount = 0
@@ -1562,17 +1554,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.askResponse = undefined
 		this.askResponseText = undefined
 		this.askResponseImages = undefined
-
-		// Reset parser if exists
-		if (this.assistantMessageParser) {
-			this.assistantMessageParser.reset()
-		}
-
-		// Only reset diff view if it's actively editing
-		// This avoids unnecessary operations when diff view is not in use
-		if (this.diffViewProvider && this.diffViewProvider.isEditing) {
-			await this.diffViewProvider.reset()
-		}
 
 		// Dispose of resources that could accumulate if tasks are repeatedly cancelled
 		// These will be recreated as needed when the task resumes
@@ -1598,6 +1579,52 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Keep messages and history intact for resumption
 		// The task is now ready to be resumed without recreation
+	}
+	/**
+	 * Reset all streaming-related state in a single place to avoid duplication.
+	 *
+	 * This centralizes the "Reset streaming state" logic that previously existed
+	 * in multiple locations (e.g., within recursivelyMakeClineRequests and
+	 * resetToResumableState). Keeping it here prevents the two call sites from
+	 * drifting out of sync as fields evolve.
+	 *
+	 * Behavior:
+	 * - Clears transient streaming buffers and flags
+	 * - Resets the assistant message parser
+	 * - Optionally resets the diff view (always, only-if-editing, or never)
+	 *
+	 * Note:
+	 * - This method intentionally does NOT touch abort/abandoned flags or
+	 *   high-level control flags like isStreaming/isWaitingForFirstChunk.
+	 *   Those are managed by their respective flows.
+	 */
+	private async resetStreamingState(options: { resetDiffView?: "always" | "ifEditing" | "never" } = {}) {
+		// Clear streaming content and state
+		this.currentStreamingContentIndex = 0
+		this.currentStreamingDidCheckpoint = false
+		this.assistantMessageContent = []
+		this.userMessageContent = []
+		this.userMessageContentReady = false
+		this.didRejectTool = false
+		this.didAlreadyUseTool = false
+		this.presentAssistantMessageLocked = false
+		this.presentAssistantMessageHasPendingUpdates = false
+		this.didCompleteReadingStream = false
+
+		// Reset parser if exists
+		if (this.assistantMessageParser) {
+			this.assistantMessageParser.reset()
+		}
+
+		// Optionally reset the diff view
+		const mode = options.resetDiffView ?? "never"
+		if (mode !== "never" && this.diffViewProvider) {
+			if (mode === "always") {
+				await this.diffViewProvider.reset()
+			} else if (mode === "ifEditing" && this.diffViewProvider.isEditing) {
+				await this.diffViewProvider.reset()
+			}
+		}
 	}
 
 	// Used when a sub-task is launched and the parent task is waiting for it to
@@ -1669,7 +1696,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const currentUserContent = currentItem.userContent
 			const currentIncludeFileDetails = currentItem.includeFileDetails
 
-if (this.abort) {
+			if (this.abort) {
 				throw new Error(`[RooCode#recursivelyMakeRooRequests] task ${this.taskId}.${this.instanceId} aborted`)
 			}
 
@@ -1863,20 +1890,8 @@ if (this.abort) {
 					this.didFinishAbortingStream = true
 				}
 
-				// Reset streaming state.
-				this.currentStreamingContentIndex = 0
-				this.currentStreamingDidCheckpoint = false
-				this.assistantMessageContent = []
-				this.didCompleteReadingStream = false
-				this.userMessageContent = []
-				this.userMessageContentReady = false
-				this.didRejectTool = false
-				this.didAlreadyUseTool = false
-				this.presentAssistantMessageLocked = false
-				this.presentAssistantMessageHasPendingUpdates = false
-				this.assistantMessageParser.reset()
-
-				await this.diffViewProvider.reset()
+				// Reset streaming state using centralized helper to keep logic in sync
+				await this.resetStreamingState({ resetDiffView: "always" })
 
 				// Yields only if the first chunk is successful, otherwise will
 				// allow the user to retry the request (most likely due to rate
