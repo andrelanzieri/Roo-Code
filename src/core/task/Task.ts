@@ -1425,11 +1425,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	public dispose(): void {
 		console.log(`[Task#dispose] disposing task ${this.taskId}.${this.instanceId}`)
 
-		// Remove all event listeners to prevent memory leaks.
+		// Remove all event listeners first to prevent any callbacks during disposal
 		try {
 			this.removeAllListeners()
 		} catch (error) {
-			console.error("Error removing event listeners:", error)
+			console.error(`[Task#dispose] Error removing event listeners for task ${this.taskId}:`, error)
 		}
 
 		// Stop waiting for child task completion.
@@ -1438,60 +1438,78 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.pauseInterval = undefined
 		}
 
+		// Unsubscribe from bridge if enabled
 		if (this.enableBridge) {
 			BridgeOrchestrator.getInstance()
 				?.unsubscribeFromTask(this.taskId)
 				.catch((error) =>
 					console.error(
-						`[Task#dispose] BridgeOrchestrator#unsubscribeFromTask() failed: ${error instanceof Error ? error.message : String(error)}`,
+						`[Task#dispose] BridgeOrchestrator#unsubscribeFromTask() failed for task ${this.taskId}: ${error instanceof Error ? error.message : String(error)}`,
 					),
 				)
 		}
 
 		// Release any terminals associated with this task.
 		try {
-			// Release any terminals associated with this task.
 			TerminalRegistry.releaseTerminalsForTask(this.taskId)
 		} catch (error) {
-			console.error("Error releasing terminals:", error)
+			console.error(`[Task#dispose] Error releasing terminals for task ${this.taskId}:`, error)
 		}
 
+		// Close browsers
 		try {
 			this.urlContentFetcher.closeBrowser()
 		} catch (error) {
-			console.error("Error closing URL content fetcher browser:", error)
+			console.error(`[Task#dispose] Error closing URL content fetcher browser for task ${this.taskId}:`, error)
 		}
 
 		try {
 			this.browserSession.closeBrowser()
 		} catch (error) {
-			console.error("Error closing browser session:", error)
+			console.error(`[Task#dispose] Error closing browser session for task ${this.taskId}:`, error)
 		}
 
-		try {
-			if (this.rooIgnoreController) {
+		// CRITICAL: Always dispose RooIgnoreController to prevent memory leaks
+		// This must be done even if it throws an error
+		if (this.rooIgnoreController) {
+			try {
 				this.rooIgnoreController.dispose()
+			} catch (error) {
+				console.error(
+					`[Task#dispose] CRITICAL: Error disposing RooIgnoreController for task ${this.taskId}:`,
+					error,
+				)
+			} finally {
+				// Always clear the reference to allow garbage collection
 				this.rooIgnoreController = undefined
 			}
-		} catch (error) {
-			console.error("Error disposing RooIgnoreController:", error)
-			// This is the critical one for the leak fix.
 		}
 
+		// Dispose file context tracker
 		try {
 			this.fileContextTracker.dispose()
 		} catch (error) {
-			console.error("Error disposing file context tracker:", error)
+			console.error(`[Task#dispose] Error disposing file context tracker for task ${this.taskId}:`, error)
 		}
 
+		// Revert any pending diff changes
 		try {
-			// If we're not streaming then `abortStream` won't be called.
 			if (this.isStreaming && this.diffViewProvider.isEditing) {
-				this.diffViewProvider.revertChanges().catch(console.error)
+				this.diffViewProvider
+					.revertChanges()
+					.catch((error) =>
+						console.error(`[Task#dispose] Error reverting diff changes for task ${this.taskId}:`, error),
+					)
 			}
 		} catch (error) {
-			console.error("Error reverting diff changes:", error)
+			console.error(`[Task#dispose] Error checking/reverting diff changes for task ${this.taskId}:`, error)
 		}
+
+		// Clear any remaining references to help garbage collection
+		this.assistantMessageContent = []
+		this.userMessageContent = []
+		this.apiConversationHistory = []
+		this.clineMessages = []
 	}
 
 	public async abortTask(isAbandoned = false) {

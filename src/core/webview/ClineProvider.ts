@@ -350,10 +350,33 @@ export class ClineProvider
 		}
 
 		// Pop the top Cline instance from the stack.
-		let task = this.clineStack.pop()
+		const task = this.clineStack.pop()
 
 		if (task) {
-			task.emit(RooCodeEventName.TaskUnfocused)
+			const taskId = task.taskId
+			const instanceId = task.instanceId
+
+			// Emit unfocused event before cleanup
+			try {
+				task.emit(RooCodeEventName.TaskUnfocused)
+			} catch (error) {
+				this.log(`[ClineProvider#removeClineFromStack] Error emitting TaskUnfocused for ${taskId}: ${error}`)
+			}
+
+			// Remove event listeners BEFORE aborting to prevent any callbacks during cleanup
+			const cleanupFunctions = this.taskEventListeners.get(task)
+			if (cleanupFunctions) {
+				cleanupFunctions.forEach((cleanup) => {
+					try {
+						cleanup()
+					} catch (error) {
+						this.log(
+							`[ClineProvider#removeClineFromStack] Error cleaning up event listener for ${taskId}: ${error}`,
+						)
+					}
+				})
+				this.taskEventListeners.delete(task)
+			}
 
 			try {
 				// Abort the running task and set isAbandoned to true so
@@ -361,21 +384,9 @@ export class ClineProvider
 				await task.abortTask(true)
 			} catch (e) {
 				this.log(
-					`[ClineProvider#removeClineFromStack] abortTask() failed ${task.taskId}.${task.instanceId}: ${e.message}`,
+					`[ClineProvider#removeClineFromStack] abortTask() failed ${taskId}.${instanceId}: ${e.message}`,
 				)
 			}
-
-			// Remove event listeners before clearing the reference.
-			const cleanupFunctions = this.taskEventListeners.get(task)
-
-			if (cleanupFunctions) {
-				cleanupFunctions.forEach((cleanup) => cleanup())
-				this.taskEventListeners.delete(task)
-			}
-
-			// Make sure no reference kept, once promises end it will be
-			// garbage collected.
-			task = undefined
 		}
 	}
 
@@ -418,12 +429,30 @@ export class ClineProvider
 	async dispose() {
 		this.log("Disposing ClineProvider...")
 
+		// Clear all event listeners for all tasks first
+		for (const task of this.clineStack) {
+			const cleanupFunctions = this.taskEventListeners.get(task)
+			if (cleanupFunctions) {
+				cleanupFunctions.forEach((cleanup) => {
+					try {
+						cleanup()
+					} catch (error) {
+						this.log(`[ClineProvider#dispose] Error cleaning up event listener: ${error}`)
+					}
+				})
+				this.taskEventListeners.delete(task)
+			}
+		}
+
 		// Clear all tasks from the stack.
 		while (this.clineStack.length > 0) {
 			await this.removeClineFromStack()
 		}
 
 		this.log("Cleared all tasks")
+
+		// Clear the task event listeners map completely
+		this.taskEventListeners = new WeakMap()
 
 		if (this.view && "dispose" in this.view) {
 			this.view.dispose()
@@ -441,21 +470,61 @@ export class ClineProvider
 			const x = this.disposables.pop()
 
 			if (x) {
-				x.dispose()
+				try {
+					x.dispose()
+				} catch (error) {
+					this.log(`[ClineProvider#dispose] Error disposing disposable: ${error}`)
+				}
 			}
 		}
 
-		this._workspaceTracker?.dispose()
-		this._workspaceTracker = undefined
-		await this.mcpHub?.unregisterClient()
-		this.mcpHub = undefined
-		this.marketplaceManager?.cleanup()
-		this.customModesManager?.dispose()
+		// Clean up workspace tracker
+		if (this._workspaceTracker) {
+			try {
+				this._workspaceTracker.dispose()
+			} catch (error) {
+				this.log(`[ClineProvider#dispose] Error disposing workspace tracker: ${error}`)
+			}
+			this._workspaceTracker = undefined
+		}
+
+		// Unregister from MCP hub
+		if (this.mcpHub) {
+			try {
+				await this.mcpHub.unregisterClient()
+			} catch (error) {
+				this.log(`[ClineProvider#dispose] Error unregistering MCP client: ${error}`)
+			}
+			this.mcpHub = undefined
+		}
+
+		// Clean up marketplace manager
+		if (this.marketplaceManager) {
+			try {
+				this.marketplaceManager.cleanup()
+			} catch (error) {
+				this.log(`[ClineProvider#dispose] Error cleaning up marketplace manager: ${error}`)
+			}
+		}
+
+		// Dispose custom modes manager
+		if (this.customModesManager) {
+			try {
+				this.customModesManager.dispose()
+			} catch (error) {
+				this.log(`[ClineProvider#dispose] Error disposing custom modes manager: ${error}`)
+			}
+		}
+
 		this.log("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
 
 		// Clean up any event listeners attached to this provider
-		this.removeAllListeners()
+		try {
+			this.removeAllListeners()
+		} catch (error) {
+			this.log(`[ClineProvider#dispose] Error removing provider event listeners: ${error}`)
+		}
 
 		McpServerManager.unregisterProvider(this)
 	}

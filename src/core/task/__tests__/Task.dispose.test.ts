@@ -117,8 +117,11 @@ describe("Task dispose method", () => {
 		// Call dispose - should not throw
 		expect(() => task.dispose()).not.toThrow()
 
-		// Verify error was logged
-		expect(consoleErrorSpy).toHaveBeenCalledWith("Error removing event listeners:", expect.any(Error))
+		// Verify error was logged with the improved format
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			`[Task#dispose] Error removing event listeners for task ${task.taskId}:`,
+			expect.any(Error),
+		)
 
 		// Restore
 		task.removeAllListeners = originalRemoveAllListeners
