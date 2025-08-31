@@ -66,7 +66,7 @@ import { RepoPerTaskCheckpointService } from "../../services/checkpoints"
 // integrations
 import { DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
 import { findToolName, formatContentBlockToMarkdown } from "../../integrations/misc/export-markdown"
-import { RooTerminalProcess } from "../../integrations/terminal/types"
+import { RooTerminalProcess, RooTerminal } from "../../integrations/terminal/types"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 
 // utils
@@ -224,6 +224,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	fileContextTracker: FileContextTracker
 	urlContentFetcher: UrlContentFetcher
 	terminalProcess?: RooTerminalProcess
+	lastUsedTerminal?: RooTerminal
 
 	// Computer User
 	browserSession: BrowserSession
