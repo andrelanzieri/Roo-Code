@@ -680,6 +680,49 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			throw new Error(`[RooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
 		}
 
+		// Check for auto-approval based on the ask type and settings
+		// This allows IPC automation to work without user intervention
+		if (!partial && !isProtected) {
+			const state = await this.providerRef.deref()?.getState()
+			const { autoApprovalEnabled, alwaysAllowMcp, alwaysAllowUpdateTodoList, alwaysAllowFollowupQuestions } =
+				state ?? {}
+
+			// Only auto-approve if autoApprovalEnabled is true
+			if (autoApprovalEnabled) {
+				// Check specific auto-approval flags based on ask type
+				let shouldAutoApprove = false
+
+				switch (type) {
+					case "use_mcp_server":
+						// Auto-approve MCP server/resource requests if flag is set
+						shouldAutoApprove = alwaysAllowMcp ?? false
+						break
+					case "tool":
+						// Check if this is a todo list update by examining the text
+						if (text) {
+							try {
+								const parsed = JSON.parse(text)
+								if (parsed.tool === "updateTodoList") {
+									shouldAutoApprove = alwaysAllowUpdateTodoList ?? false
+								}
+							} catch {
+								// Not a JSON tool request, don't auto-approve
+							}
+						}
+						break
+					case "followup":
+						// Auto-approve followup questions if flag is set
+						shouldAutoApprove = alwaysAllowFollowupQuestions ?? false
+						break
+				}
+
+				if (shouldAutoApprove) {
+					// Return auto-approved response immediately
+					return { response: "yesButtonClicked", text: undefined, images: undefined }
+				}
+			}
+		}
+
 		let askTs: number
 
 		if (partial !== undefined) {

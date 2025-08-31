@@ -69,7 +69,13 @@ vi.mock("fs/promises", async (importOriginal) => {
 })
 
 vi.mock("p-wait-for", () => ({
-	default: vi.fn().mockImplementation(async () => Promise.resolve()),
+	default: vi.fn().mockImplementation(async (condition, options) => {
+		// Actually wait for the condition to be true
+		const interval = options?.interval || 100
+		while (!(await condition())) {
+			await new Promise((resolve) => setTimeout(resolve, interval))
+		}
+	}),
 }))
 
 vi.mock("vscode", () => {
@@ -1774,6 +1780,231 @@ describe("Cline", () => {
 
 			// Restore console.error
 			consoleErrorSpy.mockRestore()
+		})
+	})
+
+	describe("Task.ask auto-approval", () => {
+		it("should auto-approve MCP server requests when alwaysAllowMcp is true", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			// Mock provider state with auto-approval enabled
+			mockProvider.getState = vi.fn().mockResolvedValue({
+				autoApprovalEnabled: true,
+				alwaysAllowMcp: true,
+			})
+
+			// Call ask with use_mcp_server type
+			const result = await task.ask("use_mcp_server", "test MCP request")
+
+			// Should auto-approve without waiting
+			expect(result.response).toBe("yesButtonClicked")
+			expect(result.text).toBeUndefined()
+			expect(result.images).toBeUndefined()
+		})
+
+		it("should auto-approve TODO list updates when alwaysAllowUpdateTodoList is true", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			// Mock provider state with auto-approval enabled
+			mockProvider.getState = vi.fn().mockResolvedValue({
+				autoApprovalEnabled: true,
+				alwaysAllowUpdateTodoList: true,
+			})
+
+			// Call ask with tool type for updateTodoList
+			const toolMessage = JSON.stringify({ tool: "updateTodoList" })
+			const result = await task.ask("tool", toolMessage)
+
+			// Should auto-approve without waiting
+			expect(result.response).toBe("yesButtonClicked")
+			expect(result.text).toBeUndefined()
+			expect(result.images).toBeUndefined()
+		})
+
+		it("should auto-approve followup questions when alwaysAllowFollowupQuestions is true", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			// Mock provider state with auto-approval enabled
+			mockProvider.getState = vi.fn().mockResolvedValue({
+				autoApprovalEnabled: true,
+				alwaysAllowFollowupQuestions: true,
+			})
+
+			// Call ask with followup type
+			const result = await task.ask("followup", "test followup question")
+
+			// Should auto-approve without waiting
+			expect(result.response).toBe("yesButtonClicked")
+			expect(result.text).toBeUndefined()
+			expect(result.images).toBeUndefined()
+		})
+
+		it("should not auto-approve when autoApprovalEnabled is false", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			// Mock provider state with auto-approval disabled
+			mockProvider.getState = vi.fn().mockResolvedValue({
+				autoApprovalEnabled: false,
+				alwaysAllowMcp: true,
+			})
+
+			// Mock postStateToWebview to avoid errors
+			mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+
+			// Start the ask operation
+			const askPromise = task.ask("use_mcp_server", "test MCP request")
+
+			// Give the ask method time to set up
+			await new Promise((resolve) => setTimeout(resolve, 50))
+
+			// Simulate user response
+			task.handleWebviewAskResponse("yesButtonClicked")
+
+			// Wait for the ask promise to resolve
+			const result = await askPromise
+
+			// Should wait for user response
+			expect(result.response).toBe("yesButtonClicked")
+		})
+
+		it("should not auto-approve protected requests", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			// Mock provider state with auto-approval enabled
+			mockProvider.getState = vi.fn().mockResolvedValue({
+				autoApprovalEnabled: true,
+				alwaysAllowMcp: true,
+			})
+
+			// Mock postStateToWebview to avoid errors
+			mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+
+			// Start the ask operation with isProtected flag
+			const askPromise = task.ask("use_mcp_server", "test MCP request", false, undefined, true)
+
+			// Give the ask method time to set up
+			await new Promise((resolve) => setTimeout(resolve, 50))
+
+			// Simulate user response
+			task.handleWebviewAskResponse("yesButtonClicked")
+
+			// Wait for the ask promise to resolve
+			const result = await askPromise
+
+			// Should wait for user response even with auto-approval enabled
+			expect(result.response).toBe("yesButtonClicked")
+		})
+
+		it("should not auto-approve partial messages", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			// Mock provider state with auto-approval enabled
+			mockProvider.getState = vi.fn().mockResolvedValue({
+				autoApprovalEnabled: true,
+				alwaysAllowMcp: true,
+			})
+
+			// Call ask with partial flag - should throw error for partial
+			await expect(task.ask("use_mcp_server", "test MCP request", true)).rejects.toThrow(
+				"Current ask promise was ignored",
+			)
+		})
+
+		it("should not auto-approve non-tool 'tool' type requests", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			// Mock provider state with auto-approval enabled
+			mockProvider.getState = vi.fn().mockResolvedValue({
+				autoApprovalEnabled: true,
+				alwaysAllowUpdateTodoList: true,
+			})
+
+			// Mock postStateToWebview to avoid errors
+			mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+
+			// Start the ask operation with a different tool
+			const toolMessage = JSON.stringify({ tool: "someOtherTool" })
+			const askPromise = task.ask("tool", toolMessage)
+
+			// Give the ask method time to set up
+			await new Promise((resolve) => setTimeout(resolve, 50))
+
+			// Simulate user response
+			task.handleWebviewAskResponse("yesButtonClicked")
+
+			// Wait for the ask promise to resolve
+			const result = await askPromise
+
+			// Should wait for user response
+			expect(result.response).toBe("yesButtonClicked")
+		})
+
+		it("should handle invalid JSON in tool messages gracefully", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			// Mock provider state with auto-approval enabled
+			mockProvider.getState = vi.fn().mockResolvedValue({
+				autoApprovalEnabled: true,
+				alwaysAllowUpdateTodoList: true,
+			})
+
+			// Mock postStateToWebview to avoid errors
+			mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+
+			// Start the ask operation with invalid JSON
+			const askPromise = task.ask("tool", "not valid JSON")
+
+			// Give the ask method time to set up
+			await new Promise((resolve) => setTimeout(resolve, 50))
+
+			// Simulate user response
+			task.handleWebviewAskResponse("yesButtonClicked")
+
+			// Wait for the ask promise to resolve
+			const result = await askPromise
+
+			// Should wait for user response
+			expect(result.response).toBe("yesButtonClicked")
 		})
 	})
 })
