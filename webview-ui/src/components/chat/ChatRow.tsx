@@ -524,6 +524,20 @@ export const ChatRowContent = ({
 											: t("chat:fileOperations.wantsToRead")
 									: t("chat:fileOperations.didRead")}
 							</span>
+							{/* Add delete button for completed file reads when not streaming */}
+							{message.type === "say" && !isStreaming && (
+								<Button
+									variant="ghost"
+									size="icon"
+									className="ml-auto shrink-0"
+									title={t("chat:fileOperations.removeFromContext")}
+									onClick={(e) => {
+										e.stopPropagation()
+										vscode.postMessage({ type: "deleteMessage", value: message.ts })
+									}}>
+									<span className="codicon codicon-close" />
+								</Button>
+							)}
 						</div>
 						<ToolUseBlock>
 							<ToolUseBlockHeader
