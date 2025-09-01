@@ -16,7 +16,6 @@ import {
 	GitBranch,
 	Bell,
 	Database,
-	Monitor,
 	SquareTerminal,
 	FlaskConical,
 	AlertTriangle,
@@ -60,7 +59,6 @@ import { BrowserSettings } from "./BrowserSettings"
 import { CheckpointSettings } from "./CheckpointSettings"
 import { NotificationSettings } from "./NotificationSettings"
 import { ContextManagementSettings } from "./ContextManagementSettings"
-import { UISettings } from "./UISettings"
 import { TerminalSettings } from "./TerminalSettings"
 import { ExperimentalSettings } from "./ExperimentalSettings"
 import { LanguageSettings } from "./LanguageSettings"
@@ -86,7 +84,6 @@ const sectionNames = [
 	"checkpoints",
 	"notifications",
 	"contextManagement",
-	"ui",
 	"terminal",
 	"prompts",
 	"experimental",
@@ -458,7 +455,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "checkpoints", icon: GitBranch },
 			{ id: "notifications", icon: Bell },
 			{ id: "contextManagement", icon: Database },
-			{ id: "ui", icon: Monitor },
 			{ id: "terminal", icon: SquareTerminal },
 			{ id: "prompts", icon: MessageSquare },
 			{ id: "experimental", icon: FlaskConical },
@@ -724,14 +720,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							maxDiagnosticMessages={maxDiagnosticMessages}
 							writeDelayMs={writeDelayMs}
 							setCachedStateField={setCachedStateField}
-						/>
-					)}
-
-					{/* UI Section */}
-					{activeTab === "ui" && (
-						<UISettings
-							filesChangedEnabled={filesChangedEnabled}
-							setCachedStateField={setCachedStateField as SetCachedStateField<"filesChangedEnabled">}
 						/>
 					)}
 
