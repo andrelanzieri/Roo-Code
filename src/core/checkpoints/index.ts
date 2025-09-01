@@ -370,24 +370,21 @@ export async function getInitializedCheckpointService(
 	}
 }
 
-// Track ongoing checkpoint saves per task to prevent duplicates
-const ongoingCheckpointSaves = new Map<string, Promise<void | CheckpointResult | undefined>>()
-
 export async function checkpointSave(task: Task, force = false, files?: vscode.Uri[], suppressMessage = false) {
-	// Create a unique key for this checkpoint save operation
+	// Create a unique key for this checkpoint save operation (task-scoped, no need for taskId in key)
 	const filesKey = files
 		? files
 				.map((f) => f.fsPath)
 				.sort()
 				.join("|")
 		: "all"
-	const saveKey = `${task.taskId}-${force}-${filesKey}`
+	const saveKey = `${force}-${filesKey}`
 
 	// If there's already an ongoing checkpoint save for this exact operation, return the existing promise
-	if (ongoingCheckpointSaves.has(saveKey)) {
+	if (task.ongoingCheckpointSaves.has(saveKey)) {
 		const provider = task.providerRef.deref()
 		provider?.log(`[checkpointSave] duplicate checkpoint save detected for ${saveKey}, using existing operation`)
-		return ongoingCheckpointSaves.get(saveKey)
+		return task.ongoingCheckpointSaves.get(saveKey)
 	}
 	const service = await getInitializedCheckpointService(task)
 
@@ -432,10 +429,10 @@ export async function checkpointSave(task: Task, force = false, files?: vscode.U
 		})
 		.finally(() => {
 			// Clean up the tracking once completed
-			ongoingCheckpointSaves.delete(saveKey)
+			task.ongoingCheckpointSaves.delete(saveKey)
 		})
 
-	ongoingCheckpointSaves.set(saveKey, savePromise)
+	task.ongoingCheckpointSaves.set(saveKey, savePromise)
 	return savePromise
 }
 
