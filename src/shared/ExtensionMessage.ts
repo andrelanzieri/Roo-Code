@@ -129,8 +129,8 @@ export interface ExtensionMessage {
 		| "commands"
 		| "insertTextIntoTextarea"
 		| "filesChanged"
-		| "checkpoint_created"
-		| "checkpoint_restored"
+		| "checkpointCreated"
+		| "checkpointRestored"
 		| "say"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
@@ -209,7 +209,7 @@ export interface ExtensionMessage {
 	commands?: Command[]
 	queuedMessages?: QueuedMessage[]
 	filesChanged?: FileChangeset // Added filesChanged property
-	checkpoint?: string // For checkpoint_created and checkpoint_restored messages
+	checkpoint?: string // For checkpointCreated and checkpointRestored messages
 	previousCheckpoint?: string // For checkpoint_created message
 	say?: ClineSay // Added say property
 }

@@ -43,8 +43,6 @@ export async function getCheckpointService(
 		}
 	}
 
-	console.log("[Task#getCheckpointService] initializing checkpoints service")
-
 	try {
 		const workspaceDir = task.cwd || getWorkspacePath()
 
@@ -72,7 +70,6 @@ export async function getCheckpointService(
 		if (task.checkpointServiceInitializing) {
 			await pWaitFor(
 				() => {
-					console.log("[Task#getCheckpointService] waiting for service to initialize")
 					return !!task.checkpointService && !!task?.checkpointService?.isInitialized
 				},
 				{ interval, timeout },
@@ -133,22 +130,9 @@ async function checkGitInstallation(
 			log("[Task#getCheckpointService] service initialized")
 
 			try {
-				// Debug logging to understand checkpoint detection
-				console.log("[DEBUG] Checkpoint detection - total messages:", task.clineMessages.length)
-				console.log(
-					"[DEBUG] Checkpoint detection - message types:",
-					task.clineMessages.map((m) => ({ ts: m.ts, type: m.type, say: m.say, ask: m.ask })),
-				)
-
 				const checkpointMessages = task.clineMessages.filter(({ say }) => say === "checkpoint_saved")
-				console.log(
-					"[DEBUG] Found checkpoint messages:",
-					checkpointMessages.length,
-					checkpointMessages.map((m) => ({ ts: m.ts, text: m.text })),
-				)
 
 				const isCheckpointNeeded = checkpointMessages.length === 0
-				console.log("[DEBUG] isCheckpointNeeded result:", isCheckpointNeeded)
 
 				task.checkpointService = service
 				task.checkpointServiceInitializing = false
@@ -375,7 +359,6 @@ export async function getInitializedCheckpointService(
 	try {
 		await pWaitFor(
 			() => {
-				console.log("[Task#getCheckpointService] waiting for service to initialize")
 				return service.isInitialized
 			},
 			{ interval, timeout },
@@ -418,20 +401,17 @@ export async function checkpointSave(task: Task, force = false, files?: vscode.U
 	const provider = task.providerRef.deref()
 
 	// Capture the previous checkpoint BEFORE saving the new one
-	const previousCheckpoint = service.baseHash
-	console.log(`[checkpointSave] Previous checkpoint: ${previousCheckpoint}`)
+	const previousCheckpoint = service.getCurrentCheckpoint()
 
 	// Start the checkpoint process in the background and track it
 	const savePromise = service
 		.saveCheckpoint(`Task: ${task.taskId}, Time: ${Date.now()}`, { allowEmpty: force, files, suppressMessage })
 		.then(async (result: any) => {
-			console.log(`[checkpointSave] New checkpoint created: ${result?.commit}`)
-
 			// Notify FCO that checkpoint was created
 			if (provider && result) {
 				try {
 					provider.postMessageToWebview({
-						type: "checkpoint_created",
+						type: "checkpointCreated",
 						checkpoint: result.commit,
 						previousCheckpoint: previousCheckpoint,
 					} as any)
@@ -440,9 +420,6 @@ export async function checkpointSave(task: Task, force = false, files?: vscode.U
 					// to avoid duplicate/conflicting messages that override cumulative tracking.
 					// The checkpoint event handler calculates cumulative changes from the baseline
 					// and sends the complete filesChanged message with all accumulated changes.
-					console.log(
-						`[checkpointSave] FCO update delegated to checkpoint event for cumulative tracking`,
-					)
 				} catch (error) {
 					console.error("[Task#checkpointSave] Failed to notify FCO of checkpoint creation:", error)
 				}
@@ -509,8 +486,8 @@ export async function checkpointRestore(
 				}
 
 				// Calculate and send current changes with LLM-only filtering (should be empty immediately after restore)
-				if (cline.taskId && cline.fileContextTracker) {
-					const changes = await fileChangeManager.getLLMOnlyChanges(cline.taskId, cline.fileContextTracker)
+				if (task.taskId && task.fileContextTracker) {
+					const changes = await fileChangeManager.getLLMOnlyChanges(task.taskId, task.fileContextTracker)
 					provider?.postMessageToWebview({
 						type: "filesChanged",
 						filesChanged: changes.files.length > 0 ? changes : undefined,
@@ -525,7 +502,7 @@ export async function checkpointRestore(
 		// Notify FCO that checkpoint was restored
 		try {
 			await provider?.postMessageToWebview({
-				type: "checkpoint_restored",
+				type: "checkpointRestored",
 				checkpoint: commitHash,
 			} as any)
 		} catch (error) {
