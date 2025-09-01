@@ -16,6 +16,14 @@ vi.mock("vscode", () => {
 		) {}
 	}
 
+	class MockLanguageModelToolResultPart {
+		type = "tool_result"
+		constructor(
+			public callId: string,
+			public content: MockLanguageModelTextPart[],
+		) {}
+	}
+
 	return {
 		workspace: {
 			onDidChangeConfiguration: vi.fn((_callback) => ({
@@ -48,6 +56,7 @@ vi.mock("vscode", () => {
 		},
 		LanguageModelTextPart: MockLanguageModelTextPart,
 		LanguageModelToolCallPart: MockLanguageModelToolCallPart,
+		LanguageModelToolResultPart: MockLanguageModelToolResultPart,
 		lm: {
 			selectChatModels: vi.fn(),
 		},
@@ -135,7 +144,8 @@ describe("VsCodeLmHandler", () => {
 		beforeEach(() => {
 			const mockModel = { ...mockLanguageModelChat }
 			;(vscode.lm.selectChatModels as Mock).mockResolvedValueOnce([mockModel])
-			mockLanguageModelChat.countTokens.mockResolvedValue(10)
+			// Note: We no longer mock countTokens as we're using local token counting
+			// to avoid consuming VS Code LM API quota
 
 			// Override the default client with our test client
 			handler["client"] = mockLanguageModelChat
@@ -178,6 +188,10 @@ describe("VsCodeLmHandler", () => {
 				inputTokens: expect.any(Number),
 				outputTokens: expect.any(Number),
 			})
+
+			// Verify that VS Code LM API's countTokens was NOT called
+			// to avoid consuming user quota
+			expect(mockLanguageModelChat.countTokens).not.toHaveBeenCalled()
 		})
 
 		it("should handle tool calls", async () => {
@@ -221,6 +235,10 @@ describe("VsCodeLmHandler", () => {
 				type: "text",
 				text: JSON.stringify({ type: "tool_call", ...toolCallData }),
 			})
+
+			// Verify that VS Code LM API's countTokens was NOT called
+			// to avoid consuming user quota
+			expect(mockLanguageModelChat.countTokens).not.toHaveBeenCalled()
 		})
 
 		it("should handle errors", async () => {

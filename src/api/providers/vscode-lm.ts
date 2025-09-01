@@ -5,6 +5,7 @@ import { type ModelInfo, openAiModelInfoSaneDefaults } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 import { SELECTOR_SEPARATOR, stringifyVsCodeLmModelSelector } from "../../shared/vsCodeSelectorUtils"
+import { countTokens } from "../../utils/countTokens"
 
 import { ApiStream } from "../transform/stream"
 import { convertToVsCodeLmMessages, extractTextCountFromMessage } from "../transform/vscode-lm-format"
@@ -177,100 +178,46 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 
 	/**
 	 * Implements the ApiHandler countTokens interface method
-	 * Provides token counting for Anthropic content blocks
+	 * Uses local token counting to avoid consuming VS Code LM API quota
 	 *
 	 * @param content The content blocks to count tokens for
 	 * @returns A promise resolving to the token count
 	 */
 	override async countTokens(content: Array<Anthropic.Messages.ContentBlockParam>): Promise<number> {
-		// Convert Anthropic content blocks to a string for VSCode LM token counting
-		let textContent = ""
-
-		for (const block of content) {
-			if (block.type === "text") {
-				textContent += block.text || ""
-			} else if (block.type === "image") {
-				// VSCode LM doesn't support images directly, so we'll just use a placeholder
-				textContent += "[IMAGE]"
-			}
-		}
-
-		return this.internalCountTokens(textContent)
+		// Use the base provider's local token counting implementation
+		// This avoids calling the VS Code LM API which consumes user quota
+		return super.countTokens(content)
 	}
 
 	/**
-	 * Private implementation of token counting used internally by VsCodeLmHandler
+	 * Private implementation of local token counting for VS Code LM messages
+	 * This replaces the previous implementation that used the VS Code LM API
 	 */
-	private async internalCountTokens(text: string | vscode.LanguageModelChatMessage): Promise<number> {
-		// Check for required dependencies
-		if (!this.client) {
-			console.warn("Roo Code <Language Model API>: No client available for token counting")
+	private async localCountTokens(text: string | vscode.LanguageModelChatMessage): Promise<number> {
+		// Convert to string if it's a message
+		let textContent = ""
+
+		if (typeof text === "string") {
+			textContent = text
+		} else if (text && typeof text === "object") {
+			// Extract text content from the message object
+			textContent = extractTextCountFromMessage(text)
+		}
+
+		// Use local tiktoken-based counting
+		if (!textContent) {
 			return 0
 		}
 
-		if (!this.currentRequestCancellation) {
-			console.warn("Roo Code <Language Model API>: No cancellation token available for token counting")
-			return 0
-		}
+		// Convert to Anthropic content blocks for counting
+		const contentBlocks: Anthropic.Messages.ContentBlockParam[] = [{ type: "text", text: textContent }]
 
-		// Validate input
-		if (!text) {
-			console.debug("Roo Code <Language Model API>: Empty text provided for token counting")
-			return 0
-		}
-
-		try {
-			// Handle different input types
-			let tokenCount: number
-
-			if (typeof text === "string") {
-				tokenCount = await this.client.countTokens(text, this.currentRequestCancellation.token)
-			} else if (text instanceof vscode.LanguageModelChatMessage) {
-				// For chat messages, ensure we have content
-				if (!text.content || (Array.isArray(text.content) && text.content.length === 0)) {
-					console.debug("Roo Code <Language Model API>: Empty chat message content")
-					return 0
-				}
-				const countMessage = extractTextCountFromMessage(text)
-				tokenCount = await this.client.countTokens(countMessage, this.currentRequestCancellation.token)
-			} else {
-				console.warn("Roo Code <Language Model API>: Invalid input type for token counting")
-				return 0
-			}
-
-			// Validate the result
-			if (typeof tokenCount !== "number") {
-				console.warn("Roo Code <Language Model API>: Non-numeric token count received:", tokenCount)
-				return 0
-			}
-
-			if (tokenCount < 0) {
-				console.warn("Roo Code <Language Model API>: Negative token count received:", tokenCount)
-				return 0
-			}
-
-			return tokenCount
-		} catch (error) {
-			// Handle specific error types
-			if (error instanceof vscode.CancellationError) {
-				console.debug("Roo Code <Language Model API>: Token counting cancelled by user")
-				return 0
-			}
-
-			const errorMessage = error instanceof Error ? error.message : "Unknown error"
-			console.warn("Roo Code <Language Model API>: Token counting failed:", errorMessage)
-
-			// Log additional error details if available
-			if (error instanceof Error && error.stack) {
-				console.debug("Token counting error stack:", error.stack)
-			}
-
-			return 0 // Fallback to prevent stream interruption
-		}
+		return countTokens(contentBlocks, { useWorker: true })
 	}
 
 	private async calculateTotalInputTokens(vsCodeLmMessages: vscode.LanguageModelChatMessage[]): Promise<number> {
-		const messageTokens: number[] = await Promise.all(vsCodeLmMessages.map((msg) => this.internalCountTokens(msg)))
+		// Use local token counting instead of VS Code LM API
+		const messageTokens: number[] = await Promise.all(vsCodeLmMessages.map((msg) => this.localCountTokens(msg)))
 
 		return messageTokens.reduce((sum: number, tokens: number): number => sum + tokens, 0)
 	}
@@ -440,8 +387,9 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 				}
 			}
 
-			// Count tokens in the accumulated text after stream completion
-			const totalOutputTokens: number = await this.internalCountTokens(accumulatedText)
+			// Use local token counting for the accumulated output text
+			// This avoids consuming VS Code LM API quota
+			const totalOutputTokens: number = await this.localCountTokens(accumulatedText)
 
 			// Report final usage after stream completion
 			yield {
