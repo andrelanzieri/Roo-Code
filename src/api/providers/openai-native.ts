@@ -210,7 +210,9 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			model: model.id,
 			input: formattedInput,
 			stream: true,
-			store: metadata?.store !== false, // Default to true unless explicitly set to false
+			// Enable store by default to ensure OpenAI console logging works
+			// Only disable if explicitly set to false via metadata or options
+			store: this.options.openAiStoreEnabled !== false && metadata?.store !== false,
 			// Always include instructions (system prompt) for Responses API.
 			// Unlike Chat Completions, system/developer roles in input have no special semantics here.
 			// The official way to set system behavior is the top-level `instructions` field.

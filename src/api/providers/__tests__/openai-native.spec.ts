@@ -1530,5 +1530,161 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 				expect(bodyStr).not.toContain('"verbosity"')
 			})
 		})
+
+		describe("Store parameter behavior", () => {
+			it("should default store to true when openAiStoreEnabled is not set", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode('data: {"type":"response.done","response":{}}\n\n'),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				;(global as any).fetch = mockFetch as any
+
+				// Force SDK path to fail so we use fetch fallback
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+					// openAiStoreEnabled not set - should default to true
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+				const stream = handler.createMessage(systemPrompt, messages)
+
+				for await (const _ of stream) {
+					// drain
+				}
+
+				const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
+				const parsedBody = JSON.parse(bodyStr)
+				expect(parsedBody.store).toBe(true)
+			})
+
+			it("should set store to false when openAiStoreEnabled is false", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode('data: {"type":"response.done","response":{}}\n\n'),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				;(global as any).fetch = mockFetch as any
+
+				// Force SDK path to fail so we use fetch fallback
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+					openAiStoreEnabled: false, // Explicitly disable store
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+				const stream = handler.createMessage(systemPrompt, messages)
+
+				for await (const _ of stream) {
+					// drain
+				}
+
+				const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
+				const parsedBody = JSON.parse(bodyStr)
+				expect(parsedBody.store).toBe(false)
+			})
+
+			it("should respect metadata.store=false even when openAiStoreEnabled is true", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode('data: {"type":"response.done","response":{}}\n\n'),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				;(global as any).fetch = mockFetch as any
+
+				// Force SDK path to fail so we use fetch fallback
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+					openAiStoreEnabled: true, // Store enabled globally
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+				const stream = handler.createMessage(systemPrompt, messages, {
+					taskId: "test-task",
+					store: false, // Override with metadata
+				})
+
+				for await (const _ of stream) {
+					// drain
+				}
+
+				const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
+				const parsedBody = JSON.parse(bodyStr)
+				expect(parsedBody.store).toBe(false)
+			})
+
+			it("should set store to true when both openAiStoreEnabled and metadata.store are not false", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode('data: {"type":"response.done","response":{}}\n\n'),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				;(global as any).fetch = mockFetch as any
+
+				// Force SDK path to fail so we use fetch fallback
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+					openAiStoreEnabled: true,
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+				const stream = handler.createMessage(systemPrompt, messages, {
+					taskId: "test-task",
+					// store not specified in metadata - should use global setting
+				})
+
+				for await (const _ of stream) {
+					// drain
+				}
+
+				const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
+				const parsedBody = JSON.parse(bodyStr)
+				expect(parsedBody.store).toBe(true)
+			})
+		})
 	})
 })

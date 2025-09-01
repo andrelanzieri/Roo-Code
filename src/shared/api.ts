@@ -14,6 +14,12 @@ export type ApiHandlerOptions = Omit<ProviderSettings, "apiProvider"> & {
 	 * Defaults to true; set to false to disable summaries.
 	 */
 	enableGpt5ReasoningSummary?: boolean
+	/**
+	 * Controls whether OpenAI API requests are stored/logged in the OpenAI console.
+	 * When true (default), requests will appear in your OpenAI dashboard usage logs.
+	 * Set to false to disable OpenAI console logging for privacy or compliance reasons.
+	 */
+	openAiStoreEnabled?: boolean
 }
 
 // RouterName
