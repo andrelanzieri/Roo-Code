@@ -818,7 +818,9 @@ export class ClineProvider
 		await this.removeClineFromStack()
 	}
 
-	public async createTaskWithHistoryItem(historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task }) {
+	public async createTaskWithHistoryItem(
+		historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task; preservedFCOState?: any },
+	) {
 		await this.removeClineFromStack()
 
 		// If the history item has a saved mode, restore it and its associated API configuration.
@@ -938,6 +940,37 @@ export class ClineProvider
 					this.log(`[createTaskWithHistoryItem] Error processing pending edit: ${error}`)
 				}
 			}, 100) // Small delay to ensure task is fully ready
+		}
+
+		// Restore preserved FCO state if provided (from task abort/cancel)
+		if (historyItem.preservedFCOState) {
+			try {
+				const fileChangeManager = await this.ensureFileChangeManager()
+				if (fileChangeManager && historyItem.preservedFCOState.files) {
+					// Restore the file changes in FileChangeManager
+					fileChangeManager.setFiles(historyItem.preservedFCOState.files)
+
+					// Send restored FCO state to webview
+					const filteredChangeset = await fileChangeManager.getLLMOnlyChanges(
+						task.taskId,
+						task.fileContextTracker,
+					)
+
+					if (filteredChangeset.files.length > 0) {
+						this.postMessageToWebview({
+							type: "filesChanged",
+							filesChanged: filteredChangeset,
+						})
+
+						this.log(
+							`[createTaskWithHistoryItem] Restored FCO state with ${filteredChangeset.files.length} LLM-only file changes`,
+						)
+					}
+				}
+			} catch (error) {
+				this.log(`[createTaskWithHistoryItem] Failed to restore FCO state: ${error}`)
+				// Non-critical error, don't fail task creation
+			}
 		}
 
 		return task
@@ -2506,6 +2539,18 @@ export class ClineProvider
 		const rootTask = task.rootTask
 		const parentTask = task.parentTask
 
+		// Preserve FCO state before aborting task to prevent FCO from disappearing
+		let preservedFCOState: any = undefined
+		try {
+			const fileChangeManager = this.getFileChangeManager()
+			if (fileChangeManager) {
+				preservedFCOState = fileChangeManager.getChanges()
+				this.log(`[cancelTask] Preserved FCO state with ${preservedFCOState.files.length} files`)
+			}
+		} catch (error) {
+			this.log(`[cancelTask] Failed to preserve FCO state: ${error}`)
+		}
+
 		task.abortTask()
 
 		await pWaitFor(
@@ -2532,7 +2577,7 @@ export class ClineProvider
 		}
 
 		// Clears task again, so we need to abortTask manually above.
-		await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
+		await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask, preservedFCOState })
 	}
 
 	// Clear the current task without treating it as a subtask.
