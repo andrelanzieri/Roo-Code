@@ -286,11 +286,11 @@ export class McpHub {
 			clearTimeout(existingTimer)
 		}
 
-		// Set new timer
+		// Set new timer with longer debounce to reduce CPU usage
 		const timer = setTimeout(async () => {
 			this.configChangeDebounceTimers.delete(key)
 			await this.handleConfigFileChange(filePath, source)
-		}, 500) // 500ms debounce
+		}, 1000) // Increased to 1000ms debounce to reduce CPU load
 
 		this.configChangeDebounceTimers.set(key, timer)
 	}
@@ -1033,7 +1033,6 @@ export class McpHub {
 		if (manageConnectingState) {
 			this.isConnecting = true
 		}
-		this.removeAllFileWatchers()
 		// Filter connections by source
 		const currentConnections = this.connections.filter(
 			(conn) => conn.server.source === source || (!conn.server.source && source === "global"),
@@ -1041,7 +1040,7 @@ export class McpHub {
 		const currentNames = new Set(currentConnections.map((conn) => conn.server.name))
 		const newNames = new Set(Object.keys(newServers))
 
-		// Delete removed servers
+		// Delete removed servers (this will also clean up their file watchers)
 		for (const name of currentNames) {
 			if (!newNames.has(name)) {
 				await this.deleteConnection(name, source)
@@ -1065,10 +1064,7 @@ export class McpHub {
 			if (!currentConnection) {
 				// New server
 				try {
-					// Only setup file watcher for enabled servers
-					if (!validatedConfig.disabled) {
-						this.setupFileWatcher(name, validatedConfig, source)
-					}
+					// connectToServer will handle file watcher setup for enabled servers
 					await this.connectToServer(name, validatedConfig, source)
 				} catch (error) {
 					this.showErrorMessage(`Failed to connect to new MCP server ${name}`, error)
@@ -1076,11 +1072,9 @@ export class McpHub {
 			} else if (!deepEqual(JSON.parse(currentConnection.server.config), config)) {
 				// Existing server with changed config
 				try {
-					// Only setup file watcher for enabled servers
-					if (!validatedConfig.disabled) {
-						this.setupFileWatcher(name, validatedConfig, source)
-					}
+					// Delete connection first (this cleans up old file watchers)
 					await this.deleteConnection(name, source)
+					// connectToServer will handle file watcher setup for enabled servers
 					await this.connectToServer(name, validatedConfig, source)
 				} catch (error) {
 					this.showErrorMessage(`Failed to reconnect MCP server ${name}`, error)

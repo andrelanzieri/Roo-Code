@@ -626,29 +626,42 @@ async function execRipgrep(rgPath: string, args: string[], limit: number): Promi
 		const rgProcess = childProcess.spawn(rgPath, args)
 		let output = ""
 		let results: string[] = []
+		let processKilled = false
 
-		// Set timeout to avoid hanging
+		// Set timeout to avoid hanging - increased timeout for slower systems
 		const timeoutId = setTimeout(() => {
-			rgProcess.kill()
-			console.warn("ripgrep timed out, returning partial results")
-			resolve(results.slice(0, limit))
-		}, 10_000)
+			if (!processKilled) {
+				processKilled = true
+				rgProcess.kill("SIGTERM")
+				console.warn("ripgrep timed out, returning partial results")
+				resolve(results.slice(0, limit))
+			}
+		}, 15_000) // Increased timeout to 15 seconds
 
 		// Process stdout data as it comes in
 		rgProcess.stdout.on("data", (data) => {
+			// Early exit if we've already killed the process
+			if (processKilled) return
+
 			output += data.toString()
 			processRipgrepOutput()
 
 			// Kill the process if we've reached the limit
-			if (results.length >= limit) {
-				rgProcess.kill()
-				clearTimeout(timeoutId) // Clear the timeout when we kill the process due to reaching the limit
+			if (results.length >= limit && !processKilled) {
+				processKilled = true
+				clearTimeout(timeoutId)
+				rgProcess.kill("SIGTERM")
+				// Resolve immediately when limit is reached
+				resolve(results.slice(0, limit))
 			}
 		})
 
 		// Process stderr but don't fail on non-zero exit codes
 		rgProcess.stderr.on("data", (data) => {
-			console.error(`ripgrep stderr: ${data}`)
+			// Only log errors if not killed intentionally
+			if (!processKilled) {
+				console.error(`ripgrep stderr: ${data}`)
+			}
 		})
 
 		// Handle process completion
@@ -656,22 +669,27 @@ async function execRipgrep(rgPath: string, args: string[], limit: number): Promi
 			// Clear the timeout to avoid memory leaks
 			clearTimeout(timeoutId)
 
-			// Process any remaining output
-			processRipgrepOutput(true)
+			// Only process if not already resolved
+			if (!processKilled) {
+				// Process any remaining output
+				processRipgrepOutput(true)
 
-			// Log non-zero exit codes but don't fail
-			if (code !== 0 && code !== null && code !== 143 /* SIGTERM */) {
-				console.warn(`ripgrep process exited with code ${code}, returning partial results`)
+				// Log non-zero exit codes but don't fail
+				if (code !== 0 && code !== null && code !== 143 /* SIGTERM */) {
+					console.warn(`ripgrep process exited with code ${code}, returning partial results`)
+				}
+
+				resolve(results.slice(0, limit))
 			}
-
-			resolve(results.slice(0, limit))
 		})
 
 		// Handle process errors
 		rgProcess.on("error", (error) => {
 			// Clear the timeout to avoid memory leaks
 			clearTimeout(timeoutId)
-			reject(new Error(`ripgrep process error: ${error.message}`))
+			if (!processKilled) {
+				reject(new Error(`ripgrep process error: ${error.message}`))
+			}
 		})
 
 		// Helper function to process output buffer
