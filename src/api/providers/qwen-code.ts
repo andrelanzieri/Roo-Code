@@ -287,7 +287,8 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 
 	override getModel(): { id: string; info: ModelInfo } {
 		const id = this.options.apiModelId ?? qwenCodeDefaultModelId
-		let info = qwenCodeModels[id as keyof typeof qwenCodeModels] || qwenCodeModels[qwenCodeDefaultModelId]
+		let info: ModelInfo =
+			qwenCodeModels[id as keyof typeof qwenCodeModels] || qwenCodeModels[qwenCodeDefaultModelId]
 
 		// Apply custom context window limit if configured
 		if (this.options.qwenCodeMaxContextWindow && this.options.qwenCodeMaxContextWindow > 0) {
