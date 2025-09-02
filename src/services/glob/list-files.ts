@@ -401,7 +401,20 @@ async function listFilteredDirectories(
 		ignoreInstance,
 	}
 
-	async function scanDirectory(currentPath: string, context: ScanContext): Promise<void> {
+	// Use iterative approach with a queue to avoid stack overflow on deep directory structures
+	interface QueueItem {
+		path: string
+		context: ScanContext
+	}
+
+	const queue: QueueItem[] = [{ path: absolutePath, context: initialContext }]
+
+	while (queue.length > 0) {
+		const item = queue.shift()
+		if (!item) continue
+
+		const { path: currentPath, context } = item
+
 		try {
 			// List all entries in the current directory
 			const entries = await fs.promises.readdir(currentPath, { withFileTypes: true })
@@ -461,7 +474,8 @@ async function listFilteredDirectories(
 							isTargetDir: false,
 							insideExplicitHiddenTarget: newInsideExplicitHiddenTarget,
 						}
-						await scanDirectory(fullDirPath, newContext)
+						// Add to queue instead of recursive call
+						queue.push({ path: fullDirPath, context: newContext })
 					}
 				}
 			}
@@ -470,9 +484,6 @@ async function listFilteredDirectories(
 			console.warn(`Could not read directory ${currentPath}: ${err}`)
 		}
 	}
-
-	// Start scanning from the root directory
-	await scanDirectory(absolutePath, initialContext)
 
 	return directories
 }
