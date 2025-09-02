@@ -318,6 +318,7 @@ const ioIntelligenceSchema = apiModelIdProviderModelSchema.extend({
 
 const qwenCodeSchema = apiModelIdProviderModelSchema.extend({
 	qwenCodeOauthPath: z.string().optional(),
+	qwenCodeMaxContextWindow: z.number().int().min(1000).max(1000000).optional(),
 })
 
 const rooSchema = apiModelIdProviderModelSchema.extend({

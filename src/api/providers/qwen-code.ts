@@ -30,6 +30,7 @@ interface QwenOAuthCredentials {
 
 interface QwenCodeHandlerOptions extends ApiHandlerOptions {
 	qwenCodeOauthPath?: string
+	qwenCodeMaxContextWindow?: number
 }
 
 function getQwenCachedCredentialPath(customPath?: string): string {
@@ -286,7 +287,16 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 
 	override getModel(): { id: string; info: ModelInfo } {
 		const id = this.options.apiModelId ?? qwenCodeDefaultModelId
-		const info = qwenCodeModels[id as keyof typeof qwenCodeModels] || qwenCodeModels[qwenCodeDefaultModelId]
+		let info = qwenCodeModels[id as keyof typeof qwenCodeModels] || qwenCodeModels[qwenCodeDefaultModelId]
+
+		// Apply custom context window limit if configured
+		if (this.options.qwenCodeMaxContextWindow && this.options.qwenCodeMaxContextWindow > 0) {
+			info = {
+				...info,
+				contextWindow: Math.min(info.contextWindow, this.options.qwenCodeMaxContextWindow),
+			}
+		}
+
 		return { id, info }
 	}
 
