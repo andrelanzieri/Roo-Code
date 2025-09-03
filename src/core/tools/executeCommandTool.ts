@@ -126,7 +126,7 @@ export async function executeCommandTool(
 
 					pushToolResult(result)
 				} else {
-					pushToolResult(`Command failed to execute in terminal due to a shell integration error.`)
+					pushToolResult(t("tools:executeCommand.shellIntegrationGenericError"))
 				}
 			}
 
@@ -175,7 +175,7 @@ export async function executeCommand(
 	try {
 		await fs.access(workingDir)
 	} catch (error) {
-		return [false, `Working directory '${workingDir}' does not exist.`]
+		return [false, t("tools:executeCommand.workingDirMissing", { workingDir })]
 	}
 
 	let message: { text?: string; images?: string[] } | undefined
