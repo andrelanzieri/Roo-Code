@@ -119,6 +119,9 @@ const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 const FORCED_CONTEXT_REDUCTION_PERCENT = 75 // Keep 75% of context (remove 25%) on context window errors
 const MAX_CONTEXT_WINDOW_RETRIES = 3 // Maximum retries for context window errors
+const RESOURCE_ACCESS_TIMEOUT_MS = 40000 // 40 seconds timeout for resource access
+const RESOURCE_ACCESS_RETRY_DELAY_MS = 2000 // 2 seconds initial retry delay
+const RESOURCE_ACCESS_MAX_RETRY_DELAY_MS = 6000 // 6 seconds max retry delay
 
 export interface TaskOptions extends CreateTaskOptions {
 	provider: ClineProvider
@@ -1201,7 +1204,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 		}
 
-		const modifiedClineMessages = await this.getSavedClineMessages()
+		// Get saved messages with recovery mechanism
+		const modifiedClineMessages = await this.getSavedClineMessagesWithRecovery()
 
 		// Check for any stored GPT-5 response IDs in the message history.
 		const gpt5Messages = modifiedClineMessages.filter(
@@ -1254,7 +1258,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// task, and it was because we were waiting for resume).
 		// This is important in case the user deletes messages without resuming
 		// the task first.
-		this.apiConversationHistory = await this.getSavedApiConversationHistory()
+		// Get API conversation history with recovery mechanism
+		this.apiConversationHistory = await this.getSavedApiConversationHistoryWithRecovery()
 
 		const lastClineMessage = this.clineMessages
 			.slice()
@@ -1283,7 +1288,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Make sure that the api conversation history can be resumed by the API,
 		// even if it goes out of sync with cline messages.
-		let existingApiConversationHistory: ApiMessage[] = await this.getSavedApiConversationHistory()
+		let existingApiConversationHistory: ApiMessage[] = await this.getSavedApiConversationHistoryWithRecovery()
 
 		// v2.0 xml tags refactor caveat: since we don't use tools anymore, we need to replace all tool use blocks with a text block since the API disallows conversations with tool uses and no tool schema
 		const conversationWithoutToolBlocks = existingApiConversationHistory.map((message) => {
@@ -1399,7 +1404,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				throw new Error("Unexpected: Last message is not a user or assistant message")
 			}
 		} else {
-			throw new Error("Unexpected: No existing API conversation history")
+			// Handle case where there's no existing API conversation history gracefully
+			// This can happen when resuming a task that was interrupted before any API calls
+			console.warn(
+				`[Task#resumeTaskFromHistory] No existing API conversation history for task ${this.taskId}. Starting fresh.`,
+			)
+			modifiedApiConversationHistory = []
+			modifiedOldUserContent = []
 		}
 
 		let newUserContent: Anthropic.Messages.ContentBlockParam[] = [...modifiedOldUserContent]
@@ -2852,5 +2863,118 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	public get cwd() {
 		return this.workspacePath
+	}
+
+	/**
+	 * Wraps an async operation with a timeout and retry mechanism.
+	 * If the operation fails or times out, it will retry with exponential backoff.
+	 * After 40 seconds total, it will mark the resource as lost and continue.
+	 *
+	 * @param promiseFactory A function that returns the promise to execute
+	 * @param timeout Initial timeout in milliseconds (default 5000ms)
+	 * @param errorMessage Error message to use if all retries fail
+	 * @returns The result of the promise or a fallback value
+	 */
+	private async withTimeout<T>(
+		promiseFactory: () => Promise<T>,
+		timeout: number = 5000,
+		errorMessage: string = "Resource access failed",
+	): Promise<T | null> {
+		const startTime = Date.now()
+		let retryDelay = RESOURCE_ACCESS_RETRY_DELAY_MS
+		let attemptCount = 0
+
+		while (Date.now() - startTime < RESOURCE_ACCESS_TIMEOUT_MS) {
+			attemptCount++
+
+			try {
+				// Create a new promise instance for each attempt
+				const promise = promiseFactory()
+
+				// Create a timeout promise
+				const timeoutPromise = new Promise<never>((_, reject) => {
+					setTimeout(() => reject(new Error(`Timeout after ${timeout}ms`)), timeout)
+				})
+
+				// Race between the actual promise and the timeout
+				const result = await Promise.race([promise, timeoutPromise])
+
+				// If we get here, the operation succeeded
+				if (attemptCount > 1) {
+					console.log(`[Task#withTimeout] Resource access succeeded after ${attemptCount} attempts`)
+				}
+				return result as T
+			} catch (error) {
+				const elapsedTime = Date.now() - startTime
+
+				// Log the retry attempt
+				console.warn(
+					`[Task#withTimeout] Attempt ${attemptCount} failed after ${elapsedTime}ms: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+
+				// Check if we've exceeded the total timeout
+				if (elapsedTime >= RESOURCE_ACCESS_TIMEOUT_MS) {
+					console.error(
+						`[Task#withTimeout] Resource access failed after ${RESOURCE_ACCESS_TIMEOUT_MS}ms. ` +
+							`Marking resource as lost and continuing. Error: ${errorMessage}`,
+					)
+
+					// Return null to indicate failure
+					return null
+				}
+
+				// Wait before retrying with exponential backoff
+				await delay(retryDelay)
+				retryDelay = Math.min(retryDelay * 1.5, RESOURCE_ACCESS_MAX_RETRY_DELAY_MS)
+			}
+		}
+
+		// This should not be reached, but just in case
+		console.error(`[Task#withTimeout] ${errorMessage} - Unexpected timeout condition`)
+		return null
+	}
+
+	/**
+	 * Safely retrieves saved messages with timeout and retry logic.
+	 * Returns empty array if retrieval fails after timeout.
+	 */
+	private async getSavedClineMessagesWithRecovery(): Promise<ClineMessage[]> {
+		const result = await this.withTimeout(
+			() => this.getSavedClineMessages(),
+			5000,
+			"Failed to retrieve saved Cline messages",
+		)
+
+		if (result === null) {
+			console.warn(
+				`[Task#getSavedClineMessagesWithRecovery] Failed to retrieve messages for task ${this.taskId}. Using empty array.`,
+			)
+			return []
+		}
+
+		return result
+	}
+
+	/**
+	 * Safely retrieves API conversation history with timeout and retry logic.
+	 * Returns empty array if retrieval fails after timeout.
+	 */
+	private async getSavedApiConversationHistoryWithRecovery(): Promise<ApiMessage[]> {
+		const result = await this.withTimeout(
+			() => this.getSavedApiConversationHistory(),
+			5000,
+			"Failed to retrieve API conversation history",
+		)
+
+		if (result === null) {
+			console.warn(
+				`[Task#getSavedApiConversationHistoryWithRecovery] Failed to retrieve history for task ${this.taskId}. Using empty array.`,
+			)
+			return []
+		}
+
+		return result
 	}
 }
