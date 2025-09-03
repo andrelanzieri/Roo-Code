@@ -284,8 +284,19 @@ async function checkGitInstallation(
 
 							log(`[Task#checkpointCreated] Found ${fileChanges.length} cumulative file changes`)
 
-							// Update FileChangeManager with the new files so view diff can find them
-							checkpointFileChangeManager.setFiles(fileChanges)
+							// Apply per-file baselines to show only incremental changes for accepted files
+							const updatedChanges = await checkpointFileChangeManager.applyPerFileBaselines(
+								fileChanges,
+								service,
+								toHash,
+							)
+
+							log(
+								`[Task#checkpointCreated] Applied per-file baselines, ${updatedChanges.length} changes after filtering`,
+							)
+
+							// Update FileChangeManager with the per-file baseline changes
+							checkpointFileChangeManager.setFiles(updatedChanges)
 
 							// DON'T clear accepted/rejected state here - preserve user's accept/reject decisions
 							// The state should only be cleared on baseline changes (checkpoint restore) or task restart
@@ -479,8 +490,8 @@ export async function checkpointRestore(
 				)
 
 				// Clear accept/reject state - checkpoint restore is time travel, start with clean slate
-				if (typeof fileChangeManager.clearAcceptedRejectedState === "function") {
-					fileChangeManager.clearAcceptedRejectedState()
+				if (typeof fileChangeManager.clearFileStates === "function") {
+					fileChangeManager.clearFileStates()
 					provider?.log(`[checkpointRestore] Cleared accept/reject state for fresh start`)
 				}
 
