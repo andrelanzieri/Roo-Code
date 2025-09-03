@@ -21,7 +21,21 @@ async function extractTextFromDOCX(filePath: string): Promise<string> {
 }
 
 async function extractTextFromIPYNB(filePath: string): Promise<string> {
-	const handler = await JupyterNotebookHandler.fromFile(filePath)
+	// Use secure configuration for text extraction
+	const securityConfig = {
+		readOnlyMode: true,
+		enableWarnings: true,
+		allowCodeExecution: false,
+	}
+	const handler = await JupyterNotebookHandler.fromFile(filePath, securityConfig)
+
+	// Log security recommendations if there are any issues
+	const recommendations = handler.getSecurityRecommendations()
+	if (recommendations.length > 0 && !recommendations.some((r) => r.includes("✅"))) {
+		console.warn(`Security analysis for ${filePath}:`)
+		recommendations.forEach((rec) => console.warn(`  ${rec}`))
+	}
+
 	return handler.extractTextWithCellMarkers()
 }
 

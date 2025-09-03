@@ -2706,8 +2706,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const hasJupyterFiles = workspaceDir && (await this.checkForJupyterFiles(workspaceDir))
 
 		if (hasJupyterFiles) {
-			// Use Jupyter-specific diff strategy for notebooks
-			this.diffStrategy = new JupyterNotebookDiffStrategy(this.fuzzyMatchThreshold)
+			// Use Jupyter-specific diff strategy for notebooks with security configuration
+			const securityConfig = {
+				readOnlyMode: false, // Allow edits through diff strategy
+				enableWarnings: true,
+				allowCodeExecution: false,
+				maxCellSize: 1024 * 1024, // 1MB
+				maxCellCount: 1000,
+				// Add workspace as trusted source if it's a local workspace
+				trustedSources: workspaceDir ? [workspaceDir] : [],
+			}
+			this.diffStrategy = new JupyterNotebookDiffStrategy(this.fuzzyMatchThreshold, undefined, securityConfig)
 		} else {
 			// Default to old strategy, will be updated if experiment is enabled.
 			this.diffStrategy = new MultiSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)

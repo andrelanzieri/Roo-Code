@@ -1,6 +1,12 @@
 import * as fs from "fs/promises"
 import * as path from "path"
 import { addLineNumbers } from "./extract-text"
+import {
+	JupyterNotebookSecurity,
+	SecurityConfig,
+	SecurityValidationResult,
+	createDefaultSecurity,
+} from "./jupyter-notebook-security"
 
 export interface JupyterCell {
 	cell_type: "code" | "markdown" | "raw"
@@ -29,11 +35,33 @@ export class JupyterNotebookHandler {
 	private notebook: JupyterNotebook
 	private filePath: string
 	private cellReferences: CellReference[] = []
+	private security: JupyterNotebookSecurity
+	private isReadOnly: boolean = false
+	private validationResult?: SecurityValidationResult
 
-	constructor(filePath: string, notebookContent?: string) {
+	constructor(filePath: string, notebookContent?: string, securityConfig?: SecurityConfig) {
 		this.filePath = filePath
+		this.security = createDefaultSecurity(securityConfig)
+
 		if (notebookContent) {
 			this.notebook = JSON.parse(notebookContent)
+
+			// Validate notebook on load
+			this.validationResult = this.security.validateNotebook(this.notebook, filePath)
+
+			// If notebook has security issues and we're in read-only mode, use sanitized version
+			if (!this.validationResult.isValid && this.security.getConfig().readOnlyMode) {
+				if (this.validationResult.sanitized) {
+					this.notebook = this.validationResult.sanitized
+					this.isReadOnly = true
+				}
+			}
+
+			// Log security warnings if enabled
+			if (this.security.getConfig().enableWarnings) {
+				this.logSecurityWarnings()
+			}
+
 			this.buildCellReferences()
 		} else {
 			this.notebook = { cells: [] }
@@ -43,9 +71,51 @@ export class JupyterNotebookHandler {
 	/**
 	 * Load a Jupyter notebook from file
 	 */
-	static async fromFile(filePath: string): Promise<JupyterNotebookHandler> {
+	static async fromFile(filePath: string, securityConfig?: SecurityConfig): Promise<JupyterNotebookHandler> {
 		const content = await fs.readFile(filePath, "utf8")
-		return new JupyterNotebookHandler(filePath, content)
+		return new JupyterNotebookHandler(filePath, content, securityConfig)
+	}
+
+	/**
+	 * Log security warnings to console
+	 */
+	private logSecurityWarnings(): void {
+		if (!this.validationResult) return
+
+		if (this.validationResult.errors.length > 0) {
+			console.error("🔴 Jupyter Notebook Security Errors:")
+			this.validationResult.errors.forEach((error) => console.error(`  - ${error}`))
+		}
+
+		if (this.validationResult.warnings.length > 0) {
+			console.warn("⚠️ Jupyter Notebook Security Warnings:")
+			this.validationResult.warnings.forEach((warning) => console.warn(`  - ${warning}`))
+		}
+
+		if (this.isReadOnly) {
+			console.warn("📝 Notebook opened in READ-ONLY mode due to security concerns")
+		}
+	}
+
+	/**
+	 * Check if the notebook is in read-only mode
+	 */
+	public isInReadOnlyMode(): boolean {
+		return this.isReadOnly
+	}
+
+	/**
+	 * Get security validation result
+	 */
+	public getSecurityValidation(): SecurityValidationResult | undefined {
+		return this.validationResult
+	}
+
+	/**
+	 * Get security recommendations for the notebook
+	 */
+	public getSecurityRecommendations(): string[] {
+		return this.security.getSecurityRecommendations(this.notebook)
 	}
 
 	/**
@@ -140,8 +210,33 @@ export class JupyterNotebookHandler {
 	 * Update a specific cell's content
 	 */
 	updateCell(cellIndex: number, newContent: string): boolean {
+		// Check if operation is allowed
+		if (this.isReadOnly) {
+			console.error("Cannot update cell: Notebook is in read-only mode")
+			return false
+		}
+
+		if (!this.security.shouldAllowOperation("write", this.notebook, this.filePath)) {
+			console.error("Cannot update cell: Security policy prevents write operations")
+			return false
+		}
+
 		if (cellIndex < 0 || cellIndex >= this.notebook.cells.length) {
 			return false
+		}
+
+		// Validate the new content for security risks
+		const tempCell = { ...this.notebook.cells[cellIndex] }
+		tempCell.source = newContent
+		const validation = this.security.validateCell(tempCell, cellIndex)
+
+		if (validation.errors.length > 0) {
+			console.error("Cannot update cell due to security errors:", validation.errors)
+			return false
+		}
+
+		if (validation.warnings.length > 0) {
+			console.warn("Security warnings for cell update:", validation.warnings)
 		}
 
 		const cell = this.notebook.cells[cellIndex]
@@ -167,7 +262,25 @@ export class JupyterNotebookHandler {
 	 * Insert a new cell
 	 */
 	insertCell(index: number, cellType: "code" | "markdown" | "raw", content: string): boolean {
+		// Check if operation is allowed
+		if (this.isReadOnly) {
+			console.error("Cannot insert cell: Notebook is in read-only mode")
+			return false
+		}
+
+		if (!this.security.shouldAllowOperation("write", this.notebook, this.filePath)) {
+			console.error("Cannot insert cell: Security policy prevents write operations")
+			return false
+		}
+
 		if (index < 0 || index > this.notebook.cells.length) {
+			return false
+		}
+
+		// Check if we're exceeding max cell count
+		const maxCellCount = this.security.getConfig().maxCellCount
+		if (this.notebook.cells.length >= maxCellCount) {
+			console.error(`Cannot insert cell: Maximum cell count (${maxCellCount}) reached`)
 			return false
 		}
 
@@ -184,6 +297,18 @@ export class JupyterNotebookHandler {
 			newCell.execution_count = null
 		}
 
+		// Validate the new cell for security risks
+		const validation = this.security.validateCell(newCell, index)
+
+		if (validation.errors.length > 0) {
+			console.error("Cannot insert cell due to security errors:", validation.errors)
+			return false
+		}
+
+		if (validation.warnings.length > 0) {
+			console.warn("Security warnings for new cell:", validation.warnings)
+		}
+
 		this.notebook.cells.splice(index, 0, newCell)
 		this.buildCellReferences()
 		return true
@@ -193,6 +318,17 @@ export class JupyterNotebookHandler {
 	 * Delete a cell
 	 */
 	deleteCell(index: number): boolean {
+		// Check if operation is allowed
+		if (this.isReadOnly) {
+			console.error("Cannot delete cell: Notebook is in read-only mode")
+			return false
+		}
+
+		if (!this.security.shouldAllowOperation("write", this.notebook, this.filePath)) {
+			console.error("Cannot delete cell: Security policy prevents write operations")
+			return false
+		}
+
 		if (index < 0 || index >= this.notebook.cells.length) {
 			return false
 		}
@@ -226,8 +362,57 @@ export class JupyterNotebookHandler {
 	 * Save the notebook back to file
 	 */
 	async save(): Promise<void> {
+		// Check if operation is allowed
+		if (this.isReadOnly) {
+			throw new Error("Cannot save: Notebook is in read-only mode")
+		}
+
+		if (!this.security.shouldAllowOperation("write", this.notebook, this.filePath)) {
+			throw new Error("Cannot save: Security policy prevents write operations")
+		}
+
+		// Validate entire notebook before saving
+		const validation = this.security.validateNotebook(this.notebook, this.filePath)
+
+		if (!validation.isValid && validation.errors.length > 0) {
+			throw new Error(`Cannot save notebook with security errors: ${validation.errors.join(", ")}`)
+		}
+
 		const content = JSON.stringify(this.notebook, null, 2)
 		await fs.writeFile(this.filePath, content, "utf8")
+	}
+
+	/**
+	 * Get a sanitized version of the notebook
+	 */
+	public getSanitizedNotebook(): JupyterNotebook {
+		return this.security.sanitizeNotebook(this.notebook)
+	}
+
+	/**
+	 * Update security configuration
+	 */
+	public updateSecurityConfig(config: Partial<SecurityConfig>): void {
+		this.security.updateConfig(config)
+		// Re-validate with new config
+		this.validationResult = this.security.validateNotebook(this.notebook, this.filePath)
+
+		if (!this.validationResult.isValid && this.security.getConfig().readOnlyMode) {
+			this.isReadOnly = true
+			if (this.validationResult.sanitized) {
+				this.notebook = this.validationResult.sanitized
+				this.buildCellReferences()
+			}
+		} else {
+			this.isReadOnly = false
+		}
+	}
+
+	/**
+	 * Check if a specific operation would be allowed
+	 */
+	public wouldAllowOperation(operation: "read" | "write" | "execute"): boolean {
+		return this.security.shouldAllowOperation(operation, this.notebook, this.filePath)
 	}
 
 	/**

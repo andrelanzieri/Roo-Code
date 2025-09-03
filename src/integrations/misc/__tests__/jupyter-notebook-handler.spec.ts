@@ -17,7 +17,7 @@ describe("JupyterNotebookHandler", () => {
 				},
 				{
 					cell_type: "code",
-					source: ["import numpy as np\n", "import pandas as pd"],
+					source: ["import math\n", "import json"],
 					metadata: {},
 					outputs: [],
 					execution_count: 1,
@@ -41,7 +41,17 @@ describe("JupyterNotebookHandler", () => {
 			nbformat_minor: 4,
 		}
 
-		handler = new JupyterNotebookHandler("test.ipynb", JSON.stringify(sampleNotebook))
+		// Use permissive security config for testing basic functionality
+		const securityConfig = {
+			readOnlyMode: false,
+			allowCodeExecution: false,
+			enableWarnings: false,
+			allowDangerousImports: true, // Allow for testing
+			maxCellSize: 10000,
+			maxCellCount: 100,
+			trustedSources: ["test.ipynb"], // Trust test files
+		}
+		handler = new JupyterNotebookHandler("test.ipynb", JSON.stringify(sampleNotebook), securityConfig)
 	})
 
 	describe("Cell Operations", () => {
@@ -122,7 +132,8 @@ describe("JupyterNotebookHandler", () => {
 			expect(text).toContain("# %%% Cell 2 [code]")
 			expect(text).toContain("# %%% Cell 3 [code]")
 			expect(text).toContain("# Test Notebook")
-			expect(text).toContain("import numpy as np")
+			expect(text).toContain("import math")
+			expect(text).toContain("import json")
 			expect(text).toContain("def hello():")
 		})
 
@@ -133,7 +144,7 @@ describe("JupyterNotebookHandler", () => {
 			expect(text).toContain("# Test Notebook")
 			expect(text).toContain("# Cell 3 [code]")
 			expect(text).toContain("def hello():")
-			expect(text).not.toContain("import numpy")
+			expect(text).not.toContain("import math")
 		})
 
 		it("should extract all cells text when no indices provided", () => {
@@ -152,7 +163,7 @@ describe("JupyterNotebookHandler", () => {
 			expect(results).toHaveLength(1)
 			expect(results[0].cellIndex).toBe(1)
 			expect(results[0].matches).toHaveLength(2)
-			expect(results[0].matches[0]).toBe("import numpy as np")
+			expect(results[0].matches[0]).toBe("import math")
 		})
 
 		it("should return empty array when no matches found", () => {
@@ -215,7 +226,7 @@ describe("JupyterNotebookHandler", () => {
 
 			expect(checkpoint).toContain("# %%% Cell")
 			expect(checkpoint).toContain("# Test Notebook")
-			expect(checkpoint).toContain("import numpy as np")
+			expect(checkpoint).toContain("import math")
 		})
 
 		it("should restore from checkpoint representation", () => {
@@ -231,12 +242,17 @@ describe("JupyterNotebookHandler", () => {
 
 	describe("Edge Cases", () => {
 		it("should handle empty notebook", () => {
+			const securityConfig = {
+				readOnlyMode: false,
+				enableWarnings: false,
+			}
 			const emptyHandler = new JupyterNotebookHandler(
 				"empty.ipynb",
 				JSON.stringify({
 					cells: [],
 					metadata: {},
 				}),
+				securityConfig,
 			)
 
 			expect(emptyHandler.getCellCount()).toBe(0)
@@ -255,7 +271,12 @@ describe("JupyterNotebookHandler", () => {
 				],
 			}
 
-			const handler = new JupyterNotebookHandler("test.ipynb", JSON.stringify(notebook))
+			const securityConfig = {
+				readOnlyMode: false,
+				enableWarnings: false,
+				trustedSources: ["test.ipynb"],
+			}
+			const handler = new JupyterNotebookHandler("test.ipynb", JSON.stringify(notebook), securityConfig)
 			expect(handler.getCellByIndex(0)?.source).toBe("print('single line')")
 
 			// Update should preserve the format
@@ -274,9 +295,85 @@ describe("JupyterNotebookHandler", () => {
 				],
 			}
 
-			const handler = new JupyterNotebookHandler("test.ipynb", JSON.stringify(notebook))
+			const securityConfig = {
+				readOnlyMode: false,
+				enableWarnings: false,
+			}
+			const handler = new JupyterNotebookHandler("test.ipynb", JSON.stringify(notebook), securityConfig)
 			const text = handler.extractTextWithCellMarkers()
 			expect(text).toContain("# %%% Cell 1 [code]")
+		})
+	})
+
+	describe("Security Integration", () => {
+		it("should enforce read-only mode for dangerous notebooks", () => {
+			const dangerousNotebook = {
+				cells: [
+					{
+						cell_type: "code" as const,
+						source: ["import os\n", "os.system('rm -rf /')"],
+						metadata: {},
+					},
+				],
+			}
+
+			const securityConfig = {
+				readOnlyMode: true,
+				enableWarnings: false,
+			}
+			const secureHandler = new JupyterNotebookHandler(
+				"dangerous.ipynb",
+				JSON.stringify(dangerousNotebook),
+				securityConfig,
+			)
+
+			expect(secureHandler.isInReadOnlyMode()).toBe(true)
+
+			// Should not allow updates in read-only mode
+			const success = secureHandler.updateCell(0, "print('safe')")
+			expect(success).toBe(false)
+		})
+
+		it("should get security recommendations", () => {
+			const recommendations = handler.getSecurityRecommendations()
+			expect(Array.isArray(recommendations)).toBe(true)
+		})
+
+		it("should check if operations are allowed", () => {
+			expect(handler.wouldAllowOperation("read")).toBe(true)
+			// Write is allowed because we marked test.ipynb as trusted
+			expect(handler.wouldAllowOperation("write")).toBe(true)
+			expect(handler.wouldAllowOperation("execute")).toBe(false) // Default config disables execution
+		})
+
+		it("should update security configuration", () => {
+			handler.updateSecurityConfig({ allowCodeExecution: true })
+			expect(handler.wouldAllowOperation("execute")).toBe(true)
+		})
+
+		it("should get sanitized notebook", () => {
+			const dangerousNotebook = {
+				cells: [
+					{
+						cell_type: "code" as const,
+						source: "import os\nos.system('dangerous')",
+						metadata: {},
+						outputs: [{ data: { "text/plain": "output" } }],
+					},
+				],
+			}
+
+			const handler = new JupyterNotebookHandler("dangerous.ipynb", JSON.stringify(dangerousNotebook), {
+				readOnlyMode: false,
+				enableWarnings: false,
+			})
+
+			const sanitized = handler.getSanitizedNotebook()
+			const cell = sanitized.cells[0]
+			const source = Array.isArray(cell.source) ? cell.source.join("") : cell.source
+
+			// Should contain warning
+			expect(source).toContain("SECURITY WARNING")
 		})
 	})
 })

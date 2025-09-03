@@ -2,13 +2,24 @@ import { DiffStrategy, DiffResult, ToolUse } from "../../../shared/tools"
 import { ToolProgressStatus } from "@roo-code/types"
 import { JupyterNotebookHandler } from "../../../integrations/misc/jupyter-notebook-handler"
 import { MultiSearchReplaceDiffStrategy } from "./multi-search-replace"
+import { SecurityConfig } from "../../../integrations/misc/jupyter-notebook-security"
 
 export class JupyterNotebookDiffStrategy implements DiffStrategy {
 	private fallbackStrategy: MultiSearchReplaceDiffStrategy
+	private securityConfig: SecurityConfig
 
-	constructor(fuzzyThreshold?: number, bufferLines?: number) {
+	constructor(fuzzyThreshold?: number, bufferLines?: number, securityConfig?: SecurityConfig) {
 		// Use MultiSearchReplaceDiffStrategy as fallback for non-cell operations
 		this.fallbackStrategy = new MultiSearchReplaceDiffStrategy(fuzzyThreshold, bufferLines)
+
+		// Default security configuration for diff operations
+		this.securityConfig = securityConfig || {
+			readOnlyMode: false, // Allow edits through diff strategy
+			enableWarnings: true,
+			allowCodeExecution: false,
+			maxCellSize: 1024 * 1024, // 1MB
+			maxCellCount: 1000,
+		}
 	}
 
 	getName(): string {
@@ -16,12 +27,19 @@ export class JupyterNotebookDiffStrategy implements DiffStrategy {
 	}
 
 	getToolDescription(args: { cwd: string; toolOptions?: { [key: string]: string } }): string {
-		return `## apply_diff (Jupyter Notebook Support)
-Description: Request to apply PRECISE, TARGETED modifications to Jupyter notebook (.ipynb) files. This tool supports both cell-level operations and content-level changes within cells.
+		return `## apply_diff (Jupyter Notebook Support with Security)
+Description: Request to apply PRECISE, TARGETED modifications to Jupyter notebook (.ipynb) files with built-in security validation. This tool supports both cell-level operations and content-level changes within cells.
+
+⚠️ SECURITY NOTICE: All notebook operations are validated for security risks including:
+- Dangerous code patterns (eval, exec, subprocess, etc.)
+- System command execution
+- Network operations
+- File system access
+- Malicious imports
 
 For Jupyter notebooks, you can:
-1. Edit specific cells by cell number
-2. Add new cells
+1. Edit specific cells by cell number (with security validation)
+2. Add new cells (with content sanitization)
 3. Delete cells
 4. Apply standard search/replace within cells
 
@@ -118,11 +136,28 @@ Your cell operation or search/replace content here
 		diffContent: string,
 		_paramStartLine?: number,
 		_paramEndLine?: number,
+		filePath?: string,
 	): Promise<DiffResult> {
 		// Check if this is a Jupyter notebook by trying to parse it
 		let handler: JupyterNotebookHandler
 		try {
-			handler = new JupyterNotebookHandler("", originalContent)
+			handler = new JupyterNotebookHandler(filePath || "", originalContent, this.securityConfig)
+
+			// Check if notebook is in read-only mode due to security concerns
+			if (handler.isInReadOnlyMode()) {
+				const validation = handler.getSecurityValidation()
+				return {
+					success: false,
+					error: `Notebook is in read-only mode due to security concerns:\n${validation?.errors.join("\n")}`,
+				}
+			}
+
+			// Log security recommendations
+			const recommendations = handler.getSecurityRecommendations()
+			if (recommendations.length > 0 && !recommendations.some((r) => r.includes("✅"))) {
+				console.warn("Security recommendations for notebook:")
+				recommendations.forEach((rec) => console.warn(`  ${rec}`))
+			}
 		} catch (error) {
 			// Not a valid notebook, fall back to standard diff
 			return this.fallbackStrategy.applyDiff(originalContent, diffContent, _paramStartLine, _paramEndLine)
@@ -148,7 +183,13 @@ Your cell operation or search/replace content here
 					if (cellIndex >= 0 && cellIndex < handler.getCellCount()) {
 						success = handler.updateCell(cellIndex, replaceContent)
 						if (!success) {
-							error = `Failed to update cell ${cellIndex}`
+							// Check if it was a security issue
+							const validation = handler.getSecurityValidation()
+							if (validation && validation.errors.length > 0) {
+								error = `Security validation failed for cell ${cellIndex}: ${validation.errors.join(", ")}`
+							} else {
+								error = `Failed to update cell ${cellIndex}`
+							}
 						}
 					} else {
 						error = `Cell index ${cellIndex} is out of range (0-${handler.getCellCount() - 1})`
@@ -161,7 +202,13 @@ Your cell operation or search/replace content here
 					} else {
 						success = handler.insertCell(cellIndex, cellType, replaceContent)
 						if (!success) {
-							error = `Failed to insert cell at index ${cellIndex}`
+							// Check if it was a security issue
+							const validation = handler.getSecurityValidation()
+							if (validation && validation.errors.length > 0) {
+								error = `Security validation failed for new cell: ${validation.errors.join(", ")}`
+							} else {
+								error = `Failed to insert cell at index ${cellIndex}`
+							}
 						}
 					}
 					break
