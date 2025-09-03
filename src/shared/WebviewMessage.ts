@@ -7,6 +7,7 @@ import {
 	type InstallMarketplaceItemOptions,
 	type MarketplaceItem,
 	type ShareVisibility,
+	type QueuedMessage,
 	marketplaceItemSchema,
 } from "@roo-code/types"
 
@@ -21,6 +22,8 @@ export type AudioType = "notification" | "celebration" | "progress_loop"
 export interface UpdateTodoListPayload {
 	todos: any[]
 }
+
+export type EditQueuedMessagePayload = Pick<QueuedMessage, "id" | "text" | "images">
 
 export interface WebviewMessage {
 	type:
@@ -48,6 +51,12 @@ export interface WebviewMessage {
 		| "followupAutoApproveTimeoutMs"
 		| "webviewDidLaunch"
 		| "webviewReady"
+		| "filesChangedRequest"
+		| "viewDiff"
+		| "acceptFileChange"
+		| "rejectFileChange"
+		| "acceptAllFileChanges"
+		| "rejectAllFileChanges"
 		| "newTask"
 		| "askResponse"
 		| "terminalOperation"
@@ -83,6 +92,7 @@ export interface WebviewMessage {
 		| "allowedMaxRequests"
 		| "allowedMaxCost"
 		| "alwaysAllowSubtasks"
+		| "alwaysAllowUpdateTodoList"
 		| "autoCondenseContext"
 		| "autoCondenseContextPercent"
 		| "condensingApiConfigId"
@@ -185,6 +195,7 @@ export interface WebviewMessage {
 		| "indexCleared"
 		| "focusPanelRequest"
 		| "profileThresholds"
+		| "setHistoryPreviewCollapsed"
 		| "openExternal"
 		| "filterMarketplaceItems"
 		| "marketplaceButtonClicked"
@@ -195,6 +206,7 @@ export interface WebviewMessage {
 		| "marketplaceInstallResult"
 		| "fetchMarketplaceData"
 		| "switchTab"
+		| "profileThresholds"
 		| "shareTaskSuccess"
 		| "exportMode"
 		| "exportModeResult"
@@ -210,23 +222,20 @@ export interface WebviewMessage {
 		| "createCommand"
 		| "insertTextIntoTextarea"
 		| "showMdmAuthRequiredNotification"
-		| "viewDiff"
-		| "acceptFileChange"
-		| "rejectFileChange"
-		| "acceptAllFileChanges"
-		| "rejectAllFileChanges"
-		| "filesChangedEnabled"
-		| "filesChangedRequest"
-		| "filesChangedBaselineUpdate"
 		| "imageGenerationSettings"
 		| "openRouterImageApiKey"
 		| "openRouterImageGenerationSelectedModel"
+		| "queueMessage"
+		| "removeQueuedMessage"
+		| "editQueuedMessage"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
 	disabled?: boolean
 	context?: string
 	dataUri?: string
+	uri?: string
+	uris?: string[]
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ProviderSettings
 	images?: string[]
@@ -291,17 +300,6 @@ export interface WebviewMessage {
 		codebaseIndexMistralApiKey?: string
 		codebaseIndexVercelAiGatewayApiKey?: string
 	}
-	command?: string // Added for new message types sent from webview
-	uri?: string // Added for file URIs in new message types
-	uris?: string[] // For rejectAllFileChanges to specify which files to reject
-	baseline?: string // For filesChangedBaselineUpdate message
-	fileChanges?: Array<{ uri: string; type: string }> // For filesChangedRequest message
-}
-
-export interface Terminal {
-	pid: number
-	name: string
-	cwd: string
 }
 
 export const checkoutDiffPayloadSchema = z.object({
@@ -347,6 +345,4 @@ export type WebViewMessagePayload =
 	| IndexClearedPayload
 	| InstallMarketplaceItemWithParametersPayload
 	| UpdateTodoListPayload
-
-// Alias for consistent naming (prefer 'Webview' spelling in new code)
-export type WebviewMessagePayload = WebViewMessagePayload
+	| EditQueuedMessagePayload
