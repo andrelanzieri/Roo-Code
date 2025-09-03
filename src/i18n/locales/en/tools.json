@@ -16,7 +16,7 @@
 		}
 	},
 	"errors": {
-		"fileNotFound": "File Not Found",
+		"fileNotFound": "File not found",
 		"parseError": "Parse Error",
 		"commandTimeout": "Command Timeout",
 		"permissionDenied": "Permission Denied",
@@ -27,7 +27,7 @@
 		"configurationError": "Configuration Error",
 		"authenticationFailed": "Authentication Failed",
 		"invalidLineNumber": "Invalid Line Number",
-		"fileAlreadyExists": "File Already Exists",
+		"fileAlreadyExists": "File already exists",
 		"directoryNotFound": "Directory Not Found",
 		"invalidPath": "Invalid Path",
 		"readError": "Read Error",
