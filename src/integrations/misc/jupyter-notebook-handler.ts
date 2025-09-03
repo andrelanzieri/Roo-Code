@@ -1,6 +1,7 @@
 import * as fs from "fs/promises"
 import * as path from "path"
 import { addLineNumbers } from "./extract-text"
+import { JupyterNotebookSecurity, SecurityValidationResult, JupyterSecurityConfig } from "./jupyter-notebook-security"
 
 export interface JupyterCell {
 	cell_type: "code" | "markdown" | "raw"
@@ -29,12 +30,23 @@ export class JupyterNotebookHandler {
 	private notebook: JupyterNotebook
 	private filePath: string
 	private cellReferences: CellReference[] = []
+	private security: JupyterNotebookSecurity
+	private securityValidation?: SecurityValidationResult
 
-	constructor(filePath: string, notebookContent?: string) {
+	constructor(filePath: string, notebookContent?: string, securityConfig?: JupyterSecurityConfig) {
 		this.filePath = filePath
+		this.security = new JupyterNotebookSecurity(securityConfig)
+
 		if (notebookContent) {
 			this.notebook = JSON.parse(notebookContent)
 			this.buildCellReferences()
+			// Validate security on load
+			this.securityValidation = this.security.validateNotebook(this.notebook, filePath)
+			// Use sanitized notebook if available and not in YOLO mode
+			if (this.securityValidation.sanitizedNotebook && !this.security.isYoloModeEnabled()) {
+				this.notebook = this.securityValidation.sanitizedNotebook
+				this.buildCellReferences()
+			}
 		} else {
 			this.notebook = { cells: [] }
 		}
@@ -43,9 +55,9 @@ export class JupyterNotebookHandler {
 	/**
 	 * Load a Jupyter notebook from file
 	 */
-	static async fromFile(filePath: string): Promise<JupyterNotebookHandler> {
+	static async fromFile(filePath: string, securityConfig?: JupyterSecurityConfig): Promise<JupyterNotebookHandler> {
 		const content = await fs.readFile(filePath, "utf8")
-		return new JupyterNotebookHandler(filePath, content)
+		return new JupyterNotebookHandler(filePath, content, securityConfig)
 	}
 
 	/**
@@ -140,6 +152,12 @@ export class JupyterNotebookHandler {
 	 * Update a specific cell's content
 	 */
 	updateCell(cellIndex: number, newContent: string): boolean {
+		// Check if read-only mode is enforced
+		if (this.isReadOnly()) {
+			console.warn("Cannot update cell: Notebook is in read-only mode due to security restrictions")
+			return false
+		}
+
 		if (cellIndex < 0 || cellIndex >= this.notebook.cells.length) {
 			return false
 		}
@@ -167,6 +185,12 @@ export class JupyterNotebookHandler {
 	 * Insert a new cell
 	 */
 	insertCell(index: number, cellType: "code" | "markdown" | "raw", content: string): boolean {
+		// Check if read-only mode is enforced
+		if (this.isReadOnly()) {
+			console.warn("Cannot insert cell: Notebook is in read-only mode due to security restrictions")
+			return false
+		}
+
 		if (index < 0 || index > this.notebook.cells.length) {
 			return false
 		}
@@ -193,6 +217,12 @@ export class JupyterNotebookHandler {
 	 * Delete a cell
 	 */
 	deleteCell(index: number): boolean {
+		// Check if read-only mode is enforced
+		if (this.isReadOnly()) {
+			console.warn("Cannot delete cell: Notebook is in read-only mode due to security restrictions")
+			return false
+		}
+
 		if (index < 0 || index >= this.notebook.cells.length) {
 			return false
 		}
@@ -226,6 +256,11 @@ export class JupyterNotebookHandler {
 	 * Save the notebook back to file
 	 */
 	async save(): Promise<void> {
+		// Check if read-only mode is enforced
+		if (this.isReadOnly()) {
+			throw new Error("Cannot save notebook: Notebook is in read-only mode due to security restrictions")
+		}
+
 		const content = JSON.stringify(this.notebook, null, 2)
 		await fs.writeFile(this.filePath, content, "utf8")
 	}
@@ -334,5 +369,42 @@ export class JupyterNotebookHandler {
 			...originalNotebook,
 			cells,
 		}
+	}
+
+	/**
+	 * Get security validation results
+	 */
+	getSecurityValidation(): SecurityValidationResult | undefined {
+		return this.securityValidation
+	}
+
+	/**
+	 * Check if notebook is in read-only mode
+	 */
+	isReadOnly(): boolean {
+		return this.securityValidation?.requiresReadOnly === true && !this.security.isYoloModeEnabled()
+	}
+
+	/**
+	 * Check if notebook has security risks
+	 */
+	hasSecurityRisks(): boolean {
+		return (this.securityValidation?.risks.length ?? 0) > 0
+	}
+
+	/**
+	 * Get security risks
+	 */
+	getSecurityRisks() {
+		return this.securityValidation?.risks || []
+	}
+
+	/**
+	 * Enable or disable YOLO Mode
+	 */
+	setYoloMode(enabled: boolean): void {
+		this.security.updateConfig({ yoloMode: enabled })
+		// Re-validate with new settings
+		this.securityValidation = this.security.validateNotebook(this.notebook, this.filePath)
 	}
 }

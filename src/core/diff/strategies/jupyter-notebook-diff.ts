@@ -1,14 +1,17 @@
 import { DiffStrategy, DiffResult, ToolUse } from "../../../shared/tools"
-import { ToolProgressStatus } from "@roo-code/types"
+import { ToolProgressStatus, GlobalState } from "@roo-code/types"
 import { JupyterNotebookHandler } from "../../../integrations/misc/jupyter-notebook-handler"
+import { JupyterSecurityConfig } from "../../../integrations/misc/jupyter-notebook-security"
 import { MultiSearchReplaceDiffStrategy } from "./multi-search-replace"
 
 export class JupyterNotebookDiffStrategy implements DiffStrategy {
 	private fallbackStrategy: MultiSearchReplaceDiffStrategy
+	private globalState?: GlobalState
 
-	constructor(fuzzyThreshold?: number, bufferLines?: number) {
+	constructor(fuzzyThreshold?: number, bufferLines?: number, globalState?: GlobalState) {
 		// Use MultiSearchReplaceDiffStrategy as fallback for non-cell operations
 		this.fallbackStrategy = new MultiSearchReplaceDiffStrategy(fuzzyThreshold, bufferLines)
+		this.globalState = globalState
 	}
 
 	getName(): string {
@@ -122,10 +125,26 @@ Your cell operation or search/replace content here
 		// Check if this is a Jupyter notebook by trying to parse it
 		let handler: JupyterNotebookHandler
 		try {
-			handler = new JupyterNotebookHandler("", originalContent)
+			// Create security config based on global settings
+			const securityConfig: JupyterSecurityConfig = {
+				yoloMode: this.globalState?.jupyterNotebookYoloMode === true,
+				allowCodeExecution: this.globalState?.jupyterNotebookYoloMode === true,
+				readOnlyMode: this.globalState?.jupyterNotebookYoloMode !== true,
+			}
+			handler = new JupyterNotebookHandler("", originalContent, securityConfig)
 		} catch (error) {
 			// Not a valid notebook, fall back to standard diff
 			return this.fallbackStrategy.applyDiff(originalContent, diffContent, _paramStartLine, _paramEndLine)
+		}
+
+		// Check if notebook is in read-only mode due to security
+		if (handler.isReadOnly()) {
+			const risks = handler.getSecurityRisks()
+			const riskSummary = risks.map((r) => `${r.severity}: ${r.description}`).join(", ")
+			return {
+				success: false,
+				error: `Cannot modify notebook: Security risks detected (${riskSummary}). Enable YOLO Mode in settings to bypass security restrictions.`,
+			}
 		}
 
 		// Check if this is a cell operation

@@ -8,6 +8,7 @@ import { extractTextFromXLSX } from "./extract-text-from-xlsx"
 import { countFileLines } from "./line-counter"
 import { readLines } from "./read-lines"
 import { JupyterNotebookHandler } from "./jupyter-notebook-handler"
+import { JupyterSecurityConfig } from "./jupyter-notebook-security"
 
 async function extractTextFromPDF(filePath: string): Promise<string> {
 	const dataBuffer = await fs.readFile(filePath)
@@ -20,9 +21,32 @@ async function extractTextFromDOCX(filePath: string): Promise<string> {
 	return addLineNumbers(result.value)
 }
 
-async function extractTextFromIPYNB(filePath: string): Promise<string> {
-	const handler = await JupyterNotebookHandler.fromFile(filePath)
-	return handler.extractTextWithCellMarkers()
+async function extractTextFromIPYNB(filePath: string, securityConfig?: JupyterSecurityConfig): Promise<string> {
+	const handler = await JupyterNotebookHandler.fromFile(filePath, securityConfig)
+
+	// Add security warning if risks are detected
+	let result = ""
+	if (handler.hasSecurityRisks() && !securityConfig?.yoloMode) {
+		const risks = handler.getSecurityRisks()
+		const criticalRisks = risks.filter((r) => r.severity === "critical")
+		const highRisks = risks.filter((r) => r.severity === "high")
+
+		result += "# ⚠️ SECURITY WARNING ⚠️\n"
+		result += "# This Jupyter notebook contains potential security risks:\n"
+
+		if (criticalRisks.length > 0) {
+			result += `# - ${criticalRisks.length} CRITICAL risk(s): ${criticalRisks.map((r) => r.type).join(", ")}\n`
+		}
+		if (highRisks.length > 0) {
+			result += `# - ${highRisks.length} HIGH risk(s): ${highRisks.map((r) => r.type).join(", ")}\n`
+		}
+
+		result += "# The notebook is in READ-ONLY mode. Enable YOLO Mode to bypass restrictions.\n"
+		result += "# " + "=".repeat(70) + "\n\n"
+	}
+
+	result += handler.extractTextWithCellMarkers()
+	return result
 }
 
 /**

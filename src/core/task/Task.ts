@@ -2705,17 +2705,23 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const workspaceDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
 		const hasJupyterFiles = workspaceDir && (await this.checkForJupyterFiles(workspaceDir))
 
+		// Get the provider and state for accessing global settings
+		const provider = this.providerRef.deref()
+		const state = provider ? await provider.getState() : undefined
+
 		if (hasJupyterFiles) {
 			// Use Jupyter-specific diff strategy for notebooks
-			this.diffStrategy = new JupyterNotebookDiffStrategy(this.fuzzyMatchThreshold)
+			this.diffStrategy = new JupyterNotebookDiffStrategy(
+				this.fuzzyMatchThreshold,
+				undefined, // bufferLines
+				state, // Pass global state for security settings
+			)
 		} else {
 			// Default to old strategy, will be updated if experiment is enabled.
 			this.diffStrategy = new MultiSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)
 
 			// Check if the multi-file apply diff experiment is enabled
-			const provider = this.providerRef.deref()
-			if (provider) {
-				const state = await provider.getState()
+			if (provider && state) {
 				const isMultiFileApplyDiffEnabled = experiments.isEnabled(
 					state.experiments ?? {},
 					EXPERIMENT_IDS.MULTI_FILE_APPLY_DIFF,
