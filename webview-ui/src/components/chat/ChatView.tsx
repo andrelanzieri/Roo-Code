@@ -1485,6 +1485,26 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			}
 
 			// regular message
+			// Check if this follow-up question has been answered
+			// For current session: check if it matches currentFollowUpTs
+			// For history: check if there's a message after this follow-up question
+			const isFollowUpAnswered = (() => {
+				if (messageOrGroup.ask === "followup") {
+					// First check if it's the current follow-up that was just answered
+					if (messageOrGroup.ts === currentFollowUpTs) {
+						return true
+					}
+					// For historical messages, check if there's a message after this follow-up
+					// If there is, it means the follow-up was answered
+					const messageIndex = modifiedMessages.findIndex((msg) => msg.ts === messageOrGroup.ts)
+					if (messageIndex !== -1 && messageIndex < modifiedMessages.length - 1) {
+						// There's at least one message after this follow-up, so it was answered
+						return true
+					}
+				}
+				return false
+			})()
+
 			return (
 				<ChatRow
 					key={messageOrGroup.ts}
@@ -1498,7 +1518,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					onSuggestionClick={handleSuggestionClickInRow} // This was already stabilized
 					onBatchFileResponse={handleBatchFileResponse}
 					onFollowUpUnmount={handleFollowUpUnmount}
-					isFollowUpAnswered={messageOrGroup.ts === currentFollowUpTs}
+					isFollowUpAnswered={isFollowUpAnswered}
 					editable={
 						messageOrGroup.type === "ask" &&
 						messageOrGroup.ask === "tool" &&
