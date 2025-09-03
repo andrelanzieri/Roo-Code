@@ -16,6 +16,10 @@
 		}
 	},
 	"errors": {
+		"toolCallError": "Error en cridar l'eina: {{toolName}}",
+		"toolExecutionError": "Error d'execució de l'eina",
+		"missingParamForTool": "Roo ha intentat usar {{toolName}} sense valor per al paràmetre obligatori '{{paramName}}'. Tornant-ho a intentar...",
+		"missingParamForToolWithPath": "Roo ha intentat usar {{toolName}} per a '{{relPath}}' sense valor per al paràmetre obligatori '{{paramName}}'. Tornant-ho a intentar...",
 		"fileNotFound": "Fitxer no trobat",
 		"parseError": "Error d'anàlisi",
 		"commandTimeout": "Temps d'espera de l'ordre exhaurit",
@@ -36,5 +40,24 @@
 		"validationError": "Validation Error",
 		"timeoutError": "Timeout Error",
 		"connectionError": "Connection Error"
+	},
+	"executeCommand": {
+		"workingDirMissing": "Directori de treball no trobat: '{{workingDir}}'",
+		"shellIntegrationGenericError": "L'execució de l'ordre ha fallat per un error inesperat d'integració del shell."
+	},
+	"fetchInstructions": {
+		"errors": {
+			"invalidRequest": "Sol·licitud d'instruccions no vàlida per a la tasca '{{task}}'."
+		}
+	},
+	"generic": {
+		"noChanges": "No calen canvis per a '{{path}}'.",
+		"changesRejected": "Els canvis han estat rebutjats per l'usuari."
+	},
+	"attemptCompletion": {
+		"errors": {
+			"incompleteTodos": "No es pot completar la tasca mentre hi ha tasques pendents. Si us plau, completa-les abans d'intentar finalitzar."
+		},
+		"userFeedbackLead": "L'usuari ha proporcionat comentaris sobre els resultats. Tingues-los en compte per continuar la tasca i intenta finalitzar de nou."
 	}
 }

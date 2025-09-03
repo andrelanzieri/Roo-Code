@@ -37,6 +37,7 @@ import { Task } from "../task/Task"
 import { codebaseSearchTool } from "../tools/codebaseSearchTool"
 import { experiments, EXPERIMENT_IDS } from "../../shared/experiments"
 import { applyDiffToolLegacy } from "../tools/applyDiffTool"
+import { t } from "../../i18n"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -327,7 +328,7 @@ export async function presentAssistantMessage(cline: Task) {
 					undefined, // partial
 					undefined, // checkpoint
 					undefined, // progressStatus
-					{ title: `Tool Call Error: ${block.name}` }, // Custom title with tool name
+					{ title: t("tools:errors.toolCallError", { toolName: block.name }) }, // Custom title with tool name
 				)
 
 				pushToolResult(formatResponse.toolError(errorString, block.name))

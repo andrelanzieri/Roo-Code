@@ -985,7 +985,7 @@ export const ChatRowContent = ({
 												<a
 													href="https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22"
 													style={{ color: "inherit", textDecoration: "underline" }}>
-													troubleshooting guide
+													{t("chat:powershell.troubleshootingGuide")}
 												</a>
 												.
 											</>
@@ -1159,7 +1159,7 @@ export const ChatRowContent = ({
 
 					if (parsed && !parsed?.content) {
 						console.error("Invalid codebaseSearch content structure:", parsed.content)
-						return <div>Error displaying search results.</div>
+						return <div>{t("chat:codebaseSearch.errorDisplayingResults")}</div>
 					}
 
 					const { results = [] } = parsed?.content || {}

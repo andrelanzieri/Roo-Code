@@ -16,6 +16,10 @@
 		}
 	},
 	"errors": {
+		"toolCallError": "Lỗi gọi công cụ: {{toolName}}",
+		"toolExecutionError": "Lỗi thực thi công cụ",
+		"missingParamForTool": "Roo đã cố dùng {{toolName}} mà không có giá trị cho tham số bắt buộc '{{paramName}}'. Đang thử lại...",
+		"missingParamForToolWithPath": "Roo đã cố dùng {{toolName}} cho '{{relPath}}' mà không có giá trị cho tham số bắt buộc '{{paramName}}'. Đang thử lại...",
 		"fileNotFound": "Không tìm thấy tệp",
 		"parseError": "Lỗi phân tích cú pháp",
 		"commandTimeout": "Hết thời gian chờ lệnh",
@@ -36,5 +40,24 @@
 		"validationError": "Validation Error",
 		"timeoutError": "Timeout Error",
 		"connectionError": "Connection Error"
+	},
+	"executeCommand": {
+		"workingDirMissing": "Không tìm thấy thư mục làm việc: '{{workingDir}}'",
+		"shellIntegrationGenericError": "Thực thi lệnh thất bại do lỗi tích hợp shell bất ngờ."
+	},
+	"fetchInstructions": {
+		"errors": {
+			"invalidRequest": "Yêu cầu hướng dẫn không hợp lệ cho nhiệm vụ '{{task}}'."
+		}
+	},
+	"generic": {
+		"noChanges": "Không cần thay đổi cho '{{path}}'.",
+		"changesRejected": "Thay đổi đã bị người dùng từ chối."
+	},
+	"attemptCompletion": {
+		"errors": {
+			"incompleteTodos": "Không thể hoàn thành nhiệm vụ khi vẫn còn mục cần làm. Vui lòng hoàn tất trước."
+		},
+		"userFeedbackLead": "Người dùng đã cung cấp phản hồi về kết quả. Hãy cân nhắc phản hồi để tiếp tục và thử hoàn thành lại."
 	}
 }

@@ -2,6 +2,7 @@ import { Task } from "../task/Task"
 import { ToolUse, AskApproval, HandleError, PushToolResult, RemoveClosingTag } from "../../shared/tools"
 import { formatResponse } from "../prompts/responses"
 import { parseXml } from "../../utils/xml"
+import { t } from "../../i18n"
 
 export async function askFollowupQuestionTool(
 	cline: Task,
@@ -55,7 +56,7 @@ export async function askFollowupQuestionTool(
 						undefined,
 						undefined,
 						undefined,
-						{ title: "Parse Error" },
+						{ title: t("tools:errors.parseError") },
 					)
 					pushToolResult(formatResponse.toolError("Invalid operations xml format", "ask_followup_question"))
 					return

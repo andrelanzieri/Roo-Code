@@ -16,6 +16,10 @@
 		}
 	},
 	"errors": {
+		"toolCallError": "Erro na chamada da ferramenta: {{toolName}}",
+		"toolExecutionError": "Erro na execução da ferramenta",
+		"missingParamForTool": "Roo tentou usar {{toolName}} sem valor para o parâmetro obrigatório '{{paramName}}'. Tentando novamente...",
+		"missingParamForToolWithPath": "Roo tentou usar {{toolName}} para '{{relPath}}' sem valor para o parâmetro obrigatório '{{paramName}}'. Tentando novamente...",
 		"fileNotFound": "Arquivo não encontrado",
 		"parseError": "Erro de análise",
 		"commandTimeout": "Tempo limite do comando",
@@ -36,5 +40,24 @@
 		"validationError": "Validation Error",
 		"timeoutError": "Timeout Error",
 		"connectionError": "Connection Error"
+	},
+	"executeCommand": {
+		"workingDirMissing": "Diretório de trabalho não encontrado: '{{workingDir}}'",
+		"shellIntegrationGenericError": "A execução do comando falhou devido a um erro inesperado de integração do shell."
+	},
+	"fetchInstructions": {
+		"errors": {
+			"invalidRequest": "Solicitação de instruções inválida para a tarefa '{{task}}'."
+		}
+	},
+	"generic": {
+		"noChanges": "Nenhuma alteração necessária para '{{path}}'.",
+		"changesRejected": "As alterações foram rejeitadas pelo usuário."
+	},
+	"attemptCompletion": {
+		"errors": {
+			"incompleteTodos": "Não é possível concluir a tarefa enquanto houver pendências. Conclua-as antes de tentar finalizar."
+		},
+		"userFeedbackLead": "O usuário forneceu feedback sobre os resultados. Considere-o para continuar a tarefa e tente finalizar novamente."
 	}
 }

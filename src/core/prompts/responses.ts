@@ -3,6 +3,7 @@ import * as path from "path"
 import * as diff from "diff"
 import { RooIgnoreController, LOCK_TEXT_SYMBOL } from "../ignore/RooIgnoreController"
 import { RooProtectedController } from "../protect/RooProtectedController"
+import { t } from "../../i18n"
 
 export const formatResponse = {
 	toolDenied: () => `The user denied this operation.`,
@@ -14,7 +15,9 @@ export const formatResponse = {
 		`The user approved this operation and provided the following context:\n<feedback>\n${feedback}\n</feedback>`,
 
 	toolError: (error?: string, toolName?: string) => {
-		const title = toolName ? `Tool Call Error: ${toolName}` : "Tool Execution Error"
+		const title = toolName
+			? t("tools:errors.toolCallError", { toolName, defaultValue: `Tool Call Error: ${toolName}` })
+			: t("tools:errors.toolExecutionError", { defaultValue: "Tool Execution Error" })
 		return `${title}\n<error>\n${error}\n</error>`
 	},
 

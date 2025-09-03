@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk"
 import * as vscode from "vscode"
+import { t } from "../../i18n"
 
 import { RooCodeEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -44,10 +45,7 @@ export async function attemptCompletionTool(
 		cline.recordToolError("attempt_completion")
 
 		pushToolResult(
-			formatResponse.toolError(
-				"Cannot complete task while there are incomplete todos. Please finish all todos before attempting completion.",
-				"attempt_completion",
-			),
+			formatResponse.toolError(t("tools:attemptCompletion.errors.incompleteTodos"), "attempt_completion"),
 		)
 
 		return
@@ -126,7 +124,7 @@ export async function attemptCompletionTool(
 
 			toolResults.push({
 				type: "text",
-				text: `The user has provided feedback on the results. Consider their input to continue the task, and then attempt completion again.\n<feedback>\n${text}\n</feedback>`,
+				text: `${t("tools:attemptCompletion.userFeedbackLead")}\n<feedback>\n${text}\n</feedback>`,
 			})
 
 			toolResults.push(...formatResponse.imageBlocks(images))

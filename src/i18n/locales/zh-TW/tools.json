@@ -16,6 +16,10 @@
 		}
 	},
 	"errors": {
+		"toolCallError": "工具呼叫錯誤：{{toolName}}",
+		"toolExecutionError": "工具執行錯誤",
+		"missingParamForTool": "Roo 嘗試使用 {{toolName}} 時缺少必要參數「{{paramName}}」的值。正在重試...",
+		"missingParamForToolWithPath": "Roo 在處理「{{relPath}}」使用 {{toolName}} 時缺少必要參數「{{paramName}}」的值。正在重試...",
 		"fileNotFound": "找不到檔案",
 		"parseError": "解析錯誤",
 		"commandTimeout": "指令逾時",
@@ -36,5 +40,24 @@
 		"validationError": "Validation Error",
 		"timeoutError": "Timeout Error",
 		"connectionError": "Connection Error"
+	},
+	"executeCommand": {
+		"workingDirMissing": "找不到工作目錄：'{{workingDir}}'",
+		"shellIntegrationGenericError": "由於意外的終端 Shell 整合錯誤，指令執行失敗。"
+	},
+	"fetchInstructions": {
+		"errors": {
+			"invalidRequest": "針對工作「{{task}}」的指令請求無效。"
+		}
+	},
+	"generic": {
+		"noChanges": "「{{path}}」無需變更。",
+		"changesRejected": "變更已被使用者拒絕。"
+	},
+	"attemptCompletion": {
+		"errors": {
+			"incompleteTodos": "仍有未完成的待辦事項，無法完成工作。請完成後再嘗試提交。"
+		},
+		"userFeedbackLead": "使用者已對結果提供回饋。請根據回饋繼續工作，然後再次嘗試完成。"
 	}
 }

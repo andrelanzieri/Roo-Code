@@ -1168,16 +1168,22 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	async sayAndCreateMissingParamError(toolName: ToolName, paramName: string, relPath?: string) {
+		const message = relPath
+			? t("tools:errors.missingParamForToolWithPath", {
+					toolName,
+					relPath: relPath.toPosix(),
+					paramName,
+				})
+			: t("tools:errors.missingParamForTool", { toolName, paramName })
+
 		await this.say(
 			"error",
-			`Roo tried to use ${toolName}${
-				relPath ? ` for '${relPath.toPosix()}'` : ""
-			} without value for required parameter '${paramName}'. Retrying...`,
+			message,
 			undefined, // images
 			undefined, // partial
 			undefined, // checkpoint
 			undefined, // progressStatus
-			{ title: `Tool Call Error: ${toolName}` }, // Custom title for the error
+			{ title: t("tools:errors.toolCallError", { toolName }) }, // Custom title for the error
 		)
 		return formatResponse.toolError(formatResponse.missingToolParameterError(paramName), toolName)
 	}
