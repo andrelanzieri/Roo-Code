@@ -80,6 +80,7 @@ export type SummarizeResponse = {
  * @param {boolean} isAutomaticTrigger - Whether the summarization is triggered automatically
  * @param {string} customCondensingPrompt - Optional custom prompt to use for condensing
  * @param {ApiHandler} condensingApiHandler - Optional specific API handler to use for condensing
+ * @param {number} minimumCondenseTokens - Optional minimum token requirement for condensed output
  * @returns {SummarizeResponse} - The result of the summarization operation (see above)
  */
 export async function summarizeConversation(
@@ -91,6 +92,7 @@ export async function summarizeConversation(
 	isAutomaticTrigger?: boolean,
 	customCondensingPrompt?: string,
 	condensingApiHandler?: ApiHandler,
+	minimumCondenseTokens?: number,
 ): Promise<SummarizeResponse> {
 	TelemetryService.instance.captureContextCondensed(
 		taskId,
@@ -203,6 +205,27 @@ export async function summarizeConversation(
 		const error = t("common:errors.condense_context_grew")
 		return { ...response, cost, error }
 	}
+
+	// Check if minimum token requirement is met
+	if (minimumCondenseTokens && minimumCondenseTokens > 0 && newContextTokens < minimumCondenseTokens) {
+		// Need to make additional API requests to expand the summary
+		const expandedResult = await expandSummaryToMeetMinimum(
+			messages,
+			summary,
+			keepMessages,
+			apiHandler,
+			systemPrompt,
+			taskId,
+			prevContextTokens,
+			newContextTokens,
+			minimumCondenseTokens,
+			cost,
+			customCondensingPrompt,
+			condensingApiHandler || apiHandler,
+		)
+		return expandedResult
+	}
+
 	return { messages: newMessages, summary, cost, newContextTokens }
 }
 
@@ -225,4 +248,168 @@ export function getMessagesSinceLastSummary(messages: ApiMessage[]): ApiMessage[
 		ts: messages[0]?.ts ? messages[0].ts - 1 : Date.now(),
 	}
 	return [userMessage, ...messagesSinceSummary]
+}
+
+/**
+ * Expands a summary by making additional API requests until minimum token requirement is met
+ *
+ * @param {ApiMessage[]} originalMessages - The original conversation messages
+ * @param {string} currentSummary - The current summary that needs expansion
+ * @param {ApiMessage[]} keepMessages - Messages to keep from the end
+ * @param {ApiHandler} apiHandler - The API handler to use
+ * @param {string} systemPrompt - The system prompt
+ * @param {string} taskId - The task ID for telemetry
+ * @param {number} prevContextTokens - Previous context token count
+ * @param {number} currentTokens - Current token count after initial summary
+ * @param {number} minimumTokens - Minimum required tokens
+ * @param {number} totalCost - Accumulated cost
+ * @param {string} customPrompt - Optional custom prompt
+ * @param {ApiHandler} condensingHandler - Handler for condensing operations
+ * @returns {SummarizeResponse} - The expanded summary response
+ */
+async function expandSummaryToMeetMinimum(
+	originalMessages: ApiMessage[],
+	currentSummary: string,
+	keepMessages: ApiMessage[],
+	apiHandler: ApiHandler,
+	systemPrompt: string,
+	taskId: string,
+	prevContextTokens: number,
+	currentTokens: number,
+	minimumTokens: number,
+	totalCost: number,
+	customPrompt?: string,
+	condensingHandler?: ApiHandler,
+): Promise<SummarizeResponse> {
+	let expandedSummary = currentSummary
+	let accumulatedCost = totalCost
+	let tokenCount = currentTokens
+	let iterationCount = 0
+	const MAX_ITERATIONS = 5 // Prevent infinite loops
+
+	// Messages to summarize (excluding the ones we're keeping)
+	const messagesToSummarize = getMessagesSinceLastSummary(originalMessages.slice(0, -N_MESSAGES_TO_KEEP))
+
+	while (tokenCount < minimumTokens && iterationCount < MAX_ITERATIONS) {
+		iterationCount++
+
+		// Create an expansion prompt that requests more detail
+		const expansionPrompt = `
+The current summary has ${tokenCount} tokens, but we need at least ${minimumTokens} tokens to maintain sufficient context.
+Please expand the following summary by adding more relevant details from the conversation history.
+Focus on:
+1. Technical implementation details and code patterns
+2. Specific file changes and modifications
+3. Problem-solving approaches and decisions made
+4. Any error messages or debugging steps
+5. Important context that would help continue the task
+
+Current Summary:
+${expandedSummary}
+
+Please provide an expanded version with approximately ${Math.ceil(minimumTokens * 1.1)} tokens (10% buffer).
+Include all the original information plus additional relevant details.
+`
+
+		// Prepare messages for expansion request
+		const expansionMessages: Anthropic.MessageParam[] = [
+			...messagesToSummarize.map(({ role, content }) => ({ role, content })),
+			{
+				role: "assistant",
+				content: expandedSummary,
+			},
+			{
+				role: "user",
+				content: expansionPrompt,
+			},
+		]
+
+		// Use the condensing handler if available
+		const handler = condensingHandler || apiHandler
+		const stream = handler.createMessage(customPrompt?.trim() || SUMMARY_PROMPT, expansionMessages)
+
+		let additionalSummary = ""
+		let iterationCost = 0
+		let outputTokens = 0
+
+		if (!stream) {
+			// Failed to create stream, break out of loop
+			break
+		}
+
+		for await (const chunk of stream) {
+			if (chunk.type === "text") {
+				additionalSummary += chunk.text
+			} else if (chunk.type === "usage") {
+				iterationCost = chunk.totalCost ?? 0
+				outputTokens = chunk.outputTokens ?? 0
+			}
+		}
+
+		additionalSummary = additionalSummary.trim()
+
+		if (additionalSummary.length === 0) {
+			// Failed to get additional content, return what we have
+			break
+		}
+
+		// Update the expanded summary
+		expandedSummary = additionalSummary
+		accumulatedCost += iterationCost
+
+		// Recalculate token count
+		const summaryMessage: ApiMessage = {
+			role: "assistant",
+			content: expandedSummary,
+			ts: keepMessages[0]?.ts || Date.now(),
+			isSummary: true,
+		}
+
+		const systemPromptMessage: ApiMessage = { role: "user", content: systemPrompt }
+		const contextMessages = [systemPromptMessage, summaryMessage, ...keepMessages]
+		const contextBlocks = contextMessages.flatMap((message) =>
+			typeof message.content === "string" ? [{ text: message.content, type: "text" as const }] : message.content,
+		)
+
+		tokenCount = await apiHandler.countTokens(contextBlocks)
+
+		// Check if we've exceeded the previous context (safety check)
+		if (tokenCount >= prevContextTokens) {
+			// We've grown too much, revert to previous iteration
+			// Don't include the cost of this failed iteration
+			const prevSummaryMessage: ApiMessage = {
+				role: "assistant",
+				content: currentSummary,
+				ts: keepMessages[0]?.ts || Date.now(),
+				isSummary: true,
+			}
+			const newMessages = [...originalMessages.slice(0, -N_MESSAGES_TO_KEEP), prevSummaryMessage, ...keepMessages]
+			return {
+				messages: newMessages,
+				summary: currentSummary,
+				cost: accumulatedCost - iterationCost,
+				newContextTokens: currentTokens,
+			}
+		}
+
+		currentSummary = expandedSummary
+		currentTokens = tokenCount
+	}
+
+	// Create final message structure
+	const finalSummaryMessage: ApiMessage = {
+		role: "assistant",
+		content: expandedSummary,
+		ts: keepMessages[0]?.ts || Date.now(),
+		isSummary: true,
+	}
+
+	const newMessages = [...originalMessages.slice(0, -N_MESSAGES_TO_KEEP), finalSummaryMessage, ...keepMessages]
+
+	return {
+		messages: newMessages,
+		summary: expandedSummary,
+		cost: accumulatedCost,
+		newContextTokens: tokenCount,
+	}
 }

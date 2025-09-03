@@ -75,6 +75,7 @@ export const globalSettingsSchema = z.object({
 	allowedMaxCost: z.number().nullish(),
 	autoCondenseContext: z.boolean().optional(),
 	autoCondenseContextPercent: z.number().optional(),
+	minimumCondenseTokens: z.number().optional(), // Minimum tokens for condensed output
 	maxConcurrentFileReads: z.number().optional(),
 
 	/**

@@ -272,6 +272,7 @@ export type ExtensionState = Pick<
 	| "enhancementApiConfigId"
 	| "condensingApiConfigId"
 	| "customCondensingPrompt"
+	| "minimumCondenseTokens"
 	| "codebaseIndexConfig"
 	| "codebaseIndexModels"
 	| "profileThresholds"

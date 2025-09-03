@@ -950,6 +950,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const customCondensingPrompt = state?.customCondensingPrompt
 		const condensingApiConfigId = state?.condensingApiConfigId
 		const listApiConfigMeta = state?.listApiConfigMeta
+		const minimumCondenseTokens = state?.minimumCondenseTokens
 
 		// Determine API handler to use
 		let condensingApiHandler: ApiHandler | undefined
@@ -984,6 +985,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			false, // manual trigger
 			customCondensingPrompt, // User's custom prompt
 			condensingApiHandler, // Specific handler for condensing
+			minimumCondenseTokens, // Minimum token requirement
 		)
 		if (error) {
 			this.say(
@@ -2453,6 +2455,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			autoCondenseContext = true,
 			autoCondenseContextPercent = 100,
 			profileThresholds = {},
+			minimumCondenseTokens,
 		} = state ?? {}
 
 		// Get condensing configuration for automatic triggers.
@@ -2536,6 +2539,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				condensingApiHandler,
 				profileThresholds,
 				currentProfileId,
+				minimumCondenseTokens,
 			})
 			if (truncateResult.messages !== this.apiConversationHistory) {
 				await this.overwriteApiConversationHistory(truncateResult.messages)

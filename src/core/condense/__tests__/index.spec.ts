@@ -792,3 +792,385 @@ describe("summarizeConversation with custom settings", () => {
 		)
 	})
 })
+
+describe("summarizeConversation with minimum token requirements", () => {
+	// Mock ApiHandler
+	let mockApiHandler: ApiHandler
+	let mockCondensingApiHandler: ApiHandler
+	const defaultSystemPrompt = "You are a helpful assistant."
+	const taskId = "test-task-id"
+
+	// Sample messages for testing
+	const sampleMessages: ApiMessage[] = [
+		{ role: "user", content: "Hello", ts: 1 },
+		{ role: "assistant", content: "Hi there", ts: 2 },
+		{ role: "user", content: "How are you?", ts: 3 },
+		{ role: "assistant", content: "I'm good", ts: 4 },
+		{ role: "user", content: "What's new?", ts: 5 },
+		{ role: "assistant", content: "Not much", ts: 6 },
+		{ role: "user", content: "Tell me more", ts: 7 },
+	]
+
+	beforeEach(() => {
+		// Reset mocks
+		vi.clearAllMocks()
+
+		// Setup mock API handler
+		mockApiHandler = {
+			createMessage: vi.fn(),
+			countTokens: vi.fn(),
+			getModel: vi.fn().mockReturnValue({
+				id: "test-model",
+				info: {
+					contextWindow: 8000,
+					supportsImages: true,
+					supportsComputerUse: true,
+					supportsVision: true,
+					maxTokens: 4000,
+					supportsPromptCache: true,
+					maxCachePoints: 10,
+					minTokensPerCachePoint: 100,
+					cachableFields: ["system", "messages"],
+				},
+			}),
+		} as unknown as ApiHandler
+
+		mockCondensingApiHandler = {
+			createMessage: vi.fn(),
+			countTokens: vi.fn(),
+			getModel: vi.fn().mockReturnValue({
+				id: "condensing-model",
+				info: {
+					contextWindow: 4000,
+					supportsImages: true,
+					supportsComputerUse: false,
+					supportsVision: false,
+					maxTokens: 2000,
+					supportsPromptCache: false,
+					maxCachePoints: 0,
+					minTokensPerCachePoint: 0,
+					cachableFields: [],
+				},
+			}),
+		} as unknown as ApiHandler
+	})
+
+	it("should not expand summary when minimum tokens is not specified", async () => {
+		// Setup initial summary stream
+		const initialStream = (async function* () {
+			yield { type: "text" as const, text: "Short summary" }
+			yield { type: "usage" as const, totalCost: 0.02, outputTokens: 50 }
+		})()
+
+		mockApiHandler.createMessage = vi.fn().mockReturnValueOnce(initialStream) as any
+		mockApiHandler.countTokens = vi.fn().mockResolvedValue(100) as any
+
+		const result = await summarizeConversation(
+			sampleMessages,
+			mockApiHandler,
+			defaultSystemPrompt,
+			taskId,
+			1000, // prevContextTokens
+			false,
+			undefined,
+			undefined,
+			undefined, // No minimum tokens specified
+		)
+
+		// Should only call createMessage once (no expansion)
+		expect(mockApiHandler.createMessage).toHaveBeenCalledTimes(1)
+		expect(result.summary).toBe("Short summary")
+		expect(result.newContextTokens).toBe(150) // 50 output + 100 counted
+		expect(result.error).toBeUndefined()
+	})
+
+	it("should not expand summary when current tokens already meet minimum requirement", async () => {
+		// Setup initial summary stream with enough tokens
+		const initialStream = (async function* () {
+			yield { type: "text" as const, text: "This is a longer summary with more content" }
+			yield { type: "usage" as const, totalCost: 0.05, outputTokens: 300 }
+		})()
+
+		mockApiHandler.createMessage = vi.fn().mockReturnValueOnce(initialStream) as any
+		mockApiHandler.countTokens = vi.fn().mockResolvedValue(250) as any
+
+		const result = await summarizeConversation(
+			sampleMessages,
+			mockApiHandler,
+			defaultSystemPrompt,
+			taskId,
+			1000, // prevContextTokens
+			false,
+			undefined,
+			undefined,
+			500, // minimumCondenseTokens - already met by 550 total
+		)
+
+		// Should only call createMessage once (no expansion needed)
+		expect(mockApiHandler.createMessage).toHaveBeenCalledTimes(1)
+		expect(result.summary).toBe("This is a longer summary with more content")
+		expect(result.newContextTokens).toBe(550) // 300 output + 250 counted
+		expect(result.error).toBeUndefined()
+	})
+
+	it("should expand summary when below minimum token requirement", async () => {
+		// Setup initial summary stream with too few tokens
+		const initialStream = (async function* () {
+			yield { type: "text" as const, text: "Short summary" }
+			yield { type: "usage" as const, totalCost: 0.02, outputTokens: 50 }
+		})()
+
+		// Setup expansion stream
+		const expansionStream = (async function* () {
+			yield {
+				type: "text" as const,
+				text: "This is a much more detailed and expanded summary with lots of additional context and information",
+			}
+			yield { type: "usage" as const, totalCost: 0.08, outputTokens: 400 }
+		})()
+
+		mockApiHandler.createMessage = vi
+			.fn()
+			.mockReturnValueOnce(initialStream)
+			.mockReturnValueOnce(expansionStream) as any
+
+		mockApiHandler.countTokens = vi
+			.fn()
+			.mockResolvedValueOnce(100) // First count after initial summary
+			.mockResolvedValueOnce(150) // Count after first expansion attempt
+			.mockResolvedValueOnce(150) as any // Count after second expansion attempt (final)
+
+		const result = await summarizeConversation(
+			sampleMessages,
+			mockApiHandler,
+			defaultSystemPrompt,
+			taskId,
+			1000, // prevContextTokens
+			false,
+			undefined,
+			undefined,
+			500, // minimumCondenseTokens - requires expansion
+		)
+
+		// Should call createMessage three times (initial + 2 expansions due to mock setup)
+		expect(mockApiHandler.createMessage).toHaveBeenCalledTimes(3)
+
+		// Check the expansion request includes the expansion prompt
+		const secondCall = (mockApiHandler.createMessage as Mock).mock.calls[1]
+		const expansionMessages = secondCall[1]
+		const lastMessage = expansionMessages[expansionMessages.length - 1]
+		expect(lastMessage.content).toContain("The current summary has")
+		expect(lastMessage.content).toContain("tokens, but we need at least")
+
+		expect(result.summary).toBe(
+			"This is a much more detailed and expanded summary with lots of additional context and information",
+		)
+		expect(result.newContextTokens).toBe(150) // Final count from mock
+		expect(result.cost).toBe(0.1) // 0.02 + 0.08
+		expect(result.error).toBeUndefined()
+	})
+
+	it("should use condensing API handler for expansion when provided", async () => {
+		// Setup initial summary stream with too few tokens
+		const initialStream = (async function* () {
+			yield { type: "text" as const, text: "Short summary" }
+			yield { type: "usage" as const, totalCost: 0.02, outputTokens: 50 }
+		})()
+
+		// Setup expansion stream from condensing handler
+		const expansionStream = (async function* () {
+			yield { type: "text" as const, text: "Expanded summary from condensing handler" }
+			yield { type: "usage" as const, totalCost: 0.06, outputTokens: 350 }
+		})()
+
+		mockCondensingApiHandler.createMessage = vi
+			.fn()
+			.mockReturnValueOnce(initialStream)
+			.mockReturnValueOnce(expansionStream) as any
+
+		mockApiHandler.countTokens = vi
+			.fn()
+			.mockResolvedValueOnce(100) // First count
+			.mockResolvedValueOnce(200) // After first expansion
+			.mockResolvedValueOnce(200) as any // After second expansion (final)
+
+		const result = await summarizeConversation(
+			sampleMessages,
+			mockApiHandler,
+			defaultSystemPrompt,
+			taskId,
+			1000, // prevContextTokens
+			false,
+			"Custom prompt",
+			mockCondensingApiHandler,
+			500, // minimumCondenseTokens
+		)
+
+		// Should use condensing handler for all calls (initial + expansions)
+		expect(mockCondensingApiHandler.createMessage).toHaveBeenCalledTimes(3)
+		expect(mockApiHandler.createMessage).not.toHaveBeenCalled()
+
+		expect(result.summary).toBe("Expanded summary from condensing handler")
+		expect(result.newContextTokens).toBe(200) // Final count from mock
+		expect(result.cost).toBe(0.08) // 0.02 + 0.06
+		expect(result.error).toBeUndefined()
+	})
+
+	it("should stop expansion after MAX_ITERATIONS to prevent infinite loops", async () => {
+		// Setup streams that always return insufficient tokens
+		const createSmallStream = () =>
+			(async function* () {
+				yield { type: "text" as const, text: "Still too short" }
+				yield { type: "usage" as const, totalCost: 0.01, outputTokens: 30 }
+			})()
+
+		let callCount = 0
+		mockApiHandler.createMessage = vi.fn().mockImplementation(() => {
+			callCount++
+			return createSmallStream()
+		}) as any
+
+		// Always return low token count
+		mockApiHandler.countTokens = vi.fn().mockResolvedValue(50) as any
+
+		const result = await summarizeConversation(
+			sampleMessages,
+			mockApiHandler,
+			defaultSystemPrompt,
+			taskId,
+			2000, // prevContextTokens
+			false,
+			undefined,
+			undefined,
+			1000, // minimumCondenseTokens - impossible to reach
+		)
+
+		// Should stop after MAX_ITERATIONS (5) + 1 initial call = 6 total
+		expect(mockApiHandler.createMessage).toHaveBeenCalledTimes(6)
+		expect(result.summary).toBe("Still too short")
+		expect(result.error).toBeUndefined()
+	})
+
+	it("should revert to previous summary if expansion exceeds context limit", async () => {
+		// Setup initial summary stream
+		const initialStream = (async function* () {
+			yield { type: "text" as const, text: "Initial summary" }
+			yield { type: "usage" as const, totalCost: 0.02, outputTokens: 100 }
+		})()
+
+		// Setup expansion stream that's too large
+		const expansionStream = (async function* () {
+			yield { type: "text" as const, text: "Extremely long expanded summary that exceeds context" }
+			yield { type: "usage" as const, totalCost: 0.1, outputTokens: 800 }
+		})()
+
+		mockApiHandler.createMessage = vi
+			.fn()
+			.mockReturnValueOnce(initialStream)
+			.mockReturnValueOnce(expansionStream) as any
+
+		mockApiHandler.countTokens = vi
+			.fn()
+			.mockResolvedValueOnce(150) // First count
+			.mockResolvedValueOnce(500) as any // After expansion - too large!
+
+		const result = await summarizeConversation(
+			sampleMessages,
+			mockApiHandler,
+			defaultSystemPrompt,
+			taskId,
+			400, // prevContextTokens - will be exceeded
+			false,
+			undefined,
+			undefined,
+			300, // minimumCondenseTokens
+		)
+
+		// Should revert to initial summary
+		expect(result.summary).toBe("Initial summary")
+		expect(result.newContextTokens).toBe(250) // 100 output + 150 counted (initial)
+		expect(result.cost).toBeCloseTo(0.02, 5) // Only initial cost, expansion cost excluded
+		expect(result.error).toBeUndefined()
+	})
+
+	it("should handle empty expansion response gracefully", async () => {
+		// Setup initial summary stream
+		const initialStream = (async function* () {
+			yield { type: "text" as const, text: "Initial summary" }
+			yield { type: "usage" as const, totalCost: 0.02, outputTokens: 100 }
+		})()
+
+		// Setup empty expansion stream
+		const emptyExpansionStream = (async function* () {
+			yield { type: "text" as const, text: "" }
+			yield { type: "usage" as const, totalCost: 0.01, outputTokens: 0 }
+		})()
+
+		mockApiHandler.createMessage = vi
+			.fn()
+			.mockReturnValueOnce(initialStream)
+			.mockReturnValueOnce(emptyExpansionStream) as any
+
+		mockApiHandler.countTokens = vi.fn().mockResolvedValue(150) as any
+
+		const result = await summarizeConversation(
+			sampleMessages,
+			mockApiHandler,
+			defaultSystemPrompt,
+			taskId,
+			1000, // prevContextTokens
+			false,
+			undefined,
+			undefined,
+			500, // minimumCondenseTokens - requires expansion but gets empty response
+		)
+
+		// Should keep initial summary when expansion fails
+		expect(result.summary).toBe("Initial summary")
+		expect(result.newContextTokens).toBe(250) // 100 output + 150 counted
+		expect(result.cost).toBe(0.02) // Only initial cost since expansion produced empty result
+		expect(result.error).toBeUndefined()
+	})
+
+	it("should use custom prompt for expansion when provided", async () => {
+		const customPrompt = "Custom summarization instructions"
+
+		// Setup initial summary stream with too few tokens
+		const initialStream = (async function* () {
+			yield { type: "text" as const, text: "Short summary" }
+			yield { type: "usage" as const, totalCost: 0.02, outputTokens: 50 }
+		})()
+
+		// Setup expansion stream
+		const expansionStream = (async function* () {
+			yield { type: "text" as const, text: "Expanded with custom prompt" }
+			yield { type: "usage" as const, totalCost: 0.05, outputTokens: 300 }
+		})()
+
+		mockApiHandler.createMessage = vi
+			.fn()
+			.mockReturnValueOnce(initialStream)
+			.mockReturnValueOnce(expansionStream) as any
+
+		mockApiHandler.countTokens = vi.fn().mockResolvedValueOnce(100).mockResolvedValueOnce(200) as any
+
+		const result = await summarizeConversation(
+			sampleMessages,
+			mockApiHandler,
+			defaultSystemPrompt,
+			taskId,
+			1000,
+			false,
+			customPrompt, // Custom prompt provided
+			undefined,
+			400, // minimumCondenseTokens
+		)
+
+		// Check that custom prompt was used in expansion
+		const expansionCall = (mockApiHandler.createMessage as Mock).mock.calls[1]
+		expect(expansionCall[0]).toBe(customPrompt)
+
+		expect(result.summary).toBe("Expanded with custom prompt")
+		expect(result.error).toBeUndefined()
+	})
+})
