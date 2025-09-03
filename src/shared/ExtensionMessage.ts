@@ -278,6 +278,7 @@ export type ExtensionState = Pick<
 	| "includeDiagnosticMessages"
 	| "maxDiagnosticMessages"
 	| "remoteControlEnabled"
+	| "taskSyncEnabled"
 	| "openRouterImageGenerationSelectedModel"
 	| "includeTaskHistoryInEnhance"
 > & {
