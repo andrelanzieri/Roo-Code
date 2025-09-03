@@ -29,6 +29,13 @@ export const verbosityLevelsSchema = z.enum(verbosityLevels)
 export type VerbosityLevel = z.infer<typeof verbosityLevelsSchema>
 
 /**
+ * Service tiers (OpenAI Responses API)
+ */
+export const serviceTiers = ["default", "flex", "priority"] as const
+export const serviceTierSchema = z.enum(serviceTiers)
+export type ServiceTier = z.infer<typeof serviceTierSchema>
+
+/**
  * ModelParameter
  */
 
@@ -69,6 +76,10 @@ export const modelInfoSchema = z.object({
 	minTokensPerCachePoint: z.number().optional(),
 	maxCachePoints: z.number().optional(),
 	cachableFields: z.array(z.string()).optional(),
+	/**
+	 * Deprecated generic tiers (kept for backward compatibility).
+	 * Prefer serviceTierPricing which is keyed by the OpenAI service tier names.
+	 */
 	tiers: z
 		.array(
 			z.object({
@@ -79,6 +90,36 @@ export const modelInfoSchema = z.object({
 				cacheReadsPrice: z.number().optional(),
 			}),
 		)
+		.optional(),
+	/**
+	 * Which OpenAI service tiers this model supports beyond the Default tier.
+	 * If undefined or empty, assume only 'default' is available.
+	 */
+	allowedServiceTiers: z.array(serviceTierSchema).optional(),
+	/**
+	 * Pricing overrides per OpenAI service tier. The top-level input/output/cache*
+	 * fields represent the Default (standard) tier. When a tier is selected, use
+	 * these overrides if present.
+	 */
+	serviceTierPricing: z
+		.object({
+			flex: z
+				.object({
+					inputPrice: z.number().optional(),
+					outputPrice: z.number().optional(),
+					cacheWritesPrice: z.number().optional(),
+					cacheReadsPrice: z.number().optional(),
+				})
+				.optional(),
+			priority: z
+				.object({
+					inputPrice: z.number().optional(),
+					outputPrice: z.number().optional(),
+					cacheWritesPrice: z.number().optional(),
+					cacheReadsPrice: z.number().optional(),
+				})
+				.optional(),
+		})
 		.optional(),
 })
 

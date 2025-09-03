@@ -11,6 +11,7 @@ import {
 	type ReasoningEffort,
 	type VerbosityLevel,
 	type ReasoningEffortWithMinimal,
+	type ServiceTier,
 } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
@@ -37,6 +38,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	private lastResponseId: string | undefined
 	private responseIdPromise: Promise<string | undefined> | undefined
 	private responseIdResolver: ((value: string | undefined) => void) | undefined
+	// Resolved service tier from Responses API (actual tier used by OpenAI)
+	private lastServiceTier: ServiceTier | undefined
 
 	// Event types handled by the shared event processor to avoid duplication
 	private readonly coreHandledEventTypes = new Set<string>([
@@ -71,8 +74,13 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		const cacheWriteTokens = usage.cache_creation_input_tokens ?? usage.cache_write_tokens ?? 0
 		const cacheReadTokens = usage.cache_read_input_tokens ?? usage.cache_read_tokens ?? usage.cached_tokens ?? 0
 
+		// Resolve effective tier: prefer actual tier from response; otherwise requested tier
+		const effectiveTier =
+			this.lastServiceTier || (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
+		const effectiveInfo = this.applyServiceTierPricing(model.info, effectiveTier)
+
 		const totalCost = calculateApiCostOpenAI(
-			model.info,
+			effectiveInfo,
 			totalInputTokens,
 			totalOutputTokens,
 			cacheWriteTokens || 0,
@@ -117,6 +125,9 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
+		// Reset resolved tier for this request; will be set from response if present
+		this.lastServiceTier = undefined
+
 		// Use Responses API for ALL models
 		const { verbosity, reasoning } = this.getModel()
 
@@ -204,7 +215,12 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			previous_response_id?: string
 			store?: boolean
 			instructions?: string
+			service_tier?: ServiceTier
 		}
+
+		// Validate requested tier against model support; if not supported, omit.
+		const requestedTier = (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
+		const allowedTiers = model.info.allowedServiceTiers || []
 
 		const body: Gpt5RequestBody = {
 			model: model.id,
@@ -233,6 +249,11 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			// Use the per-request reserved output computed by Roo (params.maxTokens from getModelParams).
 			...(model.maxTokens ? { max_output_tokens: model.maxTokens } : {}),
 			...(requestPreviousResponseId && { previous_response_id: requestPreviousResponseId }),
+			// Include tier when selected and supported by the model, or when explicitly "default"
+			...(requestedTier &&
+				(requestedTier === "default" || allowedTiers.includes(requestedTier)) && {
+					service_tier: requestedTier,
+				}),
 		}
 
 		// Include text.verbosity only when the model explicitly supports it
@@ -264,15 +285,19 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				}
 			}
 		} catch (sdkErr: any) {
-			// Check if this is a 400 error about previous_response_id not found
+			// Check if this is a 400 error about previous_response_id not found or invalid service_tier
 			const errorMessage = sdkErr?.message || sdkErr?.error?.message || ""
 			const is400Error = sdkErr?.status === 400 || sdkErr?.response?.status === 400
 			const isPreviousResponseError =
 				errorMessage.includes("Previous response") || errorMessage.includes("not found")
+			const isTierError =
+				(requestBody.service_tier &&
+					(/service[_ ]tier/i.test(errorMessage) ||
+						errorMessage.toLowerCase().includes("unsupported service tier") ||
+						errorMessage.toLowerCase().includes("invalid service tier"))) ||
+				false
 
 			if (is400Error && requestBody.previous_response_id && isPreviousResponseError) {
-				// Log the error and retry without the previous_response_id
-
 				// Remove the problematic previous_response_id and retry
 				const retryRequestBody = { ...requestBody }
 				delete retryRequestBody.previous_response_id
@@ -300,6 +325,33 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					return
 				} catch (retryErr) {
 					// If retry also fails, fall back to SSE
+					yield* this.makeGpt5ResponsesAPIRequest(retryRequestBody, model, metadata)
+					return
+				}
+			}
+
+			if (is400Error && requestBody.service_tier && isTierError) {
+				// Retry without service_tier
+				const retryRequestBody = { ...requestBody }
+				delete retryRequestBody.service_tier
+
+				try {
+					const retryStream = (await (this.client as any).responses.create(
+						retryRequestBody,
+					)) as AsyncIterable<any>
+
+					if (typeof (retryStream as any)[Symbol.asyncIterator] !== "function") {
+						yield* this.makeGpt5ResponsesAPIRequest(retryRequestBody, model, metadata)
+						return
+					}
+
+					for await (const event of retryStream) {
+						for await (const outChunk of this.processEvent(event, model)) {
+							yield outChunk
+						}
+					}
+					return
+				} catch {
 					yield* this.makeGpt5ResponsesAPIRequest(retryRequestBody, model, metadata)
 					return
 				}
@@ -437,8 +489,6 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					errorDetails.includes("Previous response") || errorDetails.includes("not found")
 
 				if (response.status === 400 && requestBody.previous_response_id && isPreviousResponseError) {
-					// Log the error and retry without the previous_response_id
-
 					// Remove the problematic previous_response_id and retry
 					const retryRequestBody = { ...requestBody }
 					delete retryRequestBody.previous_response_id
@@ -469,6 +519,39 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					}
 
 					// Handle the successful retry response
+					yield* this.handleStreamResponse(retryResponse.body, model)
+					return
+				}
+
+				// If invalid or unsupported service_tier, retry without it
+				const isTierError =
+					requestBody.service_tier &&
+					(/service[_ ]tier/i.test(errorDetails) ||
+						errorDetails.toLowerCase().includes("unsupported service tier") ||
+						errorDetails.toLowerCase().includes("invalid service tier"))
+
+				if (response.status === 400 && requestBody.service_tier && isTierError) {
+					const retryRequestBody = { ...requestBody }
+					delete retryRequestBody.service_tier
+
+					const retryResponse = await fetch(url, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${apiKey}`,
+							Accept: "text/event-stream",
+						},
+						body: JSON.stringify(retryRequestBody),
+					})
+
+					if (!retryResponse.ok) {
+						throw new Error(`Responses API retry failed (${retryResponse.status})`)
+					}
+
+					if (!retryResponse.body) {
+						throw new Error("Responses API error: No response body from retry request")
+					}
+
 					yield* this.handleStreamResponse(retryResponse.body, model)
 					return
 				}
@@ -606,6 +689,10 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 							// Store response ID for conversation continuity
 							if (parsed.response?.id) {
 								this.resolveResponseId(parsed.response.id)
+							}
+							// Capture resolved service tier if present
+							if (parsed.response?.service_tier) {
+								this.lastServiceTier = parsed.response.service_tier as ServiceTier
 							}
 
 							// Delegate standard event types to the shared processor to avoid duplication
@@ -898,6 +985,10 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 								if (parsed.response?.id) {
 									this.resolveResponseId(parsed.response.id)
 								}
+								// Capture resolved service tier if present
+								if (parsed.response?.service_tier) {
+									this.lastServiceTier = parsed.response.service_tier as ServiceTier
+								}
 
 								// Check if the done event contains the complete output (as a fallback)
 								if (
@@ -1022,6 +1113,10 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		if (event?.response?.id) {
 			this.resolveResponseId(event.response.id)
 		}
+		// Capture resolved service tier when available
+		if (event?.response?.service_tier) {
+			this.lastServiceTier = event.response.service_tier as ServiceTier
+		}
 
 		// Handle known streaming text deltas
 		if (event?.type === "response.text.delta" || event?.type === "response.output_text.delta") {
@@ -1112,6 +1207,24 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		return info.reasoningEffort as ReasoningEffortWithMinimal | undefined
 	}
 
+	/**
+	 * Returns a shallow-cloned ModelInfo with pricing overridden for the given tier, if available.
+	 * If no tier or no overrides exist, the original ModelInfo is returned.
+	 */
+	private applyServiceTierPricing(info: ModelInfo, tier?: ServiceTier): ModelInfo {
+		if (!tier || tier === "default") return info
+		const tierPricing =
+			(tier === "flex" ? info.serviceTierPricing?.flex : info.serviceTierPricing?.priority) || undefined
+		if (!tierPricing) return info
+		return {
+			...info,
+			inputPrice: tierPricing.inputPrice ?? info.inputPrice,
+			outputPrice: tierPricing.outputPrice ?? info.outputPrice,
+			cacheReadsPrice: tierPricing.cacheReadsPrice ?? info.cacheReadsPrice,
+			cacheWritesPrice: tierPricing.cacheWritesPrice ?? info.cacheWritesPrice,
+		}
+	}
+
 	// Removed isResponsesApiModel method as ALL models now use the Responses API
 
 	override getModel() {
@@ -1183,6 +1296,13 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				],
 				stream: false, // Non-streaming for completePrompt
 				store: false, // Don't store prompt completions
+			}
+
+			// Include service tier if selected and supported
+			const requestedTier = (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
+			const allowedTiers = model.info.allowedServiceTiers || []
+			if (requestedTier && (requestedTier === "default" || allowedTiers.includes(requestedTier))) {
+				requestBody.service_tier = requestedTier
 			}
 
 			// Add reasoning if supported
