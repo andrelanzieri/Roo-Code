@@ -45,6 +45,7 @@ export const TabContent = forwardRef<HTMLDivElement, TabProps>(({ className, chi
 		</div>
 	)
 })
+TabContent.displayName = "TabContent"
 
 export const TabList = forwardRef<
 	HTMLDivElement,

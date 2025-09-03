@@ -411,12 +411,10 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		[activeTab],
 	)
 
-	useEffect(() => {
-		requestAnimationFrame(() => {
-			if (contentRef.current) {
-				contentRef.current.scrollTop = scrollPositions.current[activeTab] ?? 0
-			}
-		})
+	useLayoutEffect(() => {
+		if (contentRef.current) {
+			contentRef.current.scrollTop = scrollPositions.current[activeTab] ?? 0
+		}
 	}, [activeTab])
 
 	// Store direct DOM element refs for each tab
