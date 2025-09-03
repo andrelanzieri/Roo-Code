@@ -257,7 +257,10 @@ export class McpHub {
 	 * @param error The error object
 	 */
 	private showErrorMessage(message: string, error: unknown): void {
-		console.error(`${message}:`, error)
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		const fullMessage = `${message}: ${errorMessage}`
+		console.error(fullMessage)
+		vscode.window.showErrorMessage(fullMessage)
 	}
 
 	public setupWorkspaceFoldersWatcher(): void {
@@ -692,11 +695,14 @@ export class McpHub {
 
 				// Set up stdio specific error handling
 				transport.onerror = async (error) => {
-					console.error(`Transport error for "${name}":`, error)
+					const errorMessage = error instanceof Error ? error.message : `${error}`
+					const fullMessage = `Transport error for MCP server "${name}": ${errorMessage}`
+					console.error(fullMessage)
+					vscode.window.showErrorMessage(fullMessage)
 					const connection = this.findConnection(name, source)
 					if (connection) {
 						connection.server.status = "disconnected"
-						this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
+						this.appendErrorMessage(connection, errorMessage)
 					}
 					await this.notifyWebviewOfServerChanges()
 				}
@@ -747,11 +753,14 @@ export class McpHub {
 
 				// Set up Streamable HTTP specific error handling
 				transport.onerror = async (error) => {
-					console.error(`Transport error for "${name}" (streamable-http):`, error)
+					const errorMessage = error instanceof Error ? error.message : `${error}`
+					const fullMessage = `Transport error for MCP server "${name}" (streamable-http): ${errorMessage}`
+					console.error(fullMessage)
+					vscode.window.showErrorMessage(fullMessage)
 					const connection = this.findConnection(name, source)
 					if (connection) {
 						connection.server.status = "disconnected"
-						this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
+						this.appendErrorMessage(connection, errorMessage)
 					}
 					await this.notifyWebviewOfServerChanges()
 				}
@@ -790,11 +799,14 @@ export class McpHub {
 
 				// Set up SSE specific error handling
 				transport.onerror = async (error) => {
-					console.error(`Transport error for "${name}":`, error)
+					const errorMessage = error instanceof Error ? error.message : `${error}`
+					const fullMessage = `Transport error for MCP server "${name}" (SSE): ${errorMessage}`
+					console.error(fullMessage)
+					vscode.window.showErrorMessage(fullMessage)
 					const connection = this.findConnection(name, source)
 					if (connection) {
 						connection.server.status = "disconnected"
-						this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
+						this.appendErrorMessage(connection, errorMessage)
 					}
 					await this.notifyWebviewOfServerChanges()
 				}
