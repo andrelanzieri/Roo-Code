@@ -25,13 +25,15 @@
 		}
 	},
 	"generic": {
-		"noChanges": "No changes were made.",
-		"changesRejected": "Changes were rejected."
+		"noChanges": "No changes needed for '{{path}}'.",
+		"changesRejected": "Changes were rejected by the user."
 	},
+	"noChanges": "No changes needed for '{{path}}'.",
+	"changesRejected": "Changes were rejected by the user.",
 	"errors": {
 		"toolCallError": "Tool call error: {{toolName}}",
 		"toolExecutionError": "Tool execution error",
-		"fileNotFound": "File not found",
+		"fileNotFound": "File Not Found",
 		"parseError": "Parse error",
 		"commandTimeout": "Command timeout",
 		"permissionDenied": "Permission denied",
@@ -41,11 +43,11 @@
 		"resourceNotFound": "Resource not found",
 		"configurationError": "Configuration error",
 		"authenticationFailed": "Authentication failed",
-		"invalidLineNumber": "Invalid line number",
+		"invalidLineNumber": "Invalid Line Number",
 		"fileAlreadyExists": "File already exists",
 		"directoryNotFound": "Directory not found",
 		"invalidPath": "Invalid path",
-		"readError": "Read error",
+		"readError": "File Read Error",
 		"writeError": "Write error",
 		"syntaxError": "Syntax error",
 		"validationError": "Validation error",
