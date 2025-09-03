@@ -15,6 +15,19 @@
 			"policy_restriction": "Failed to create new task due to policy restrictions."
 		}
 	},
+	"executeCommand": {
+		"workingDirMissing": "Working directory '{{workingDir}}' does not exist.",
+		"shellIntegrationGenericError": "Command execution failed due to an unexpected shell integration error."
+	},
+	"fetchInstructions": {
+		"errors": {
+			"invalidRequest": "Invalid request"
+		}
+	},
+	"generic": {
+		"noChanges": "No changes were made.",
+		"changesRejected": "Changes were rejected."
+	},
 	"errors": {
 		"toolCallError": "Tool call error: {{toolName}}",
 		"toolExecutionError": "Tool execution error",
