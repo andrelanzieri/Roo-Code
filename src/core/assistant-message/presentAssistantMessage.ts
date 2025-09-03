@@ -29,6 +29,7 @@ import { newTaskTool } from "../tools/newTaskTool"
 
 import { updateTodoListTool } from "../tools/updateTodoListTool"
 import { generateImageTool } from "../tools/generateImageTool"
+import { editAndExecuteTool } from "../tools/editAndExecuteTool"
 
 import { formatResponse } from "../prompts/responses"
 import { validateToolUse } from "../tools/validateToolUse"
@@ -224,6 +225,8 @@ export async function presentAssistantMessage(cline: Task) {
 					}
 					case "generate_image":
 						return `[${block.name} for '${block.params.path}']`
+					case "edit_and_execute":
+						return `[${block.name}]`
 				}
 			}
 
@@ -551,6 +554,9 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "generate_image":
 					await generateImageTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
+					break
+				case "edit_and_execute":
+					await editAndExecuteTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
 					break
 			}
 

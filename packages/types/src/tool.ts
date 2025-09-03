@@ -35,6 +35,7 @@ export const toolNames = [
 	"codebase_search",
 	"update_todo_list",
 	"generate_image",
+	"edit_and_execute",
 ] as const
 
 export const toolNamesSchema = z.enum(toolNames)

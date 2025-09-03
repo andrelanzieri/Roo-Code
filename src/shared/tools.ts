@@ -63,10 +63,11 @@ export const toolParamNames = [
 	"start_line",
 	"end_line",
 	"query",
-	"args",
 	"todos",
 	"prompt",
 	"image",
+	"edit",
+	"execute",
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -171,6 +172,11 @@ export interface GenerateImageToolUse extends ToolUse {
 	params: Partial<Pick<Record<ToolParamName, string>, "prompt" | "path" | "image">>
 }
 
+export interface EditAndExecuteToolUse extends ToolUse {
+	name: "edit_and_execute"
+	params: Partial<Pick<Record<ToolParamName, string>, "args">>
+}
+
 // Define tool group configuration
 export type ToolGroupConfig = {
 	tools: readonly string[]
@@ -198,6 +204,7 @@ export const TOOL_DISPLAY_NAMES: Record<ToolName, string> = {
 	codebase_search: "codebase search",
 	update_todo_list: "update todo list",
 	generate_image: "generate images",
+	edit_and_execute: "edit and execute",
 } as const
 
 // Define available tool groups.
@@ -213,7 +220,14 @@ export const TOOL_GROUPS: Record<ToolGroup, ToolGroupConfig> = {
 		],
 	},
 	edit: {
-		tools: ["apply_diff", "write_to_file", "insert_content", "search_and_replace", "generate_image"],
+		tools: [
+			"apply_diff",
+			"write_to_file",
+			"insert_content",
+			"search_and_replace",
+			"generate_image",
+			"edit_and_execute",
+		],
 	},
 	browser: {
 		tools: ["browser_action"],
