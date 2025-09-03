@@ -1,0 +1,73 @@
+# Windows MCP Server Configuration
+# This is a sample configuration for adding windows-mcp to the MCP Marketplace
+# Repository: https://github.com/CursorTouch/Windows-MCP
+
+id: windows-mcp
+name: Windows MCP
+description: Control Windows PC with an AI agent - automate desktop apps, web browsers, file operations, and more. Perfect for testing applications, automating workflows, and controlling VS Code itself.
+author: CursorTouch
+authorUrl: https://github.com/CursorTouch
+url: https://github.com/CursorTouch/Windows-MCP
+tags:
+  - automation
+  - windows
+  - desktop-control
+  - testing
+  - browser-automation
+  - file-management
+prerequisites:
+  - Windows operating system
+  - Python 3.8 or higher
+  - pip package manager
+
+# Installation methods for different scenarios
+content:
+  - name: Standard Installation
+    content: |
+      {
+        "command": "uvx",
+        "args": ["--from", "windows-mcp", "windows-mcp"],
+        "env": {}
+      }
+    prerequisites:
+      - uvx installed (pip install uvx)
+    
+  - name: Python Package Installation
+    content: |
+      {
+        "command": "python",
+        "args": ["-m", "windows_mcp"],
+        "env": {}
+      }
+    prerequisites:
+      - pip install windows-mcp
+    
+  - name: Development Installation
+    content: |
+      {
+        "command": "python",
+        "args": ["path/to/windows-mcp/main.py"],
+        "env": {
+          "PYTHONPATH": "path/to/windows-mcp"
+        }
+      }
+    prerequisites:
+      - Clone repository: git clone https://github.com/CursorTouch/Windows-MCP.git
+      - Install dependencies: pip install -r requirements.txt
+
+# Optional parameters for configuration
+parameters:
+  - name: Screenshot Directory
+    key: screenshot_dir
+    placeholder: "C:\\Screenshots"
+    optional: true
+  
+  - name: Automation Speed
+    key: automation_speed
+    placeholder: "normal"
+    optional: true
+  
+  - name: Enable Logging
+    key: enable_logging
+    placeholder: "false"
+    optional: true
