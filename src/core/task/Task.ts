@@ -90,6 +90,7 @@ import { truncateConversationIfNeeded } from "../sliding-window"
 import { ClineProvider } from "../webview/ClineProvider"
 import { MultiSearchReplaceDiffStrategy } from "../diff/strategies/multi-search-replace"
 import { MultiFileSearchReplaceDiffStrategy } from "../diff/strategies/multi-file-search-replace"
+import { JupyterNotebookDiffStrategy } from "../diff/strategies/jupyter-notebook-diff"
 import {
 	type ApiMessage,
 	readApiMessages,
@@ -382,20 +383,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Only set up diff strategy if diff is enabled.
 		if (this.diffEnabled) {
-			// Default to old strategy, will be updated if experiment is enabled.
-			this.diffStrategy = new MultiSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)
-
-			// Check experiment asynchronously and update strategy if needed.
-			provider.getState().then((state) => {
-				const isMultiFileApplyDiffEnabled = experiments.isEnabled(
-					state.experiments ?? {},
-					EXPERIMENT_IDS.MULTI_FILE_APPLY_DIFF,
-				)
-
-				if (isMultiFileApplyDiffEnabled) {
-					this.diffStrategy = new MultiFileSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)
-				}
-			})
+			// Check for Jupyter notebooks and experiments asynchronously
+			this.initializeDiffStrategy()
 		}
 
 		this.toolRepetitionDetector = new ToolRepetitionDetector(this.consecutiveMistakeLimit)
@@ -2697,6 +2686,45 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	public async checkpointDiff(options: CheckpointDiffOptions) {
 		return checkpointDiff(this, options)
+	}
+
+	private async checkForJupyterFiles(workspaceDir: string): Promise<boolean> {
+		try {
+			const fs = await import("fs/promises")
+			const path = await import("path")
+
+			// Quick check for .ipynb files in the workspace
+			const files = await fs.readdir(workspaceDir)
+			return files.some((file) => path.extname(file).toLowerCase() === ".ipynb")
+		} catch {
+			return false
+		}
+	}
+
+	private async initializeDiffStrategy(): Promise<void> {
+		const workspaceDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+		const hasJupyterFiles = workspaceDir && (await this.checkForJupyterFiles(workspaceDir))
+
+		if (hasJupyterFiles) {
+			// Use Jupyter-specific diff strategy for notebooks
+			this.diffStrategy = new JupyterNotebookDiffStrategy(this.fuzzyMatchThreshold)
+		} else {
+			// Default to old strategy, will be updated if experiment is enabled.
+			this.diffStrategy = new MultiSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)
+
+			// Check if the multi-file apply diff experiment is enabled
+			const provider = this.providerRef.deref()
+			if (provider) {
+				const state = await provider.getState()
+				const isMultiFileApplyDiffEnabled = experiments.isEnabled(
+					state.experiments ?? {},
+					EXPERIMENT_IDS.MULTI_FILE_APPLY_DIFF,
+				)
+				if (isMultiFileApplyDiffEnabled) {
+					this.diffStrategy = new MultiFileSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)
+				}
+			}
+		}
 	}
 
 	// Metrics

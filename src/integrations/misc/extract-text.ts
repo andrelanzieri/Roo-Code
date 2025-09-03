@@ -7,6 +7,7 @@ import { isBinaryFile } from "isbinaryfile"
 import { extractTextFromXLSX } from "./extract-text-from-xlsx"
 import { countFileLines } from "./line-counter"
 import { readLines } from "./read-lines"
+import { JupyterNotebookHandler } from "./jupyter-notebook-handler"
 
 async function extractTextFromPDF(filePath: string): Promise<string> {
 	const dataBuffer = await fs.readFile(filePath)
@@ -20,17 +21,8 @@ async function extractTextFromDOCX(filePath: string): Promise<string> {
 }
 
 async function extractTextFromIPYNB(filePath: string): Promise<string> {
-	const data = await fs.readFile(filePath, "utf8")
-	const notebook = JSON.parse(data)
-	let extractedText = ""
-
-	for (const cell of notebook.cells) {
-		if ((cell.cell_type === "markdown" || cell.cell_type === "code") && cell.source) {
-			extractedText += cell.source.join("\n") + "\n"
-		}
-	}
-
-	return addLineNumbers(extractedText)
+	const handler = await JupyterNotebookHandler.fromFile(filePath)
+	return handler.extractTextWithCellMarkers()
 }
 
 /**
