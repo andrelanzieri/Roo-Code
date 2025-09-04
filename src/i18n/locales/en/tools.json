@@ -28,8 +28,6 @@
 		"noChanges": "No changes needed for '{{path}}'.",
 		"changesRejected": "Changes were rejected by the user."
 	},
-	"noChanges": "No changes needed for '{{path}}'.",
-	"changesRejected": "Changes were rejected by the user.",
 	"errors": {
 		"toolCallError": "Tool call error: {{toolName}}",
 		"toolExecutionError": "Tool execution error",

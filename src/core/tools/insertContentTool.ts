@@ -131,7 +131,7 @@ export async function insertContentTool(
 			// For existing files, generate diff and check for changes
 			diff = formatResponse.createPrettyPatch(relPath, fileContent, updatedContent)
 			if (!diff) {
-				pushToolResult(t("tools:generic.noChanges", { path: relPath }))
+				pushToolResult(t("tools:noChanges", { path: relPath }))
 				return
 			}
 			approvalContent = undefined
@@ -165,7 +165,7 @@ export async function insertContentTool(
 			if (!isPreventFocusDisruptionEnabled) {
 				await cline.diffViewProvider.revertChanges()
 			}
-			pushToolResult(t("tools:generic.changesRejected"))
+			pushToolResult(t("tools:changesRejected"))
 			await cline.diffViewProvider.reset()
 			return
 		}
