@@ -30,6 +30,7 @@ import { newTaskTool } from "../tools/newTaskTool"
 import { updateTodoListTool } from "../tools/updateTodoListTool"
 import { runSlashCommandTool } from "../tools/runSlashCommandTool"
 import { generateImageTool } from "../tools/generateImageTool"
+import { webSearchTool } from "../tools/webSearchTool"
 
 import { formatResponse } from "../prompts/responses"
 import { validateToolUse } from "../tools/validateToolUse"
@@ -227,6 +228,8 @@ export async function presentAssistantMessage(cline: Task) {
 						return `[${block.name} for '${block.params.command}'${block.params.args ? ` with args: ${block.params.args}` : ""}]`
 					case "generate_image":
 						return `[${block.name} for '${block.params.path}']`
+					case "web_search":
+						return `[${block.name} for '${block.params.query}']`
 				}
 			}
 
@@ -557,6 +560,9 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "generate_image":
 					await generateImageTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
+					break
+				case "web_search":
+					await webSearchTool(cline, block, askApproval, handleError, pushToolResult, removeClosingTag)
 					break
 			}
 
