@@ -255,17 +255,37 @@ function getSelectedModel({
 		case "ollama": {
 			const id = apiConfiguration.ollamaModelId ?? ""
 			const info = routerModels.ollama && routerModels.ollama[id]
+			// Provide fallback values when info is undefined to fix context window display
 			return {
 				id,
-				info: info || undefined,
+				info:
+					info ||
+					(id
+						? {
+								maxTokens: 8192,
+								contextWindow: 8192,
+								supportsImages: false,
+								supportsPromptCache: true,
+							}
+						: undefined),
 			}
 		}
 		case "lmstudio": {
 			const id = apiConfiguration.lmStudioModelId ?? ""
 			const info = lmStudioModels && lmStudioModels[apiConfiguration.lmStudioModelId!]
+			// Provide fallback values when info is undefined to fix context window display
 			return {
 				id,
-				info: info || undefined,
+				info:
+					info ||
+					(id
+						? {
+								maxTokens: 8192,
+								contextWindow: 8192,
+								supportsImages: false,
+								supportsPromptCache: false,
+							}
+						: undefined),
 			}
 		}
 		case "vscode-lm": {
