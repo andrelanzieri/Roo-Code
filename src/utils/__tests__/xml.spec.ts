@@ -1,6 +1,115 @@
 import { parseXml, parseXmlForDiff } from "../xml"
 
 describe("parseXml", () => {
+	describe("whitespace handling", () => {
+		it("should handle spaces between XML tags", () => {
+			const xml = `
+				<read_file>
+					<path> ./test/file.ts </path>
+				</read_file>
+			`
+
+			const result = parseXml(xml) as any
+
+			expect(result.read_file).toBeDefined()
+			expect(result.read_file.path).toBe("./test/file.ts")
+		})
+
+		it("should handle newlines and spaces in nested XML", () => {
+			const xml = `
+				<args>
+					<file>
+						<path>
+							./src/main.ts
+						</path>
+					</file>
+				</args>
+			`
+
+			const result = parseXml(xml) as any
+
+			expect(result.args).toBeDefined()
+			expect(result.args.file).toBeDefined()
+			expect(result.args.file.path).toBe("./src/main.ts")
+		})
+
+		it("should handle multiple files with whitespace", () => {
+			const xml = `
+				<args>
+					<file>
+						<path> ./file1.ts </path>
+					</file>
+					<file>
+						<path>
+							./file2.ts
+						</path>
+					</file>
+				</args>
+			`
+
+			const result = parseXml(xml) as any
+
+			expect(result.args).toBeDefined()
+			expect(Array.isArray(result.args.file)).toBe(true)
+			expect(result.args.file).toHaveLength(2)
+			expect(result.args.file[0].path).toBe("./file1.ts")
+			expect(result.args.file[1].path).toBe("./file2.ts")
+		})
+
+		it("should handle mixed content with whitespace", () => {
+			const xml = `
+				<write_to_file>
+					<path>
+						./output.txt
+					</path>
+					<content>
+						Some content here
+					</content>
+				</write_to_file>
+			`
+
+			const result = parseXml(xml) as any
+
+			expect(result.write_to_file).toBeDefined()
+			expect(result.write_to_file.path).toBe("./output.txt")
+			expect(result.write_to_file.content).toBe("Some content here")
+		})
+
+		it("should handle empty tags with whitespace", () => {
+			const xml = `
+				<test>
+					<empty>   </empty>
+					<another>
+						
+					</another>
+				</test>
+			`
+
+			const result = parseXml(xml) as any
+
+			expect(result.test).toBeDefined()
+			expect(result.test.empty).toBe("")
+			expect(result.test.another).toBe("")
+		})
+
+		it("should handle tabs and mixed whitespace", () => {
+			const xml = `
+				<command>
+					<path>	./file.ts	</path>
+					<args>
+						arg1 arg2
+					</args>
+				</command>
+			`
+
+			const result = parseXml(xml) as any
+
+			expect(result.command).toBeDefined()
+			expect(result.command.path).toBe("./file.ts")
+			expect(result.command.args).toBe("arg1 arg2")
+		})
+	})
+
 	describe("type conversion", () => {
 		// Test the main change from the commit: no automatic type conversion
 		it("should not convert string numbers to numbers", () => {
