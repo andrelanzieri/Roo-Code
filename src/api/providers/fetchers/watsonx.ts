@@ -26,7 +26,6 @@ export async function getWatsonxModels(
 	try {
 		let options: any = {
 			version: "2024-05-31",
-			serviceUrl: baseUrl || "https://us-south.ml.cloud.ibm.com",
 		}
 
 		if (platform === "ibmCloud" || !platform) {
