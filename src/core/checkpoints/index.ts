@@ -271,15 +271,16 @@ export async function checkpointDiff(task: Task, { ts, previousCommitHash, commi
 	TelemetryService.instance.captureCheckpointDiffed(task.taskId)
 
 	let prevHash = commitHash
-	let nextHash: string | undefined
+	let nextHash: string | undefined = undefined
 
-	const checkpoints = typeof service.getCheckpoints === "function" ? service.getCheckpoints() : []
-	const idx = checkpoints.indexOf(commitHash)
-
-	if (idx !== -1 && idx < checkpoints.length - 1) {
-		nextHash = checkpoints[idx + 1]
-	} else {
-		nextHash = undefined
+	if (mode !== "full") {
+		const checkpoints = task.clineMessages.filter(({ say }) => say === "checkpoint_saved").map(({ text }) => text!)
+		const idx = checkpoints.indexOf(commitHash)
+		if (idx !== -1 && idx < checkpoints.length - 1) {
+			nextHash = checkpoints[idx + 1]
+		} else {
+			nextHash = undefined
+		}
 	}
 
 	try {
