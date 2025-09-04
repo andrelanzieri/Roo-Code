@@ -131,7 +131,7 @@ export async function insertContentTool(
 			// For existing files, generate diff and check for changes
 			diff = formatResponse.createPrettyPatch(relPath, fileContent, updatedContent)
 			if (!diff) {
-				pushToolResult(t("tools:generic.noChanges"))
+				pushToolResult(t("tools:generic.noChanges", { path: relPath }))
 				return
 			}
 			approvalContent = undefined

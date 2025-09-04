@@ -200,7 +200,7 @@ export async function searchAndReplaceTool(
 		// Generate and validate diff
 		const diff = formatResponse.createPrettyPatch(validRelPath, fileContent, newContent)
 		if (!diff) {
-			pushToolResult(t("tools:generic.noChanges"))
+			pushToolResult(t("tools:generic.noChanges", { path: relPath }))
 			await cline.diffViewProvider.reset()
 			return
 		}
