@@ -1270,7 +1270,11 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													<div className="space-y-2">
 														<label className="text-sm font-medium">Username</label>
 														<VSCodeTextField
-															value={currentSettings.watsonxUsername || ""}
+															value={
+																currentSettings.watsonxUsername
+																	? currentSettings.watsonxUsername
+																	: ""
+															}
 															onInput={(e: any) =>
 																updateSetting("watsonxUsername", e.target.value)
 															}

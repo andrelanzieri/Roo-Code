@@ -318,7 +318,7 @@ export const WatsonxAI = ({
 					</div>
 
 					<VSCodeTextField
-						value={apiConfiguration.watsonxUsername}
+						value={apiConfiguration.watsonxUsername ? apiConfiguration.watsonxUsername : ""}
 						onInput={handleInputChange("watsonxUsername")}
 						placeholder="Username"
 						className="w-full">
