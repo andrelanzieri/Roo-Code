@@ -29,8 +29,8 @@
 		"changesRejected": "Changes were rejected by the user."
 	},
 	"errors": {
-		"toolCallError": "Tool call error: {{toolName}}",
-		"toolExecutionError": "Tool execution error",
+		"toolCallError": "Tool Call Error: {{toolName}}",
+		"toolExecutionError": "Tool Execution Error",
 		"fileNotFound": "File Not Found",
 		"parseError": "Parse error",
 		"commandTimeout": "Command timeout",

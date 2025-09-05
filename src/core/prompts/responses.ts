@@ -16,8 +16,8 @@ export const formatResponse = {
 
 	toolError: (error?: string, toolName?: string) => {
 		const title = toolName
-			? t("tools:errors.toolCallError", { toolName, defaultValue: `Tool call error: ${toolName}` })
-			: t("tools:errors.toolExecutionError", { defaultValue: "Tool execution error" })
+			? t("tools:errors.toolCallError", { toolName, defaultValue: `Tool Call Error: ${toolName}` })
+			: t("tools:errors.toolExecutionError", { defaultValue: "Tool Execution Error" })
 		return `${title}\n<error>\n${error}\n</error>`
 	},
 
