@@ -300,6 +300,199 @@ pnpm test
 pnpm bundle
 ```
 
+## Verification Steps
+
+After completing the integration, follow these steps to verify that the tree-sitter parsers are working correctly:
+
+### 1. Verify WASM Files Are Built
+
+Check that the WASM files were successfully generated:
+
+```bash
+# Check for ABL WASM file
+ls -la deps/tree-sitter-abl/tree-sitter-abl.wasm
+
+# Check for DF WASM file
+ls -la deps/tree-sitter-df/tree-sitter-df.wasm
+
+# Files should exist and be non-zero size
+```
+
+### 2. Verify Build Process
+
+Ensure the WASM files are copied to the distribution directory:
+
+```bash
+# Build the project
+pnpm build
+
+# Check that WASM files are in dist
+ls -la src/dist/tree-sitter-*.wasm | grep -E "(abl|df)"
+
+# Should see:
+# tree-sitter-abl.wasm
+# tree-sitter-df.wasm
+```
+
+### 3. Test File Extension Recognition
+
+Create test files to verify extension handling:
+
+```bash
+# Create test ABL files
+echo "PROCEDURE test: END." > test.p
+echo "/* Include file */" > test.i
+echo "/* Window file */" > test.w
+echo "CLASS TestClass: END CLASS." > test.cls
+
+# Create test DF file
+echo "ADD TABLE \"Customer\"" > test.df
+
+# Run the extension and verify these files are recognized
+# Check the output panel for parsing activity
+```
+
+### 4. Verify Parser Loading
+
+Check the browser console when opening ABL/DF files in VSCode:
+
+1. Open VSCode Developer Tools: `Help > Toggle Developer Tools`
+2. Go to the Console tab
+3. Open an ABL or DF file
+4. Look for messages like:
+    - `Loading language parser for extension: .p`
+    - `Successfully loaded tree-sitter-abl.wasm`
+    - No error messages about missing WASM files
+
+### 5. Test Query Functionality
+
+Create a test ABL file with various constructs:
+
+```abl
+/* test-verification.p */
+PROCEDURE validateCustomer:
+    DEFINE INPUT PARAMETER custNum AS INTEGER NO-UNDO.
+    DEFINE VARIABLE isValid AS LOGICAL NO-UNDO.
+
+    isValid = custNum > 0.
+    RETURN isValid.
+END PROCEDURE.
+
+FUNCTION calculateDiscount RETURNS DECIMAL (INPUT orderTotal AS DECIMAL):
+    IF orderTotal > 1000 THEN
+        RETURN orderTotal * 0.1.
+    ELSE
+        RETURN 0.
+END FUNCTION.
+
+CLASS OrderProcessor:
+    METHOD PUBLIC VOID processOrder():
+        /* Processing logic */
+    END METHOD.
+END CLASS.
+```
+
+Then verify the parser captures these definitions:
+
+- The outline view should show: `validateCustomer`, `calculateDiscount`, `OrderProcessor`
+- Code navigation (Ctrl+Shift+O) should list all definitions
+- Go to Definition (F12) should work for these constructs
+
+### 6. Run Unit Tests
+
+Execute the specific tests for the new languages:
+
+```bash
+# Run ABL parser tests
+pnpm test -- parseSourceCodeDefinitions.abl
+
+# Run DF parser tests (if created)
+pnpm test -- parseSourceCodeDefinitions.df
+
+# All tests should pass
+```
+
+### 7. Verify CI/CD Pipeline
+
+Check that GitHub Actions handles the submodules correctly:
+
+```bash
+# Push changes to a test branch
+git checkout -b test-abl-df-integration
+git add .
+git commit -m "test: Verify ABL/DF integration"
+git push origin test-abl-df-integration
+
+# Check GitHub Actions:
+# - Workflow should checkout submodules
+# - WASM build step should succeed
+# - All tests should pass
+```
+
+### 8. Test with Real ABL/DF Files
+
+If you have actual ABL/DF files:
+
+1. Open them in VSCode with the extension
+2. Verify:
+    - Syntax highlighting works (if implemented)
+    - Code folding works at procedure/function boundaries
+    - Outline view shows correct structure
+    - Search functionality finds definitions
+    - No parsing errors in the output panel
+
+### 9. Performance Verification
+
+Check that the parsers perform adequately:
+
+```bash
+# Create a large test file
+for i in {1..100}; do
+    echo "PROCEDURE proc$i: END PROCEDURE." >> large-test.p
+done
+
+# Open the file and verify:
+# - File opens without significant delay
+# - Parsing completes within reasonable time
+# - No memory issues or crashes
+```
+
+### 10. Fallback Verification
+
+If you added extensions to fallback list, test that fallback works:
+
+1. Temporarily rename/remove the WASM file
+2. Open an ABL/DF file
+3. Verify the file still opens and basic chunking works
+4. Check console for fallback messages
+5. Restore the WASM file
+
+### Common Issues and Solutions
+
+| Issue               | Solution                                                         |
+| ------------------- | ---------------------------------------------------------------- |
+| WASM file not found | Ensure submodules are initialized: `git submodule update --init` |
+| Parser not loading  | Check file extension mapping in `languageParser.ts`              |
+| Queries not working | Verify query syntax matches the grammar's node types             |
+| Build failures      | Update tree-sitter CLI: `npm update -g tree-sitter-cli`          |
+| Tests failing       | Ensure test files use correct language identifier                |
+| CI/CD issues        | Verify `.github/workflows` includes submodule checkout           |
+
+### Verification Checklist
+
+- [ ] WASM files built successfully
+- [ ] WASM files copied to dist directory
+- [ ] File extensions recognized
+- [ ] Parser loads without errors
+- [ ] Queries capture expected definitions
+- [ ] Unit tests pass
+- [ ] CI/CD pipeline succeeds
+- [ ] Real files parse correctly
+- [ ] Performance is acceptable
+- [ ] Fallback mechanism works (if configured)
+
+If all verification steps pass, the tree-sitter integration is working correctly!
+
 ## Maintenance
 
 ### Updating Submodules
