@@ -1,9 +1,12 @@
 // npx vitest run src/components/chat/__tests__/ChatRow.spec.tsx
 
-import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import { render as rtlRender, screen, fireEvent, waitFor } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { ChatRowContent } from "../ChatRow"
 import type { ClineMessage } from "@roo-code/types"
+
+const render = (ui: any) => rtlRender(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>)
 
 // Mock the clipboard utility
 const mockCopyWithFeedback = vi.fn().mockResolvedValue(true)
