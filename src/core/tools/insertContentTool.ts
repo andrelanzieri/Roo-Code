@@ -91,7 +91,7 @@ export async function insertContentTool(
 				cline.recordToolError("insert_content")
 				const formattedError = `Cannot insert content at line ${lineNumber} into a non-existent file. For new files, 'line' must be 0 (to append) or 1 (to insert at the beginning).`
 				await cline.say("error", formattedError, undefined, undefined, undefined, undefined, {
-					title: t("tools:errors.invalidLineNumber"),
+					title: "Invalid Line Number",
 				})
 				pushToolResult(formattedError)
 				return
@@ -131,7 +131,7 @@ export async function insertContentTool(
 			// For existing files, generate diff and check for changes
 			diff = formatResponse.createPrettyPatch(relPath, fileContent, updatedContent)
 			if (!diff) {
-				pushToolResult(t("tools:noChanges", { path: relPath }))
+				pushToolResult(t("tools:generic.noChanges", { path: relPath }))
 				return
 			}
 			approvalContent = undefined
@@ -165,7 +165,7 @@ export async function insertContentTool(
 			if (!isPreventFocusDisruptionEnabled) {
 				await cline.diffViewProvider.revertChanges()
 			}
-			pushToolResult(t("tools:changesRejected"))
+			pushToolResult(t("tools:generic.changesRejected"))
 			await cline.diffViewProvider.reset()
 			return
 		}
