@@ -15,6 +15,9 @@ vi.mock("vscode", () => ({
 		Production: 2,
 		Test: 3,
 	},
+	env: {
+		sessionId: "test-session-id-12345",
+	},
 }))
 
 describe("ContextProxy", () => {
@@ -72,11 +75,21 @@ describe("ContextProxy", () => {
 		it("should initialize state cache with all global state keys", () => {
 			// +1 for the migration check of old nested settings
 			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 1)
+
+			// When sessionId is available, session-specific keys are used for non-shared keys
+			// In test environment with mocked sessionId, check for session-specific keys
+			const sharedKeys = ["listApiConfigMeta", "currentApiConfigName", "apiProvider"]
 			for (const key of GLOBAL_STATE_KEYS) {
-				expect(mockGlobalState.get).toHaveBeenCalledWith(key)
+				if (sharedKeys.includes(key)) {
+					expect(mockGlobalState.get).toHaveBeenCalledWith(key)
+				} else {
+					expect(mockGlobalState.get).toHaveBeenCalledWith(`session_test-session-id-12345_${key}`)
+				}
 			}
-			// Also check for migration call
-			expect(mockGlobalState.get).toHaveBeenCalledWith("openRouterImageGenerationSettings")
+			// Also check for migration call with session-specific key
+			expect(mockGlobalState.get).toHaveBeenCalledWith(
+				"session_test-session-id-12345_openRouterImageGenerationSettings",
+			)
 		})
 
 		it("should initialize secret cache with all secret keys", () => {
@@ -116,9 +129,9 @@ describe("ContextProxy", () => {
 			// Use a pass-through key (taskHistory)
 			const result = proxy.getGlobalState("taskHistory")
 
-			// Should get value directly from original context
+			// Should get value directly from original context with session-specific key (when sessionId is available)
 			expect(result).toBe("pass-through-value")
-			expect(mockGlobalState.get).toHaveBeenCalledWith("taskHistory")
+			expect(mockGlobalState.get).toHaveBeenCalledWith("session_test-session-id-12345_taskHistory")
 		})
 
 		it("should respect default values for pass-through state keys", async () => {
@@ -149,7 +162,7 @@ describe("ContextProxy", () => {
 		it("should update state directly in original context", async () => {
 			await proxy.updateGlobalState("apiProvider", "deepseek")
 
-			// Should have called original context
+			// Should have called original context (apiProvider is a shared key, no session prefix)
 			expect(mockGlobalState.update).toHaveBeenCalledWith("apiProvider", "deepseek")
 
 			// Should have stored the value in cache
@@ -172,16 +185,19 @@ describe("ContextProxy", () => {
 
 			await proxy.updateGlobalState("taskHistory", historyItems)
 
-			// Should update original context
-			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistory", historyItems)
+			// Should update original context with session-specific key (when sessionId is available)
+			expect(mockGlobalState.update).toHaveBeenCalledWith(
+				"session_test-session-id-12345_taskHistory",
+				historyItems,
+			)
 
 			// Setup mock for subsequent get
 			mockGlobalState.get.mockReturnValue(historyItems)
 
-			// Should get fresh value from original context
+			// Should get fresh value from original context with session-specific key (when sessionId is available)
 			const storedValue = proxy.getGlobalState("taskHistory")
 			expect(storedValue).toBe(historyItems)
-			expect(mockGlobalState.get).toHaveBeenCalledWith("taskHistory")
+			expect(mockGlobalState.get).toHaveBeenCalledWith("session_test-session-id-12345_taskHistory")
 		})
 	})
 
@@ -387,9 +403,17 @@ describe("ContextProxy", () => {
 			// Reset all state
 			await proxy.resetAllState()
 
-			// Should have called update with undefined for each key
+			// Should have called update with undefined for each key using session-specific keys (when sessionId is available)
+			const sharedKeys = ["listApiConfigMeta", "currentApiConfigName", "apiProvider"]
 			for (const key of GLOBAL_STATE_KEYS) {
-				expect(mockGlobalState.update).toHaveBeenCalledWith(key, undefined)
+				if (sharedKeys.includes(key)) {
+					expect(mockGlobalState.update).toHaveBeenCalledWith(key, undefined)
+				} else {
+					expect(mockGlobalState.update).toHaveBeenCalledWith(
+						`session_test-session-id-12345_${key}`,
+						undefined,
+					)
+				}
 			}
 
 			// Total calls should include initial setup + reset operations

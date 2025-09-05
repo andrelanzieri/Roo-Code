@@ -36,6 +36,7 @@ const globalSettingsExportSchema = globalSettingsSchema.omit({
 
 export class ContextProxy {
 	private readonly originalContext: vscode.ExtensionContext
+	private readonly sessionId: string
 
 	private stateCache: GlobalState
 	private secretCache: SecretState
@@ -43,6 +44,10 @@ export class ContextProxy {
 
 	constructor(context: vscode.ExtensionContext) {
 		this.originalContext = context
+		// Use sessionId to isolate state between multiple VSCode windows
+		// This ensures each window maintains its own independent state
+		// Fallback to empty string if sessionId is not available (e.g., in tests)
+		this.sessionId = vscode.env.sessionId || ""
 		this.stateCache = {}
 		this.secretCache = {}
 		this._isInitialized = false
@@ -55,8 +60,9 @@ export class ContextProxy {
 	public async initialize() {
 		for (const key of GLOBAL_STATE_KEYS) {
 			try {
-				// Revert to original assignment
-				this.stateCache[key] = this.originalContext.globalState.get(key)
+				// Use session-specific key for state isolation
+				const sessionKey = this.getSessionKey(key)
+				this.stateCache[key] = this.originalContext.globalState.get(sessionKey)
 			} catch (error) {
 				logger.error(`Error loading global ${key}: ${error instanceof Error ? error.message : String(error)}`)
 			}
@@ -92,12 +98,37 @@ export class ContextProxy {
 	}
 
 	/**
+	 * Creates a session-specific key by combining the base key with the session ID.
+	 * This ensures state isolation between multiple VSCode windows.
+	 *
+	 * @param key The base state key
+	 * @returns The session-specific key
+	 */
+	private getSessionKey(key: string): string {
+		// For certain keys that should be shared across sessions (like API configs),
+		// we don't add the session prefix
+		const sharedKeys = ["listApiConfigMeta", "currentApiConfigName", "apiProvider"]
+		if (sharedKeys.includes(key)) {
+			return key
+		}
+
+		// If no sessionId is available (e.g., in tests), use the key as-is
+		if (!this.sessionId) {
+			return key
+		}
+
+		// For all other keys, add session prefix to isolate state
+		return `session_${this.sessionId}_${key}`
+	}
+
+	/**
 	 * Migrates old nested openRouterImageGenerationSettings to the new flattened structure
 	 */
 	private async migrateImageGenerationSettings() {
 		try {
-			// Check if there's an old nested structure
-			const oldNestedSettings = this.originalContext.globalState.get<any>("openRouterImageGenerationSettings")
+			// Check if there's an old nested structure (use session-specific key)
+			const sessionKey = this.getSessionKey("openRouterImageGenerationSettings")
+			const oldNestedSettings = this.originalContext.globalState.get<any>(sessionKey)
 
 			if (oldNestedSettings && typeof oldNestedSettings === "object") {
 				logger.info("Migrating old nested image generation settings to flattened structure")
@@ -114,16 +145,14 @@ export class ContextProxy {
 
 				// Migrate the selected model if it exists and we don't already have one
 				if (oldNestedSettings.selectedModel && !this.stateCache.openRouterImageGenerationSelectedModel) {
-					await this.originalContext.globalState.update(
-						"openRouterImageGenerationSelectedModel",
-						oldNestedSettings.selectedModel,
-					)
+					const modelSessionKey = this.getSessionKey("openRouterImageGenerationSelectedModel")
+					await this.originalContext.globalState.update(modelSessionKey, oldNestedSettings.selectedModel)
 					this.stateCache.openRouterImageGenerationSelectedModel = oldNestedSettings.selectedModel
 					logger.info("Migrated openRouterImageGenerationSelectedModel to global state")
 				}
 
 				// Clean up the old nested structure
-				await this.originalContext.globalState.update("openRouterImageGenerationSettings", undefined)
+				await this.originalContext.globalState.update(sessionKey, undefined)
 				logger.info("Removed old nested openRouterImageGenerationSettings")
 			}
 		} catch (error) {
@@ -166,7 +195,9 @@ export class ContextProxy {
 	getGlobalState<K extends GlobalStateKey>(key: K, defaultValue: GlobalState[K]): GlobalState[K]
 	getGlobalState<K extends GlobalStateKey>(key: K, defaultValue?: GlobalState[K]): GlobalState[K] {
 		if (isPassThroughStateKey(key)) {
-			const value = this.originalContext.globalState.get<GlobalState[K]>(key)
+			// Use session-specific key for pass-through state as well
+			const sessionKey = this.getSessionKey(key)
+			const value = this.originalContext.globalState.get<GlobalState[K]>(sessionKey)
 			return value === undefined || value === null ? defaultValue : value
 		}
 
@@ -175,12 +206,14 @@ export class ContextProxy {
 	}
 
 	updateGlobalState<K extends GlobalStateKey>(key: K, value: GlobalState[K]) {
+		const sessionKey = this.getSessionKey(key)
+
 		if (isPassThroughStateKey(key)) {
-			return this.originalContext.globalState.update(key, value)
+			return this.originalContext.globalState.update(sessionKey, value)
 		}
 
 		this.stateCache[key] = value
-		return this.originalContext.globalState.update(key, value)
+		return this.originalContext.globalState.update(sessionKey, value)
 	}
 
 	private getAllGlobalState(): GlobalState {
@@ -362,7 +395,10 @@ export class ContextProxy {
 		this.secretCache = {}
 
 		await Promise.all([
-			...GLOBAL_STATE_KEYS.map((key) => this.originalContext.globalState.update(key, undefined)),
+			...GLOBAL_STATE_KEYS.map((key) => {
+				const sessionKey = this.getSessionKey(key)
+				return this.originalContext.globalState.update(sessionKey, undefined)
+			}),
 			...SECRET_STATE_KEYS.map((key) => this.originalContext.secrets.delete(key)),
 			...GLOBAL_SECRET_KEYS.map((key) => this.originalContext.secrets.delete(key)),
 		])
