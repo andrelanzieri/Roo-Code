@@ -83,20 +83,43 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		 * This ensures we stay under the 4-block limit while maintaining effective caching
 		 * for the most relevant context.
 		 */
-		const params: Anthropic.Messages.MessageCreateParamsStreaming = {
+		// Build params with optional prompt caching
+		const buildParams = (enableCache: boolean): Anthropic.Messages.MessageCreateParamsStreaming => ({
 			model: id,
 			max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
 			temperature,
 			thinking,
-			// Cache the system prompt if caching is enabled.
-			system: supportsPromptCache
+			system: enableCache
 				? [{ text: systemPrompt, type: "text" as const, cache_control: { type: "ephemeral" } }]
 				: systemPrompt,
-			messages: supportsPromptCache ? addCacheBreakpoints(messages) : messages,
+			messages: enableCache ? addCacheBreakpoints(messages) : messages,
 			stream: true,
-		}
+		})
 
-		const stream = await this.client.messages.create(params)
+		// Some environments (notably certain Vertex setups) have started throwing
+		// TypeError("'path' argument must be of type string. Received an instance of Array")
+		// when the SDK receives array-form system/content blocks. As a safe fallback,
+		// retry without prompt caching if we detect this error.
+		const isPathArrayError = (err: unknown) =>
+			typeof (err as any)?.message === "string" &&
+			(err as any).message.includes("'path'") &&
+			(err as any).message.includes("type string") &&
+			(err as any).message.includes("Array")
+
+		let stream: AsyncIterable<any>
+		try {
+			stream = await this.client.messages.create(buildParams(!!supportsPromptCache))
+		} catch (err) {
+			if (supportsPromptCache && isPathArrayError(err)) {
+				console.warn(
+					"Roo Code <Vertex/Anthropic>: Retry without prompt caching due to path/Array error:",
+					(err as any).message,
+				)
+				stream = await this.client.messages.create(buildParams(false))
+			} else {
+				throw err
+			}
+		}
 
 		for await (const chunk of stream) {
 			switch (chunk.type) {
@@ -185,7 +208,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 				reasoning: thinking,
 			} = this.getModel()
 
-			const params: Anthropic.Messages.MessageCreateParamsNonStreaming = {
+			const buildParams = (enableCache: boolean): Anthropic.Messages.MessageCreateParamsNonStreaming => ({
 				model: id,
 				max_tokens: maxTokens,
 				temperature,
@@ -193,27 +216,44 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 				messages: [
 					{
 						role: "user",
-						content: supportsPromptCache
+						content: enableCache
 							? [{ type: "text" as const, text: prompt, cache_control: { type: "ephemeral" } }]
 							: prompt,
 					},
 				],
 				stream: false,
+			})
+
+			const isPathArrayError = (err: unknown) =>
+				typeof (err as any)?.message === "string" &&
+				(err as any).message.includes("'path'") &&
+				(err as any).message.includes("type string") &&
+				(err as any).message.includes("Array")
+
+			let response: Anthropic.Messages.Message
+			try {
+				response = await this.client.messages.create(buildParams(!!supportsPromptCache))
+			} catch (err) {
+				if (supportsPromptCache && isPathArrayError(err)) {
+					console.warn(
+						"Roo Code <Vertex/Anthropic>: Non-streaming retry without prompt caching due to path/Array error:",
+						(err as any).message,
+					)
+					response = await this.client.messages.create(buildParams(false))
+				} else {
+					throw err
+				}
 			}
 
-			const response = await this.client.messages.create(params)
 			const content = response.content[0]
-
 			if (content.type === "text") {
 				return content.text
 			}
-
 			return ""
 		} catch (error) {
 			if (error instanceof Error) {
 				throw new Error(`Vertex completion error: ${error.message}`)
 			}
-
 			throw error
 		}
 	}
