@@ -45,7 +45,10 @@ export async function attemptCompletionTool(
 		cline.recordToolError("attempt_completion")
 
 		pushToolResult(
-			formatResponse.toolError(t("tools:attemptCompletion.errors.incompleteTodos"), "attempt_completion"),
+			formatResponse.toolError(
+				"Cannot complete task while there are incomplete todos. Please complete all todos before attempting completion.",
+				"attempt_completion",
+			),
 		)
 
 		return

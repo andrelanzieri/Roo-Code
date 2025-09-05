@@ -175,7 +175,7 @@ export async function executeCommand(
 	try {
 		await fs.access(workingDir)
 	} catch (error) {
-		return [false, t("tools:executeCommand.workingDirMissing", { workingDir })]
+		return [false, `Working directory '${workingDir}' does not exist.`]
 	}
 
 	let message: { text?: string; images?: string[] } | undefined
