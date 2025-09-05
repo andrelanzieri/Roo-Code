@@ -75,12 +75,13 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		 * 1. Maximum of 4 blocks can have cache_control
 		 * 2. Only text blocks can be cached (images and other content types cannot)
 		 * 3. Cache control can only be applied to user messages, not assistant messages
+		 * 4. System prompt must remain as a plain string - Vertex SDK does not support array format
 		 *
 		 * Our caching strategy:
-		 * - Cache the system prompt (1 block)
+		 * - System prompt cannot be cached directly (must remain as plain string)
 		 * - Cache the last text block of the second-to-last user message (1 block)
 		 * - Cache the last text block of the last user message (1 block)
-		 * This ensures we stay under the 4-block limit while maintaining effective caching
+		 * This ensures compatibility with Vertex SDK while maintaining effective caching
 		 * for the most relevant context.
 		 */
 		const params: Anthropic.Messages.MessageCreateParamsStreaming = {
@@ -88,10 +89,8 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
 			temperature,
 			thinking,
-			// Cache the system prompt if caching is enabled.
-			system: supportsPromptCache
-				? [{ text: systemPrompt, type: "text" as const, cache_control: { type: "ephemeral" } }]
-				: systemPrompt,
+			// System must remain as plain string for Vertex SDK compatibility
+			system: systemPrompt,
 			messages: supportsPromptCache ? addCacheBreakpoints(messages) : messages,
 			stream: true,
 		}

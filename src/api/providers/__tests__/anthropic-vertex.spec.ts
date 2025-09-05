@@ -163,13 +163,7 @@ describe("VertexHandler", () => {
 				model: "claude-3-5-sonnet-v2@20241022",
 				max_tokens: 8192,
 				temperature: 0,
-				system: [
-					{
-						type: "text",
-						text: "You are a helpful assistant",
-						cache_control: { type: "ephemeral" },
-					},
-				],
+				system: "You are a helpful assistant", // System remains as plain string
 				messages: [
 					{
 						role: "user",
@@ -364,16 +358,10 @@ describe("VertexHandler", () => {
 			expect(textChunks[0].text).toBe("Hello")
 			expect(textChunks[1].text).toBe(" world!")
 
-			// Verify cache control was added correctly
+			// Verify cache control was added correctly - system remains string, only messages have cache_control
 			expect(mockCreate).toHaveBeenCalledWith(
 				expect.objectContaining({
-					system: [
-						{
-							type: "text",
-							text: "You are a helpful assistant",
-							cache_control: { type: "ephemeral" },
-						},
-					],
+					system: "You are a helpful assistant", // System remains as plain string
 					messages: [
 						expect.objectContaining({
 							role: "user",
