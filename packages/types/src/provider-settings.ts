@@ -34,6 +34,7 @@ import {
 export const providerNames = [
 	"anthropic",
 	"claude-code",
+	"cometapi",
 	"glama",
 	"openrouter",
 	"bedrock",
@@ -336,6 +337,12 @@ const vercelAiGatewaySchema = baseProviderSettingsSchema.extend({
 	vercelAiGatewayModelId: z.string().optional(),
 })
 
+const cometApiSchema = baseProviderSettingsSchema.extend({
+	cometApiBaseUrl: z.string().optional(),
+	cometApiApiKey: z.string().optional(),
+	cometApiModelId: z.string().optional(),
+})
+
 const defaultSchema = z.object({
 	apiProvider: z.undefined(),
 })
@@ -343,6 +350,7 @@ const defaultSchema = z.object({
 export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProvider", [
 	anthropicSchema.merge(z.object({ apiProvider: z.literal("anthropic") })),
 	claudeCodeSchema.merge(z.object({ apiProvider: z.literal("claude-code") })),
+	cometApiSchema.merge(z.object({ apiProvider: z.literal("cometapi") })),
 	glamaSchema.merge(z.object({ apiProvider: z.literal("glama") })),
 	openRouterSchema.merge(z.object({ apiProvider: z.literal("openrouter") })),
 	bedrockSchema.merge(z.object({ apiProvider: z.literal("bedrock") })),
@@ -384,6 +392,7 @@ export const providerSettingsSchema = z.object({
 	apiProvider: providerNamesSchema.optional(),
 	...anthropicSchema.shape,
 	...claudeCodeSchema.shape,
+	...cometApiSchema.shape,
 	...glamaSchema.shape,
 	...openRouterSchema.shape,
 	...bedrockSchema.shape,
@@ -418,6 +427,7 @@ export const providerSettingsSchema = z.object({
 	...qwenCodeSchema.shape,
 	...rooSchema.shape,
 	...vercelAiGatewaySchema.shape,
+	...cometApiSchema.shape,
 	...codebaseIndexProviderSchema.shape,
 })
 
@@ -448,6 +458,7 @@ export const MODEL_ID_KEYS: Partial<keyof ProviderSettings>[] = [
 	"ioIntelligenceModelId",
 	"vercelAiGatewayModelId",
 	"deepInfraModelId",
+	"cometApiModelId",
 ]
 
 export const getModelId = (settings: ProviderSettings): string | undefined => {
@@ -571,6 +582,7 @@ export const MODELS_BY_PROVIDER: Record<
 	unbound: { id: "unbound", label: "Unbound", models: [] },
 	deepinfra: { id: "deepinfra", label: "DeepInfra", models: [] },
 	"vercel-ai-gateway": { id: "vercel-ai-gateway", label: "Vercel AI Gateway", models: [] },
+	cometapi: { id: "cometapi", label: "CometAPI", models: [] },
 }
 
 export const dynamicProviders = [
@@ -582,6 +594,7 @@ export const dynamicProviders = [
 	"unbound",
 	"deepinfra",
 	"vercel-ai-gateway",
+	"cometapi",
 ] as const satisfies readonly ProviderName[]
 
 export type DynamicProvider = (typeof dynamicProviders)[number]
