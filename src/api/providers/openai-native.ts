@@ -207,7 +207,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		)
 
 		// Make the request
-		yield* this.executeRequest(requestBody, model, metadata)
+		yield* this.executeRequest(requestBody, model, metadata, systemPrompt, messages)
 	}
 
 	private buildRequestBody(
@@ -276,6 +276,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		requestBody: any,
 		model: OpenAiNativeModel,
 		metadata?: ApiHandlerCreateMessageMetadata,
+		systemPrompt?: string,
+		messages?: Anthropic.Messages.MessageParam[],
 	): ApiStream {
 		try {
 			// Use the official SDK
@@ -297,17 +299,24 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			const errorMessage = sdkErr?.message || sdkErr?.error?.message || ""
 			const is400Error = sdkErr?.status === 400 || sdkErr?.response?.status === 400
 			const isPreviousResponseError =
-				errorMessage.includes("Previous response") || errorMessage.includes("not found")
+				errorMessage.includes("Previous response") ||
+				errorMessage.includes("not found") ||
+				errorMessage.includes("previous_response_id")
 
 			if (is400Error && requestBody.previous_response_id && isPreviousResponseError) {
-				// Log the error and retry without the previous_response_id
-
-				// Remove the problematic previous_response_id and retry
-				const retryRequestBody = { ...requestBody }
-				delete retryRequestBody.previous_response_id
-
 				// Clear the stored lastResponseId to prevent using it again
 				this.lastResponseId = undefined
+
+				// Re-prepare the request body with full conversation (no previous_response_id)
+				let retryRequestBody = { ...requestBody }
+				delete retryRequestBody.previous_response_id
+
+				// Re-prepare the input to send full conversation if we have the necessary data
+				if (systemPrompt && messages) {
+					// Re-prepare input without previous_response_id (will send full conversation)
+					const { formattedInput } = this.prepareStructuredInput(systemPrompt, messages, undefined)
+					retryRequestBody.input = formattedInput
+				}
 
 				try {
 					// Retry with the SDK
@@ -317,7 +326,13 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 					if (typeof (retryStream as any)[Symbol.asyncIterator] !== "function") {
 						// If SDK fails, fall back to SSE
-						yield* this.makeGpt5ResponsesAPIRequest(retryRequestBody, model, metadata)
+						yield* this.makeGpt5ResponsesAPIRequest(
+							retryRequestBody,
+							model,
+							metadata,
+							systemPrompt,
+							messages,
+						)
 						return
 					}
 
@@ -329,13 +344,13 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					return
 				} catch (retryErr) {
 					// If retry also fails, fall back to SSE
-					yield* this.makeGpt5ResponsesAPIRequest(retryRequestBody, model, metadata)
+					yield* this.makeGpt5ResponsesAPIRequest(retryRequestBody, model, metadata, systemPrompt, messages)
 					return
 				}
 			}
 
 			// For other errors, fallback to manual SSE via fetch
-			yield* this.makeGpt5ResponsesAPIRequest(requestBody, model, metadata)
+			yield* this.makeGpt5ResponsesAPIRequest(requestBody, model, metadata, systemPrompt, messages)
 		}
 	}
 
@@ -424,6 +439,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		requestBody: any,
 		model: OpenAiNativeModel,
 		metadata?: ApiHandlerCreateMessageMetadata,
+		systemPrompt?: string,
+		messages?: Anthropic.Messages.MessageParam[],
 	): ApiStream {
 		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
 		const baseUrl = this.options.openAiNativeBaseUrl || "https://api.openai.com"
@@ -463,19 +480,31 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 				// Check if this is a 400 error about previous_response_id not found
 				const isPreviousResponseError =
-					errorDetails.includes("Previous response") || errorDetails.includes("not found")
+					errorDetails.includes("Previous response") ||
+					errorDetails.includes("not found") ||
+					errorDetails.includes("previous_response_id")
 
 				if (response.status === 400 && requestBody.previous_response_id && isPreviousResponseError) {
 					// Log the error and retry without the previous_response_id
-
-					// Remove the problematic previous_response_id and retry
-					const retryRequestBody = { ...requestBody }
-					delete retryRequestBody.previous_response_id
 
 					// Clear the stored lastResponseId to prevent using it again
 					this.lastResponseId = undefined
 					// Resolve the promise once to unblock any waiting requests
 					this.resolveResponseId(undefined)
+
+					// Re-prepare the input without previous_response_id to send the full conversation
+					let retryRequestBody = { ...requestBody }
+					delete retryRequestBody.previous_response_id
+
+					// If we have systemPrompt and messages, re-prepare the input to send full conversation
+					if (systemPrompt && messages) {
+						// Re-prepare input without previous_response_id (will send full conversation)
+						// Note: We pass undefined metadata to prepareStructuredInput to ensure it doesn't use previousResponseId
+						const { formattedInput } = this.prepareStructuredInput(systemPrompt, messages, undefined)
+
+						// Update the input in the retry request body to include full conversation
+						retryRequestBody.input = formattedInput
+					}
 
 					// Retry the request without the previous_response_id
 					const retryResponse = await fetch(url, {

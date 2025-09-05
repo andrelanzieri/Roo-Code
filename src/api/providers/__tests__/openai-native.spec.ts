@@ -859,6 +859,119 @@ describe("OpenAiNativeHandler", () => {
 			expect(secondCallBody.previous_response_id).toBe("resp_789")
 		})
 
+		it("should retry with full conversation when previous_response_id fails", async () => {
+			// Mock fetch for Responses API
+			const mockFetch = vitest
+				.fn()
+				.mockResolvedValueOnce({
+					// First call fails with invalid previous_response_id error
+					ok: false,
+					status: 400,
+					statusText: "Bad Request",
+					text: async () =>
+						JSON.stringify({
+							error: {
+								message: "Invalid previous_response_id: resp_old",
+								code: "invalid_previous_response_id",
+							},
+						}),
+				})
+				.mockResolvedValueOnce({
+					// Second call (retry) succeeds
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode(
+									'data: {"type":"response.output_item.added","item":{"type":"text","text":"Retry successful"}}\n\n',
+								),
+							)
+							controller.enqueue(
+								new TextEncoder().encode(
+									'data: {"type":"response.done","response":{"id":"resp_new","usage":{"prompt_tokens":100,"completion_tokens":2}}}\n\n',
+								),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+			global.fetch = mockFetch as any
+
+			// Mock SDK to fail
+			mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+			handler = new OpenAiNativeHandler({
+				...mockOptions,
+				apiModelId: "gpt-5-2025-08-07",
+			})
+
+			// Set up conversation with multiple messages
+			const conversationMessages: Anthropic.Messages.MessageParam[] = [
+				{ role: "user", content: "First message" },
+				{ role: "assistant", content: "First response" },
+				{ role: "user", content: "Second message" },
+				{ role: "assistant", content: "Second response" },
+				{ role: "user", content: "Latest message" },
+			]
+
+			// Try to create message with a previous_response_id that will fail
+			const stream = handler.createMessage(systemPrompt, conversationMessages, {
+				taskId: "test-task",
+				previousResponseId: "resp_old",
+			})
+
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Should have retried successfully
+			const textChunks = chunks.filter((c) => c.type === "text")
+			expect(textChunks).toHaveLength(1)
+			expect(textChunks[0].text).toBe("Retry successful")
+
+			// Verify two fetch calls were made
+			expect(mockFetch).toHaveBeenCalledTimes(2)
+
+			// First call should have previous_response_id and only latest message
+			const firstCallBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+			expect(firstCallBody.previous_response_id).toBe("resp_old")
+			expect(firstCallBody.input).toEqual([
+				{
+					role: "user",
+					content: [{ type: "input_text", text: "Latest message" }],
+				},
+			])
+
+			// Second call (retry) should NOT have previous_response_id and should have FULL conversation
+			const secondCallBody = JSON.parse(mockFetch.mock.calls[1][1].body)
+			expect(secondCallBody.previous_response_id).toBeUndefined()
+			expect(secondCallBody.instructions).toBe(systemPrompt)
+			expect(secondCallBody.input).toEqual([
+				{
+					role: "user",
+					content: [{ type: "input_text", text: "First message" }],
+				},
+				{
+					role: "assistant",
+					content: [{ type: "output_text", text: "First response" }],
+				},
+				{
+					role: "user",
+					content: [{ type: "input_text", text: "Second message" }],
+				},
+				{
+					role: "assistant",
+					content: [{ type: "output_text", text: "Second response" }],
+				},
+				{
+					role: "user",
+					content: [{ type: "input_text", text: "Latest message" }],
+				},
+			])
+		})
+
 		it("should only send latest message when using previous_response_id", async () => {
 			// Mock fetch for Responses API
 			const mockFetch = vitest
