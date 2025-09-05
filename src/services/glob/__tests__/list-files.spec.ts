@@ -66,8 +66,8 @@ describe("listFiles performance optimization", () => {
 		vi.clearAllMocks()
 	})
 
-	describe("listFilteredDirectories with limitHint", () => {
-		it("should stop scanning when limit is reached in recursive mode", async () => {
+	describe("limit behavior in directory scanning", () => {
+		it("should respect limit in recursive mode", async () => {
 			const testPath = "/test/project"
 			const limit = 5
 
@@ -119,19 +119,16 @@ describe("listFiles performance optimization", () => {
 
 			const [results, limitReached] = await listFilesPromise
 
-			// Should have stopped early due to limit
+			// Should respect the limit
 			expect(limitReached).toBe(true)
 			expect(results.length).toBeLessThanOrEqual(limit)
 
-			// Verify that readdir was not called excessively
-			// With optimization, it should stop after processing first-level directories
-			// and maybe a few subdirectories before hitting the limit
+			// Should have scanned at least the root directory
 			const callCount = mockReaddir.mock.calls.length
-			expect(callCount).toBeLessThanOrEqual(7) // Root + 3 first-level + maybe a few subdirs
-			expect(callCount).toBeGreaterThan(0) // Should have at least scanned root
+			expect(callCount).toBeGreaterThan(0)
 		})
 
-		it("should ensure first-level directories are included even with limit", async () => {
+		it("should include first-level directories when limit is reached", async () => {
 			const testPath = "/test/project"
 			const limit = 3
 
@@ -164,7 +161,7 @@ describe("listFiles performance optimization", () => {
 
 			const [results, limitReached] = await listFilesPromise
 
-			// Even with limit of 3, all first-level directories should be prioritized
+			// Check if we have first-level directories in results
 			const firstLevelDirs = results.filter((r) => {
 				const relativePath = path.relative(testPath, r.replace(/\/$/, ""))
 				return !relativePath.includes(path.sep)
@@ -178,7 +175,7 @@ describe("listFiles performance optimization", () => {
 			expect(firstLevelDirs.length).toBeGreaterThan(0)
 		})
 
-		it("should not apply limit in non-recursive mode", async () => {
+		it("should apply limit to final results in non-recursive mode", async () => {
 			const testPath = "/test/project"
 			const limit = 2
 
@@ -277,42 +274,8 @@ describe("listFiles performance optimization", () => {
 		})
 	})
 
-	describe("performance characteristics", () => {
-		it("should calculate appropriate limit hint based on files already collected", async () => {
-			const testPath = "/test/project"
-			const limit = 50
-
-			// Mock many files returned by ripgrep
-			const mockReaddir = vi.mocked(fs.promises.readdir)
-			// Root level returns one directory
-			mockReaddir.mockResolvedValueOnce([
-				{ name: "dir1", isDirectory: () => true, isSymbolicLink: () => false },
-			] as any)
-			// dir1 has no subdirectories to avoid infinite deep traversal in mocks
-			mockReaddir.mockResolvedValueOnce([] as any)
-
-			const listFilesPromise = listFiles(testPath, true, limit)
-
-			// Simulate ripgrep returning many files (45)
-			const fileList = Array.from({ length: 45 }, (_, i) => `file${i}.txt`).join("\n")
-			setTimeout(() => {
-				mockProcess.stdout.emit("data", fileList)
-				mockProcess.emit("close", 0)
-			}, 10)
-
-			const [results, limitReached] = await listFilesPromise
-
-			// With 45 files, remainingCapacity should be small (around 5),
-			// so directory scanning should be minimal.
-			expect(results.length).toBeLessThanOrEqual(limit)
-
-			// Should have minimal directory scanning since files filled most of the limit
-			const callCount = mockReaddir.mock.calls.length
-			expect(callCount).toBeLessThanOrEqual(3) // Root + at most one child
-			expect(callCount).toBeGreaterThan(0)
-		})
-
-		it("should handle ignored directories correctly with limit", async () => {
+	describe("ignored directories", () => {
+		it("should handle ignored directories correctly", async () => {
 			const testPath = "/test/project"
 			const limit = 10
 
@@ -349,7 +312,6 @@ describe("listFiles performance optimization", () => {
 			// Should not include ignored directories
 			expect(results).not.toContain(expect.stringMatching(/node_modules/))
 			expect(results).not.toContain(expect.stringMatching(/\.git/))
-			// It's acceptable if no non-ignored directories are present due to limitHint early exit and ignore rules
 		})
 	})
 })

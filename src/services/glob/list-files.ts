@@ -50,7 +50,6 @@ export async function listFiles(dirPath: string, recursive: boolean, limit: numb
 		// For non-recursive, use the existing approach
 		const files = await listFilesWithRipgrep(rgPath, dirPath, false, limit)
 		const ignoreInstance = await createIgnoreInstance(dirPath)
-		// Pass limit hint to avoid unnecessary directory scanning
 		const directories = await listFilteredDirectories(dirPath, false, ignoreInstance, limit)
 		return formatAndCombineResults(files, directories, limit)
 	}
@@ -58,10 +57,7 @@ export async function listFiles(dirPath: string, recursive: boolean, limit: numb
 	// For recursive mode, use the original approach but ensure first-level directories are included
 	const files = await listFilesWithRipgrep(rgPath, dirPath, true, limit)
 	const ignoreInstance = await createIgnoreInstance(dirPath)
-	// Calculate limit hint: account for files already collected.
-	// Always allow at least 1 to ensure we still process the first level completely (the function prioritizes first level).
-	const remainingCapacity = Math.max(1, limit - files.length)
-	const directories = await listFilteredDirectories(dirPath, true, ignoreInstance, remainingCapacity)
+	const directories = await listFilteredDirectories(dirPath, true, ignoreInstance, limit)
 
 	// Combine and check if we hit the limit
 	const [results, limitReached] = formatAndCombineResults(files, directories, limit)
@@ -383,13 +379,13 @@ async function findGitignoreFiles(startPath: string): Promise<string[]> {
 
 /**
  * List directories with appropriate filtering
- * @param limitHint - Optional hint for early termination when enough directories are collected
+ * @param limit - Maximum number of results to guide early termination
  */
 async function listFilteredDirectories(
 	dirPath: string,
 	recursive: boolean,
 	ignoreInstance: ReturnType<typeof ignore>,
-	limitHint?: number,
+	limit: number,
 ): Promise<string[]> {
 	const absolutePath = path.resolve(dirPath)
 	const directories: string[] = []
@@ -416,24 +412,11 @@ async function listFilteredDirectories(
 	const queue: QueueItem[] = [{ path: absolutePath, context: initialContext }]
 	let head = 0
 
-	// Track first-level directories separately to ensure they're prioritized
-	const firstLevelDirs: string[] = []
-	const baseLevelDepth = absolutePath.split(path.sep).filter((p) => p.length > 0).length
-
 	while (head < queue.length) {
-		// Early termination based on limit hint, preserving first-level visibility semantics
-		if (limitHint && directories.length >= limitHint) {
-			let hasFirstLevelInQueue = false
-			for (let i = head; i < queue.length; i++) {
-				const depth = queue[i].path.split(path.sep).filter((p) => p.length > 0).length
-				if (depth === baseLevelDepth) {
-					hasFirstLevelInQueue = true
-					break
-				}
-			}
-			if (!hasFirstLevelInQueue && firstLevelDirs.length > 0) {
-				break
-			}
+		// Simple early termination: stop scanning if we've already collected enough directories
+		// This prevents excessive scanning in large codebases while keeping the logic simple
+		if (directories.length >= limit * 2) {
+			break
 		}
 
 		const item = queue[head++]
@@ -463,15 +446,6 @@ async function listFilteredDirectories(
 						// Add the directory to our results (with trailing slash)
 						// fullDirPath is already absolute since it's built with path.join from absolutePath
 						const formattedPath = fullDirPath.endsWith("/") ? fullDirPath : `${fullDirPath}/`
-
-						// Determine if this is a first-level directory
-						const currentDepth = fullDirPath.split(path.sep).filter((p) => p.length > 0).length
-						const isFirstLevel = currentDepth === baseLevelDepth + 1
-
-						if (isFirstLevel) {
-							firstLevelDirs.push(formattedPath)
-						}
-
 						directories.push(formattedPath)
 					}
 
@@ -500,15 +474,6 @@ async function listFilteredDirectories(
 							!context.insideExplicitHiddenTarget
 						)
 					if (shouldRecurse) {
-						// Respect limit hint: only continue recursing for first-level when limit reached
-						if (limitHint && directories.length >= limitHint) {
-							const currentDepth = fullDirPath.split(path.sep).filter((p) => p.length > 0).length
-							const isFirstLevel = currentDepth === baseLevelDepth + 1
-							if (!isFirstLevel) {
-								continue
-							}
-						}
-
 						// If we're entering a hidden directory that's the target, or we're already inside one,
 						// mark that we're inside an explicitly targeted hidden directory
 						const newInsideExplicitHiddenTarget =
