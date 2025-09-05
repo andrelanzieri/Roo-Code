@@ -1,7 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { cometApiDefaultModelId, cometApiDefaultModelInfo, COMETAPI_MODELS } from "@roo-code/types"
+import { cometApiDefaultModelId, cometApiDefaultModelInfo } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 import { calculateApiCostOpenAI } from "../../shared/cost"
@@ -34,18 +34,11 @@ export class CometAPIHandler extends RouterProvider implements SingleCompletionH
 	}
 
 	public override async fetchModel() {
-		// Try to fetch models from API, fallback to static models if API is unavailable
-		try {
-			this.models = await getModels({
-				provider: this.name,
-				apiKey: this.client.apiKey,
-				baseUrl: this.client.baseURL,
-			})
-		} catch (error) {
-			// Fallback to static models if API is unavailable
-			console.warn("Failed to fetch CometAPI models, using fallback models:", error)
-			this.models = COMETAPI_MODELS
-		}
+		this.models = await getModels({
+			provider: this.name,
+			apiKey: this.apiKey,
+			baseUrl: this.baseURL,
+		})
 		return this.getModel()
 	}
 

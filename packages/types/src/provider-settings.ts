@@ -427,7 +427,6 @@ export const providerSettingsSchema = z.object({
 	...qwenCodeSchema.shape,
 	...rooSchema.shape,
 	...vercelAiGatewaySchema.shape,
-	...cometApiSchema.shape,
 	...codebaseIndexProviderSchema.shape,
 })
 
