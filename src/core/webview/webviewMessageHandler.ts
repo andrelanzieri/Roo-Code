@@ -2266,7 +2266,7 @@ export const webviewMessageHandler = async (
 					await provider.postStateToWebview()
 					provider.postMessageToWebview({
 						type: "authenticatedUser",
-						userInfo: CloudService.instance.getUserInfo(),
+						userInfo: CloudService.instance.getUserInfo() || undefined,
 					})
 				} catch (error) {
 					provider.log(
