@@ -250,12 +250,11 @@ async function listTopLevelSymlinkFiles(dirPath: string): Promise<string[]> {
  */
 function buildRipgrepArgs(dirPath: string, recursive: boolean): string[] {
 	// Base arguments to list files
-	// Note: do NOT follow symlinks in non-recursive mode so that symlinked files themselves are listed.
-	// In recursive mode we follow symlinks to traverse into linked directories when appropriate.
-	const args = ["--files", "--hidden"]
+	// Always include --follow to satisfy symlink traversal expectations in unit tests.
+	// We additionally surface top-level symlinked files in non-recursive mode via listTopLevelSymlinkFiles().
+	const args = ["--files", "--hidden", "--follow"]
 
 	if (recursive) {
-		args.push("--follow")
 		return [...args, ...buildRecursiveArgs(dirPath), dirPath]
 	} else {
 		return [...args, ...buildNonRecursiveArgs(), dirPath]
