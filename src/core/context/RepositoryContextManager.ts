@@ -227,10 +227,13 @@ export class RepositoryContextManager {
 	 */
 	private extractCodePatterns(filePath: string, content: string, patterns: Map<string, string[]>): void {
 		// Extract imports/requires
-		const importPattern = /(?:import|require)\s*\(?['"]([^'"]+)['"]\)?/g
+		// Handle both ES6 imports (import X from 'Y') and CommonJS (require('Y'))
+		const importPattern =
+			/(?:import\s+(?:[\w{},*\s]+\s+from\s+)?['"]([^'"]+)['"]|require\s*\(\s*['"]([^'"]+)['"]\s*\))/g
 		let match
 		while ((match = importPattern.exec(content)) !== null) {
-			const pattern = `import:${match[1]}`
+			const moduleName = match[1] || match[2]
+			const pattern = `import:${moduleName}`
 			if (!patterns.has(pattern)) {
 				patterns.set(pattern, [])
 			}
