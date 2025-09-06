@@ -351,19 +351,24 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		})
 
 		// Initialize repository context manager if enabled
-		provider.getState().then((state) => {
-			const repoContextConfig = state?.repositoryContext
-			if (repoContextConfig?.enabled) {
-				this.repositoryContextManager = new RepositoryContextManager(
-					this.cwd,
-					repoContextConfig,
-					this.rooIgnoreController,
-				)
-				this.repositoryContextManager.initialize().catch((error) => {
-					console.error("Failed to initialize RepositoryContextManager:", error)
-				})
-			}
-		})
+		provider
+			.getState()
+			?.then((state) => {
+				const repoContextConfig = state?.repositoryContext
+				if (repoContextConfig?.enabled) {
+					this.repositoryContextManager = new RepositoryContextManager(
+						this.cwd,
+						repoContextConfig,
+						this.rooIgnoreController,
+					)
+					this.repositoryContextManager.initialize().catch((error) => {
+						console.error("Failed to initialize RepositoryContextManager:", error)
+					})
+				}
+			})
+			.catch((error) => {
+				console.error("Failed to get provider state for RepositoryContextManager:", error)
+			})
 
 		this.apiConfiguration = apiConfiguration
 		this.api = buildApiHandler(apiConfiguration)
