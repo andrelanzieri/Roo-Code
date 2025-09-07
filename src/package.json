@@ -407,6 +407,78 @@
 					"minimum": 1,
 					"maximum": 200,
 					"description": "%settings.codeIndex.embeddingBatchSize.description%"
+				},
+				"roo-cline.subLlm.enabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable sub-LLM features for code search enhancement"
+				},
+				"roo-cline.subLlm.model.mode": {
+					"type": "string",
+					"enum": [
+						"mirror",
+						"custom"
+					],
+					"default": "mirror",
+					"description": "Model selection mode: 'mirror' uses chat model, 'custom' allows override"
+				},
+				"roo-cline.subLlm.model.provider": {
+					"type": "string",
+					"default": "",
+					"description": "Custom provider for sub-LLM when mode is 'custom'"
+				},
+				"roo-cline.subLlm.model.modelId": {
+					"type": "string",
+					"default": "",
+					"description": "Custom model ID for sub-LLM when mode is 'custom'"
+				},
+				"roo-cline.subLlm.maxTokensPerOp": {
+					"type": "number",
+					"default": 1000,
+					"minimum": 100,
+					"maximum": 4000,
+					"description": "Maximum tokens per sub-LLM operation"
+				},
+				"roo-cline.subLlm.dailyCostCapUSD": {
+					"type": "number",
+					"default": 1,
+					"minimum": 0,
+					"maximum": 100,
+					"description": "Daily cost cap in USD for sub-LLM operations"
+				},
+				"roo-cline.subLlm.timeout": {
+					"type": "number",
+					"default": 5000,
+					"minimum": 1000,
+					"maximum": 30000,
+					"description": "Timeout in milliseconds for sub-LLM operations"
+				},
+				"roo-cline.codeIndex.llm.rewriter": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable query rewriting for natural language search"
+				},
+				"roo-cline.codeIndex.llm.reranker": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable LLM-based reranking of search results"
+				},
+				"roo-cline.codeIndex.llm.summaries": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable generation of code summaries (requires reindex)"
+				},
+				"roo-cline.codeIndex.llm.tags": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable generation of code tags (requires reindex)"
+				},
+				"roo-cline.codeIndex.llm.maxKForRerank": {
+					"type": "number",
+					"default": 50,
+					"minimum": 10,
+					"maximum": 200,
+					"description": "Maximum number of candidates to rerank"
 				}
 			}
 		}
