@@ -79,6 +79,13 @@ export const geminiModels = {
 		cacheWritesPrice: 4.5,
 		tiers: [
 			{
+				// Free tier: 125k input tokens per minute quota
+				contextWindow: 125_000,
+				inputPrice: 0,
+				outputPrice: 0,
+				cacheReadsPrice: 0,
+			},
+			{
 				contextWindow: 200_000,
 				inputPrice: 1.25,
 				outputPrice: 10,
@@ -102,6 +109,13 @@ export const geminiModels = {
 		cacheReadsPrice: 0.625,
 		cacheWritesPrice: 4.5,
 		tiers: [
+			{
+				// Free tier: 125k input tokens per minute quota
+				contextWindow: 125_000,
+				inputPrice: 0,
+				outputPrice: 0,
+				cacheReadsPrice: 0,
+			},
 			{
 				contextWindow: 200_000,
 				inputPrice: 1.25,
@@ -129,6 +143,13 @@ export const geminiModels = {
 		supportsReasoningBudget: true,
 		tiers: [
 			{
+				// Free tier: 125k input tokens per minute quota
+				contextWindow: 125_000,
+				inputPrice: 0,
+				outputPrice: 0,
+				cacheReadsPrice: 0,
+			},
+			{
 				contextWindow: 200_000,
 				inputPrice: 1.25,
 				outputPrice: 10,
@@ -155,6 +176,13 @@ export const geminiModels = {
 		supportsReasoningBudget: true,
 		requiredReasoningBudget: true,
 		tiers: [
+			{
+				// Free tier: 125k input tokens per minute quota
+				contextWindow: 125_000,
+				inputPrice: 0,
+				outputPrice: 0,
+				cacheReadsPrice: 0,
+			},
 			{
 				contextWindow: 200_000,
 				inputPrice: 1.25,
