@@ -286,6 +286,13 @@ export type ExtensionState = Pick<
 	clineMessages: ClineMessage[]
 	currentTaskItem?: HistoryItem
 	currentTaskTodos?: TodoItem[] // Initial todos for the current task
+	costLedgerMetrics?: {
+		totalTokensIn: number
+		totalTokensOut: number
+		totalCacheWrites: number
+		totalCacheReads: number
+		totalCost: number
+	}
 	apiConfiguration: ProviderSettings
 	uriScheme?: string
 	shouldShowAnnouncement: boolean

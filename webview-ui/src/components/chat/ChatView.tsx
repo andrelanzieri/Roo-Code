@@ -121,6 +121,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		soundVolume,
 		cloudIsAuthenticated,
 		messageQueue = [],
+		costLedgerMetrics,
 	} = useExtensionState()
 
 	const messagesRef = useRef(messages)
@@ -1781,11 +1782,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				<>
 					<TaskHeader
 						task={task}
-						tokensIn={apiMetrics.totalTokensIn}
-						tokensOut={apiMetrics.totalTokensOut}
-						cacheWrites={apiMetrics.totalCacheWrites}
-						cacheReads={apiMetrics.totalCacheReads}
-						totalCost={apiMetrics.totalCost}
+						tokensIn={costLedgerMetrics?.totalTokensIn || apiMetrics.totalTokensIn}
+						tokensOut={costLedgerMetrics?.totalTokensOut || apiMetrics.totalTokensOut}
+						cacheWrites={costLedgerMetrics?.totalCacheWrites || apiMetrics.totalCacheWrites}
+						cacheReads={costLedgerMetrics?.totalCacheReads || apiMetrics.totalCacheReads}
+						totalCost={costLedgerMetrics?.totalCost || apiMetrics.totalCost}
 						contextTokens={apiMetrics.contextTokens}
 						buttonsDisabled={sendingDisabled}
 						handleCondenseContext={handleCondenseContext}

@@ -1247,7 +1247,13 @@ export class ClineProvider
 				const task = this.getCurrentTask()
 
 				if (task) {
+					// Preserve the cost ledger when switching providers
+					const previousLedger = (task as any).costLedger
 					task.api = buildApiHandler(providerSettings)
+					// Ensure the cost ledger is preserved across provider switches
+					if (previousLedger) {
+						;(task as any).costLedger = previousLedger
+					}
 				}
 			} else {
 				await this.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig())
@@ -1308,7 +1314,13 @@ export class ClineProvider
 		const task = this.getCurrentTask()
 
 		if (task) {
+			// Preserve the cost ledger when switching providers
+			const previousLedger = (task as any).costLedger
 			task.api = buildApiHandler(providerSettings)
+			// Ensure the cost ledger is preserved across provider switches
+			if (previousLedger) {
+				;(task as any).costLedger = previousLedger
+			}
 		}
 
 		await this.postStateToWebview()
@@ -1818,6 +1830,7 @@ export class ClineProvider
 				: undefined,
 			clineMessages: this.getCurrentTask()?.clineMessages || [],
 			currentTaskTodos: this.getCurrentTask()?.todoList || [],
+			costLedgerMetrics: this.getCurrentTask()?.costLedgerMetrics,
 			messageQueue: this.getCurrentTask()?.messageQueueService?.messages,
 			taskHistory: (taskHistory || [])
 				.filter((item: HistoryItem) => item.ts && item.task)

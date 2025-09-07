@@ -73,6 +73,7 @@ import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 // utils
 import { calculateApiCostAnthropic } from "../../shared/cost"
 import { getWorkspacePath } from "../../utils/path"
+import { CostLedger } from "../cost-ledger/CostLedger"
 
 // prompts
 import { formatResponse } from "../prompts/responses"
@@ -222,6 +223,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	api: ApiHandler
 	private static lastGlobalApiRequestTime?: number
 	private autoApprovalHandler: AutoApprovalHandler
+	private costLedger: CostLedger
 
 	/**
 	 * Reset the global API request timestamp. This should only be used for testing.
@@ -359,6 +361,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.consecutiveMistakeLimit = consecutiveMistakeLimit ?? DEFAULT_CONSECUTIVE_MISTAKE_LIMIT
 		this.providerRef = new WeakRef(provider)
 		this.globalStoragePath = provider.context.globalStorageUri.fsPath
+
+		// Initialize cost ledger for persistent cost tracking (after globalStoragePath is set)
+		const costLedgerPath = path.join(this.globalStoragePath, "cost-ledgers", this.taskId)
+		this.costLedger = new CostLedger(costLedgerPath)
 		this.diffViewProvider = new DiffViewProvider(this.cwd, this)
 		this.enableCheckpoints = enableCheckpoints
 		this.enableBridge = enableBridge
@@ -552,6 +558,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		return this._taskMode
+	}
+
+	/**
+	 * Get the cost ledger metrics for this task
+	 */
+	public get costLedgerMetrics() {
+		return (
+			this.costLedger?.getTotalMetrics() || {
+				totalTokensIn: 0,
+				totalTokensOut: 0,
+				totalCacheWrites: 0,
+				totalCacheReads: 0,
+				totalCost: 0,
+			}
+		)
 	}
 
 	static create(options: TaskOptions): [Task, Promise<void>] {
@@ -1177,6 +1198,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Start / Resume / Abort / Dispose
 
 	private async startTask(task?: string, images?: string[]): Promise<void> {
+		// Initialize the cost ledger for this new task
+		await this.costLedger.initialize()
 		if (this.enableBridge) {
 			try {
 				await BridgeOrchestrator.subscribeToTask(this)
@@ -1218,6 +1241,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	private async resumeTaskFromHistory() {
+		// Initialize the cost ledger for resumed task
+		await this.costLedger.initialize()
 		if (this.enableBridge) {
 			try {
 				await BridgeOrchestrator.subscribeToTask(this)
@@ -1505,6 +1530,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	public dispose(): void {
 		console.log(`[Task#dispose] disposing task ${this.taskId}.${this.instanceId}`)
+
+		// Close the cost ledger
+		try {
+			this.costLedger?.close().catch((error) => {
+				console.error("Error closing cost ledger:", error)
+			})
+		} catch (error) {
+			console.error("Error closing cost ledger:", error)
+		}
 
 		// Dispose message queue and remove event listeners.
 		try {
@@ -1859,6 +1893,40 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						cancelReason,
 						streamingFailedMessage,
 					} satisfies ClineApiReqInfo)
+
+					// Track cost in the ledger if we have cost data
+					const finalCost =
+						totalCost ??
+						calculateApiCostAnthropic(
+							this.api.getModel().info,
+							inputTokens,
+							outputTokens,
+							cacheWriteTokens,
+							cacheReadTokens,
+						)
+
+					if (finalCost > 0 && !cancelReason) {
+						// Only track successful API calls in the ledger
+						// Get the current mode from the task
+						const currentMode = this._taskMode || "default"
+						this.costLedger
+							.appendEntry({
+								task_id: this.taskId,
+								origin_task_id: this.parentTaskId,
+								root_task_id: this.rootTaskId,
+								provider: this.apiConfiguration.apiProvider || "unknown",
+								model_id: this.api.getModel().id,
+								feature: currentMode,
+								tokens_in: inputTokens,
+								tokens_out: outputTokens,
+								cache_writes: cacheWriteTokens,
+								cache_reads: cacheReadTokens,
+								cost: finalCost,
+							})
+							.catch((error) => {
+								console.error("Failed to append cost entry to ledger:", error)
+							})
+					}
 				}
 
 				const abortStream = async (cancelReason: ClineApiReqCancelReason, streamingFailedMessage?: string) => {
