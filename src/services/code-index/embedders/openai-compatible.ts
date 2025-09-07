@@ -38,6 +38,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	private readonly apiKey: string
 	private readonly isFullUrl: boolean
 	private readonly maxItemTokens: number
+	private readonly isGeminiEndpoint: boolean
 
 	// Global rate limiting state shared across all instances
 	private static globalRateLimitState = {
@@ -73,6 +74,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 		this.defaultModelId = modelId || getDefaultModelId("openai-compatible")
 		// Cache the URL type check for performance
 		this.isFullUrl = this.isFullEndpointUrl(baseUrl)
+		this.isGeminiEndpoint = this.isGeminiUrl(baseUrl)
 		this.maxItemTokens = maxItemTokens || MAX_ITEM_TOKENS
 	}
 
@@ -183,6 +185,15 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	}
 
 	/**
+	 * Determines if the provided URL is a Google Gemini endpoint
+	 * @param url The URL to check
+	 * @returns true if it's a Gemini endpoint
+	 */
+	private isGeminiUrl(url: string): boolean {
+		return url.includes("generativelanguage.googleapis.com")
+	}
+
+	/**
 	 * Makes a direct HTTP request to the embeddings endpoint
 	 * Used when the user provides a full endpoint URL (e.g., Azure OpenAI with query parameters)
 	 * @param url The full endpoint URL
@@ -204,11 +215,19 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 				"api-key": this.apiKey,
 				Authorization: `Bearer ${this.apiKey}`,
 			},
-			body: JSON.stringify({
-				input: batchTexts,
-				model: model,
-				encoding_format: "base64",
-			}),
+			body: JSON.stringify(
+				this.isGeminiEndpoint
+					? {
+							input: batchTexts,
+							model: model,
+							// Gemini doesn't support encoding_format parameter
+						}
+					: {
+							input: batchTexts,
+							model: model,
+							encoding_format: "base64",
+						},
+			),
 		})
 
 		if (!response || !response.ok) {
@@ -263,14 +282,23 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 					response = await this.makeDirectEmbeddingRequest(this.baseUrl, batchTexts, model)
 				} else {
 					// Use OpenAI SDK for base URLs
-					response = (await this.embeddingsClient.embeddings.create({
+					const embeddingParams: any = {
 						input: batchTexts,
 						model: model,
-						// OpenAI package (as of v4.78.1) has a parsing issue that truncates embedding dimensions to 256
-						// when processing numeric arrays, which breaks compatibility with models using larger dimensions.
-						// By requesting base64 encoding, we bypass the package's parser and handle decoding ourselves.
-						encoding_format: "base64",
-					})) as OpenAIEmbeddingResponse
+					}
+
+					// Only add encoding_format for non-Gemini endpoints
+					// OpenAI package (as of v4.78.1) has a parsing issue that truncates embedding dimensions to 256
+					// when processing numeric arrays, which breaks compatibility with models using larger dimensions.
+					// By requesting base64 encoding, we bypass the package's parser and handle decoding ourselves.
+					// However, Gemini doesn't support this parameter, so we exclude it for Gemini endpoints.
+					if (!this.isGeminiEndpoint) {
+						embeddingParams.encoding_format = "base64"
+					}
+
+					response = (await this.embeddingsClient.embeddings.create(
+						embeddingParams,
+					)) as OpenAIEmbeddingResponse
 				}
 
 				// Convert base64 embeddings to float32 arrays
@@ -365,11 +393,19 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 					response = await this.makeDirectEmbeddingRequest(this.baseUrl, testTexts, modelToUse)
 				} else {
 					// Test using OpenAI SDK for base URLs
-					response = (await this.embeddingsClient.embeddings.create({
+					const embeddingParams: any = {
 						input: testTexts,
 						model: modelToUse,
-						encoding_format: "base64",
-					})) as OpenAIEmbeddingResponse
+					}
+
+					// Only add encoding_format for non-Gemini endpoints
+					if (!this.isGeminiEndpoint) {
+						embeddingParams.encoding_format = "base64"
+					}
+
+					response = (await this.embeddingsClient.embeddings.create(
+						embeddingParams,
+					)) as OpenAIEmbeddingResponse
 				}
 
 				// Check if we got a valid response

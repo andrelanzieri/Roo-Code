@@ -1051,4 +1051,139 @@ describe("OpenAICompatibleEmbedder", () => {
 			expect(result.error).toBe("embeddings:validation.configurationError")
 		})
 	})
+
+	describe("Gemini compatibility", () => {
+		let geminiEmbedder: OpenAICompatibleEmbedder
+		const geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/"
+		const geminiApiKey = "test-gemini-api-key"
+		const geminiModelId = "gemini-embedding-001"
+
+		beforeEach(() => {
+			vitest.clearAllMocks()
+			geminiEmbedder = new OpenAICompatibleEmbedder(geminiBaseUrl, geminiApiKey, geminiModelId)
+		})
+
+		it("should NOT include encoding_format for Gemini endpoints", async () => {
+			const testTexts = ["Hello world"]
+			const mockResponse = {
+				data: [{ embedding: [0.1, 0.2, 0.3] }],
+				usage: { prompt_tokens: 10, total_tokens: 15 },
+			}
+			mockEmbeddingsCreate.mockResolvedValue(mockResponse)
+
+			await geminiEmbedder.createEmbeddings(testTexts)
+
+			// Verify that encoding_format is NOT included for Gemini
+			expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+				input: testTexts,
+				model: geminiModelId,
+				// encoding_format should NOT be present
+			})
+
+			// Verify the call doesn't have encoding_format property
+			const callArgs = mockEmbeddingsCreate.mock.calls[0][0]
+			expect(callArgs).not.toHaveProperty("encoding_format")
+		})
+
+		it("should still include encoding_format for non-Gemini OpenAI-compatible endpoints", async () => {
+			// Create a non-Gemini embedder
+			const regularEmbedder = new OpenAICompatibleEmbedder(testBaseUrl, testApiKey, testModelId)
+
+			const testTexts = ["Hello world"]
+			const mockResponse = {
+				data: [{ embedding: [0.1, 0.2, 0.3] }],
+				usage: { prompt_tokens: 10, total_tokens: 15 },
+			}
+			mockEmbeddingsCreate.mockResolvedValue(mockResponse)
+
+			await regularEmbedder.createEmbeddings(testTexts)
+
+			// Verify that encoding_format IS included for non-Gemini endpoints
+			expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+				input: testTexts,
+				model: testModelId,
+				encoding_format: "base64",
+			})
+		})
+
+		it("should correctly identify Gemini URLs", () => {
+			const geminiUrls = [
+				"https://generativelanguage.googleapis.com/v1beta/openai/",
+				"https://generativelanguage.googleapis.com/v1/openai/",
+				"https://generativelanguage.googleapis.com/v2/embeddings",
+			]
+
+			geminiUrls.forEach((url) => {
+				const embedder = new OpenAICompatibleEmbedder(url, geminiApiKey, geminiModelId)
+				const isGemini = (embedder as any).isGeminiUrl(url)
+				expect(isGemini).toBe(true)
+			})
+		})
+
+		it("should not identify non-Gemini URLs as Gemini", () => {
+			const nonGeminiUrls = [
+				"https://api.openai.com/v1",
+				"https://api.example.com/embeddings",
+				"https://myinstance.openai.azure.com/openai/deployments/my-deployment/embeddings",
+				"http://localhost:8080",
+			]
+
+			nonGeminiUrls.forEach((url) => {
+				const embedder = new OpenAICompatibleEmbedder(url, testApiKey, testModelId)
+				const isGemini = (embedder as any).isGeminiUrl(url)
+				expect(isGemini).toBe(false)
+			})
+		})
+
+		it("should validate Gemini configuration without encoding_format", async () => {
+			const mockResponse = {
+				data: [{ embedding: [0.1, 0.2, 0.3] }],
+				usage: { prompt_tokens: 2, total_tokens: 2 },
+			}
+			mockEmbeddingsCreate.mockResolvedValue(mockResponse)
+
+			const result = await geminiEmbedder.validateConfiguration()
+
+			expect(result.valid).toBe(true)
+			expect(result.error).toBeUndefined()
+
+			// Verify validation call doesn't include encoding_format
+			const callArgs = mockEmbeddingsCreate.mock.calls[0][0]
+			expect(callArgs).not.toHaveProperty("encoding_format")
+		})
+
+		it("should handle direct HTTP requests for Gemini full URLs without encoding_format", async () => {
+			const geminiFullUrl = "https://generativelanguage.googleapis.com/v1beta/openai/embeddings"
+			const fullUrlEmbedder = new OpenAICompatibleEmbedder(geminiFullUrl, geminiApiKey, geminiModelId)
+
+			const mockFetch = vitest.fn().mockResolvedValue({
+				ok: true,
+				json: async () => ({
+					data: [{ embedding: [0.1, 0.2, 0.3] }],
+					usage: { prompt_tokens: 10, total_tokens: 15 },
+				}),
+			})
+			global.fetch = mockFetch
+
+			await fullUrlEmbedder.createEmbeddings(["test"])
+
+			// Check that the request body doesn't include encoding_format
+			expect(mockFetch).toHaveBeenCalledWith(
+				geminiFullUrl,
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						input: ["test"],
+						model: geminiModelId,
+						// encoding_format should NOT be present
+					}),
+				}),
+			)
+
+			// Verify the actual body content
+			const callArgs = mockFetch.mock.calls[0][1]
+			const bodyContent = JSON.parse(callArgs.body)
+			expect(bodyContent).not.toHaveProperty("encoding_format")
+		})
+	})
 })
