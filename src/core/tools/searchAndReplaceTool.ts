@@ -13,6 +13,7 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
+import { t } from "../../i18n"
 
 /**
  * Tool for performing search and replace operations on files
@@ -268,7 +269,7 @@ export async function searchAndReplaceTool(
 		cline.recordToolUsage("search_and_replace")
 		await cline.diffViewProvider.reset()
 	} catch (error) {
-		handleError("search and replace", error, "Search and Replace Error")
+		handleError("search and replace", error, t("tools:searchAndReplace.errors.searchAndReplaceError"))
 		await cline.diffViewProvider.reset()
 	}
 }

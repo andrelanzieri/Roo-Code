@@ -4,7 +4,13 @@
 		"definitionsOnly": " (tylko definicje)",
 		"maxLines": " (maks. {{max}} linii)",
 		"imageTooLarge": "Plik obrazu jest zbyt duży ({{size}} MB). Maksymalny dozwolony rozmiar to {{max}} MB.",
-		"imageWithSize": "Plik obrazu ({{size}} KB)"
+		"imageWithSize": "Plik obrazu ({{size}} KB)",
+		"errors": {
+			"parseError": "Błąd Parsowania Pliku",
+			"invalidLineRange": "Nieprawidłowy Zakres Linii",
+			"imageReadError": "Błąd Odczytu Obrazu",
+			"fileReadError": "Błąd Odczytu Pliku"
+		}
 	},
 	"toolRepetitionLimitReached": "Wygląda na to, że Roo utknął w pętli, wielokrotnie próbując wykonać tę samą akcję ({{toolName}}). Może to wskazywać na problem z jego obecną strategią. Rozważ przeformułowanie zadania, podanie bardziej szczegółowych instrukcji lub nakierowanie go na inne podejście.",
 	"codebaseSearch": {
@@ -19,19 +25,31 @@
 		"errors": {
 			"fileNotFound": "Plik nie został znaleziony",
 			"fileDoesNotExist": "Plik nie istnieje w ścieżce: {{path}}",
-			"fileDoesNotExistDetails": "Nie można znaleźć określonego pliku. Sprawdź ścieżkę pliku i spróbuj ponownie."
+			"fileDoesNotExistDetails": "Nie można znaleźć określonego pliku. Sprawdź ścieżkę pliku i spróbuj ponownie.",
+			"applyDiffError": "Błąd Stosowania Różnic"
 		}
 	},
 	"insertContent": {
 		"errors": {
 			"invalidLineNumber": "Nieprawidłowy numer linii",
-			"cannotInsertIntoNonExistent": "Nie można wstawić treści w linii {{lineNumber}} do nieistniejącego pliku. Dla nowych plików 'line' musi być 0 (aby dodać na końcu) lub 1 (aby wstawić na początku)."
+			"cannotInsertIntoNonExistent": "Nie można wstawić treści w linii {{lineNumber}} do nieistniejącego pliku. Dla nowych plików 'line' musi być 0 (aby dodać na końcu) lub 1 (aby wstawić na początku).",
+			"insertContentError": "Błąd Wstawiania Treści"
 		}
 	},
 	"common": {
 		"errors": {
 			"missingParameter": "Brakujący parametr",
 			"missingParameterMessage": "Roo próbował użyć {{toolName}}{{relPath}} bez wartości dla wymaganego parametru '{{paramName}}'. Ponawiam próbę..."
+		}
+	},
+	"writeToFile": {
+		"errors": {
+			"writeFileError": "Błąd Zapisu Pliku"
+		}
+	},
+	"searchAndReplace": {
+		"errors": {
+			"searchAndReplaceError": "Błąd Wyszukiwania i Zamiany"
 		}
 	}
 }

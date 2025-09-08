@@ -4,7 +4,13 @@
 		"definitionsOnly": " (仅定义)",
 		"maxLines": " (最多 {{max}} 行)",
 		"imageTooLarge": "图片文件过大 ({{size}} MB)。允许的最大大小为 {{max}} MB。",
-		"imageWithSize": "图片文件 ({{size}} KB)"
+		"imageWithSize": "图片文件 ({{size}} KB)",
+		"errors": {
+			"parseError": "文件解析错误",
+			"invalidLineRange": "无效的行范围",
+			"imageReadError": "图像读取错误",
+			"fileReadError": "文件读取错误"
+		}
 	},
 	"toolRepetitionLimitReached": "Roo 似乎陷入循环，反复尝试同一操作 ({{toolName}})。这可能表明当前策略存在问题。请考虑重新描述任务、提供更具体的指示或引导其尝试不同的方法。",
 	"codebaseSearch": {
@@ -19,19 +25,31 @@
 		"errors": {
 			"fileNotFound": "文件未找到",
 			"fileDoesNotExist": "文件不存在于路径：{{path}}",
-			"fileDoesNotExistDetails": "找不到指定的文件。请验证文件路径并重试。"
+			"fileDoesNotExistDetails": "找不到指定的文件。请验证文件路径并重试。",
+			"applyDiffError": "应用差异错误"
 		}
 	},
 	"insertContent": {
 		"errors": {
 			"invalidLineNumber": "无效的行号",
-			"cannotInsertIntoNonExistent": "无法在不存在的文件的第 {{lineNumber}} 行插入内容。对于新文件，'line' 必须为 0（追加到末尾）或 1（插入到开头）。"
+			"cannotInsertIntoNonExistent": "无法在不存在的文件的第 {{lineNumber}} 行插入内容。对于新文件，'line' 必须为 0（追加到末尾）或 1（插入到开头）。",
+			"insertContentError": "插入内容错误"
 		}
 	},
 	"common": {
 		"errors": {
 			"missingParameter": "缺少参数",
 			"missingParameterMessage": "Roo 尝试使用 {{toolName}}{{relPath}} 但缺少必需参数 '{{paramName}}' 的值。正在重试..."
+		}
+	},
+	"writeToFile": {
+		"errors": {
+			"writeFileError": "文件写入错误"
+		}
+	},
+	"searchAndReplace": {
+		"errors": {
+			"searchAndReplaceError": "搜索和替换错误"
 		}
 	}
 }

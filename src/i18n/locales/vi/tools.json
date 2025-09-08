@@ -4,7 +4,13 @@
 		"definitionsOnly": " (chỉ định nghĩa)",
 		"maxLines": " (tối đa {{max}} dòng)",
 		"imageTooLarge": "Tệp hình ảnh quá lớn ({{size}} MB). Kích thước tối đa cho phép là {{max}} MB.",
-		"imageWithSize": "Tệp hình ảnh ({{size}} KB)"
+		"imageWithSize": "Tệp hình ảnh ({{size}} KB)",
+		"errors": {
+			"parseError": "Lỗi Phân Tích Tệp",
+			"invalidLineRange": "Phạm Vi Dòng Không Hợp Lệ",
+			"imageReadError": "Lỗi Đọc Hình Ảnh",
+			"fileReadError": "Lỗi Đọc Tệp"
+		}
 	},
 	"toolRepetitionLimitReached": "Roo dường như đang bị mắc kẹt trong một vòng lặp, liên tục cố gắng thực hiện cùng một hành động ({{toolName}}). Điều này có thể cho thấy vấn đề với chiến lược hiện tại. Hãy cân nhắc việc diễn đạt lại nhiệm vụ, cung cấp hướng dẫn cụ thể hơn, hoặc hướng Roo theo một cách tiếp cận khác.",
 	"codebaseSearch": {
@@ -19,19 +25,31 @@
 		"errors": {
 			"fileNotFound": "Không tìm thấy tệp",
 			"fileDoesNotExist": "Tệp không tồn tại tại đường dẫn: {{path}}",
-			"fileDoesNotExistDetails": "Không thể tìm thấy tệp được chỉ định. Vui lòng xác minh đường dẫn tệp và thử lại."
+			"fileDoesNotExistDetails": "Không thể tìm thấy tệp được chỉ định. Vui lòng xác minh đường dẫn tệp và thử lại.",
+			"applyDiffError": "Lỗi Áp Dụng Diff"
 		}
 	},
 	"insertContent": {
 		"errors": {
 			"invalidLineNumber": "Số dòng không hợp lệ",
-			"cannotInsertIntoNonExistent": "Không thể chèn nội dung vào dòng {{lineNumber}} của tệp không tồn tại. Đối với tệp mới, 'line' phải là 0 (để thêm vào cuối) hoặc 1 (để chèn vào đầu)."
+			"cannotInsertIntoNonExistent": "Không thể chèn nội dung vào dòng {{lineNumber}} của tệp không tồn tại. Đối với tệp mới, 'line' phải là 0 (để thêm vào cuối) hoặc 1 (để chèn vào đầu).",
+			"insertContentError": "Lỗi Chèn Nội Dung"
 		}
 	},
 	"common": {
 		"errors": {
 			"missingParameter": "Thiếu tham số",
 			"missingParameterMessage": "Roo đã cố gắng sử dụng {{toolName}}{{relPath}} mà không có giá trị cho tham số bắt buộc '{{paramName}}'. Đang thử lại..."
+		}
+	},
+	"writeToFile": {
+		"errors": {
+			"writeFileError": "Lỗi Ghi Tệp"
+		}
+	},
+	"searchAndReplace": {
+		"errors": {
+			"searchAndReplaceError": "Lỗi Tìm và Thay Thế"
 		}
 	}
 }

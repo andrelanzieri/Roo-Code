@@ -2,6 +2,7 @@ import { Task } from "../task/Task"
 import { ToolUse, AskApproval, HandleError, PushToolResult, RemoveClosingTag } from "../../shared/tools"
 import { formatResponse } from "../prompts/responses"
 import { parseXml } from "../../utils/xml"
+import { t } from "../../i18n"
 
 export async function askFollowupQuestionTool(
 	cline: Task,
@@ -93,7 +94,7 @@ export async function askFollowupQuestionTool(
 			return
 		}
 	} catch (error) {
-		await handleError("asking question", error)
+		await handleError("asking question", error, t("tools:askFollowupQuestion.errors.askError"))
 		return
 	}
 }

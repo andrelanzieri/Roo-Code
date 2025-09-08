@@ -4,7 +4,13 @@
 		"definitionsOnly": " (solo definiciones)",
 		"maxLines": " (máximo {{max}} líneas)",
 		"imageTooLarge": "El archivo de imagen es demasiado grande ({{size}} MB). El tamaño máximo permitido es {{max}} MB.",
-		"imageWithSize": "Archivo de imagen ({{size}} KB)"
+		"imageWithSize": "Archivo de imagen ({{size}} KB)",
+		"errors": {
+			"parseError": "Error de Análisis de Archivo",
+			"invalidLineRange": "Rango de Líneas Inválido",
+			"imageReadError": "Error de Lectura de Imagen",
+			"fileReadError": "Error de Lectura de Archivo"
+		}
 	},
 	"toolRepetitionLimitReached": "Roo parece estar atrapado en un bucle, intentando la misma acción ({{toolName}}) repetidamente. Esto podría indicar un problema con su estrategia actual. Considera reformular la tarea, proporcionar instrucciones más específicas o guiarlo hacia un enfoque diferente.",
 	"codebaseSearch": {
@@ -19,19 +25,31 @@
 		"errors": {
 			"fileNotFound": "Archivo no encontrado",
 			"fileDoesNotExist": "El archivo no existe en la ruta: {{path}}",
-			"fileDoesNotExistDetails": "No se pudo encontrar el archivo especificado. Por favor, verifica la ruta del archivo e intenta de nuevo."
+			"fileDoesNotExistDetails": "No se pudo encontrar el archivo especificado. Por favor, verifica la ruta del archivo e intenta de nuevo.",
+			"applyDiffError": "Error al Aplicar Diff"
 		}
 	},
 	"insertContent": {
 		"errors": {
 			"invalidLineNumber": "Número de línea inválido",
-			"cannotInsertIntoNonExistent": "No se puede insertar contenido en la línea {{lineNumber}} de un archivo inexistente. Para archivos nuevos, 'line' debe ser 0 (para añadir al final) o 1 (para insertar al principio)."
+			"cannotInsertIntoNonExistent": "No se puede insertar contenido en la línea {{lineNumber}} de un archivo inexistente. Para archivos nuevos, 'line' debe ser 0 (para añadir al final) o 1 (para insertar al principio).",
+			"insertContentError": "Error al Insertar Contenido"
 		}
 	},
 	"common": {
 		"errors": {
 			"missingParameter": "Parámetro faltante",
 			"missingParameterMessage": "Roo intentó usar {{toolName}}{{relPath}} sin valor para el parámetro requerido '{{paramName}}'. Reintentando..."
+		}
+	},
+	"writeToFile": {
+		"errors": {
+			"writeFileError": "Error de Escritura de Archivo"
+		}
+	},
+	"searchAndReplace": {
+		"errors": {
+			"searchAndReplaceError": "Error de Búsqueda y Reemplazo"
 		}
 	}
 }
