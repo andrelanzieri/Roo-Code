@@ -311,7 +311,7 @@ export async function writeToFileTool(
 			return
 		}
 	} catch (error) {
-		await handleError("writing file", error)
+		await handleError("writing file", error, "Write File Error")
 		await cline.diffViewProvider.reset()
 		return
 	}

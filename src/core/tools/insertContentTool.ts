@@ -191,7 +191,7 @@ export async function insertContentTool(
 
 		await cline.diffViewProvider.reset()
 	} catch (error) {
-		handleError("insert content", error)
+		handleError("insert content", error, "Insert Content Error")
 		await cline.diffViewProvider.reset()
 	}
 }

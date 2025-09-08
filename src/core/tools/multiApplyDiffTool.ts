@@ -677,7 +677,7 @@ ${errorDetails ? `\nTechnical details:\n${errorDetails}\n` : ""}
 		pushToolResult(results.join("\n\n") + singleBlockNotice)
 		return
 	} catch (error) {
-		await handleError("applying diff", error)
+		await handleError("applying diff", error, "Apply Diff Error")
 		await cline.diffViewProvider.reset()
 		return
 	}

@@ -268,7 +268,7 @@ export async function searchAndReplaceTool(
 		cline.recordToolUsage("search_and_replace")
 		await cline.diffViewProvider.reset()
 	} catch (error) {
-		handleError("search and replace", error)
+		handleError("search and replace", error, "Search and Replace Error")
 		await cline.diffViewProvider.reset()
 	}
 }

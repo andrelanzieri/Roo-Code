@@ -403,7 +403,7 @@ describe("writeToFileTool", () => {
 
 			await executeWriteFileTool({})
 
-			expect(mockHandleError).toHaveBeenCalledWith("writing file", expect.any(Error))
+			expect(mockHandleError).toHaveBeenCalledWith("writing file", expect.any(Error), "Write File Error")
 			expect(mockCline.diffViewProvider.reset).toHaveBeenCalled()
 		})
 
@@ -412,7 +412,7 @@ describe("writeToFileTool", () => {
 
 			await executeWriteFileTool({}, { isPartial: true })
 
-			expect(mockHandleError).toHaveBeenCalledWith("writing file", expect.any(Error))
+			expect(mockHandleError).toHaveBeenCalledWith("writing file", expect.any(Error), "Write File Error")
 			expect(mockCline.diffViewProvider.reset).toHaveBeenCalled()
 		})
 	})
