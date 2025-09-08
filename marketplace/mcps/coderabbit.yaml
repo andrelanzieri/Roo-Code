@@ -1,0 +1,106 @@
+# CodeRabbit MCP Server Configuration
+# Reference: https://docs.coderabbit.ai/context-enrichment/mcp-server-integrations
+
+items:
+  - id: "coderabbit"
+    name: "CodeRabbit"
+    description: "AI-powered code review assistant that provides context-aware analysis, automated PR reviews, and code quality insights. Integrates with GitHub to enhance code review consistency across repositories."
+    author: "CodeRabbit"
+    authorUrl: "https://coderabbit.ai"
+    url: "https://github.com/coderabbitai/mcp-server"
+    tags:
+      - "code-review"
+      - "github"
+      - "ai"
+      - "quality"
+      - "automation"
+      - "pull-request"
+    prerequisites:
+      - "Node.js 18 or higher"
+      - "CodeRabbit API key (get from https://app.coderabbit.ai/settings)"
+      - "GitHub repository access"
+    content:
+      - name: "NPX Installation (Recommended)"
+        content: |
+          {
+            "command": "npx",
+            "args": [
+              "-y",
+              "@coderabbitai/mcp-server"
+            ],
+            "env": {
+              "CODERABBIT_API_KEY": "${CODERABBIT_API_KEY}"
+            }
+          }
+        parameters:
+          - name: "CodeRabbit API Key"
+            key: "CODERABBIT_API_KEY"
+            placeholder: "Your CodeRabbit API key"
+            optional: false
+        prerequisites:
+          - "Node.js 18 or higher"
+          - "Active CodeRabbit subscription"
+      - name: "Docker Installation"
+        content: |
+          {
+            "command": "docker",
+            "args": [
+              "run",
+              "--rm",
+              "-e",
+              "CODERABBIT_API_KEY=${CODERABBIT_API_KEY}",
+              "-e",
+              "GITHUB_TOKEN=${GITHUB_TOKEN}",
+              "coderabbitai/mcp-server:latest"
+            ]
+          }
+        parameters:
+          - name: "CodeRabbit API Key"
+            key: "CODERABBIT_API_KEY"
+            placeholder: "Your CodeRabbit API key"
+            optional: false
+          - name: "GitHub Token"
+            key: "GITHUB_TOKEN"
+            placeholder: "GitHub personal access token (optional)"
+            optional: true
+        prerequisites:
+          - "Docker installed and running"
+          - "Active CodeRabbit subscription"
+      - name: "Local Installation"
+        content: |
+          {
+            "command": "node",
+            "args": [
+              "${HOME}/.coderabbit/mcp-server/index.js"
+            ],
+            "env": {
+              "CODERABBIT_API_KEY": "${CODERABBIT_API_KEY}",
+              "CODERABBIT_BASE_URL": "${CODERABBIT_BASE_URL}"
+            }
+          }
+        parameters:
+          - name: "CodeRabbit API Key"
+            key: "CODERABBIT_API_KEY"
+            placeholder: "Your CodeRabbit API key"
+            optional: false
+          - name: "CodeRabbit Base URL"
+            key: "CODERABBIT_BASE_URL"
+            placeholder: "https://api.coderabbit.ai (default)"
+            optional: true
+        prerequisites:
+          - "Node.js 18 or higher"
+          - "CodeRabbit MCP server installed locally"
+          - "Run: npm install -g @coderabbitai/mcp-server"
+    parameters:
+      - name: "Repository Path"
+        key: "CODERABBIT_REPO_PATH"
+        placeholder: "Path to the repository (optional, defaults to current directory)"
+        optional: true
+      - name: "Enable Auto Reviews"
+        key: "CODERABBIT_AUTO_REVIEW"
+        placeholder: "true or false (default: true)"
+        optional: true
+      - name: "Review Language"
+        key: "CODERABBIT_LANGUAGE"
+        placeholder: "en, es, fr, de, etc. (default: en)"
+        optional: true
