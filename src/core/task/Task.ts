@@ -892,9 +892,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Create a checkpoint whenever the user sends a message.
 		// Use allowEmpty=true to ensure a checkpoint is recorded even if there are no file changes.
-		// Suppress the checkpoint_saved chat row for this particular checkpoint to keep the timeline clean.
+		// Do not suppress the checkpoint_saved chat row so users can see and restore checkpoints.
 		if (askResponse === "messageResponse") {
-			void this.checkpointSave(false, true)
+			void this.checkpointSave(false, false)
 		}
 
 		// Mark the last follow-up question as answered
