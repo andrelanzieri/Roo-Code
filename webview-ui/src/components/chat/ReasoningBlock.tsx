@@ -76,10 +76,9 @@ export const ReasoningBlock = ({ content, ts, isStreaming, isLast, metadata }: R
 			<div className="flex items-center gap-2 mb-1">
 				<span className="codicon codicon-light-bulb text-muted-foreground" />
 				<span className="font-medium text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
-				<span className="text-xs text-muted-foreground tabular-nums">
-					(
-					<span className="codicon codicon-history mr-1" />
-					{secondsLabel})
+				<span className="font-medium text-vscode-foreground tabular-nums flex items-center gap-1">
+					<span className="codicon codicon-history" style={{ fontSize: "inherit" }} />
+					{secondsLabel}
 				</span>
 			</div>
 			<div className="italic text-muted-foreground">
