@@ -226,7 +226,19 @@ describe("insertContentTool", () => {
 			expect(mockedFsReadFile).not.toHaveBeenCalled()
 			expect(mockCline.consecutiveMistakeCount).toBe(1)
 			expect(mockCline.recordToolError).toHaveBeenCalledWith("insert_content")
-			expect(mockCline.say).toHaveBeenCalledWith("error", expect.stringContaining("non-existent file"))
+			expect(mockCline.say).toHaveBeenCalledWith(
+				"error",
+				expect.stringContaining("non-existent file"),
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({
+					metadata: expect.objectContaining({
+						title: "Invalid Line Number",
+					}),
+				}),
+			)
 			expect(mockCline.diffViewProvider.update).not.toHaveBeenCalled()
 			expect(mockCline.diffViewProvider.pushToolWriteResult).not.toHaveBeenCalled()
 		})

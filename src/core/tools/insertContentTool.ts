@@ -87,7 +87,9 @@ export async function insertContentTool(
 				cline.consecutiveMistakeCount++
 				cline.recordToolError("insert_content")
 				const formattedError = `Cannot insert content at line ${lineNumber} into a non-existent file. For new files, 'line' must be 0 (to append) or 1 (to insert at the beginning).`
-				await cline.say("error", formattedError)
+				await cline.say("error", formattedError, undefined, undefined, undefined, undefined, {
+					metadata: { title: "Invalid Line Number" },
+				})
 				pushToolResult(formattedError)
 				return
 			}
