@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "No s'ha pogut crear una nova tasca a causa de restriccions de política."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "Fitxer no trobat",
+			"fileDoesNotExist": "El fitxer no existeix al camí: {{path}}",
+			"fileDoesNotExistDetails": "No s'ha pogut trobar el fitxer especificat. Si us plau, verifica el camí del fitxer i torna-ho a provar."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "Número de línia invàlid",
+			"cannotInsertIntoNonExistent": "No es pot inserir contingut a la línia {{lineNumber}} d'un fitxer inexistent. Per a fitxers nous, 'line' ha de ser 0 (per afegir al final) o 1 (per inserir al principi)."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "Paràmetre que falta",
+			"missingParameterMessage": "Roo ha intentat utilitzar {{toolName}}{{relPath}} sense valor per al paràmetre requerit '{{paramName}}'. Tornant a intentar..."
+		}
 	}
 }

@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "Failed to create new task due to policy restrictions."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "File Not Found",
+			"fileDoesNotExist": "File does not exist at path: {{path}}",
+			"fileDoesNotExistDetails": "The specified file could not be found. Please verify the file path and try again."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "Invalid Line Number",
+			"cannotInsertIntoNonExistent": "Cannot insert content at line {{lineNumber}} into a non-existent file. For new files, 'line' must be 0 (to append) or 1 (to insert at the beginning)."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "Missing Parameter Error",
+			"missingParameterMessage": "Roo tried to use {{toolName}}{{relPath}} without value for required parameter '{{paramName}}'. Retrying..."
+		}
 	}
 }

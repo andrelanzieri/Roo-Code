@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "ポリシー制限により新しいタスクを作成できませんでした。"
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "ファイルが見つかりません",
+			"fileDoesNotExist": "ファイルがパスに存在しません: {{path}}",
+			"fileDoesNotExistDetails": "指定されたファイルが見つかりませんでした。ファイルパスを確認して、もう一度お試しください。"
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "無効な行番号",
+			"cannotInsertIntoNonExistent": "存在しないファイルの{{lineNumber}}行目にコンテンツを挿入できません。新しいファイルの場合、'line'は0（末尾に追加）または1（先頭に挿入）である必要があります。"
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "パラメータ不足",
+			"missingParameterMessage": "Rooは必須パラメータ'{{paramName}}'の値なしで{{toolName}}{{relPath}}を使用しようとしました。再試行中..."
+		}
 	}
 }

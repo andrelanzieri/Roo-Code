@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "Politika kısıtlamaları nedeniyle yeni görev oluşturulamadı."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "Dosya Bulunamadı",
+			"fileDoesNotExist": "Dosya şu yolda mevcut değil: {{path}}",
+			"fileDoesNotExistDetails": "Belirtilen dosya bulunamadı. Lütfen dosya yolunu doğrulayın ve tekrar deneyin."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "Geçersiz Satır Numarası",
+			"cannotInsertIntoNonExistent": "Var olmayan bir dosyanın {{lineNumber}}. satırına içerik eklenemez. Yeni dosyalar için 'line' 0 (sona eklemek için) veya 1 (başa eklemek için) olmalıdır."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "Eksik Parametre",
+			"missingParameterMessage": "Roo, gerekli '{{paramName}}' parametresi için değer olmadan {{toolName}}{{relPath}} kullanmaya çalıştı. Yeniden deneniyor..."
+		}
 	}
 }

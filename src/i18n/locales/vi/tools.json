@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "Không thể tạo nhiệm vụ mới do hạn chế chính sách."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "Không tìm thấy tệp",
+			"fileDoesNotExist": "Tệp không tồn tại tại đường dẫn: {{path}}",
+			"fileDoesNotExistDetails": "Không thể tìm thấy tệp được chỉ định. Vui lòng xác minh đường dẫn tệp và thử lại."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "Số dòng không hợp lệ",
+			"cannotInsertIntoNonExistent": "Không thể chèn nội dung vào dòng {{lineNumber}} của tệp không tồn tại. Đối với tệp mới, 'line' phải là 0 (để thêm vào cuối) hoặc 1 (để chèn vào đầu)."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "Thiếu tham số",
+			"missingParameterMessage": "Roo đã cố gắng sử dụng {{toolName}}{{relPath}} mà không có giá trị cho tham số bắt buộc '{{paramName}}'. Đang thử lại..."
+		}
 	}
 }

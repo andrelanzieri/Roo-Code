@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "Neue Aufgabe konnte aufgrund von Richtlinienbeschränkungen nicht erstellt werden."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "Datei nicht gefunden",
+			"fileDoesNotExist": "Datei existiert nicht unter dem Pfad: {{path}}",
+			"fileDoesNotExistDetails": "Die angegebene Datei konnte nicht gefunden werden. Bitte überprüfe den Dateipfad und versuche es erneut."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "Ungültige Zeilennummer",
+			"cannotInsertIntoNonExistent": "Inhalt kann nicht in Zeile {{lineNumber}} einer nicht existierenden Datei eingefügt werden. Für neue Dateien muss 'line' 0 (zum Anhängen) oder 1 (zum Einfügen am Anfang) sein."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "Fehlender Parameter",
+			"missingParameterMessage": "Roo hat versucht, {{toolName}}{{relPath}} ohne Wert für den erforderlichen Parameter '{{paramName}}' zu verwenden. Versuche erneut..."
+		}
 	}
 }

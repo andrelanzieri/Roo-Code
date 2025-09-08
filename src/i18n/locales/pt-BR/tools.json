@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "Falha ao criar nova tarefa devido a restrições de política."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "Arquivo não encontrado",
+			"fileDoesNotExist": "O arquivo não existe no caminho: {{path}}",
+			"fileDoesNotExistDetails": "O arquivo especificado não pôde ser encontrado. Por favor, verifique o caminho do arquivo e tente novamente."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "Número de linha inválido",
+			"cannotInsertIntoNonExistent": "Não é possível inserir conteúdo na linha {{lineNumber}} em um arquivo inexistente. Para novos arquivos, 'line' deve ser 0 (para adicionar ao final) ou 1 (para inserir no início)."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "Parâmetro ausente",
+			"missingParameterMessage": "Roo tentou usar {{toolName}}{{relPath}} sem valor para o parâmetro obrigatório '{{paramName}}'. Tentando novamente..."
+		}
 	}
 }

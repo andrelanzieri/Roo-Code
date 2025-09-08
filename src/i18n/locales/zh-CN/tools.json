@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "由于策略限制，无法创建新任务。"
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "文件未找到",
+			"fileDoesNotExist": "文件不存在于路径：{{path}}",
+			"fileDoesNotExistDetails": "找不到指定的文件。请验证文件路径并重试。"
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "无效的行号",
+			"cannotInsertIntoNonExistent": "无法在不存在的文件的第 {{lineNumber}} 行插入内容。对于新文件，'line' 必须为 0（追加到末尾）或 1（插入到开头）。"
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "缺少参数",
+			"missingParameterMessage": "Roo 尝试使用 {{toolName}}{{relPath}} 但缺少必需参数 '{{paramName}}' 的值。正在重试..."
+		}
 	}
 }

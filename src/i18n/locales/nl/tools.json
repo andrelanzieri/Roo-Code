@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "Kan geen nieuwe taak aanmaken vanwege beleidsbeperkingen."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "Bestand niet gevonden",
+			"fileDoesNotExist": "Bestand bestaat niet op pad: {{path}}",
+			"fileDoesNotExistDetails": "Het opgegeven bestand kon niet worden gevonden. Controleer het bestandspad en probeer het opnieuw."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "Ongeldig regelnummer",
+			"cannotInsertIntoNonExistent": "Kan geen inhoud invoegen op regel {{lineNumber}} in een niet-bestaand bestand. Voor nieuwe bestanden moet 'line' 0 zijn (om toe te voegen aan het einde) of 1 (om in te voegen aan het begin)."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "Ontbrekende parameter",
+			"missingParameterMessage": "Roo probeerde {{toolName}}{{relPath}} te gebruiken zonder waarde voor de vereiste parameter '{{paramName}}'. Opnieuw proberen..."
+		}
 	}
 }

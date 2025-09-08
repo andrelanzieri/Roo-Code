@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "由於政策限制，無法建立新工作。"
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "找不到檔案",
+			"fileDoesNotExist": "檔案不存在於路徑：{{path}}",
+			"fileDoesNotExistDetails": "找不到指定的檔案。請驗證檔案路徑並重試。"
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "無效的行號",
+			"cannotInsertIntoNonExistent": "無法在不存在的檔案的第 {{lineNumber}} 行插入內容。對於新檔案，'line' 必須為 0（附加到結尾）或 1（插入到開頭）。"
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "缺少參數",
+			"missingParameterMessage": "Roo 嘗試使用 {{toolName}}{{relPath}} 但缺少必要參數 '{{paramName}}' 的值。正在重試..."
+		}
 	}
 }

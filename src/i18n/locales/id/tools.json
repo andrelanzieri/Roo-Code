@@ -17,5 +17,24 @@
 		"errors": {
 			"policy_restriction": "Gagal membuat tugas baru karena pembatasan kebijakan."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "File Tidak Ditemukan",
+			"fileDoesNotExist": "File tidak ada di path: {{path}}",
+			"fileDoesNotExistDetails": "File yang ditentukan tidak dapat ditemukan. Silakan verifikasi path file dan coba lagi."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "Nomor Baris Tidak Valid",
+			"cannotInsertIntoNonExistent": "Tidak dapat menyisipkan konten di baris {{lineNumber}} ke file yang tidak ada. Untuk file baru, 'line' harus 0 (untuk menambahkan di akhir) atau 1 (untuk menyisipkan di awal)."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "Parameter Hilang",
+			"missingParameterMessage": "Roo mencoba menggunakan {{toolName}}{{relPath}} tanpa nilai untuk parameter yang diperlukan '{{paramName}}'. Mencoba lagi..."
+		}
 	}
 }

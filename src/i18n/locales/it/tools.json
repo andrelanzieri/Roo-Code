@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "Impossibile creare una nuova attività a causa di restrizioni di policy."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "File non trovato",
+			"fileDoesNotExist": "Il file non esiste nel percorso: {{path}}",
+			"fileDoesNotExistDetails": "Il file specificato non è stato trovato. Verifica il percorso del file e riprova."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "Numero di riga non valido",
+			"cannotInsertIntoNonExistent": "Impossibile inserire contenuto alla riga {{lineNumber}} in un file inesistente. Per i nuovi file, 'line' deve essere 0 (per aggiungere alla fine) o 1 (per inserire all'inizio)."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "Parametro mancante",
+			"missingParameterMessage": "Roo ha tentato di usare {{toolName}}{{relPath}} senza valore per il parametro richiesto '{{paramName}}'. Nuovo tentativo..."
+		}
 	}
 }

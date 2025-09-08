@@ -14,5 +14,24 @@
 		"errors": {
 			"policy_restriction": "정책 제한으로 인해 새 작업을 생성하지 못했습니다."
 		}
+	},
+	"applyDiff": {
+		"errors": {
+			"fileNotFound": "파일을 찾을 수 없음",
+			"fileDoesNotExist": "파일이 경로에 존재하지 않습니다: {{path}}",
+			"fileDoesNotExistDetails": "지정된 파일을 찾을 수 없습니다. 파일 경로를 확인하고 다시 시도해 주세요."
+		}
+	},
+	"insertContent": {
+		"errors": {
+			"invalidLineNumber": "잘못된 줄 번호",
+			"cannotInsertIntoNonExistent": "존재하지 않는 파일의 {{lineNumber}}번째 줄에 내용을 삽입할 수 없습니다. 새 파일의 경우 'line'은 0(끝에 추가) 또는 1(시작 부분에 삽입)이어야 합니다."
+		}
+	},
+	"common": {
+		"errors": {
+			"missingParameter": "누락된 매개변수",
+			"missingParameterMessage": "Roo가 필수 매개변수 '{{paramName}}'의 값 없이 {{toolName}}{{relPath}}를 사용하려고 했습니다. 다시 시도 중..."
+		}
 	}
 }
