@@ -17,6 +17,17 @@ export const deepSeekModels = {
 		cacheReadsPrice: 0.07, // $0.07 per million tokens (cache hit) - Updated Sept 5, 2025
 		description: `DeepSeek-V3 achieves a significant breakthrough in inference speed over previous models. It tops the leaderboard among open-source models and rivals the most advanced closed-source models globally.`,
 	},
+	"deepseek-coder": {
+		maxTokens: 8192, // 8K max output
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 0.56, // $0.56 per million tokens (cache miss) - Updated Sept 5, 2025
+		outputPrice: 1.68, // $1.68 per million tokens - Updated Sept 5, 2025
+		cacheWritesPrice: 0.56, // $0.56 per million tokens (cache miss) - Updated Sept 5, 2025
+		cacheReadsPrice: 0.07, // $0.07 per million tokens (cache hit) - Updated Sept 5, 2025
+		description: `DeepSeek-Coder-V3 is specifically optimized for code generation, completion, and understanding tasks. It excels at programming challenges across multiple languages.`,
+	},
 	"deepseek-reasoner": {
 		maxTokens: 65536, // 64K max output for reasoning mode
 		contextWindow: 128_000,

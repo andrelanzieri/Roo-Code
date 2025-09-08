@@ -160,6 +160,20 @@ describe("DeepSeekHandler", () => {
 			expect(model.info.supportsPromptCache).toBe(true) // Should be true now
 		})
 
+		it("should return correct model info for deepseek-coder", () => {
+			const handlerWithCoder = new DeepSeekHandler({
+				...mockOptions,
+				apiModelId: "deepseek-coder",
+			})
+			const model = handlerWithCoder.getModel()
+			expect(model.id).toBe("deepseek-coder")
+			expect(model.info).toBeDefined()
+			expect(model.info.maxTokens).toBe(8192) // deepseek-coder has 8K max
+			expect(model.info.contextWindow).toBe(128_000)
+			expect(model.info.supportsImages).toBe(false)
+			expect(model.info.supportsPromptCache).toBe(true)
+		})
+
 		it("should return correct model info for deepseek-reasoner", () => {
 			const handlerWithReasoner = new DeepSeekHandler({
 				...mockOptions,
