@@ -859,6 +859,109 @@ describe("OpenAiNativeHandler", () => {
 			expect(secondCallBody.previous_response_id).toBe("resp_789")
 		})
 
+		it("should respect openAiNativeStatelessMode configuration", async () => {
+			// Test with stateless mode enabled
+			const statelessHandler = new OpenAiNativeHandler({
+				...mockOptions,
+				openAiNativeStatelessMode: true,
+			})
+
+			// Mock fetch for Responses API
+			const mockFetch = vitest.fn().mockResolvedValue({
+				ok: true,
+				body: new ReadableStream({
+					start(controller) {
+						controller.enqueue(
+							new TextEncoder().encode('data: {"type":"response.text.delta","delta":"Test"}\n\n'),
+						)
+						controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+						controller.close()
+					},
+				}),
+			})
+			global.fetch = mockFetch as any
+
+			// Mock SDK to fail
+			mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+			const stream = statelessHandler.createMessage(systemPrompt, messages, { taskId: "test-task" })
+			const chunks = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Verify that store is set to false when stateless mode is enabled
+			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+			expect(requestBody.store).toBe(false)
+		})
+
+		it("should use metadata.store when stateless mode is disabled", async () => {
+			// Test with stateless mode disabled (default)
+			const handler = new OpenAiNativeHandler(mockOptions)
+
+			// Mock fetch for Responses API
+			const mockFetch = vitest.fn().mockResolvedValue({
+				ok: true,
+				body: new ReadableStream({
+					start(controller) {
+						controller.enqueue(
+							new TextEncoder().encode('data: {"type":"response.text.delta","delta":"Test"}\n\n'),
+						)
+						controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+						controller.close()
+					},
+				}),
+			})
+			global.fetch = mockFetch as any
+
+			// Mock SDK to fail
+			mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+			// Test with metadata.store = false
+			const stream = handler.createMessage(systemPrompt, messages, { taskId: "test-task", store: false })
+			const chunks = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Verify that store is set to false when metadata.store is false
+			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+			expect(requestBody.store).toBe(false)
+		})
+
+		it("should default to store:true when stateless mode is disabled and metadata.store is not set", async () => {
+			// Test with stateless mode disabled and no metadata.store
+			const handler = new OpenAiNativeHandler(mockOptions)
+
+			// Mock fetch for Responses API
+			const mockFetch = vitest.fn().mockResolvedValue({
+				ok: true,
+				body: new ReadableStream({
+					start(controller) {
+						controller.enqueue(
+							new TextEncoder().encode('data: {"type":"response.text.delta","delta":"Test"}\n\n'),
+						)
+						controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+						controller.close()
+					},
+				}),
+			})
+			global.fetch = mockFetch as any
+
+			// Mock SDK to fail
+			mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+			const stream = handler.createMessage(systemPrompt, messages, { taskId: "test-task" })
+			const chunks = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Verify that store defaults to true
+			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+			expect(requestBody.store).toBe(true)
+		})
+
 		it("should retry with full conversation when previous_response_id fails", async () => {
 			// This test verifies the fix for context loss bug when previous_response_id becomes invalid
 			const mockFetch = vitest

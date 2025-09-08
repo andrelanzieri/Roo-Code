@@ -228,6 +228,10 @@ const openAiNativeSchema = apiModelIdProviderModelSchema.extend({
 	// OpenAI Responses API service tier for openai-native provider only.
 	// UI should only expose this when the selected model supports flex/priority.
 	openAiNativeServiceTier: serviceTierSchema.optional(),
+	// Enable stateless mode for OpenAI Responses API (sets store: false)
+	// When enabled, responses won't be stored for 30 days and can't be referenced
+	// in future requests using previous_response_id
+	openAiNativeStatelessMode: z.boolean().optional(),
 })
 
 const mistralSchema = apiModelIdProviderModelSchema.extend({
