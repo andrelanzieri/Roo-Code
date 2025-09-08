@@ -255,7 +255,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			model: model.id,
 			input: formattedInput,
 			stream: true,
-			store: metadata?.store !== false, // Default to true unless explicitly set to false
+			// Use stateless mode if configured, otherwise respect metadata.store (default true)
+			store: this.options.openAiNativeStatelessMode ? false : metadata?.store !== false,
 			// Always include instructions (system prompt) for Responses API.
 			// Unlike Chat Completions, system/developer roles in input have no special semantics here.
 			// The official way to set system behavior is the top-level `instructions` field.
@@ -1286,7 +1287,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					},
 				],
 				stream: false, // Non-streaming for completePrompt
-				store: false, // Don't store prompt completions
+				// Use stateless mode if configured, otherwise don't store prompt completions
+				store: this.options.openAiNativeStatelessMode ? false : false,
 			}
 
 			// Include service tier if selected and supported

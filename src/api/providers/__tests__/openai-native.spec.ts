@@ -1732,5 +1732,187 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 				expect(bodyStr).not.toContain('"verbosity"')
 			})
 		})
+
+		describe("Stateless mode configuration", () => {
+			it("should use stateless mode when openAiNativeStatelessMode is true", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode('data: {"type":"response.done","response":{}}\n\n'),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				;(global as any).fetch = mockFetch as any
+
+				// Force SDK path to fail so we use fetch fallback
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+					openAiNativeStatelessMode: true, // Enable stateless mode
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+				const stream = handler.createMessage(systemPrompt, messages)
+
+				for await (const _ of stream) {
+					// drain
+				}
+
+				const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
+				const parsedBody = JSON.parse(bodyStr)
+				expect(parsedBody.store).toBe(false) // Should be false when stateless mode is enabled
+			})
+
+			it("should default to store: true when openAiNativeStatelessMode is false", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode('data: {"type":"response.done","response":{}}\n\n'),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				;(global as any).fetch = mockFetch as any
+
+				// Force SDK path to fail so we use fetch fallback
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+					openAiNativeStatelessMode: false, // Explicitly disable stateless mode
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+				const stream = handler.createMessage(systemPrompt, messages)
+
+				for await (const _ of stream) {
+					// drain
+				}
+
+				const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
+				const parsedBody = JSON.parse(bodyStr)
+				expect(parsedBody.store).toBe(true) // Should be true when stateless mode is disabled
+			})
+
+			it("should default to store: true when openAiNativeStatelessMode is not set", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode('data: {"type":"response.done","response":{}}\n\n'),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				;(global as any).fetch = mockFetch as any
+
+				// Force SDK path to fail so we use fetch fallback
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+					// openAiNativeStatelessMode not set
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+				const stream = handler.createMessage(systemPrompt, messages)
+
+				for await (const _ of stream) {
+					// drain
+				}
+
+				const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
+				const parsedBody = JSON.parse(bodyStr)
+				expect(parsedBody.store).toBe(true) // Should default to true
+			})
+
+			it("should override metadata.store when openAiNativeStatelessMode is true", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode('data: {"type":"response.done","response":{}}\n\n'),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				;(global as any).fetch = mockFetch as any
+
+				// Force SDK path to fail so we use fetch fallback
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+					openAiNativeStatelessMode: true, // Enable stateless mode
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+				// Even if metadata.store is true, stateless mode should override it
+				const stream = handler.createMessage(systemPrompt, messages, { taskId: "test", store: true })
+
+				for await (const _ of stream) {
+					// drain
+				}
+
+				const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
+				const parsedBody = JSON.parse(bodyStr)
+				expect(parsedBody.store).toBe(false) // Should be false even when metadata.store is true
+			})
+
+			it("should use stateless mode in completePrompt when openAiNativeStatelessMode is true", async () => {
+				// Mock the responses.create method
+				mockResponsesCreate.mockResolvedValue({
+					output: [
+						{
+							type: "message",
+							content: [
+								{
+									type: "output_text",
+									text: "Test response",
+								},
+							],
+						},
+					],
+				})
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+					openAiNativeStatelessMode: true, // Enable stateless mode
+				})
+
+				await handler.completePrompt("Test prompt")
+
+				expect(mockResponsesCreate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						store: false, // Should always be false in completePrompt with stateless mode
+					}),
+				)
+			})
+		})
 	})
 })
