@@ -14,7 +14,10 @@
 	},
 	"toolRepetitionLimitReached": "Roo एक लूप में फंसा हुआ लगता है, बार-बार एक ही क्रिया ({{toolName}}) को दोहरा रहा है। यह उसकी वर्तमान रणनीति में किसी समस्या का संकेत हो सकता है। कार्य को पुनः परिभाषित करने, अधिक विशिष्ट निर्देश देने, या उसे एक अलग दृष्टिकोण की ओर मार्गदर्शित करने पर विचार करें।",
 	"codebaseSearch": {
-		"approval": "कोडबेस में '{{query}}' खोज रहा है..."
+		"approval": "कोडबेस में '{{query}}' खोज रहा है...",
+		"errors": {
+			"searchError": "कोडबेस खोज त्रुटि"
+		}
 	},
 	"newTask": {
 		"errors": {
@@ -50,6 +53,86 @@
 	"searchAndReplace": {
 		"errors": {
 			"searchAndReplaceError": "खोज और बदलाव त्रुटि"
+		}
+	},
+	"listFiles": {
+		"errors": {
+			"listFilesError": "फ़ाइल सूची त्रुटि"
+		}
+	},
+	"searchFiles": {
+		"errors": {
+			"searchFilesError": "फ़ाइल खोज त्रुटि"
+		}
+	},
+	"listCodeDefinitionNames": {
+		"errors": {
+			"parseError": "कोड परिभाषा पार्स त्रुटि"
+		}
+	},
+	"fetchInstructions": {
+		"errors": {
+			"fetchError": "निर्देश प्राप्त करने में त्रुटि"
+		}
+	},
+	"updateTodoList": {
+		"errors": {
+			"updateError": "टूडू सूची अपडेट त्रुटि"
+		}
+	},
+	"executeCommand": {
+		"errors": {
+			"executeError": "कमांड निष्पादन त्रुटि"
+		}
+	},
+	"browserAction": {
+		"errors": {
+			"browserError": "ब्राउज़र क्रिया त्रुटि"
+		}
+	},
+	"askFollowupQuestion": {
+		"errors": {
+			"askError": "प्रश्न पूछने में त्रुटि"
+		}
+	},
+	"attemptCompletion": {
+		"errors": {
+			"inspectError": "साइट निरीक्षण त्रुटि"
+		}
+	},
+	"runSlashCommand": {
+		"errors": {
+			"runError": "स्लैश कमांड त्रुटि"
+		}
+	},
+	"generateImage": {
+		"errors": {
+			"generateError": "छवि जनरेट त्रुटि"
+		}
+	},
+	"newTaskTool": {
+		"errors": {
+			"createError": "नया कार्य बनाने में त्रुटि"
+		}
+	},
+	"switchMode": {
+		"errors": {
+			"switchError": "मोड स्विच त्रुटि"
+		}
+	},
+	"accessMcpResource": {
+		"errors": {
+			"accessError": "MCP संसाधन पहुंच त्रुटि"
+		}
+	},
+	"useMcpTool": {
+		"errors": {
+			"executeError": "MCP टूल निष्पादन त्रुटि"
+		}
+	},
+	"simpleReadFile": {
+		"errors": {
+			"readError": "फ़ाइल पढ़ने में त्रुटि"
 		}
 	}
 }

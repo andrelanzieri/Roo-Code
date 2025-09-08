@@ -14,7 +14,10 @@
 	},
 	"toolRepetitionLimitReached": "Roo 似乎陷入循环，反复尝试同一操作 ({{toolName}})。这可能表明当前策略存在问题。请考虑重新描述任务、提供更具体的指示或引导其尝试不同的方法。",
 	"codebaseSearch": {
-		"approval": "正在搜索代码库中的 '{{query}}'..."
+		"approval": "正在搜索代码库中的 '{{query}}'...",
+		"errors": {
+			"searchError": "代码库搜索错误"
+		}
 	},
 	"newTask": {
 		"errors": {
@@ -50,6 +53,86 @@
 	"searchAndReplace": {
 		"errors": {
 			"searchAndReplaceError": "搜索和替换错误"
+		}
+	},
+	"listFiles": {
+		"errors": {
+			"listFilesError": "文件列表错误"
+		}
+	},
+	"searchFiles": {
+		"errors": {
+			"searchFilesError": "文件搜索错误"
+		}
+	},
+	"listCodeDefinitionNames": {
+		"errors": {
+			"parseError": "代码定义解析错误"
+		}
+	},
+	"fetchInstructions": {
+		"errors": {
+			"fetchError": "获取指令错误"
+		}
+	},
+	"updateTodoList": {
+		"errors": {
+			"updateError": "更新待办事项列表错误"
+		}
+	},
+	"executeCommand": {
+		"errors": {
+			"executeError": "执行命令错误"
+		}
+	},
+	"browserAction": {
+		"errors": {
+			"browserError": "浏览器操作错误"
+		}
+	},
+	"askFollowupQuestion": {
+		"errors": {
+			"askError": "提问错误"
+		}
+	},
+	"attemptCompletion": {
+		"errors": {
+			"inspectError": "检查站点错误"
+		}
+	},
+	"runSlashCommand": {
+		"errors": {
+			"runError": "运行斜杠命令错误"
+		}
+	},
+	"generateImage": {
+		"errors": {
+			"generateError": "生成图像错误"
+		}
+	},
+	"newTaskTool": {
+		"errors": {
+			"createError": "创建新任务错误"
+		}
+	},
+	"switchMode": {
+		"errors": {
+			"switchError": "切换模式错误"
+		}
+	},
+	"accessMcpResource": {
+		"errors": {
+			"accessError": "访问MCP资源错误"
+		}
+	},
+	"useMcpTool": {
+		"errors": {
+			"executeError": "执行MCP工具错误"
+		}
+	},
+	"simpleReadFile": {
+		"errors": {
+			"readError": "读取文件错误"
 		}
 	}
 }

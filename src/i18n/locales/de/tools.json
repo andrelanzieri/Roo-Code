@@ -14,7 +14,10 @@
 	},
 	"toolRepetitionLimitReached": "Roo scheint in einer Schleife festzustecken und versucht wiederholt dieselbe Aktion ({{toolName}}). Dies könnte auf ein Problem mit der aktuellen Strategie hindeuten. Überlege dir, die Aufgabe umzuformulieren, genauere Anweisungen zu geben oder Roo zu einem anderen Ansatz zu führen.",
 	"codebaseSearch": {
-		"approval": "Suche nach '{{query}}' im Codebase..."
+		"approval": "Suche nach '{{query}}' im Codebase...",
+		"errors": {
+			"searchError": "Codebase-Suchfehler"
+		}
 	},
 	"newTask": {
 		"errors": {
@@ -50,6 +53,86 @@
 	"searchAndReplace": {
 		"errors": {
 			"searchAndReplaceError": "Suchen und Ersetzen Fehler"
+		}
+	},
+	"listFiles": {
+		"errors": {
+			"listFilesError": "Dateilistenfehler"
+		}
+	},
+	"searchFiles": {
+		"errors": {
+			"searchFilesError": "Dateisuchfehler"
+		}
+	},
+	"listCodeDefinitionNames": {
+		"errors": {
+			"parseError": "Code-Definitionen-Analysefehler"
+		}
+	},
+	"fetchInstructions": {
+		"errors": {
+			"fetchError": "Anweisungsabruffehler"
+		}
+	},
+	"updateTodoList": {
+		"errors": {
+			"updateError": "Todo-Listen-Aktualisierungsfehler"
+		}
+	},
+	"executeCommand": {
+		"errors": {
+			"executeError": "Befehlsausführungsfehler"
+		}
+	},
+	"browserAction": {
+		"errors": {
+			"browserError": "Browser-Aktionsfehler"
+		}
+	},
+	"askFollowupQuestion": {
+		"errors": {
+			"askError": "Fragefehler"
+		}
+	},
+	"attemptCompletion": {
+		"errors": {
+			"inspectError": "Website-Inspektionsfehler"
+		}
+	},
+	"runSlashCommand": {
+		"errors": {
+			"runError": "Slash-Befehlsfehler"
+		}
+	},
+	"generateImage": {
+		"errors": {
+			"generateError": "Bilderzeugungsfehler"
+		}
+	},
+	"newTaskTool": {
+		"errors": {
+			"createError": "Neue Aufgabe Erstellungsfehler"
+		}
+	},
+	"switchMode": {
+		"errors": {
+			"switchError": "Moduswechselfehler"
+		}
+	},
+	"accessMcpResource": {
+		"errors": {
+			"accessError": "MCP-Ressourcenzugriffsfehler"
+		}
+	},
+	"useMcpTool": {
+		"errors": {
+			"executeError": "MCP-Tool-Ausführungsfehler"
+		}
+	},
+	"simpleReadFile": {
+		"errors": {
+			"readError": "Dateilesefehler"
 		}
 	}
 }

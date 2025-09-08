@@ -14,7 +14,10 @@
 	},
 	"toolRepetitionLimitReached": "Wygląda na to, że Roo utknął w pętli, wielokrotnie próbując wykonać tę samą akcję ({{toolName}}). Może to wskazywać na problem z jego obecną strategią. Rozważ przeformułowanie zadania, podanie bardziej szczegółowych instrukcji lub nakierowanie go na inne podejście.",
 	"codebaseSearch": {
-		"approval": "Wyszukiwanie '{{query}}' w bazie kodu..."
+		"approval": "Wyszukiwanie '{{query}}' w bazie kodu...",
+		"errors": {
+			"searchError": "Błąd wyszukiwania kodu"
+		}
 	},
 	"newTask": {
 		"errors": {
@@ -50,6 +53,86 @@
 	"searchAndReplace": {
 		"errors": {
 			"searchAndReplaceError": "Błąd Wyszukiwania i Zamiany"
+		}
+	},
+	"listFiles": {
+		"errors": {
+			"listFilesError": "Błąd listy plików"
+		}
+	},
+	"searchFiles": {
+		"errors": {
+			"searchFilesError": "Błąd wyszukiwania plików"
+		}
+	},
+	"listCodeDefinitionNames": {
+		"errors": {
+			"parseError": "Błąd analizy definicji kodu"
+		}
+	},
+	"fetchInstructions": {
+		"errors": {
+			"fetchError": "Błąd pobierania instrukcji"
+		}
+	},
+	"updateTodoList": {
+		"errors": {
+			"updateError": "Błąd aktualizacji listy zadań"
+		}
+	},
+	"executeCommand": {
+		"errors": {
+			"executeError": "Błąd wykonywania polecenia"
+		}
+	},
+	"browserAction": {
+		"errors": {
+			"browserError": "Błąd akcji przeglądarki"
+		}
+	},
+	"askFollowupQuestion": {
+		"errors": {
+			"askError": "Błąd zadawania pytania"
+		}
+	},
+	"attemptCompletion": {
+		"errors": {
+			"inspectError": "Błąd inspekcji strony"
+		}
+	},
+	"runSlashCommand": {
+		"errors": {
+			"runError": "Błąd wykonywania polecenia slash"
+		}
+	},
+	"generateImage": {
+		"errors": {
+			"generateError": "Błąd generowania obrazu"
+		}
+	},
+	"newTaskTool": {
+		"errors": {
+			"createError": "Błąd tworzenia nowego zadania"
+		}
+	},
+	"switchMode": {
+		"errors": {
+			"switchError": "Błąd przełączania trybu"
+		}
+	},
+	"accessMcpResource": {
+		"errors": {
+			"accessError": "Błąd dostępu do zasobu MCP"
+		}
+	},
+	"useMcpTool": {
+		"errors": {
+			"executeError": "Błąd wykonywania narzędzia MCP"
+		}
+	},
+	"simpleReadFile": {
+		"errors": {
+			"readError": "Błąd odczytu pliku"
 		}
 	}
 }

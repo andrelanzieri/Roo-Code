@@ -14,7 +14,10 @@
 	},
 	"toolRepetitionLimitReached": "Roo sembla estar atrapat en un bucle, intentant la mateixa acció ({{toolName}}) repetidament. Això podria indicar un problema amb la seva estratègia actual. Considera reformular la tasca, proporcionar instruccions més específiques o guiar-lo cap a un enfocament diferent.",
 	"codebaseSearch": {
-		"approval": "Cercant '{{query}}' a la base de codi..."
+		"approval": "Cercant '{{query}}' a la base de codi...",
+		"errors": {
+			"searchError": "Error de cerca de codi"
+		}
 	},
 	"newTask": {
 		"errors": {
@@ -50,6 +53,86 @@
 	"searchAndReplace": {
 		"errors": {
 			"searchAndReplaceError": "Error de Cerca i Substitució"
+		}
+	},
+	"listFiles": {
+		"errors": {
+			"listFilesError": "Error en llistar fitxers"
+		}
+	},
+	"searchFiles": {
+		"errors": {
+			"searchFilesError": "Error en cercar fitxers"
+		}
+	},
+	"listCodeDefinitionNames": {
+		"errors": {
+			"parseError": "Error en analitzar definicions de codi"
+		}
+	},
+	"fetchInstructions": {
+		"errors": {
+			"fetchError": "Error en obtenir instruccions"
+		}
+	},
+	"updateTodoList": {
+		"errors": {
+			"updateError": "Error en actualitzar la llista de tasques"
+		}
+	},
+	"executeCommand": {
+		"errors": {
+			"executeError": "Error en executar l'ordre"
+		}
+	},
+	"browserAction": {
+		"errors": {
+			"browserError": "Error d'acció del navegador"
+		}
+	},
+	"askFollowupQuestion": {
+		"errors": {
+			"askError": "Error en fer la pregunta"
+		}
+	},
+	"attemptCompletion": {
+		"errors": {
+			"inspectError": "Error en inspeccionar el lloc"
+		}
+	},
+	"runSlashCommand": {
+		"errors": {
+			"runError": "Error en executar l'ordre slash"
+		}
+	},
+	"generateImage": {
+		"errors": {
+			"generateError": "Error en generar la imatge"
+		}
+	},
+	"newTaskTool": {
+		"errors": {
+			"createError": "Error en crear una nova tasca"
+		}
+	},
+	"switchMode": {
+		"errors": {
+			"switchError": "Error en canviar de mode"
+		}
+	},
+	"accessMcpResource": {
+		"errors": {
+			"accessError": "Error en accedir al recurs MCP"
+		}
+	},
+	"useMcpTool": {
+		"errors": {
+			"executeError": "Error en executar l'eina MCP"
+		}
+	},
+	"simpleReadFile": {
+		"errors": {
+			"readError": "Error en llegir el fitxer"
 		}
 	}
 }

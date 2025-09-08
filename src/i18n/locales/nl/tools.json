@@ -14,7 +14,10 @@
 	},
 	"toolRepetitionLimitReached": "Roo lijkt vast te zitten in een lus, waarbij hij herhaaldelijk dezelfde actie ({{toolName}}) probeert. Dit kan duiden op een probleem met de huidige strategie. Overweeg de taak te herformuleren, specifiekere instructies te geven of Roo naar een andere aanpak te leiden.",
 	"codebaseSearch": {
-		"approval": "Zoeken naar '{{query}}' in codebase..."
+		"approval": "Zoeken naar '{{query}}' in codebase...",
+		"errors": {
+			"searchError": "Codebase zoekfout"
+		}
 	},
 	"newTask": {
 		"errors": {
@@ -50,6 +53,86 @@
 	"searchAndReplace": {
 		"errors": {
 			"searchAndReplaceError": "Zoek en Vervang Fout"
+		}
+	},
+	"listFiles": {
+		"errors": {
+			"listFilesError": "Bestandslijstfout"
+		}
+	},
+	"searchFiles": {
+		"errors": {
+			"searchFilesError": "Bestandszoekfout"
+		}
+	},
+	"listCodeDefinitionNames": {
+		"errors": {
+			"parseError": "Code-definitie parseerfout"
+		}
+	},
+	"fetchInstructions": {
+		"errors": {
+			"fetchError": "Instructies ophalfout"
+		}
+	},
+	"updateTodoList": {
+		"errors": {
+			"updateError": "Todo-lijst updatefout"
+		}
+	},
+	"executeCommand": {
+		"errors": {
+			"executeError": "Opdracht uitvoerfout"
+		}
+	},
+	"browserAction": {
+		"errors": {
+			"browserError": "Browser-actiefout"
+		}
+	},
+	"askFollowupQuestion": {
+		"errors": {
+			"askError": "Vraagfout"
+		}
+	},
+	"attemptCompletion": {
+		"errors": {
+			"inspectError": "Site-inspectiefout"
+		}
+	},
+	"runSlashCommand": {
+		"errors": {
+			"runError": "Slash-opdracht uitvoerfout"
+		}
+	},
+	"generateImage": {
+		"errors": {
+			"generateError": "Afbeelding generatiefout"
+		}
+	},
+	"newTaskTool": {
+		"errors": {
+			"createError": "Nieuwe taak aanmaakfout"
+		}
+	},
+	"switchMode": {
+		"errors": {
+			"switchError": "Modus wisselfout"
+		}
+	},
+	"accessMcpResource": {
+		"errors": {
+			"accessError": "MCP-bron toegangsfout"
+		}
+	},
+	"useMcpTool": {
+		"errors": {
+			"executeError": "MCP-tool uitvoerfout"
+		}
+	},
+	"simpleReadFile": {
+		"errors": {
+			"readError": "Bestand leesfout"
 		}
 	}
 }

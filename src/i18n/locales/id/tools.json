@@ -14,10 +14,16 @@
 	},
 	"toolRepetitionLimitReached": "Roo tampaknya terjebak dalam loop, mencoba aksi yang sama ({{toolName}}) berulang kali. Ini mungkin menunjukkan masalah dengan strategi saat ini. Pertimbangkan untuk mengubah frasa tugas, memberikan instruksi yang lebih spesifik, atau mengarahkannya ke pendekatan yang berbeda.",
 	"codebaseSearch": {
-		"approval": "Mencari '{{query}}' di codebase..."
+		"approval": "Mencari '{{query}}' di codebase...",
+		"errors": {
+			"searchError": "Kesalahan Pencarian Kode"
+		}
 	},
 	"searchFiles": {
-		"workspaceBoundaryError": "Tidak dapat mencari di luar workspace. Path '{{path}}' berada di luar workspace saat ini."
+		"workspaceBoundaryError": "Tidak dapat mencari di luar workspace. Path '{{path}}' berada di luar workspace saat ini.",
+		"errors": {
+			"searchFilesError": "Kesalahan Pencarian File"
+		}
 	},
 	"newTask": {
 		"errors": {
@@ -53,6 +59,81 @@
 	"searchAndReplace": {
 		"errors": {
 			"searchAndReplaceError": "Kesalahan Cari dan Ganti"
+		}
+	},
+	"listFiles": {
+		"errors": {
+			"listFilesError": "Kesalahan Daftar File"
+		}
+	},
+	"listCodeDefinitionNames": {
+		"errors": {
+			"parseError": "Kesalahan Parse Definisi Kode"
+		}
+	},
+	"fetchInstructions": {
+		"errors": {
+			"fetchError": "Kesalahan Mengambil Instruksi"
+		}
+	},
+	"updateTodoList": {
+		"errors": {
+			"updateError": "Kesalahan Pembaruan Daftar Todo"
+		}
+	},
+	"executeCommand": {
+		"errors": {
+			"executeError": "Kesalahan Eksekusi Perintah"
+		}
+	},
+	"browserAction": {
+		"errors": {
+			"browserError": "Kesalahan Aksi Browser"
+		}
+	},
+	"askFollowupQuestion": {
+		"errors": {
+			"askError": "Kesalahan Mengajukan Pertanyaan"
+		}
+	},
+	"attemptCompletion": {
+		"errors": {
+			"inspectError": "Kesalahan Inspeksi Situs"
+		}
+	},
+	"runSlashCommand": {
+		"errors": {
+			"runError": "Kesalahan Menjalankan Perintah Slash"
+		}
+	},
+	"generateImage": {
+		"errors": {
+			"generateError": "Kesalahan Menghasilkan Gambar"
+		}
+	},
+	"newTaskTool": {
+		"errors": {
+			"createError": "Kesalahan Membuat Tugas Baru"
+		}
+	},
+	"switchMode": {
+		"errors": {
+			"switchError": "Kesalahan Beralih Mode"
+		}
+	},
+	"accessMcpResource": {
+		"errors": {
+			"accessError": "Kesalahan Akses Sumber Daya MCP"
+		}
+	},
+	"useMcpTool": {
+		"errors": {
+			"executeError": "Kesalahan Eksekusi Alat MCP"
+		}
+	},
+	"simpleReadFile": {
+		"errors": {
+			"readError": "Kesalahan Membaca File"
 		}
 	}
 }

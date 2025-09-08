@@ -14,7 +14,10 @@
 	},
 	"toolRepetitionLimitReached": "Похоже, что Roo застрял в цикле, многократно пытаясь выполнить одно и то же действие ({{toolName}}). Это может указывать на проблему с его текущей стратегией. Попробуйте переформулировать задачу, предоставить более конкретные инструкции или направить его к другому подходу.",
 	"codebaseSearch": {
-		"approval": "Поиск '{{query}}' в кодовой базе..."
+		"approval": "Поиск '{{query}}' в кодовой базе...",
+		"errors": {
+			"searchError": "Ошибка поиска кода"
+		}
 	},
 	"newTask": {
 		"errors": {
@@ -50,6 +53,86 @@
 	"searchAndReplace": {
 		"errors": {
 			"searchAndReplaceError": "Ошибка Поиска и Замены"
+		}
+	},
+	"listFiles": {
+		"errors": {
+			"listFilesError": "Ошибка списка файлов"
+		}
+	},
+	"searchFiles": {
+		"errors": {
+			"searchFilesError": "Ошибка поиска файлов"
+		}
+	},
+	"listCodeDefinitionNames": {
+		"errors": {
+			"parseError": "Ошибка анализа определений кода"
+		}
+	},
+	"fetchInstructions": {
+		"errors": {
+			"fetchError": "Ошибка получения инструкций"
+		}
+	},
+	"updateTodoList": {
+		"errors": {
+			"updateError": "Ошибка обновления списка задач"
+		}
+	},
+	"executeCommand": {
+		"errors": {
+			"executeError": "Ошибка выполнения команды"
+		}
+	},
+	"browserAction": {
+		"errors": {
+			"browserError": "Ошибка действия браузера"
+		}
+	},
+	"askFollowupQuestion": {
+		"errors": {
+			"askError": "Ошибка вопроса"
+		}
+	},
+	"attemptCompletion": {
+		"errors": {
+			"inspectError": "Ошибка проверки сайта"
+		}
+	},
+	"runSlashCommand": {
+		"errors": {
+			"runError": "Ошибка выполнения slash-команды"
+		}
+	},
+	"generateImage": {
+		"errors": {
+			"generateError": "Ошибка генерации изображения"
+		}
+	},
+	"newTaskTool": {
+		"errors": {
+			"createError": "Ошибка создания новой задачи"
+		}
+	},
+	"switchMode": {
+		"errors": {
+			"switchError": "Ошибка переключения режима"
+		}
+	},
+	"accessMcpResource": {
+		"errors": {
+			"accessError": "Ошибка доступа к ресурсу MCP"
+		}
+	},
+	"useMcpTool": {
+		"errors": {
+			"executeError": "Ошибка выполнения инструмента MCP"
+		}
+	},
+	"simpleReadFile": {
+		"errors": {
+			"readError": "Ошибка чтения файла"
 		}
 	}
 }

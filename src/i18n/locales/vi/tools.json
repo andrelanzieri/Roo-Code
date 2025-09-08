@@ -14,7 +14,10 @@
 	},
 	"toolRepetitionLimitReached": "Roo dường như đang bị mắc kẹt trong một vòng lặp, liên tục cố gắng thực hiện cùng một hành động ({{toolName}}). Điều này có thể cho thấy vấn đề với chiến lược hiện tại. Hãy cân nhắc việc diễn đạt lại nhiệm vụ, cung cấp hướng dẫn cụ thể hơn, hoặc hướng Roo theo một cách tiếp cận khác.",
 	"codebaseSearch": {
-		"approval": "Đang tìm kiếm '{{query}}' trong cơ sở mã..."
+		"approval": "Đang tìm kiếm '{{query}}' trong cơ sở mã...",
+		"errors": {
+			"searchError": "Lỗi Tìm Kiếm Mã"
+		}
 	},
 	"newTask": {
 		"errors": {
@@ -50,6 +53,86 @@
 	"searchAndReplace": {
 		"errors": {
 			"searchAndReplaceError": "Lỗi Tìm và Thay Thế"
+		}
+	},
+	"listFiles": {
+		"errors": {
+			"listFilesError": "Lỗi Danh Sách Tệp"
+		}
+	},
+	"searchFiles": {
+		"errors": {
+			"searchFilesError": "Lỗi Tìm Kiếm Tệp"
+		}
+	},
+	"listCodeDefinitionNames": {
+		"errors": {
+			"parseError": "Lỗi Phân Tích Định Nghĩa Mã"
+		}
+	},
+	"fetchInstructions": {
+		"errors": {
+			"fetchError": "Lỗi Lấy Hướng Dẫn"
+		}
+	},
+	"updateTodoList": {
+		"errors": {
+			"updateError": "Lỗi Cập Nhật Danh Sách Việc Cần Làm"
+		}
+	},
+	"executeCommand": {
+		"errors": {
+			"executeError": "Lỗi Thực Thi Lệnh"
+		}
+	},
+	"browserAction": {
+		"errors": {
+			"browserError": "Lỗi Hành Động Trình Duyệt"
+		}
+	},
+	"askFollowupQuestion": {
+		"errors": {
+			"askError": "Lỗi Đặt Câu Hỏi"
+		}
+	},
+	"attemptCompletion": {
+		"errors": {
+			"inspectError": "Lỗi Kiểm Tra Trang Web"
+		}
+	},
+	"runSlashCommand": {
+		"errors": {
+			"runError": "Lỗi Chạy Lệnh Slash"
+		}
+	},
+	"generateImage": {
+		"errors": {
+			"generateError": "Lỗi Tạo Hình Ảnh"
+		}
+	},
+	"newTaskTool": {
+		"errors": {
+			"createError": "Lỗi Tạo Tác Vụ Mới"
+		}
+	},
+	"switchMode": {
+		"errors": {
+			"switchError": "Lỗi Chuyển Chế Độ"
+		}
+	},
+	"accessMcpResource": {
+		"errors": {
+			"accessError": "Lỗi Truy Cập Tài Nguyên MCP"
+		}
+	},
+	"useMcpTool": {
+		"errors": {
+			"executeError": "Lỗi Thực Thi Công Cụ MCP"
+		}
+	},
+	"simpleReadFile": {
+		"errors": {
+			"readError": "Lỗi Đọc Tệp"
 		}
 	}
 }
