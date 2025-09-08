@@ -12,17 +12,10 @@ interface ReasoningBlockProps {
 	metadata?: Record<string, any>
 }
 
-function formatDuration(ms: number): string {
-	const totalSeconds = Math.max(0, Math.floor(ms / 1000))
-	const minutes = Math.floor(totalSeconds / 60)
-	const seconds = totalSeconds % 60
-	return `${minutes}:${seconds.toString().padStart(2, "0")}`
-}
-
 /**
  * Render reasoning with a heading and a persistent timer.
  * - Heading uses i18n key chat:reasoning.thinking
- * - Timer persists via message.metadata.reasoning { startedAt, elapsedMs }
+ * - Timer shown as "(⟲ 24s)" beside the heading and persists via message.metadata.reasoning { startedAt, elapsedMs }
  */
 export const ReasoningBlock = ({ content, ts, isStreaming, isLast, metadata }: ReasoningBlockProps) => {
 	const { t } = useTranslation()
@@ -75,14 +68,19 @@ export const ReasoningBlock = ({ content, ts, isStreaming, isLast, metadata }: R
 		return persisted.elapsedMs ?? elapsed
 	}, [elapsed, isLast, isStreaming, persisted.elapsedMs])
 
+	const seconds = Math.max(0, Math.floor((displayMs || 0) / 1000))
+	const secondsLabel = t("chat:reasoning.seconds", { count: seconds })
+
 	return (
 		<div className="px-3 py-1">
-			<div className="flex items-center justify-between mb-1">
-				<div className="flex items-center gap-2">
-					<span className="codicon codicon-light-bulb text-muted-foreground" />
-					<span className="font-medium text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
-				</div>
-				<span className="text-xs text-muted-foreground tabular-nums">{formatDuration(displayMs)}</span>
+			<div className="flex items-center gap-2 mb-1">
+				<span className="codicon codicon-light-bulb text-muted-foreground" />
+				<span className="font-medium text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
+				<span className="text-xs text-muted-foreground tabular-nums">
+					(
+					<span className="codicon codicon-history mr-1" />
+					{secondsLabel})
+				</span>
 			</div>
 			<div className="italic text-muted-foreground">
 				<MarkdownBlock markdown={content} />
