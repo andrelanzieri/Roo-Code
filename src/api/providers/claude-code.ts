@@ -82,7 +82,28 @@ export class ClaudeCodeHandler extends BaseProvider implements ApiHandler {
 
 						const error = this.attemptParse(errorMessage)
 						if (!error) {
+							// Check if this is a 5-hour rate limit error
+							// These errors typically contain system prompts and are very long
+							if (
+								content.text.includes("5-hour") ||
+								content.text.includes("5 hour") ||
+								content.text.includes("rate limit") ||
+								content.text.includes("quota")
+							) {
+								throw new Error(t("common:errors.claudeCode.rateLimitReached"))
+							}
 							throw new Error(content.text)
+						}
+
+						// Check for 5-hour rate limit in parsed error
+						if (
+							error.error?.message &&
+							(error.error.message.includes("5-hour") ||
+								error.error.message.includes("5 hour") ||
+								error.error.message.includes("rate limit") ||
+								error.error.message.includes("quota"))
+						) {
+							throw new Error(t("common:errors.claudeCode.rateLimitReached"))
 						}
 
 						if (error.error.message.includes("Invalid model name")) {
