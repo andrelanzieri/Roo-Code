@@ -1228,6 +1228,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 		}
 
+		// Check if this task was paused waiting for a subtask that got interrupted
+		// If so, handle the interrupted subtask properly
+		if (this.isPaused && this.childTaskId) {
+			await this.handleInterruptedSubtask()
+		}
+
 		const modifiedClineMessages = await this.getSavedClineMessages()
 
 		// Check for any stored GPT-5 response IDs in the message history.
@@ -1654,6 +1660,55 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				?.log(`Error failed to add reply from subtask into conversation of parent task, error: ${error}`)
 
 			throw error
+		}
+	}
+
+	/**
+	 * Handle the case when a subtask was interrupted (e.g., due to 5-hour limit)
+	 * and the parent task needs to be resumed without the subtask result.
+	 */
+	public async handleInterruptedSubtask() {
+		if (!this.isPaused || !this.childTaskId) {
+			return // Not waiting for a subtask
+		}
+
+		const provider = this.providerRef.deref()
+		provider?.log(
+			`[handleInterruptedSubtask] Handling interrupted subtask ${this.childTaskId} for parent task ${this.taskId}`,
+		)
+
+		// Clear the paused state
+		this.isPaused = false
+		const interruptedChildId = this.childTaskId
+		this.childTaskId = undefined
+
+		// Clear any pause interval
+		if (this.pauseInterval) {
+			clearInterval(this.pauseInterval)
+			this.pauseInterval = undefined
+		}
+
+		// Emit event to update UI
+		this.emit(RooCodeEventName.TaskUnpaused, this.taskId)
+
+		// Add a message to the conversation history indicating the subtask was interrupted
+		try {
+			await this.say("subtask_result", `[Subtask ${interruptedChildId} was interrupted and could not complete]`)
+
+			await this.addToApiConversationHistory({
+				role: "user",
+				content: [
+					{
+						type: "text",
+						text: `[new_task interrupted] The subtask was interrupted before completion. Please continue with the main task.`,
+					},
+				],
+			})
+
+			// Set skipPrevResponseIdOnce to ensure continuity
+			this.skipPrevResponseIdOnce = true
+		} catch (error) {
+			provider?.log(`Error handling interrupted subtask: ${error}`)
 		}
 	}
 
