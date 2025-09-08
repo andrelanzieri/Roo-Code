@@ -72,18 +72,22 @@ export const ReasoningBlock = ({ content, ts, isStreaming, isLast, metadata }: R
 	const secondsLabel = t("chat:reasoning.seconds", { count: seconds })
 
 	return (
-		<div className="px-3 py-1">
-			<div className="flex items-center gap-2 mb-1">
-				<span className="codicon codicon-light-bulb text-muted-foreground" />
-				<span className="font-medium text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
-				<span className="font-medium text-vscode-foreground tabular-nums flex items-center gap-1">
-					<span className="codicon codicon-history" style={{ fontSize: "inherit" }} />
+		<div className="py-1">
+			<div className="flex items-center justify-between mb-[10px]">
+				<div className="flex items-center gap-2">
+					<span className="codicon codicon-light-bulb" style={{ color: "var(--vscode-charts-yellow)" }} />
+					<span className="font-bold text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
+				</div>
+				<span className="text-vscode-foreground tabular-nums flex items-center gap-1">
+					<span className="codicon codicon-clock" style={{ fontSize: "inherit" }} />
 					{secondsLabel}
 				</span>
 			</div>
-			<div className="italic text-muted-foreground">
-				<MarkdownBlock markdown={content} />
-			</div>
+			{(content?.trim()?.length ?? 0) > 0 && (
+				<div className="px-3 italic text-vscode-descriptionForeground">
+					<MarkdownBlock markdown={content} />
+				</div>
+			)}
 		</div>
 	)
 }
