@@ -197,9 +197,7 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 	override getModel(): { id: string; info: ModelInfo } {
 		return {
 			id: (this.options as any).watsonxModelId || watsonxAiDefaultModelId,
-			info:
-				watsonxAiModels[(this.options as any).watsonxModelId as WatsonxAIModelId] ||
-				watsonxAiModels[watsonxAiDefaultModelId],
+			info: watsonxAiModels[(this.options as any).watsonxModelId as WatsonxAIModelId] || "",
 		}
 	}
 }
