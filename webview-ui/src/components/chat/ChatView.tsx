@@ -120,6 +120,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		soundEnabled,
 		soundVolume,
 		cloudIsAuthenticated,
+		showCloudPromotion,
 		messageQueue = [],
 	} = useExtensionState()
 
@@ -1831,7 +1832,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						{telemetrySetting === "unset" && <TelemetryBanner />}
 
 						<div className="mb-2.5">
-							{cloudIsAuthenticated || taskHistory.length < 4 ? <RooTips /> : <RooCloudCTA />}
+							{cloudIsAuthenticated || taskHistory.length < 4 || !showCloudPromotion ? (
+								<RooTips />
+							) : (
+								<RooCloudCTA />
+							)}
 						</div>
 						{/* Show the task history preview if expanded and tasks exist */}
 						{taskHistory.length > 0 && isExpanded && <HistoryPreview />}

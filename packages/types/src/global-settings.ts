@@ -41,6 +41,7 @@ export const globalSettingsSchema = z.object({
 	lastShownAnnouncementId: z.string().optional(),
 	customInstructions: z.string().optional(),
 	taskHistory: z.array(historyItemSchema).optional(),
+	showCloudPromotion: z.boolean().optional(),
 
 	// Image generation settings (experimental) - flattened for simplicity
 	openRouterImageApiKey: z.string().optional(),
@@ -321,6 +322,8 @@ export const EVALS_SETTINGS: RooCodeSettings = {
 	mode: "code", // "architect",
 
 	customModes: [],
+
+	showCloudPromotion: true, // Default to true to maintain current behavior
 }
 
 export const EVALS_TIMEOUT = 5 * 60 * 1_000

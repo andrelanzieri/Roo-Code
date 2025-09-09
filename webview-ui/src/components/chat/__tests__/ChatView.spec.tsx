@@ -1428,6 +1428,44 @@ describe("ChatView - RooCloudCTA Display Tests", () => {
 		expect(queryByTestId("roo-cloud-cta")).not.toBeInTheDocument()
 		expect(getByTestId("roo-tips")).toBeInTheDocument()
 	})
+
+	it("does not show RooCloudCTA when showCloudPromotion is false", () => {
+		const { queryByTestId, getByTestId } = renderChatView()
+
+		// Set showCloudPromotion to false
+		act(() => {
+			mockPostMessage({
+				showCloudPromotion: false,
+				cloudIsAuthenticated: false,
+				taskHistory: Array(5).fill({ id: "task", ts: Date.now() }),
+				clineMessages: [], // No active task
+			})
+		})
+
+		// Should not show RooCloudCTA when showCloudPromotion is false
+		expect(queryByTestId("roo-cloud-cta")).not.toBeInTheDocument()
+		// Should show RooTips instead
+		expect(getByTestId("roo-tips")).toBeInTheDocument()
+	})
+
+	it("shows RooCloudCTA when showCloudPromotion is true and conditions are met", async () => {
+		const { getByTestId } = renderChatView()
+
+		// Set showCloudPromotion to true with conditions met
+		act(() => {
+			mockPostMessage({
+				showCloudPromotion: true,
+				cloudIsAuthenticated: false,
+				taskHistory: Array(5).fill({ id: "task", ts: Date.now() }),
+				clineMessages: [], // No active task
+			})
+		})
+
+		// Should show RooCloudCTA when showCloudPromotion is true and conditions are met
+		await waitFor(() => {
+			expect(getByTestId("roo-cloud-cta")).toBeInTheDocument()
+		})
+	})
 })
 
 describe("ChatView - Message Queueing Tests", () => {
