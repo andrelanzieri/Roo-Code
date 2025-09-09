@@ -382,5 +382,80 @@ describe("OpenRouter API", () => {
 			expect(textResult.maxTokens).toBe(64000)
 			expect(imageResult.maxTokens).toBe(64000)
 		})
+
+		it("handles context overflow issue - caps max_completion_tokens when it equals context window", () => {
+			const mockModel = {
+				name: "Kimi K2",
+				description: "Test model with context overflow issue",
+				context_length: 131072,
+				max_completion_tokens: 131072, // This equals context window, causing the issue
+				pricing: {
+					prompt: "0.000003",
+					completion: "0.000015",
+				},
+			}
+
+			const result = parseOpenRouterModel({
+				id: "moonshotai/kimi-k2",
+				model: mockModel,
+				inputModality: ["text"],
+				outputModality: ["text"],
+				maxTokens: 131072, // This would cause context overflow
+			})
+
+			// Should cap to 20% of context window instead of using full context window
+			expect(result.maxTokens).toBe(Math.ceil(131072 * 0.2)) // 26215
+			expect(result.contextWindow).toBe(131072)
+		})
+
+		it("uses provided max_completion_tokens when it's reasonable (less than context window)", () => {
+			const mockModel = {
+				name: "Reasonable Model",
+				description: "Test model with reasonable max_completion_tokens",
+				context_length: 131072,
+				max_completion_tokens: 65536, // Half of context window - reasonable
+				pricing: {
+					prompt: "0.000003",
+					completion: "0.000015",
+				},
+			}
+
+			const result = parseOpenRouterModel({
+				id: "test/reasonable-model",
+				model: mockModel,
+				inputModality: ["text"],
+				outputModality: ["text"],
+				maxTokens: 65536,
+			})
+
+			// Should use the provided maxTokens since it's reasonable
+			expect(result.maxTokens).toBe(65536)
+			expect(result.contextWindow).toBe(131072)
+		})
+
+		it("falls back to 20% of context window when max_completion_tokens is not provided", () => {
+			const mockModel = {
+				name: "No Max Tokens Model",
+				description: "Test model without max_completion_tokens",
+				context_length: 100000,
+				max_completion_tokens: null,
+				pricing: {
+					prompt: "0.000003",
+					completion: "0.000015",
+				},
+			}
+
+			const result = parseOpenRouterModel({
+				id: "test/no-max-tokens",
+				model: mockModel,
+				inputModality: ["text"],
+				outputModality: ["text"],
+				maxTokens: null,
+			})
+
+			// Should fall back to 20% of context window
+			expect(result.maxTokens).toBe(Math.ceil(100000 * 0.2)) // 20000
+			expect(result.contextWindow).toBe(100000)
+		})
 	})
 })

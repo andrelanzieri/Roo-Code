@@ -283,6 +283,90 @@ describe("getModelMaxOutputTokens", () => {
 		})
 	})
 
+	test("should not treat OpenRouter GPT-5 models as native GPT-5 models", () => {
+		const model: ModelInfo = {
+			contextWindow: 200_000,
+			supportsPromptCache: false,
+			maxTokens: 128_000, // 64% of context window, should be capped for OpenRouter models
+		}
+
+		const settings: ProviderSettings = {
+			apiProvider: "openrouter",
+		}
+
+		// Test OpenRouter GPT-5 model IDs that should be capped (non-OpenAI providers)
+		const openRouterGpt5ModelIds = [
+			"openrouter/gpt-5",
+			"some-provider/gpt-5-preview",
+			"anthropic/gpt-5", // hypothetical
+			"moonshotai/gpt-5-like", // hypothetical
+		]
+
+		openRouterGpt5ModelIds.forEach((modelId) => {
+			const result = getModelMaxOutputTokens({
+				modelId,
+				model,
+				settings,
+				format: "openrouter",
+			})
+			// Should be capped to 20% of context window: 200_000 * 0.2 = 40_000
+			// NOT the full 128_000 like native GPT-5 models
+			expect(result).toBe(40_000)
+		})
+	})
+
+	test("should still bypass 20% cap for native GPT-5 models (without slash)", () => {
+		const model: ModelInfo = {
+			contextWindow: 200_000,
+			supportsPromptCache: false,
+			maxTokens: 128_000, // 64% of context window
+		}
+
+		const settings: ProviderSettings = {
+			apiProvider: "openai",
+		}
+
+		// Test native GPT-5 model IDs (without slash)
+		const nativeGpt5ModelIds = ["gpt-5", "gpt-5-turbo", "GPT-5", "gpt-5-32k"]
+
+		nativeGpt5ModelIds.forEach((modelId) => {
+			const result = getModelMaxOutputTokens({
+				modelId,
+				model,
+				settings,
+				format: "openai",
+			})
+			// Should use full 128k tokens, not capped to 20% (40k)
+			expect(result).toBe(128_000)
+		})
+	})
+
+	test("should still bypass 20% cap for OpenAI GPT-5 models through OpenRouter", () => {
+		const model: ModelInfo = {
+			contextWindow: 200_000,
+			supportsPromptCache: false,
+			maxTokens: 128_000, // 64% of context window
+		}
+
+		const settings: ProviderSettings = {
+			apiProvider: "openrouter",
+		}
+
+		// Test OpenAI GPT-5 model IDs through OpenRouter (should still bypass cap)
+		const openaiGpt5ModelIds = ["openai/gpt-5", "openai/gpt-5-turbo", "openai/gpt-5-preview"]
+
+		openaiGpt5ModelIds.forEach((modelId) => {
+			const result = getModelMaxOutputTokens({
+				modelId,
+				model,
+				settings,
+				format: "openrouter",
+			})
+			// Should use full 128k tokens, not capped to 20% (40k)
+			expect(result).toBe(128_000)
+		})
+	})
+
 	test("should return modelMaxTokens from settings when reasoning budget is required", () => {
 		const model: ModelInfo = {
 			contextWindow: 200_000,

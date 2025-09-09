@@ -122,14 +122,18 @@ export const getModelMaxOutputTokens = ({
 	// Exception: GPT-5 models should use their exact configured max output tokens
 	if (model.maxTokens) {
 		// Check if this is a GPT-5 model (case-insensitive)
-		const isGpt5Model = modelId.toLowerCase().includes("gpt-5")
+		// Make sure we don't incorrectly identify OpenRouter models as GPT-5
+		// OpenRouter models typically have format "provider/model" but native OpenAI models can be "openai/gpt-5"
+		const isGpt5Model =
+			modelId.toLowerCase().includes("gpt-5") && (format !== "openrouter" || modelId.startsWith("openai/"))
 
 		// GPT-5 models bypass the 20% cap and use their full configured max tokens
 		if (isGpt5Model) {
 			return model.maxTokens
 		}
 
-		// All other models are clamped to 20% of context window
+		// All other models (including OpenRouter models) are clamped to 20% of context window
+		// This prevents context overflow issues where max_tokens equals the full context window
 		return Math.min(model.maxTokens, Math.ceil(model.contextWindow * 0.2))
 	}
 

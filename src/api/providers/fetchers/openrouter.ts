@@ -206,8 +206,20 @@ export const parseOpenRouterModel = ({
 
 	const supportsPromptCache = typeof cacheReadsPrice !== "undefined" // some models support caching but don't charge a cacheWritesPrice, e.g. GPT-5
 
+	// Calculate safe max output tokens
+	// If maxTokens from OpenRouter equals or exceeds the context window, use 20% of context window instead
+	// This prevents the "max_tokens equals context window" issue that causes API failures
+	let safeMaxTokens: number
+	if (maxTokens && maxTokens < model.context_length) {
+		// Use the provided max_completion_tokens if it's reasonable (less than context window)
+		safeMaxTokens = maxTokens
+	} else {
+		// Fall back to 20% of context window for safety
+		safeMaxTokens = Math.ceil(model.context_length * 0.2)
+	}
+
 	const modelInfo: ModelInfo = {
-		maxTokens: maxTokens || Math.ceil(model.context_length * 0.2),
+		maxTokens: safeMaxTokens,
 		contextWindow: model.context_length,
 		supportsImages: inputModality?.includes("image") ?? false,
 		supportsPromptCache,
