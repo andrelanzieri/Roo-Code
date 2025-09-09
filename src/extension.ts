@@ -358,6 +358,28 @@ export async function activate(context: vscode.ExtensionContext) {
 export async function deactivate() {
 	outputChannel.appendLine(`${Package.name} extension deactivated`)
 
+	// Store the API instance if it was returned from activate
+	let apiInstance: API | undefined
+
+	// Get the API instance from the extension exports
+	const extension = vscode.extensions.getExtension(Package.name)
+	if (extension && extension.isActive) {
+		apiInstance = extension.exports as API
+	}
+
+	// Clean up API resources (including IPC server)
+	if (apiInstance && typeof apiInstance.cleanup === "function") {
+		try {
+			outputChannel.appendLine("Cleaning up API resources...")
+			await apiInstance.cleanup()
+			outputChannel.appendLine("API cleanup completed")
+		} catch (error) {
+			outputChannel.appendLine(
+				`Failed to clean up API resources: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+	}
+
 	if (cloudService && CloudService.hasInstance()) {
 		try {
 			if (authStateChangedHandler) {

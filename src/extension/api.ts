@@ -60,39 +60,67 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		this.registerListeners(this.sidebarProvider)
 
 		if (socketPath) {
-			const ipc = (this.ipc = new IpcServer(socketPath, this.log))
+			try {
+				const ipc = (this.ipc = new IpcServer(socketPath, this.log))
 
-			ipc.listen()
-			this.log(`[API] ipc server started: socketPath=${socketPath}, pid=${process.pid}, ppid=${process.ppid}`)
+				ipc.listen()
+				this.log(`[API] ipc server started: socketPath=${socketPath}, pid=${process.pid}, ppid=${process.ppid}`)
 
-			ipc.on(IpcMessageType.TaskCommand, async (_clientId, { commandName, data }) => {
-				switch (commandName) {
-					case TaskCommandName.StartNewTask:
-						this.log(`[API] StartNewTask -> ${data.text}, ${JSON.stringify(data.configuration)}`)
-						await this.startNewTask(data)
-						break
-					case TaskCommandName.CancelTask:
-						this.log(`[API] CancelTask -> ${data}`)
-						await this.cancelTask(data)
-						break
-					case TaskCommandName.CloseTask:
-						this.log(`[API] CloseTask -> ${data}`)
-						await vscode.commands.executeCommand("workbench.action.files.saveFiles")
-						await vscode.commands.executeCommand("workbench.action.closeWindow")
-						break
-					case TaskCommandName.ResumeTask:
-						this.log(`[API] ResumeTask -> ${data}`)
-						try {
-							await this.resumeTask(data)
-						} catch (error) {
-							const errorMessage = error instanceof Error ? error.message : String(error)
-							this.log(`[API] ResumeTask failed for taskId ${data}: ${errorMessage}`)
-							// Don't rethrow - we want to prevent IPC server crashes
-							// The error is logged for debugging purposes
-						}
-						break
+				// Log environment info for debugging headless issues
+				if (process.env.DISPLAY || process.env.XVFB_DISPLAY) {
+					this.log(
+						`[API] Running in headless environment - DISPLAY=${process.env.DISPLAY}, XVFB_DISPLAY=${process.env.XVFB_DISPLAY}`,
+					)
 				}
-			})
+
+				ipc.on(IpcMessageType.TaskCommand, async (_clientId, { commandName, data }) => {
+					try {
+						switch (commandName) {
+							case TaskCommandName.StartNewTask:
+								this.log(`[API] StartNewTask -> ${data.text}, ${JSON.stringify(data.configuration)}`)
+								await this.startNewTask(data)
+								break
+							case TaskCommandName.CancelTask:
+								this.log(`[API] CancelTask -> ${data}`)
+								await this.cancelTask(data)
+								break
+							case TaskCommandName.CloseTask:
+								this.log(`[API] CloseTask -> ${data}`)
+								await vscode.commands.executeCommand("workbench.action.files.saveFiles")
+								await vscode.commands.executeCommand("workbench.action.closeWindow")
+								break
+							case TaskCommandName.ResumeTask:
+								this.log(`[API] ResumeTask -> ${data}`)
+								try {
+									await this.resumeTask(data)
+								} catch (error) {
+									const errorMessage = error instanceof Error ? error.message : String(error)
+									this.log(`[API] ResumeTask failed for taskId ${data}: ${errorMessage}`)
+									// Don't rethrow - we want to prevent IPC server crashes
+									// The error is logged for debugging purposes
+								}
+								break
+						}
+					} catch (error) {
+						// Catch any unhandled errors to prevent IPC server crashes
+						const errorMessage = error instanceof Error ? error.message : String(error)
+						this.log(`[API] Error handling IPC command ${commandName}: ${errorMessage}`)
+					}
+				})
+
+				// Handle IPC server errors
+				ipc.on(IpcMessageType.Disconnect, (clientId) => {
+					this.log(`[API] IPC client disconnected: ${clientId}`)
+				})
+
+				ipc.on(IpcMessageType.Connect, (clientId) => {
+					this.log(`[API] IPC client connected: ${clientId}`)
+				})
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error)
+				this.log(`[API] Failed to initialize IPC server: ${errorMessage}`)
+				// Continue without IPC server - extension should still work
+			}
 		}
 	}
 
@@ -442,5 +470,24 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 		await this.sidebarProvider.activateProviderProfile({ name })
 		return this.getActiveProfile()
+	}
+
+	// Cleanup method for graceful shutdown
+	public async cleanup(): Promise<void> {
+		try {
+			// Shutdown IPC server if it exists
+			if (this.ipc && "shutdown" in this.ipc && typeof this.ipc.shutdown === "function") {
+				this.log("[API] Shutting down IPC server...")
+				await (this.ipc as any).shutdown()
+			}
+
+			// Clear task map
+			this.taskMap.clear()
+
+			this.log("[API] Cleanup completed")
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error)
+			this.log(`[API] Error during cleanup: ${errorMessage}`)
+		}
 	}
 }
