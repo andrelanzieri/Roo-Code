@@ -331,11 +331,11 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 						Object.keys(event.data.embeddedWatsonxModels).length === 0
 					) {
 						console.warn("No models received from server, adding default model")
-						embeddedWatsonxModels["ibm/slate-125m-english-rtrvr-v2"] = { dimension: 1536 }
+						embeddedWatsonxModels["ibm/slate-125m-english-rtrvr-v2"] = { dimension: 768 }
 					} else {
 						Object.keys(event.data.embeddedWatsonxModels).forEach((modelId) => {
 							embeddedWatsonxModels[modelId] = {
-								dimension: 1536,
+								dimension: 768,
 							}
 						})
 					}
@@ -348,7 +348,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					console.error("Error processing watsonx models:", error)
 					if (codebaseIndexModels) {
 						codebaseIndexModels.watsonx = {
-							"ibm/slate-125m-english-rtrvr-v2": { dimension: 1536 },
+							"ibm/slate-125m-english-rtrvr-v2": { dimension: 768 },
 						}
 					}
 				} finally {
@@ -1172,33 +1172,6 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 												<>
 													<div className="space-y-2">
 														<label className="text-sm font-medium">
-															{t("settings:codeIndex.watsonxApiKeyLabel")}
-														</label>
-														<VSCodeTextField
-															type="password"
-															value={currentSettings.codebaseIndexWatsonxApiKey || ""}
-															onInput={(e: any) =>
-																updateSetting(
-																	"codebaseIndexWatsonxApiKey",
-																	e.target.value,
-																)
-															}
-															placeholder={t(
-																"settings:codeIndex.watsonxApiKeyPlaceholder",
-															)}
-															className={cn("w-full", {
-																"border-red-500": formErrors.watsonxApiKey,
-															})}
-														/>
-														{formErrors.watsonxApiKey && (
-															<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
-																{formErrors.watsonxApiKey}
-															</p>
-														)}
-													</div>
-
-													<div className="space-y-2">
-														<label className="text-sm font-medium">
 															IBM watsonx Region
 														</label>
 														<Select
@@ -1223,27 +1196,13 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 																<SelectValue />
 															</SelectTrigger>
 															<SelectContent>
-																<SelectItem value="us-south">
-																	Dallas (us-south.ml.cloud.ibm.com)
-																</SelectItem>
-																<SelectItem value="eu-de">
-																	Frankfurt (eu-de.ml.cloud.ibm.com)
-																</SelectItem>
-																<SelectItem value="eu-gb">
-																	London (eu-gb.ml.cloud.ibm.com)
-																</SelectItem>
-																<SelectItem value="jp-tok">
-																	Tokyo (jp-tok.ml.cloud.ibm.com)
-																</SelectItem>
-																<SelectItem value="au-syd">
-																	Sydney (au-syd.ml.cloud.ibm.com)
-																</SelectItem>
-																<SelectItem value="ca-tor">
-																	Toronto (ca-tor.ml.cloud.ibm.com)
-																</SelectItem>
-																<SelectItem value="ap-south-1">
-																	Mumbai (ap-south-1.aws.wxai.ibm.com)
-																</SelectItem>
+																<SelectItem value="us-south">Dallas</SelectItem>
+																<SelectItem value="eu-de">Frankfurt</SelectItem>
+																<SelectItem value="eu-gb">London</SelectItem>
+																<SelectItem value="jp-tok">Tokyo</SelectItem>
+																<SelectItem value="au-syd">Sydney</SelectItem>
+																<SelectItem value="ca-tor">Toronto</SelectItem>
+																<SelectItem value="ap-south-1">Mumbai</SelectItem>
 															</SelectContent>
 														</Select>
 													</div>
@@ -1266,7 +1225,70 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 															className="w-full"
 														/>
 													</div>
+												</>
+											)}
 
+											{/* Common fields for both platforms */}
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.watsonxProjectIdLabel") || "Project ID"}
+												</label>
+												<VSCodeTextField
+													value={currentSettings.codebaseIndexWatsonxProjectId || ""}
+													onInput={(e: any) =>
+														updateSetting("codebaseIndexWatsonxProjectId", e.target.value)
+													}
+													placeholder={
+														t("settings:codeIndex.watsonxProjectIdPlaceholder") ||
+														"IBM Cloud project ID"
+													}
+													className={cn("w-full", {
+														"border-red-500": formErrors.watsonxProjectId,
+													})}
+												/>
+												{formErrors.watsonxProjectId && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.watsonxProjectId}
+													</p>
+												)}
+											</div>
+
+											{/* IBM Cloud specific fields */}
+											{(!currentSettings.watsonxPlatform ||
+												currentSettings.watsonxPlatform === "ibmCloud") && (
+												<>
+													<div className="space-y-2">
+														<label className="text-sm font-medium">
+															{t("settings:codeIndex.watsonxApiKeyLabel")}
+														</label>
+														<VSCodeTextField
+															type="password"
+															value={currentSettings.codebaseIndexWatsonxApiKey || ""}
+															onInput={(e: any) =>
+																updateSetting(
+																	"codebaseIndexWatsonxApiKey",
+																	e.target.value,
+																)
+															}
+															placeholder={t(
+																"settings:codeIndex.watsonxApiKeyPlaceholder",
+															)}
+															className={cn("w-full", {
+																"border-red-500": formErrors.watsonxApiKey,
+															})}
+														/>
+														{formErrors.watsonxApiKey && (
+															<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+																{formErrors.watsonxApiKey}
+															</p>
+														)}
+													</div>
+												</>
+											)}
+
+											{/* Cloud Pak for Data specific fields */}
+											{currentSettings.watsonxPlatform === "cloudPak" && (
+												<>
 													<div className="space-y-2">
 														<label className="text-sm font-medium">Username</label>
 														<VSCodeTextField
@@ -1339,31 +1361,6 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													)}
 												</>
 											)}
-
-											{/* Common fields for both platforms */}
-											<div className="space-y-2">
-												<label className="text-sm font-medium">
-													{t("settings:codeIndex.watsonxProjectIdLabel") || "Project ID"}
-												</label>
-												<VSCodeTextField
-													value={currentSettings.codebaseIndexWatsonxProjectId || ""}
-													onInput={(e: any) =>
-														updateSetting("codebaseIndexWatsonxProjectId", e.target.value)
-													}
-													placeholder={
-														t("settings:codeIndex.watsonxProjectIdPlaceholder") ||
-														"IBM Cloud project ID"
-													}
-													className={cn("w-full", {
-														"border-red-500": formErrors.watsonxProjectId,
-													})}
-												/>
-												{formErrors.watsonxProjectId && (
-													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
-														{formErrors.watsonxProjectId}
-													</p>
-												)}
-											</div>
 
 											{/* Refresh Models Button for IBM watsonx */}
 											<div className="space-y-2 mt-4">

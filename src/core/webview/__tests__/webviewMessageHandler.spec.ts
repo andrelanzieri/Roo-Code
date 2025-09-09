@@ -195,6 +195,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				litellm: mockModels,
 				ollama: {},
 				lmstudio: {},
+				watsonx: {},
 			},
 		})
 	})
@@ -282,6 +283,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
+				watsonx: {},
 			},
 		})
 	})
@@ -319,6 +321,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
+				watsonx: {},
 			},
 		})
 

@@ -2686,6 +2686,7 @@ describe("ClineProvider - Router Models", () => {
 				litellm: mockModels,
 				ollama: {},
 				lmstudio: {},
+				watsonx: {},
 			},
 		})
 	})
@@ -2731,6 +2732,7 @@ describe("ClineProvider - Router Models", () => {
 				ollama: {},
 				lmstudio: {},
 				litellm: {},
+				watsonx: {},
 			},
 		})
 
@@ -2841,6 +2843,7 @@ describe("ClineProvider - Router Models", () => {
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
+				watsonx: {},
 			},
 		})
 	})

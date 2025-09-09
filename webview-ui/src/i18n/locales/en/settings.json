@@ -239,6 +239,7 @@
 		"openRouterApiKey": "OpenRouter API Key",
 		"getOpenRouterApiKey": "Get OpenRouter API Key",
 		"apiKeyStorageNotice": "API keys are stored securely in VSCode's Secret Storage",
+		"passwordStorageNotice": "Passwords are stored securely in VSCode's Secret Storage",
 		"glamaApiKey": "Glama API Key",
 		"getGlamaApiKey": "Get Glama API Key",
 		"useCustomBaseUrl": "Use custom base URL",
@@ -468,6 +469,9 @@
 			"placeholder": "Default: claude",
 			"maxTokensLabel": "Max Output Tokens",
 			"maxTokensDescription": "Maximum number of output tokens for Claude Code responses. Default is 8000."
+		},
+		"watsonx": {
+			"description": "The extension automatically fetches the latest list of models available on <serviceLink>{{serviceName}}</serviceLink>."
 		}
 	},
 	"browser": {

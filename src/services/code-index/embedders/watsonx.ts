@@ -10,7 +10,7 @@ import { IamAuthenticator, CloudPakForDataAuthenticator } from "ibm-cloud-sdk-co
  * IBM watsonx embedder implementation using the native IBM Cloud watsonx.ai package.
  *
  * Supported models:
- * - ibm/slate-125m-english-rtrvr-v2 (dimension: 1536)
+ * - ibm/slate-125m-english-rtrvr-v2 (dimension: 768)
  */
 export class WatsonxEmbedder implements IEmbedder {
 	private readonly watsonxClient: WatsonXAI
@@ -263,7 +263,7 @@ export class WatsonxEmbedder implements IEmbedder {
 			console.log("Fetching available IBM watsonx embedding models...")
 
 			const knownModels: Record<string, { dimension: number }> = {
-				"ibm/slate-125m-english-rtrvr-v2": { dimension: 1536 },
+				"ibm/slate-125m-english-rtrvr-v2": { dimension: 768 },
 			}
 
 			try {

@@ -1,7 +1,7 @@
 import type { ModelInfo } from "../model.js"
 
 export type WatsonxAIModelId = keyof typeof watsonxAiModels
-export const watsonxAiDefaultModelId: WatsonxAIModelId = "ibm/granite-3-3-8b-instruct"
+export const watsonxAiDefaultModelId = ""
 
 // Common model properties
 export const baseModelInfo: ModelInfo = {
