@@ -36,8 +36,9 @@ describe("GeminiEmbedder", () => {
 			expect(MockedOpenAICompatibleEmbedder).toHaveBeenCalledWith(
 				"https://generativelanguage.googleapis.com/v1beta/openai/",
 				apiKey,
-				"gemini-embedding-001",
+				"gemini-embedding-exp-03-07-3072",
 				2048,
+				undefined,
 			)
 		})
 
@@ -55,6 +56,26 @@ describe("GeminiEmbedder", () => {
 				apiKey,
 				"text-embedding-004",
 				2048,
+				undefined,
+			)
+		})
+
+		it("should create an instance with specified model and outputDimension", () => {
+			// Arrange
+			const apiKey = "test-gemini-api-key"
+			const modelId = "gemini-embedding-exp-03-07-1536"
+			const outputDimension = 1536
+
+			// Act
+			embedder = new GeminiEmbedder(apiKey, modelId, outputDimension)
+
+			// Assert
+			expect(MockedOpenAICompatibleEmbedder).toHaveBeenCalledWith(
+				"https://generativelanguage.googleapis.com/v1beta/openai/",
+				apiKey,
+				"gemini-embedding-exp-03-07-1536",
+				2048,
+				1536,
 			)
 		})
 
@@ -104,7 +125,7 @@ describe("GeminiEmbedder", () => {
 				const result = await embedder.createEmbeddings(texts)
 
 				// Assert
-				expect(mockCreateEmbeddings).toHaveBeenCalledWith(texts, "gemini-embedding-001")
+				expect(mockCreateEmbeddings).toHaveBeenCalledWith(texts, "gemini-embedding-exp-03-07-3072")
 				expect(result).toEqual(mockResponse)
 			})
 

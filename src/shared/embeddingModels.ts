@@ -49,6 +49,9 @@ export const EMBEDDING_MODEL_PROFILES: EmbeddingModelProfiles = {
 	gemini: {
 		"text-embedding-004": { dimension: 768 },
 		"gemini-embedding-001": { dimension: 3072, scoreThreshold: 0.4 },
+		"gemini-embedding-exp-03-07-3072": { dimension: 3072, scoreThreshold: 0.4 },
+		"gemini-embedding-exp-03-07-1536": { dimension: 1536, scoreThreshold: 0.4 },
+		"gemini-embedding-exp-03-07-768": { dimension: 768, scoreThreshold: 0.4 },
 	},
 	mistral: {
 		"codestral-embed-2505": { dimension: 1536, scoreThreshold: 0.4 },
@@ -155,7 +158,7 @@ export function getDefaultModelId(provider: EmbedderProvider): string {
 		}
 
 		case "gemini":
-			return "gemini-embedding-001"
+			return "gemini-embedding-exp-03-07-3072"
 
 		case "mistral":
 			return "codestral-embed-2505"

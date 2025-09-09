@@ -11,20 +11,24 @@ import { TelemetryService } from "@roo-code/telemetry"
  *
  * Supported models:
  * - text-embedding-004 (dimension: 768)
- * - gemini-embedding-001 (dimension: 2048)
+ * - gemini-embedding-001 (dimension: 3072)
+ * - gemini-embedding-exp-03-07-3072 (dimension: 3072)
+ * - gemini-embedding-exp-03-07-1536 (dimension: 1536)
+ * - gemini-embedding-exp-03-07-768 (dimension: 768)
  */
 export class GeminiEmbedder implements IEmbedder {
 	private readonly openAICompatibleEmbedder: OpenAICompatibleEmbedder
 	private static readonly GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-	private static readonly DEFAULT_MODEL = "gemini-embedding-001"
+	private static readonly DEFAULT_MODEL = "gemini-embedding-exp-03-07-3072"
 	private readonly modelId: string
 
 	/**
 	 * Creates a new Gemini embedder
 	 * @param apiKey The Gemini API key for authentication
-	 * @param modelId The model ID to use (defaults to gemini-embedding-001)
+	 * @param modelId The model ID to use (defaults to gemini-embedding-exp-03-07-3072)
+	 * @param outputDimension Optional output dimension for flexible models
 	 */
-	constructor(apiKey: string, modelId?: string) {
+	constructor(apiKey: string, modelId?: string, outputDimension?: number) {
 		if (!apiKey) {
 			throw new Error(t("embeddings:validation.apiKeyRequired"))
 		}
@@ -38,6 +42,7 @@ export class GeminiEmbedder implements IEmbedder {
 			apiKey,
 			this.modelId,
 			GEMINI_MAX_ITEM_TOKENS,
+			outputDimension,
 		)
 	}
 

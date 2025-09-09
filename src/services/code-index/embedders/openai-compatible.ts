@@ -38,6 +38,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	private readonly apiKey: string
 	private readonly isFullUrl: boolean
 	private readonly maxItemTokens: number
+	private readonly outputDimension?: number
 
 	// Global rate limiting state shared across all instances
 	private static globalRateLimitState = {
@@ -55,8 +56,9 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	 * @param apiKey The API key for authentication
 	 * @param modelId Optional model identifier (defaults to "text-embedding-3-small")
 	 * @param maxItemTokens Optional maximum tokens per item (defaults to MAX_ITEM_TOKENS)
+	 * @param outputDimension Optional output dimension for flexible models
 	 */
-	constructor(baseUrl: string, apiKey: string, modelId?: string, maxItemTokens?: number) {
+	constructor(baseUrl: string, apiKey: string, modelId?: string, maxItemTokens?: number, outputDimension?: number) {
 		if (!baseUrl) {
 			throw new Error(t("embeddings:validation.baseUrlRequired"))
 		}
@@ -74,6 +76,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 		// Cache the URL type check for performance
 		this.isFullUrl = this.isFullEndpointUrl(baseUrl)
 		this.maxItemTokens = maxItemTokens || MAX_ITEM_TOKENS
+		this.outputDimension = outputDimension
 	}
 
 	/**
@@ -208,6 +211,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 				input: batchTexts,
 				model: model,
 				encoding_format: "base64",
+				...(this.outputDimension && { dimensions: this.outputDimension }),
 			}),
 		})
 
@@ -270,6 +274,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 						// when processing numeric arrays, which breaks compatibility with models using larger dimensions.
 						// By requesting base64 encoding, we bypass the package's parser and handle decoding ourselves.
 						encoding_format: "base64",
+						...(this.outputDimension && { dimensions: this.outputDimension }),
 					})) as OpenAIEmbeddingResponse
 				}
 
@@ -369,6 +374,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 						input: testTexts,
 						model: modelToUse,
 						encoding_format: "base64",
+						...(this.outputDimension && { dimensions: this.outputDimension }),
 					})) as OpenAIEmbeddingResponse
 				}
 
