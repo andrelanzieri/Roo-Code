@@ -751,9 +751,10 @@ const ApiOptions = ({
 
 			{!fromWelcomeView && (
 				<Collapsible open={isAdvancedSettingsOpen} onOpenChange={setIsAdvancedSettingsOpen}>
-					<CollapsibleTrigger className="flex items-center gap-1 w-full cursor-pointer hover:opacity-80 mb-2">
-						<span className={`codicon codicon-chevron-${isAdvancedSettingsOpen ? "down" : "right"}`}></span>
-						<span className="font-medium">{t("settings:advancedSettings.title")}</span>
+					<CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer hover:opacity-80 mb-2">
+						<span
+							className={`codicon codicon-chevron-${isAdvancedSettingsOpen ? "down" : "right"} flex-shrink-0`}></span>
+						<span className="font-medium whitespace-nowrap">{t("settings:advancedSettings.title")}</span>
 					</CollapsibleTrigger>
 					<CollapsibleContent className="space-y-3">
 						<TodoListSettingsControl
