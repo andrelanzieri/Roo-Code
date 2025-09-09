@@ -1,0 +1,46 @@
+{
+	"id": "gitmcp",
+	"name": "GitMCP",
+	"type": "mcp",
+	"description": "Access any public GitHub repository as structured context. Transform github.com URLs to gitmcp.io for instant AI-ready repository content.",
+	"author": "GitMCP Team",
+	"authorUrl": "https://gitmcp.io",
+	"url": "https://gitmcp.io",
+	"tags": ["github", "repository", "context", "code", "grounding"],
+	"prerequisites": ["Node.js 18 or higher", "npm or npx available in PATH"],
+	"content": {
+		"command": "npx",
+		"args": ["-y", "@modelcontextprotocol/server-github"],
+		"env": {
+			"GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+		}
+	},
+	"parameters": [
+		{
+			"name": "GitHub Personal Access Token",
+			"key": "GITHUB_PERSONAL_ACCESS_TOKEN",
+			"placeholder": "ghp_...",
+			"optional": false
+		}
+	],
+	"documentation": {
+		"overview": "GitMCP acts as a bridge between AI assistants like Roo Code and public GitHub repositories. By simply changing a repository's URL from github.com to gitmcp.io, GitMCP can serve the entire repository's content as a structured context for an AI model.",
+		"features": [
+			"Dynamic, on-demand context for any public GitHub repository",
+			"Reduces AI hallucinations by grounding responses in actual code",
+			"Improved accuracy and relevance for code suggestions",
+			"Universal accessibility through a single endpoint",
+			"Seamless user experience"
+		],
+		"setup": [
+			"1. Install GitMCP from the Roo Code marketplace",
+			"2. Optionally configure a GitHub Personal Access Token for higher rate limits",
+			"3. Use GitMCP by referencing repositories in your prompts"
+		],
+		"examples": [
+			"Using GitMCP, show me how to use the useState hook in the facebook/react repository",
+			"Analyze the architecture of the microsoft/vscode repository using GitMCP",
+			"What testing patterns are used in the nodejs/node repository?"
+		]
+	}
+}
