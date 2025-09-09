@@ -142,7 +142,7 @@ export async function truncateConversationIfNeeded({
 	}
 	// If no specific threshold is found for the profile, fall back to global setting
 
-	if (autoCondenseContext) {
+	if (autoCondenseContext && effectiveThreshold < 100) {
 		const contextPercent = (100 * prevContextTokens) / contextWindow
 		if (contextPercent >= effectiveThreshold || prevContextTokens > allowedTokens) {
 			// Attempt to intelligently condense the context
@@ -166,7 +166,15 @@ export async function truncateConversationIfNeeded({
 	}
 
 	// Fall back to sliding window truncation if needed
+	// Exception: When context condensing is explicitly disabled (threshold = 100%), don't truncate
 	if (prevContextTokens > allowedTokens) {
+		// Check if condensing is explicitly disabled (threshold is 100% and autoCondenseContext is true)
+		// This means the user has set the threshold to 100% to disable condensing
+		if (autoCondenseContext && effectiveThreshold >= 100) {
+			// Context condensing is explicitly disabled by user, don't truncate
+			return { messages, summary: "", cost, prevContextTokens, error }
+		}
+		// Apply sliding window truncation in all other cases
 		const truncatedMessages = truncateConversation(messages, 0.5, taskId)
 		return { messages: truncatedMessages, prevContextTokens, summary: "", cost, error }
 	}

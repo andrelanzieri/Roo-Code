@@ -577,7 +577,7 @@ describe("Sliding Window", () => {
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
 				autoCondenseContext: true,
-				autoCondenseContextPercent: 100,
+				autoCondenseContextPercent: 50, // Use a threshold less than 100%
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
@@ -644,7 +644,7 @@ describe("Sliding Window", () => {
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
 				autoCondenseContext: true,
-				autoCondenseContextPercent: 100,
+				autoCondenseContextPercent: 50, // Use a threshold less than 100%
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
@@ -816,6 +816,48 @@ describe("Sliding Window", () => {
 				summary: "",
 				cost: 0,
 				prevContextTokens: totalTokens,
+			})
+
+			// Clean up
+			summarizeSpy.mockRestore()
+		})
+
+		it("should not truncate when autoCondenseContext is true and threshold is 100% even if tokens exceed allowedTokens", async () => {
+			const modelInfo = createModelInfo(100000, 30000)
+			const totalTokens = 75000 // This exceeds allowedTokens (60000) but should not truncate when disabled
+
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			// Spy on summarizeConversation to ensure it's not called
+			const summarizeSpy = vi.spyOn(condenseModule, "summarizeConversation")
+
+			const result = await truncateConversationIfNeeded({
+				messages: messagesWithSmallContent,
+				totalTokens,
+				contextWindow: modelInfo.contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				apiHandler: mockApiHandler,
+				autoCondenseContext: true, // Enabled but with 100% threshold
+				autoCondenseContextPercent: 100, // 100% threshold means never condense
+				systemPrompt: "System prompt",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+			})
+
+			// Verify summarizeConversation was NOT called when threshold is 100%
+			expect(summarizeSpy).not.toHaveBeenCalled()
+
+			// Should NOT truncate even though tokens exceed allowedTokens when threshold is 100%
+			expect(result).toEqual({
+				messages: messagesWithSmallContent,
+				summary: "",
+				cost: 0,
+				prevContextTokens: totalTokens,
+				error: undefined,
 			})
 
 			// Clean up
