@@ -114,6 +114,120 @@ describe("parseXml", () => {
 			expect(result.root.data.nestedXml).toHaveProperty("item", "Should not parse this")
 		})
 	})
+
+	describe("whitespace handling", () => {
+		it("should handle spaces within path tags", () => {
+			const xml = `
+				<args>
+					<file>
+						<path> ./test/file.ts </path>
+					</file>
+				</args>
+			`
+
+			const result = parseXml(xml) as any
+
+			// The path should be trimmed
+			expect(result.args.file.path).toBe("./test/file.ts")
+		})
+
+		it("should handle newlines and spaces in nested tags", () => {
+			const xml = `
+				<args>
+					<file>
+						<path>
+							src/shared/infrastructure/supabase/factory.py
+						</path>
+					</file>
+				</args>
+			`
+
+			const result = parseXml(xml) as any
+
+			// The path should be trimmed
+			expect(result.args.file.path).toBe("src/shared/infrastructure/supabase/factory.py")
+		})
+
+		it("should handle multiple files with varying whitespace", () => {
+			const xml = `
+				<args>
+					<file>
+						<path> file1.ts </path>
+					</file>
+					<file>
+						<path>
+							file2.ts
+						</path>
+					</file>
+					<file>
+						<path>file3.ts</path>
+					</file>
+				</args>
+			`
+
+			const result = parseXml(xml) as any
+
+			// All paths should be trimmed
+			expect(Array.isArray(result.args.file)).toBe(true)
+			expect(result.args.file[0].path).toBe("file1.ts")
+			expect(result.args.file[1].path).toBe("file2.ts")
+			expect(result.args.file[2].path).toBe("file3.ts")
+		})
+
+		it("should handle empty or whitespace-only path tags", () => {
+			const xml = `
+				<args>
+					<file>
+						<path>   </path>
+					</file>
+				</args>
+			`
+
+			const result = parseXml(xml) as any
+
+			// Empty string after trimming
+			expect(result.args.file.path).toBe("")
+		})
+
+		it("should handle tabs and mixed whitespace", () => {
+			const xml = `
+				<args>
+					<file>
+						<path>
+							./path/with/tabs.ts
+							</path>
+					</file>
+				</args>
+			`
+
+			const result = parseXml(xml) as any
+
+			// Should trim tabs and newlines
+			expect(result.args.file.path).toBe("./path/with/tabs.ts")
+		})
+
+		it("should handle the exact format from Grok that was failing", () => {
+			// This is the exact format that was causing issues with Grok
+			const xml = `<read_file>
+<args>
+<file>
+<path>src/shared/infrastructure/supabase/factory.py</path>
+</file>
+</args>
+</read_file>`
+
+			// First extract just the args portion
+			const argsMatch = xml.match(/<args>([\s\S]*?)<\/args>/)
+			expect(argsMatch).toBeTruthy()
+
+			if (argsMatch) {
+				const argsXml = `<args>${argsMatch[1]}</args>`
+				const result = parseXml(argsXml) as any
+
+				expect(result.args.file.path).toBe("src/shared/infrastructure/supabase/factory.py")
+			}
+		})
+	})
 })
 
 describe("parseXmlForDiff", () => {

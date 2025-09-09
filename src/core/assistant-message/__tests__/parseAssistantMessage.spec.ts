@@ -271,6 +271,48 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 				expect(toolUse.partial).toBe(false)
 			})
 
+			it("should handle whitespace and newlines between XML tags (Grok/Qwen format)", () => {
+				// This is the format that Grok and Qwen3-Coder generate that was causing issues
+				const message = `<read_file>
+<args>
+<file>
+<path>src/shared/infrastructure/supabase/factory.py</path>
+</file>
+</args>
+</read_file>`
+				const result = parser(message).filter((block) => !isEmptyTextContent(block))
+
+				expect(result).toHaveLength(1)
+				const toolUse = result[0] as ToolUse
+				expect(toolUse.type).toBe("tool_use")
+				expect(toolUse.name).toBe("read_file")
+				// The args should be captured as a parameter
+				expect(toolUse.params.args).toBeDefined()
+				expect(toolUse.params.args).toContain("<file>")
+				expect(toolUse.params.args).toContain("<path>src/shared/infrastructure/supabase/factory.py</path>")
+				expect(toolUse.partial).toBe(false)
+			})
+
+			it("should handle whitespace-only path values", () => {
+				const message = `<read_file>
+<args>
+<file>
+<path>   </path>
+</file>
+</args>
+</read_file>`
+				const result = parser(message).filter((block) => !isEmptyTextContent(block))
+
+				expect(result).toHaveLength(1)
+				const toolUse = result[0] as ToolUse
+				expect(toolUse.type).toBe("tool_use")
+				expect(toolUse.name).toBe("read_file")
+				expect(toolUse.params.args).toBeDefined()
+				// The whitespace-only path should be preserved in the args
+				expect(toolUse.params.args).toContain("<path>   </path>")
+				expect(toolUse.partial).toBe(false)
+			})
+
 			it("should handle multi-line parameters", () => {
 				const message = `<write_to_file><path>file.ts</path><content>
 	line 1

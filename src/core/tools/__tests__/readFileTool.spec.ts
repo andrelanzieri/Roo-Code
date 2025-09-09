@@ -1325,6 +1325,132 @@ describe("read_file tool XML output structure", () => {
 				`<files>\n<file><path>${testFilePath}</path><error>Access to ${testFilePath} is blocked by the .rooignore file settings. You must try to continue in the task without using this file, or ask the user to update the .rooignore file.</error></file>\n</files>`,
 			)
 		})
+
+		it("should handle XML args with whitespace and newlines (Grok/Qwen format)", async () => {
+			// This test reproduces the exact issue reported with Grok and Qwen3-Coder
+			// where XML has newlines and spaces between tags
+			const argsWithWhitespace = `
+<file>
+<path>   test/file.txt   </path>
+</file>
+`
+			const toolUse: ReadFileToolUse = {
+				type: "tool_use",
+				name: "read_file",
+				params: { args: argsWithWhitespace },
+				partial: false,
+			}
+
+			// Setup mocks
+			mockedCountFileLines.mockResolvedValue(5)
+			mockedExtractTextFromFile.mockResolvedValue("1 | Line 1\n2 | Line 2\n3 | Line 3\n4 | Line 4\n5 | Line 5")
+			mockProvider.getState.mockResolvedValue({
+				maxReadFileLine: -1,
+				maxImageFileSize: 20,
+				maxTotalImageSize: 20,
+			})
+
+			// Execute
+			await readFileTool(
+				mockCline,
+				toolUse,
+				mockCline.ask,
+				vi.fn(),
+				(result: ToolResponse) => {
+					toolResult = result
+				},
+				(param: ToolParamName, content?: string) => content ?? "",
+			)
+
+			// Verify the file was read successfully (path was trimmed)
+			expect(toolResult).toContain("<file><path>test/file.txt</path>")
+			expect(toolResult).toContain('<content lines="1-5">')
+			expect(toolResult).not.toContain("<error>")
+		})
+
+		it("should handle multiple files with whitespace in XML", async () => {
+			// Test multiple files with varying whitespace
+			const argsWithMultipleFiles = `
+<file>
+	<path>
+		test/file1.txt
+	</path>
+</file>
+<file>
+	<path>  test/file2.txt  </path>
+</file>
+<file>
+	<path>test/file3.txt</path>
+</file>
+`
+			const toolUse: ReadFileToolUse = {
+				type: "tool_use",
+				name: "read_file",
+				params: { args: argsWithMultipleFiles },
+				partial: false,
+			}
+
+			// Setup mocks
+			mockedCountFileLines.mockResolvedValue(3)
+			mockedExtractTextFromFile.mockResolvedValue("1 | Content")
+			mockProvider.getState.mockResolvedValue({
+				maxReadFileLine: -1,
+				maxImageFileSize: 20,
+				maxTotalImageSize: 20,
+			})
+
+			// Mock path.resolve for each file
+			mockedPathResolve.mockImplementation((cwd, relPath) => `/${relPath.trim()}`)
+
+			// Execute
+			await readFileTool(
+				mockCline,
+				toolUse,
+				mockCline.ask,
+				vi.fn(),
+				(result: ToolResponse) => {
+					toolResult = result
+				},
+				(param: ToolParamName, content?: string) => content ?? "",
+			)
+
+			// Verify all files were processed
+			expect(toolResult).toContain("<file><path>test/file1.txt</path>")
+			expect(toolResult).toContain("<file><path>test/file2.txt</path>")
+			expect(toolResult).toContain("<file><path>test/file3.txt</path>")
+			expect(toolResult).not.toContain("<error>")
+		})
+
+		it("should handle empty path after trimming whitespace", async () => {
+			// Test case where path is only whitespace
+			const argsWithEmptyPath = `
+<file>
+<path>     </path>
+</file>
+`
+			const toolUse: ReadFileToolUse = {
+				type: "tool_use",
+				name: "read_file",
+				params: { args: argsWithEmptyPath },
+				partial: false,
+			}
+
+			// Execute
+			await readFileTool(
+				mockCline,
+				toolUse,
+				mockCline.ask,
+				vi.fn(),
+				(result: ToolResponse) => {
+					toolResult = result
+				},
+				(param: ToolParamName, content?: string) => content ?? "",
+			)
+
+			// Verify error is returned for empty path
+			expect(toolResult).toContain("<error>")
+			expect(mockCline.sayAndCreateMissingParamError).toHaveBeenCalled()
+		})
 	})
 })
 
