@@ -241,6 +241,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				ollama: {},
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
+				watsonx: {},
 			},
 		})
 	})
@@ -330,6 +331,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				ollama: {},
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
+				watsonx: {},
 			},
 		})
 	})
@@ -371,6 +373,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				ollama: {},
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
+				watsonx: {},
 			},
 		})
 
