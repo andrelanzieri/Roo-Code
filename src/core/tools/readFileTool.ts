@@ -131,8 +131,18 @@ export async function readFileTool(
 			const parsed = parseXml(argsXmlTag) as any
 			const files = Array.isArray(parsed.file) ? parsed.file : [parsed.file].filter(Boolean)
 
+			// Track empty paths for better error reporting
+			let emptyPathCount = 0
+			let totalFileCount = 0
+
 			for (const file of files) {
-				if (!file.path) continue // Skip if no path in a file entry
+				totalFileCount++
+
+				// Check for empty or whitespace-only paths
+				if (!file.path || (typeof file.path === "string" && file.path.trim() === "")) {
+					emptyPathCount++
+					continue // Skip if no path or empty path in a file entry
+				}
 
 				const fileEntry: FileEntry = {
 					path: file.path,
@@ -152,6 +162,14 @@ export async function readFileTool(
 					}
 				}
 				fileEntries.push(fileEntry)
+			}
+
+			// If all paths were empty, provide a more specific error
+			if (emptyPathCount > 0 && fileEntries.length === 0) {
+				const errorMessage = `All file paths are empty or missing. Please provide valid file paths in the <path> elements.`
+				await handleError("parsing read_file args", new Error(errorMessage))
+				pushToolResult(`<files><error>${errorMessage}</error></files>`)
+				return
 			}
 		} catch (error) {
 			const errorMessage = `Failed to parse read_file XML args: ${error instanceof Error ? error.message : String(error)}`
