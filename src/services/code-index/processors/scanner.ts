@@ -84,23 +84,25 @@ export class DirectoryScanner implements IDirectoryScanner {
 
 		// Initialize RooIgnoreController if not provided
 		const ignoreController = new RooIgnoreController(directoryPath)
-
 		await ignoreController.initialize()
 
-		// Filter paths using .rooignore
+		// Filter paths using .rooignore/.gitignore patterns
 		const allowedPaths = ignoreController.filterPaths(filePaths)
 
-		// Filter by supported extensions, ignore patterns, and excluded directories
+		// Filter by supported extensions and excluded directories
+		// Note: We removed the duplicate this.ignoreInstance.ignores() check here because:
+		// 1. The RooIgnoreController already handles both .gitignore and .rooignore patterns
+		// 2. The listFiles() function already applies .gitignore filtering via ripgrep
+		// 3. This prevents double-filtering and ensures consistent ignore behavior
 		const supportedPaths = allowedPaths.filter((filePath) => {
 			const ext = path.extname(filePath).toLowerCase()
-			const relativeFilePath = generateRelativeFilePath(filePath, scanWorkspace)
 
 			// Check if file is in an ignored directory using the shared helper
 			if (isPathInIgnoredDirectory(filePath)) {
 				return false
 			}
 
-			return scannerExtensions.includes(ext) && !this.ignoreInstance.ignores(relativeFilePath)
+			return scannerExtensions.includes(ext)
 		})
 
 		// Initialize tracking variables

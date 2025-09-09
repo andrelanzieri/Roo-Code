@@ -27,6 +27,7 @@ export class CodeIndexManager {
 	private _orchestrator: CodeIndexOrchestrator | undefined
 	private _searchService: CodeIndexSearchService | undefined
 	private _cacheManager: CacheManager | undefined
+	private _rooIgnoreController: RooIgnoreController | undefined
 
 	// Flag to prevent race conditions during error recovery
 	private _isRecoveringFromError = false
@@ -250,12 +251,15 @@ export class CodeIndexManager {
 		if (this._orchestrator) {
 			this.stopWatcher()
 		}
+		if (this._rooIgnoreController) {
+			this._rooIgnoreController.dispose()
+		}
 		this._stateManager.dispose()
 	}
 
 	/**
 	 * Clears all index data by stopping the watcher, clearing the Qdrant collection,
-	 * and deleting the cache file.
+	 * and deleting the cache file. Also recreates services to ensure ignore patterns are reloaded.
 	 */
 	public async clearIndexData(): Promise<void> {
 		if (!this.isFeatureEnabled) {
@@ -264,6 +268,10 @@ export class CodeIndexManager {
 		this.assertInitialized()
 		await this._orchestrator!.clearIndexData()
 		await this._cacheManager!.clearCacheFile()
+
+		// Recreate services to ensure ignore patterns are properly reloaded
+		// This fixes the issue where .rooignore is ignored after clearing index data
+		await this._recreateServices()
 	}
 
 	// --- Private Helpers ---
@@ -331,6 +339,9 @@ export class CodeIndexManager {
 		// Create RooIgnoreController instance
 		const rooIgnoreController = new RooIgnoreController(workspacePath)
 		await rooIgnoreController.initialize()
+
+		// Store reference to the RooIgnoreController for cleanup
+		this._rooIgnoreController = rooIgnoreController
 
 		// (Re)Create shared service instances
 		const { embedder, vectorStore, scanner, fileWatcher } = this._serviceFactory.createServices(
