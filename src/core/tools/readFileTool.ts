@@ -131,11 +131,21 @@ export async function readFileTool(
 			const parsed = parseXml(argsXmlTag) as any
 			const files = Array.isArray(parsed.file) ? parsed.file : [parsed.file].filter(Boolean)
 
+			// Track invalid entries for better error reporting
+			const invalidEntries: string[] = []
+
 			for (const file of files) {
-				if (!file.path) continue // Skip if no path in a file entry
+				// Check if path exists and is not empty after trimming
+				const filePath = typeof file.path === "string" ? file.path.trim() : file.path
+
+				if (!filePath) {
+					// Track this invalid entry
+					invalidEntries.push(JSON.stringify(file).substring(0, 100))
+					continue // Skip if no path in a file entry
+				}
 
 				const fileEntry: FileEntry = {
-					path: file.path,
+					path: filePath,
 					lineRanges: [],
 				}
 
@@ -153,8 +163,16 @@ export async function readFileTool(
 				}
 				fileEntries.push(fileEntry)
 			}
+
+			// If we had invalid entries but no valid ones, provide a helpful error
+			if (fileEntries.length === 0 && invalidEntries.length > 0) {
+				const errorMessage = `No valid file paths found in read_file args. Invalid entries: ${invalidEntries.join(", ")}. Ensure each <file> element contains a non-empty <path> element.`
+				await handleError("parsing read_file args", new Error(errorMessage))
+				pushToolResult(`<files><error>${errorMessage}</error></files>`)
+				return
+			}
 		} catch (error) {
-			const errorMessage = `Failed to parse read_file XML args: ${error instanceof Error ? error.message : String(error)}`
+			const errorMessage = `Failed to parse read_file XML args: ${error instanceof Error ? error.message : String(error)}. Expected format: <file><path>filepath</path></file>`
 			await handleError("parsing read_file args", new Error(errorMessage))
 			pushToolResult(`<files><error>${errorMessage}</error></files>`)
 			return
@@ -186,7 +204,10 @@ export async function readFileTool(
 	if (fileEntries.length === 0) {
 		cline.consecutiveMistakeCount++
 		cline.recordToolError("read_file")
-		const errorMsg = await cline.sayAndCreateMissingParamError("read_file", "args (containing valid file paths)")
+		const errorMsg = await cline.sayAndCreateMissingParamError(
+			"read_file",
+			"args with valid file paths. Expected format: <args><file><path>filepath</path></file></args>",
+		)
 		pushToolResult(`<files><error>${errorMsg}</error></files>`)
 		return
 	}

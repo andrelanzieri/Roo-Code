@@ -1435,6 +1435,51 @@ describe("read_file tool XML output structure", () => {
 				partial: false,
 			}
 
+			// Create a spy for handleError
+			const handleErrorSpy = vi.fn()
+
+			// Execute
+			await readFileTool(
+				mockCline,
+				toolUse,
+				mockCline.ask,
+				handleErrorSpy,
+				(result: ToolResponse) => {
+					toolResult = result
+				},
+				(param: ToolParamName, content?: string) => content ?? "",
+			)
+
+			// Verify error is returned for empty path
+			expect(toolResult).toContain("<error>")
+			expect(toolResult).toContain("No valid file paths found")
+			expect(toolResult).toContain("Ensure each <file> element contains a non-empty <path> element")
+			expect(handleErrorSpy).toHaveBeenCalled()
+		})
+
+		it("should work without line_range parameter (line_range is optional)", async () => {
+			// Test that line_range is truly optional
+			const argsWithoutLineRange = `
+<file>
+<path>test/file.txt</path>
+</file>
+`
+			const toolUse: ReadFileToolUse = {
+				type: "tool_use",
+				name: "read_file",
+				params: { args: argsWithoutLineRange },
+				partial: false,
+			}
+
+			// Setup mocks
+			mockedCountFileLines.mockResolvedValue(5)
+			mockedExtractTextFromFile.mockResolvedValue("1 | Line 1\n2 | Line 2\n3 | Line 3\n4 | Line 4\n5 | Line 5")
+			mockProvider.getState.mockResolvedValue({
+				maxReadFileLine: -1,
+				maxImageFileSize: 20,
+				maxTotalImageSize: 20,
+			})
+
 			// Execute
 			await readFileTool(
 				mockCline,
@@ -1447,9 +1492,82 @@ describe("read_file tool XML output structure", () => {
 				(param: ToolParamName, content?: string) => content ?? "",
 			)
 
-			// Verify error is returned for empty path
+			// Verify the file was read successfully without line_range
+			expect(toolResult).toContain("<file><path>test/file.txt</path>")
+			expect(toolResult).toContain('<content lines="1-5">')
+			expect(toolResult).not.toContain("<error>")
+			expect(toolResult).not.toContain("line_range")
+		})
+
+		it("should provide helpful error for malformed XML missing path element", async () => {
+			// Test case simulating what Grok might send - file element with missing path
+			const malformedArgs = `
+<file>
+<path></path>
+</file>
+`
+			const toolUse: ReadFileToolUse = {
+				type: "tool_use",
+				name: "read_file",
+				params: { args: malformedArgs },
+				partial: false,
+			}
+
+			// Create a spy for handleError
+			const handleErrorSpy = vi.fn()
+
+			// Execute
+			await readFileTool(
+				mockCline,
+				toolUse,
+				mockCline.ask,
+				handleErrorSpy,
+				(result: ToolResponse) => {
+					toolResult = result
+				},
+				(param: ToolParamName, content?: string) => content ?? "",
+			)
+
+			// Verify helpful error is returned
 			expect(toolResult).toContain("<error>")
-			expect(mockCline.sayAndCreateMissingParamError).toHaveBeenCalled()
+			expect(toolResult).toContain("No valid file paths found")
+			expect(toolResult).toContain("Ensure each <file> element contains a non-empty <path> element")
+			expect(handleErrorSpy).toHaveBeenCalled()
+		})
+
+		it("should provide error when file element has no path child at all", async () => {
+			// Test case where file element exists but has no path child element
+			const malformedArgs = `
+<file>
+</file>
+`
+			const toolUse: ReadFileToolUse = {
+				type: "tool_use",
+				name: "read_file",
+				params: { args: malformedArgs },
+				partial: false,
+			}
+
+			// Execute
+			await readFileTool(
+				mockCline,
+				toolUse,
+				mockCline.ask,
+				vi.fn(),
+				(result: ToolResponse) => {
+					toolResult = result
+				},
+				(param: ToolParamName, content?: string) => content ?? "",
+			)
+
+			// When file element has no path child, it falls through to the general error
+			expect(toolResult).toContain("<error>")
+			expect(toolResult).toContain("Missing required parameter")
+			// This is handled by sayAndCreateMissingParamError
+			expect(mockCline.sayAndCreateMissingParamError).toHaveBeenCalledWith(
+				"read_file",
+				"args with valid file paths. Expected format: <args><file><path>filepath</path></file></args>",
+			)
 		})
 	})
 })
