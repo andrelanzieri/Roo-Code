@@ -101,6 +101,10 @@ const baseProviderSettingsSchema = z.object({
 	diffEnabled: z.boolean().optional(),
 	todoListEnabled: z.boolean().optional(),
 	fuzzyMatchThreshold: z.number().optional(),
+	// Morph Fast Apply - optional provider-scoped controls
+	morphFastApplyEnabled: z.boolean().optional(),
+	morphApiKey: z.string().optional(),
+
 	modelTemperature: z.number().nullish(),
 	rateLimitSeconds: z.number().optional(),
 	consecutiveMistakeLimit: z.number().min(0).optional(),

@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { convertHeadersToObject } from "./utils/headers"
 import { useDebounce } from "react-use"
-import { VSCodeLink, VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeLink, VSCodeButton, VSCodeCheckbox, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { ExternalLinkIcon } from "@radix-ui/react-icons"
 
 import {
@@ -765,6 +765,32 @@ const ApiOptions = ({
 							fuzzyMatchThreshold={apiConfiguration.fuzzyMatchThreshold}
 							onChange={(field, value) => setApiConfigurationField(field, value)}
 						/>
+
+						{/* Morph Fast Apply - provider-scoped controls */}
+						<div className="pl-3 border-l-2 border-vscode-button-background space-y-2">
+							<label className="block font-medium">Morph Fast Apply</label>
+							<div className="flex flex-col gap-1">
+								<VSCodeCheckbox
+									checked={Boolean(apiConfiguration.morphFastApplyEnabled)}
+									onChange={(e: any) =>
+										setApiConfigurationField("morphFastApplyEnabled", e.target.checked)
+									}>
+									Enable Morph Fast Apply (fuzzy multi-file)
+								</VSCodeCheckbox>
+
+								<VSCodeTextField
+									value={apiConfiguration?.morphApiKey || ""}
+									type="password"
+									onInput={(e: any) => setApiConfigurationField("morphApiKey", e.target.value)}
+									placeholder="Optional API key">
+									Morph API key (optional)
+								</VSCodeTextField>
+								<div className="text-sm text-vscode-descriptionForeground">
+									When enabled, apply_diff uses faster tolerant matching across multiple files. An API
+									key is only required if using a hosted Morph service.
+								</div>
+							</div>
+						</div>
 						{selectedModelInfo?.supportsTemperature !== false && (
 							<TemperatureControl
 								value={apiConfiguration.modelTemperature}

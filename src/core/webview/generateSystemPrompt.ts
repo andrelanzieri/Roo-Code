@@ -27,15 +27,20 @@ export const generateSystemPrompt = async (provider: ClineProvider, message: Web
 		maxConcurrentFileReads,
 	} = await provider.getState()
 
-	// Check experiment to determine which diff strategy to use
+	// Determine which diff strategy to use:
+	// - If Morph Fast Apply is enabled, force MultiFile strategy for best tolerance and batching
+	// - Otherwise, fall back to experiment flag to choose between MultiFile and single-file strategies
 	const isMultiFileApplyDiffEnabled = experimentsModule.isEnabled(
 		experiments ?? {},
 		EXPERIMENT_IDS.MULTI_FILE_APPLY_DIFF,
 	)
+	const isMorphFastApplyEnabled = apiConfiguration?.morphFastApplyEnabled === true
 
-	const diffStrategy = isMultiFileApplyDiffEnabled
+	const diffStrategy = isMorphFastApplyEnabled
 		? new MultiFileSearchReplaceDiffStrategy(fuzzyMatchThreshold)
-		: new MultiSearchReplaceDiffStrategy(fuzzyMatchThreshold)
+		: isMultiFileApplyDiffEnabled
+			? new MultiFileSearchReplaceDiffStrategy(fuzzyMatchThreshold)
+			: new MultiSearchReplaceDiffStrategy(fuzzyMatchThreshold)
 
 	const cwd = provider.cwd
 

@@ -394,17 +394,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Only set up diff strategy if diff is enabled.
 		if (this.diffEnabled) {
-			// Default to old strategy, will be updated if experiment is enabled.
+			// Default to legacy single-file strategy
 			this.diffStrategy = new MultiSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)
 
-			// Check experiment asynchronously and update strategy if needed.
+			// Prefer MultiFile when Morph Fast Apply is enabled, otherwise respect experiment flag.
 			provider.getState().then((state) => {
 				const isMultiFileApplyDiffEnabled = experiments.isEnabled(
 					state.experiments ?? {},
 					EXPERIMENT_IDS.MULTI_FILE_APPLY_DIFF,
 				)
+				const isMorphFastApplyEnabled = state.apiConfiguration?.morphFastApplyEnabled === true
 
-				if (isMultiFileApplyDiffEnabled) {
+				if (isMorphFastApplyEnabled || isMultiFileApplyDiffEnabled) {
 					this.diffStrategy = new MultiFileSearchReplaceDiffStrategy(this.fuzzyMatchThreshold)
 				}
 			})
