@@ -18,7 +18,11 @@ import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../../se
 
 export async function getCheckpointService(
 	task: Task,
-	{ interval = 250, timeout = 15_000 }: { interval?: number; timeout?: number } = {},
+	{
+		interval = 250,
+		timeout = 15_000,
+		isInitialCall = false,
+	}: { interval?: number; timeout?: number; isInitialCall?: boolean } = {},
 ) {
 	if (!task.enableCheckpoints) {
 		return undefined
@@ -67,13 +71,25 @@ export async function getCheckpointService(
 		}
 
 		if (task.checkpointServiceInitializing) {
-			await pWaitFor(
-				() => {
+			// For initial call during task startup, don't use timeout to allow large repos to initialize
+			const waitOptions = isInitialCall ? { interval } : { interval, timeout }
+
+			try {
+				await pWaitFor(() => {
 					console.log("[Task#getCheckpointService] waiting for service to initialize")
 					return !!task.checkpointService && !!task?.checkpointService?.isInitialized
-				},
-				{ interval, timeout },
-			)
+				}, waitOptions)
+			} catch (err) {
+				// Only disable checkpoints if this is not the initial call and we hit a timeout
+				if (!isInitialCall) {
+					log("[Task#getCheckpointService] timeout waiting for service initialization, disabling checkpoints")
+					task.enableCheckpoints = false
+					return undefined
+				}
+				// For initial call, continue waiting or handle the error differently
+				throw err
+			}
+
 			if (!task?.checkpointService) {
 				task.enableCheckpoints = false
 				return undefined

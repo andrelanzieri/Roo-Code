@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from "vitest"
 import { Task } from "../../task/Task"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { checkpointSave, checkpointRestore, checkpointDiff, getCheckpointService } from "../index"
@@ -394,11 +394,40 @@ describe("Checkpoint functionality", () => {
 			expect(service).toBeUndefined()
 		})
 
-		it("should return undefined if service is still initializing", async () => {
+		it("should handle initialization with isInitialCall flag", async () => {
+			// Test that isInitialCall=true doesn't use timeout
 			mockTask.checkpointService = undefined
-			mockTask.checkpointServiceInitializing = true
+			mockTask.checkpointServiceInitializing = false
+			mockTask.enableCheckpoints = true
+
+			// Mock the RepoPerTaskCheckpointService.create to return our mock service
+			const checkpointsModule = await import("../../../services/checkpoints")
+			vi.mocked(checkpointsModule.RepoPerTaskCheckpointService.create).mockReturnValue(mockCheckpointService)
+
+			// Call with isInitialCall=true
+			const service = await getCheckpointService(mockTask, { isInitialCall: true })
+
+			// Should create and return the service
+			expect(service).toBe(mockCheckpointService)
+			expect(mockTask.checkpointService).toBe(mockCheckpointService)
+		})
+
+		it("should handle initialization without isInitialCall flag", async () => {
+			// Test that without isInitialCall, it uses the default timeout
+			mockTask.checkpointService = undefined
+			mockTask.checkpointServiceInitializing = false
+			mockTask.enableCheckpoints = true
+
+			// Mock the RepoPerTaskCheckpointService.create to return our mock service
+			const checkpointsModule = await import("../../../services/checkpoints")
+			vi.mocked(checkpointsModule.RepoPerTaskCheckpointService.create).mockReturnValue(mockCheckpointService)
+
+			// Call without isInitialCall (defaults to false)
 			const service = await getCheckpointService(mockTask)
-			expect(service).toBeUndefined()
+
+			// Should create and return the service
+			expect(service).toBe(mockCheckpointService)
+			expect(mockTask.checkpointService).toBe(mockCheckpointService)
 		})
 
 		it("should create new service if none exists", async () => {
