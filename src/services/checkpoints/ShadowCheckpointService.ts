@@ -145,7 +145,9 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 
 	private async stageAll(git: SimpleGit) {
 		try {
-			await git.add(".")
+			// Use --ignore-errors to continue even if some files can't be added (e.g., permission issues)
+			// This prevents the operation from failing in large repositories with problematic files
+			await git.add([".", "--ignore-errors"])
 		} catch (error) {
 			this.log(
 				`[${this.constructor.name}#stageAll] failed to add files to git: ${error instanceof Error ? error.message : String(error)}`,

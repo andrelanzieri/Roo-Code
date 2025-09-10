@@ -1661,7 +1661,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	private async initiateTaskLoop(userContent: Anthropic.Messages.ContentBlockParam[]): Promise<void> {
 		// Kicks off the checkpoints initialization process in the background.
-		getCheckpointService(this)
+		// Pass isInitialCall=true to avoid timeout for large repositories
+		getCheckpointService(this, { isInitialCall: true })
 
 		let nextUserContent = userContent
 		let includeFileDetails = true
