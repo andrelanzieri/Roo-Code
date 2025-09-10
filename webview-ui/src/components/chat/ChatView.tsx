@@ -2164,12 +2164,12 @@ const ChatViewInner: React.ForwardRefRenderFunction<ChatViewRef, ChatViewProps> 
 
 const ChatViewWithRef = forwardRef(ChatViewInner)
 
-const ChatView: React.FC<ChatViewProps> = (props) => {
+const ChatView = forwardRef<ChatViewRef, ChatViewProps>((props, ref) => {
 	return (
 		<DraftPersistenceProvider>
-			<ChatViewWithRef {...props} />
+			<ChatViewWithRef {...props} ref={ref} />
 		</DraftPersistenceProvider>
 	)
-}
+})
 
 export default ChatView
