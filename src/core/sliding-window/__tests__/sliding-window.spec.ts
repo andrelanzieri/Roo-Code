@@ -284,7 +284,7 @@ describe("Sliding Window", () => {
 			})
 		})
 
-		it("should truncate if tokens are above max tokens threshold", async () => {
+		it("should not truncate if tokens are above max tokens threshold when autoCondenseContext is false", async () => {
 			const modelInfo = createModelInfo(100000, 30000)
 			const totalTokens = 70001 // Above threshold
 
@@ -294,21 +294,13 @@ describe("Sliding Window", () => {
 				{ ...messages[messages.length - 1], content: "" },
 			]
 
-			// When truncating, always uses 0.5 fraction
-			// With 4 messages after the first, 0.5 fraction means remove 2 messages
-			const expectedMessages = [
-				messagesWithSmallContent[0],
-				messagesWithSmallContent[3],
-				messagesWithSmallContent[4],
-			]
-
 			const result = await truncateConversationIfNeeded({
 				messages: messagesWithSmallContent,
 				totalTokens,
 				contextWindow: modelInfo.contextWindow,
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - should not truncate
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
@@ -316,8 +308,9 @@ describe("Sliding Window", () => {
 				currentProfileId: "default",
 			})
 
+			// When autoCondenseContext is false, should NOT truncate
 			expect(result).toEqual({
-				messages: expectedMessages,
+				messages: messagesWithSmallContent, // Original messages preserved
 				summary: "",
 				cost: 0,
 				prevContextTokens: totalTokens,
@@ -343,7 +336,7 @@ describe("Sliding Window", () => {
 				contextWindow: modelInfo1.contextWindow,
 				maxTokens: modelInfo1.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
@@ -357,7 +350,7 @@ describe("Sliding Window", () => {
 				contextWindow: modelInfo2.contextWindow,
 				maxTokens: modelInfo2.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
@@ -370,7 +363,7 @@ describe("Sliding Window", () => {
 			expect(result1.cost).toEqual(result2.cost)
 			expect(result1.prevContextTokens).toEqual(result2.prevContextTokens)
 
-			// Test above threshold
+			// Test above threshold - with autoCondenseContext false, should not truncate
 			const aboveThreshold = 70001
 			const result3 = await truncateConversationIfNeeded({
 				messages: messagesWithSmallContent,
@@ -378,7 +371,7 @@ describe("Sliding Window", () => {
 				contextWindow: modelInfo1.contextWindow,
 				maxTokens: modelInfo1.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
@@ -392,7 +385,7 @@ describe("Sliding Window", () => {
 				contextWindow: modelInfo2.contextWindow,
 				maxTokens: modelInfo2.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
@@ -400,6 +393,9 @@ describe("Sliding Window", () => {
 				currentProfileId: "default",
 			})
 
+			// Both should preserve original messages when autoCondenseContext is false
+			expect(result3.messages).toEqual(messagesWithSmallContent)
+			expect(result4.messages).toEqual(messagesWithSmallContent)
 			expect(result3.messages).toEqual(result4.messages)
 			expect(result3.summary).toEqual(result4.summary)
 			expect(result3.cost).toEqual(result4.cost)
@@ -463,14 +459,15 @@ describe("Sliding Window", () => {
 				contextWindow: modelInfo.contextWindow,
 				maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
 			})
-			expect(resultWithLarge.messages).not.toEqual(messagesWithLargeContent) // Should truncate
+			// When autoCondenseContext is false, should NOT truncate
+			expect(resultWithLarge.messages).toEqual(messagesWithLargeContent) // Should NOT truncate
 			expect(resultWithLarge.summary).toBe("")
 			expect(resultWithLarge.cost).toBe(0)
 			expect(resultWithLarge.prevContextTokens).toBe(baseTokensForLarge + largeContentTokens)
@@ -491,20 +488,21 @@ describe("Sliding Window", () => {
 				contextWindow: modelInfo.contextWindow,
 				maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
 			})
-			expect(resultWithVeryLarge.messages).not.toEqual(messagesWithVeryLargeContent) // Should truncate
+			// When autoCondenseContext is false, should NOT truncate
+			expect(resultWithVeryLarge.messages).toEqual(messagesWithVeryLargeContent) // Should NOT truncate
 			expect(resultWithVeryLarge.summary).toBe("")
 			expect(resultWithVeryLarge.cost).toBe(0)
 			expect(resultWithVeryLarge.prevContextTokens).toBe(baseTokensForVeryLarge + veryLargeContentTokens)
 		})
 
-		it("should truncate if tokens are within TOKEN_BUFFER_PERCENTAGE of the threshold", async () => {
+		it("should not truncate if tokens are within TOKEN_BUFFER_PERCENTAGE when autoCondenseContext is false", async () => {
 			const modelInfo = createModelInfo(100000, 30000)
 			const dynamicBuffer = modelInfo.contextWindow * TOKEN_BUFFER_PERCENTAGE // 10% of 100000 = 10000
 			const totalTokens = 70000 - dynamicBuffer + 1 // Just within the dynamic buffer of threshold (70000)
@@ -515,29 +513,22 @@ describe("Sliding Window", () => {
 				{ ...messages[messages.length - 1], content: "" },
 			]
 
-			// When truncating, always uses 0.5 fraction
-			// With 4 messages after the first, 0.5 fraction means remove 2 messages
-			const expectedResult = [
-				messagesWithSmallContent[0],
-				messagesWithSmallContent[3],
-				messagesWithSmallContent[4],
-			]
-
 			const result = await truncateConversationIfNeeded({
 				messages: messagesWithSmallContent,
 				totalTokens,
 				contextWindow: modelInfo.contextWindow,
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
 			})
+			// When autoCondenseContext is false, should NOT truncate
 			expect(result).toEqual({
-				messages: expectedResult,
+				messages: messagesWithSmallContent, // Original messages preserved
 				summary: "",
 				cost: 0,
 				prevContextTokens: totalTokens,
@@ -676,21 +667,13 @@ describe("Sliding Window", () => {
 				{ ...messages[messages.length - 1], content: "" },
 			]
 
-			// When truncating, always uses 0.5 fraction
-			// With 4 messages after the first, 0.5 fraction means remove 2 messages
-			const expectedMessages = [
-				messagesWithSmallContent[0],
-				messagesWithSmallContent[3],
-				messagesWithSmallContent[4],
-			]
-
 			const result = await truncateConversationIfNeeded({
 				messages: messagesWithSmallContent,
 				totalTokens,
 				contextWindow: modelInfo.contextWindow,
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - should not truncate
 				autoCondenseContextPercent: 50, // This shouldn't matter since autoCondenseContext is false
 				systemPrompt: "System prompt",
 				taskId,
@@ -701,9 +684,9 @@ describe("Sliding Window", () => {
 			// Verify summarizeConversation was not called
 			expect(summarizeSpy).not.toHaveBeenCalled()
 
-			// Verify it used truncation
+			// When autoCondenseContext is false, should NOT truncate even if above threshold
 			expect(result).toEqual({
-				messages: expectedMessages,
+				messages: messagesWithSmallContent, // Original messages preserved
 				summary: "",
 				cost: 0,
 				prevContextTokens: totalTokens,
@@ -822,7 +805,7 @@ describe("Sliding Window", () => {
 			summarizeSpy.mockRestore()
 		})
 
-		it("should not truncate when autoCondenseContext is true and threshold is 100% even if tokens exceed allowedTokens", async () => {
+		it("should not truncate when autoCondenseContext is false even if tokens exceed allowedTokens", async () => {
 			const modelInfo = createModelInfo(100000, 30000)
 			const totalTokens = 75000 // This exceeds allowedTokens (60000) but should not truncate when disabled
 
@@ -840,18 +823,18 @@ describe("Sliding Window", () => {
 				contextWindow: modelInfo.contextWindow,
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: true, // Enabled but with 100% threshold
-				autoCondenseContextPercent: 100, // 100% threshold means never condense
+				autoCondenseContext: false, // Disabled - should not truncate
+				autoCondenseContextPercent: 50, // This shouldn't matter since autoCondenseContext is false
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
 			})
 
-			// Verify summarizeConversation was NOT called when threshold is 100%
+			// Verify summarizeConversation was NOT called
 			expect(summarizeSpy).not.toHaveBeenCalled()
 
-			// Should NOT truncate even though tokens exceed allowedTokens when threshold is 100%
+			// Should NOT truncate even though tokens exceed allowedTokens when autoCondenseContext is false
 			expect(result).toEqual({
 				messages: messagesWithSmallContent,
 				summary: "",
@@ -1123,22 +1106,22 @@ describe("Sliding Window", () => {
 				prevContextTokens: 39999,
 			})
 
-			// Above max tokens - truncate
+			// Above max tokens - but with autoCondenseContext false, should not truncate
 			const result2 = await truncateConversationIfNeeded({
 				messages: messagesWithSmallContent,
 				totalTokens: 50001, // Above threshold
 				contextWindow: modelInfo.contextWindow,
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
 			})
-			expect(result2.messages).not.toEqual(messagesWithSmallContent)
-			expect(result2.messages.length).toBe(3) // Truncated with 0.5 fraction
+			// When autoCondenseContext is false, should NOT truncate
+			expect(result2.messages).toEqual(messagesWithSmallContent)
 			expect(result2.summary).toBe("")
 			expect(result2.cost).toBe(0)
 			expect(result2.prevContextTokens).toBe(50001)
@@ -1176,22 +1159,22 @@ describe("Sliding Window", () => {
 				prevContextTokens: 81807,
 			})
 
-			// Above max tokens - truncate
+			// Above max tokens - but with autoCondenseContext false, should not truncate
 			const result2 = await truncateConversationIfNeeded({
 				messages: messagesWithSmallContent,
 				totalTokens: 81809, // Above threshold (81808)
 				contextWindow: modelInfo.contextWindow,
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
 			})
-			expect(result2.messages).not.toEqual(messagesWithSmallContent)
-			expect(result2.messages.length).toBe(3) // Truncated with 0.5 fraction
+			// When autoCondenseContext is false, should NOT truncate
+			expect(result2.messages).toEqual(messagesWithSmallContent)
 			expect(result2.summary).toBe("")
 			expect(result2.cost).toBe(0)
 			expect(result2.prevContextTokens).toBe(81809)
@@ -1223,22 +1206,22 @@ describe("Sliding Window", () => {
 			})
 			expect(result1.messages).toEqual(messagesWithSmallContent)
 
-			// Above max tokens - truncate
+			// Above max tokens - but with autoCondenseContext false, should not truncate
 			const result2 = await truncateConversationIfNeeded({
 				messages: messagesWithSmallContent,
 				totalTokens: 40001, // Above threshold
 				contextWindow: modelInfo.contextWindow,
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
 			})
-			expect(result2).not.toEqual(messagesWithSmallContent)
-			expect(result2.messages.length).toBe(3) // Truncated with 0.5 fraction
+			// When autoCondenseContext is false, should NOT truncate
+			expect(result2.messages).toEqual(messagesWithSmallContent)
 		})
 
 		it("should handle large context windows appropriately", async () => {
@@ -1268,22 +1251,22 @@ describe("Sliding Window", () => {
 			})
 			expect(result1.messages).toEqual(messagesWithSmallContent)
 
-			// Above max tokens - truncate
+			// Above max tokens - but with autoCondenseContext false, should not truncate
 			const result2 = await truncateConversationIfNeeded({
 				messages: messagesWithSmallContent,
 				totalTokens: 170001, // Above threshold
 				contextWindow: modelInfo.contextWindow,
 				maxTokens: modelInfo.maxTokens,
 				apiHandler: mockApiHandler,
-				autoCondenseContext: false,
+				autoCondenseContext: false, // Disabled - no truncation
 				autoCondenseContextPercent: 100,
 				systemPrompt: "System prompt",
 				taskId,
 				profileThresholds: {},
 				currentProfileId: "default",
 			})
-			expect(result2).not.toEqual(messagesWithSmallContent)
-			expect(result2.messages.length).toBe(3) // Truncated with 0.5 fraction
+			// When autoCondenseContext is false, should NOT truncate
+			expect(result2.messages).toEqual(messagesWithSmallContent)
 		})
 	})
 })
