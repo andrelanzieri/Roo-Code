@@ -60,6 +60,7 @@ import { QueuedMessages } from "./QueuedMessages"
 import DismissibleUpsell from "../common/DismissibleUpsell"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { Cloud } from "lucide-react"
+import { DraftPersistenceProvider, useDraftPersistence } from "./hooks/useDraftPersistence"
 
 export interface ChatViewProps {
 	isHidden: boolean
@@ -75,11 +76,12 @@ export const MAX_IMAGES_PER_MESSAGE = 20 // This is the Anthropic limit.
 
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
 
-const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewProps> = (
+const ChatViewInner: React.ForwardRefRenderFunction<ChatViewRef, ChatViewProps> = (
 	{ isHidden, showAnnouncement, hideAnnouncement },
 	ref,
 ) => {
 	const isMountedRef = useRef(true)
+	const { saveCurrentDraft, restoreDraft } = useDraftPersistence()
 
 	const [audioBaseUri] = useState(() => {
 		const w = window as any
@@ -867,24 +869,36 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useEvent("message", handleMessage)
 
 	// Begin editing from a row (WhatsApp-style overlay)
-	const handleBeginEdit = useCallback((message: ClineMessage) => {
-		setEditingOverlay({
-			ts: message.ts,
-			text: message.text || "",
-			images: message.images || [],
-		})
-		setInputValue(message.text || "")
-		setSelectedImages(message.images || [])
-		// Focus input when beginning edit
-		setTimeout(() => textAreaRef.current?.focus(), 0)
-	}, [])
+	const handleBeginEdit = useCallback(
+		(message: ClineMessage) => {
+			// Save the current draft before starting edit
+			saveCurrentDraft(inputValue)
+
+			setEditingOverlay({
+				ts: message.ts,
+				text: message.text || "",
+				images: message.images || [],
+			})
+			setInputValue(message.text || "")
+			setSelectedImages(message.images || [])
+			// Focus input when beginning edit
+			setTimeout(() => textAreaRef.current?.focus(), 0)
+		},
+		[inputValue, saveCurrentDraft],
+	)
 
 	const handleCancelEditOverlay = useCallback(() => {
 		setEditingOverlay(null)
-		setInputValue("")
+		// Restore the draft when canceling edit
+		const restoredDraft = restoreDraft()
+		if (restoredDraft !== null) {
+			setInputValue(restoredDraft)
+		} else {
+			setInputValue("")
+		}
 		setSelectedImages([])
 		setTimeout(() => textAreaRef.current?.focus(), 0)
-	}, [])
+	}, [restoreDraft])
 
 	const handleSubmitEdited = useCallback(() => {
 		if (!editingOverlay) return
@@ -895,9 +909,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			images: selectedImages,
 		})
 		setEditingOverlay(null)
-		setInputValue("")
+		// Restore the draft after saving edit
+		const restoredDraft = restoreDraft()
+		if (restoredDraft !== null) {
+			setInputValue(restoredDraft)
+		} else {
+			setInputValue("")
+		}
 		setSelectedImages([])
-	}, [editingOverlay, inputValue, selectedImages])
+	}, [editingOverlay, inputValue, selectedImages, restoreDraft])
 
 	// NOTE: the VSCode window needs to be focused for this to work.
 	useMount(() => textAreaRef.current?.focus())
@@ -2142,6 +2162,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	)
 }
 
-const ChatView = forwardRef(ChatViewComponent)
+const ChatViewWithRef = forwardRef(ChatViewInner)
+
+const ChatView: React.FC<ChatViewProps> = (props) => {
+	return (
+		<DraftPersistenceProvider>
+			<ChatViewWithRef {...props} />
+		</DraftPersistenceProvider>
+	)
+}
 
 export default ChatView
