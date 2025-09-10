@@ -284,6 +284,503 @@ Please analyze this codebase and create an AGENTS.md file containing:
 
 Remember: The goal is to create documentation that enables AI assistants to be immediately productive in this codebase, focusing on project-specific knowledge that isn't obvious from the code structure alone.`,
 	},
+	review: {
+		name: "review",
+		description: "Review implementation changes against original requirements before creating a pull request",
+		argumentHint: "[context]",
+		content: `<task>
+Command 'review' (see below for command content) github comment: @roomote-agent fix this and make a PR
+</task>
+
+<command name="review">
+Description: Review implementation changes against original requirements before creating a pull request
+
+<workflow><!-- Meta workflow instructions. All actual tool calls below are wrapped in fenced code blocks for clarity. -->
+<step number="1">
+<name>Parse Command Arguments</name>
+<instructions>
+First, parse the command arguments to understand what context to review against:
+
+The command format is: \`/review [context]\`
+
+Where context can be:
+
+- \`github issue [repo] #[number]\` - Review against a GitHub issue (e.g., \`github issue owner/repo #123\`)
+- \`slack comment: [message]\` - Review against a Slack message/request
+- \`github comment: [message]\` - Review against a GitHub issue/PR comment
+
+Parse the input to determine:
+
+1. The type of context (github issue, slack comment, github comment)
+2. The specific reference (issue number or comment text)
+
+If no argument is provided, report an error and request the context.
+</instructions>
+</step>
+
+<step number="2">
+<name>Initialize Review Process</name>
+<instructions>
+Create a todo list to track the review workflow:
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <update_todo_list>
+	       <todos>
+	       [ ] Parse and validate input context
+	       [ ] Gather context information (issue/comment details)
+	       [ ] Identify current git branch
+	       [ ] Fetch latest main branch
+	       [ ] Generate comprehensive diff against main
+	       [ ] Read modified files for full context
+	       [ ] Analyze implementation against requirements
+	       [ ] Check code conventions and patterns
+	       [ ] Identify security risks
+	       [ ] Assess requirement clarity
+	       [ ] Generate review report
+	       [ ] Return findings to parent task
+	       </todos>
+	       </update_todo_list>
+	       \`\`\`
+
+	       This helps ensure a thorough review before creating a pull request.
+	       </instructions>
+	   </step>
+
+	   <step number="3">
+	       <name>Gather Context Information</name>
+	       <instructions>
+	       Based on the parsed input type, gather the necessary context:
+
+	       **For GitHub Issue:**
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <execute_command>
+	       <command>gh issue view [issue_number] --repo [repo] --json number,title,body,author,state,url,createdAt,updatedAt,comments</command>
+	       </execute_command>
+	       \`\`\`
+
+	       Extract:
+	       - Issue title and description
+	       - All comments for additional context
+	       - Acceptance criteria if specified
+	       - Any clarifications or requirements mentioned
+
+	       **For Slack Comment:**
+	       - Use the provided message text directly as the requirement
+	       - Note that this may be less detailed than a GitHub issue
+
+	       **For GitHub Comment:**
+	       - Use the provided comment text as the requirement
+	       - Note the context (issue or PR) where this comment was made
+
+	       Document the key requirements and acceptance criteria that the implementation should meet.
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <update_todo_list>
+	       <todos>
+	       [x] Parse and validate input context
+	       [x] Gather context information (issue/comment details)
+	       [ ] Identify current git branch
+	       [ ] Fetch latest main branch
+	       [ ] Generate comprehensive diff against main
+	       [ ] Read modified files for full context
+	       [ ] Analyze implementation against requirements
+	       [ ] Check code conventions and patterns
+	       [ ] Identify security risks
+	       [ ] Assess requirement clarity
+	       [ ] Generate review report
+	       [ ] Return findings to parent task
+	       </todos>
+	       </update_todo_list>
+	       \`\`\`
+	       </instructions>
+	   </step>
+
+	   <step number="4">
+	       <name>Identify Current Git Branch</name>
+	       <instructions>
+	       Determine which branch contains the implementation to review:
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <execute_command>
+	       <command>git branch --show-current</command>
+	       </execute_command>
+	       \`\`\`
+
+	       Store this branch name for reference in the review report.
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <update_todo_list>
+	       <todos>
+	       [x] Parse and validate input context
+	       [x] Gather context information (issue/comment details)
+	       [x] Identify current git branch
+	       [ ] Fetch latest main branch
+	       [ ] Generate comprehensive diff against main
+	       [ ] Read modified files for full context
+	       [ ] Analyze implementation against requirements
+	       [ ] Check code conventions and patterns
+	       [ ] Identify security risks
+	       [ ] Assess requirement clarity
+	       [ ] Generate review report
+	       [ ] Return findings to parent task
+	       </todos>
+	       </update_todo_list>
+	       \`\`\`
+	       </instructions>
+	   </step>
+
+	   <step number="5">
+	       <name>Fetch Latest Main Branch</name>
+	       <instructions>
+	       Ensure you're comparing against the most recent main branch:
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <execute_command>
+	       <command>git fetch origin main</command>
+	       </execute_command>
+	       \`\`\`
+
+	       This ensures your review compares against the current state of the main branch.
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <update_todo_list>
+	       <todos>
+	       [x] Parse and validate input context
+	       [x] Gather context information (issue/comment details)
+	       [x] Identify current git branch
+	       [x] Fetch latest main branch
+	       [ ] Generate comprehensive diff against main
+	       [ ] Read modified files for full context
+	       [ ] Analyze implementation against requirements
+	       [ ] Check code conventions and patterns
+	       [ ] Identify security risks
+	       [ ] Assess requirement clarity
+	       [ ] Generate review report
+	       [ ] Return findings to parent task
+	       </todos>
+	       </update_todo_list>
+	       \`\`\`
+	       </instructions>
+	   </step>
+
+	   <step number="6">
+	       <name>Generate Comprehensive Diff</name>
+	       <instructions>
+	       Generate a complete diff of all changes on the current branch against main:
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <execute_command>
+	       <command>git diff origin/main...HEAD</command>
+	       </execute_command>
+	       \`\`\`
+
+	       Analyze the diff to understand:
+	       - All files added, modified, or deleted
+	       - The specific changes within each file
+	       - The scope and size of the changes
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <update_todo_list>
+	       <todos>
+	       [x] Parse and validate input context
+	       [x] Gather context information (issue/comment details)
+	       [x] Identify current git branch
+	       [x] Fetch latest main branch
+	       [x] Generate comprehensive diff against main
+	       [ ] Read modified files for full context
+	       [ ] Analyze implementation against requirements
+	       [ ] Check code conventions and patterns
+	       [ ] Identify security risks
+	       [ ] Assess requirement clarity
+	       [ ] Generate review report
+	       [ ] Return findings to parent task
+	       </todos>
+	       </update_todo_list>
+	       \`\`\`
+	       </instructions>
+	   </step>
+
+	   <step number="7">
+	       <name>Read Modified Files for Full Context</name>
+	       <instructions>
+	       For each file that was modified (not just the diff), read the entire file to understand:
+	       - The overall structure and patterns used in the codebase
+	       - How the changes fit within the existing code
+	       - Whether the changes follow established conventions
+
+	       Use the read_file tool to examine key modified files, especially:
+	       - Files with significant changes
+	       - Files that implement core functionality
+	       - Configuration or security-related files
+
+	       This full context is essential for evaluating code conventions and patterns.
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <update_todo_list>
+	       <todos>
+	       [x] Parse and validate input context
+	       [x] Gather context information (issue/comment details)
+	       [x] Identify current git branch
+	       [x] Fetch latest main branch
+	       [x] Generate comprehensive diff against main
+	       [x] Read modified files for full context
+	       [ ] Analyze implementation against requirements
+	       [ ] Check code conventions and patterns
+	       [ ] Identify security risks
+	       [ ] Assess requirement clarity
+	       [ ] Generate review report
+	       [ ] Return findings to parent task
+	       </todos>
+	       </update_todo_list>
+	       \`\`\`
+	       </instructions>
+	   </step>
+
+	   <step number="8">
+	       <name>Analyze Implementation Against Requirements</name>
+	       <instructions>
+	       Perform a detailed analysis to determine if the implementation properly addresses the requirements:
+
+	       **Assessment Criteria:**
+
+	       1. **Requirement Coverage (CRITICAL):**
+	          - Does the implementation fully address the stated requirements?
+	          - Are all acceptance criteria met?
+	          - Are there any missing features or functionality?
+	          - Score: PASS / PARTIAL / FAIL
+
+	       2. **Code Quality & Conventions (IMPORTANT):**
+	          - Does the code follow project patterns and conventions?
+	          - Is the code readable and maintainable?
+	          - Are there appropriate comments and documentation?
+	          - Is the solution appropriately abstracted?
+	          - Score: GOOD / ACCEPTABLE / POOR
+
+	       3. **Security Considerations (CRITICAL):**
+	          - Are there any obvious security vulnerabilities?
+	          - Is input validation properly implemented?
+	          - Are sensitive data and credentials handled securely?
+	          - Are there any injection risks (SQL, XSS, etc.)?
+	          - Score: SECURE / CONCERNS / VULNERABLE
+
+	       4. **Requirement Clarity (INFORMATIONAL):**
+	          - Was the original requirement clear and detailed?
+	          - Did it provide enough context to implement correctly?
+	          - Were there ambiguities that led to assumptions?
+	          - Score: CLEAR / ADEQUATE / VAGUE
+
+	       Document specific findings for each criterion with examples from the code.
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <update_todo_list>
+	       <todos>
+	       [x] Parse and validate input context
+	       [x] Gather context information (issue/comment details)
+	       [x] Identify current git branch
+	       [x] Fetch latest main branch
+	       [x] Generate comprehensive diff against main
+	       [x] Read modified files for full context
+	       [x] Analyze implementation against requirements
+	       [x] Check code conventions and patterns
+	       [x] Identify security risks
+	       [x] Assess requirement clarity
+	       [ ] Generate review report
+	       [ ] Return findings to parent task
+	       </todos>
+	       </update_todo_list>
+	       \`\`\`
+	       </instructions>
+	   </step>
+
+	   <step number="9">
+	       <name>Generate Review Report</name>
+	       <instructions>
+	       Compile all findings into a comprehensive review report:
+
+	       **REVIEW REPORT**
+
+	       **Context:**
+	       - Review Type: [GitHub Issue / Slack Comment / GitHub Comment]
+	       - Reference: [Repo Issue #XXX / Comment text]
+	       - Branch: [branch name]
+	       - Files Changed: [count]
+	       - Lines Added/Removed: [+XXX / -XXX]
+
+	       **Requirements Analysis:**
+	       - Original Request: [Brief summary]
+	       - Requirement Clarity: [CLEAR / ADEQUATE / VAGUE]
+	       - Coverage Assessment: [PASS / PARTIAL / FAIL]
+	       - Details: [Specific findings]
+
+	       **Code Quality Assessment:**
+	       - Convention Adherence: [GOOD / ACCEPTABLE / POOR]
+	       - Specific Issues:
+	         * [Issue 1 with file:line reference]
+	         * [Issue 2 with file:line reference]
+
+	       **Security Assessment:**
+	       - Overall Status: [SECURE / CONCERNS / VULNERABLE]
+	       - Findings:
+	         * [Any security issues found]
+
+	       **Confidence Score:**
+	       Calculate an overall confidence score based on:
+	       - High Confidence (90-100%): All criteria PASS/GOOD/SECURE, clear requirements
+	       - Medium Confidence (70-89%): Minor issues, mostly acceptable
+	       - Low Confidence (Below 70%): Critical issues or multiple problems
+
+	       **Recommendation:**
+	       Based on the confidence score:
+	       - **PROCEED**: Implementation is sound, ready for PR (High confidence)
+	       - **REVIEW**: Minor fixes needed before PR (Medium confidence)
+	       - **REVISE**: Significant issues need addressing (Low confidence)
+
+	       **Specific Actions Required:**
+	       1. [Action item 1]
+	       2. [Action item 2]
+	       3. [Action item 3]
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <update_todo_list>
+	       <todos>
+	       [x] Parse and validate input context
+	       [x] Gather context information (issue/comment details)
+	       [x] Identify current git branch
+	       [x] Fetch latest main branch
+	       [x] Generate comprehensive diff against main
+	       [x] Read modified files for full context
+	       [x] Analyze implementation against requirements
+	       [x] Check code conventions and patterns
+	       [x] Identify security risks
+	       [x] Assess requirement clarity
+	       [x] Generate review report
+	       [ ] Return findings to parent task
+	       </todos>
+	       </update_todo_list>
+	       \`\`\`
+	       </instructions>
+	   </step>
+
+	   <step number="10">
+	       <name>Return Findings to Parent Task</name>
+	       <instructions>
+	       Use attempt_completion to return the full review report to the parent task:
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <attempt_completion>
+	       <result>
+	       [Insert the complete review report from Step 9]
+
+	       This review has been completed as a subtask. The parent task should use this information to determine whether to:
+	       1. Proceed with PR creation (if confidence is high)
+	       2. Make necessary fixes before creating PR (if issues were found)
+	       3. Seek clarification on requirements (if requirements were vague)
+	       </result>
+	       </attempt_completion>
+	       \`\`\`
+
+	       The parent task will receive this factual report and can make informed decisions about next steps.
+
+	       <!-- TOOL CALL -->
+	       \`\`\`
+	       <update_todo_list>
+	       <todos>
+	       [x] Parse and validate input context
+	       [x] Gather context information (issue/comment details)
+	       [x] Identify current git branch
+	       [x] Fetch latest main branch
+	       [x] Generate comprehensive diff against main
+	       [x] Read modified files for full context
+	       [x] Analyze implementation against requirements
+	       [x] Check code conventions and patterns
+	       [x] Identify security risks
+	       [x] Assess requirement clarity
+	       [x] Generate review report
+	       [x] Return findings to parent task
+	       </todos>
+	       </update_todo_list>
+	       \`\`\`
+	       </instructions>
+	   </step>
+
+</workflow>
+
+<best_practices><!-- Meta guidance; not tool calls -->
+**Input Handling:**
+
+- Always validate that an argument was provided
+- Parse the argument type correctly (github issue, slack, github comment)
+- Handle edge cases like malformed input gracefully
+
+**Context Gathering:**
+
+- For GitHub issues, fetch all relevant information including comments
+- For text-based inputs, work with what's provided but note limitations
+- Document when requirements are unclear or ambiguous
+
+**Code Analysis:**
+
+- Always read full files, not just diffs, to understand conventions
+- Look for patterns in existing code to evaluate consistency
+- Check for both functional correctness and code quality
+
+**Security Review:**
+
+- Check for common vulnerabilities (injection, XSS, exposed secrets)
+- Verify input validation and sanitization
+- Look for proper error handling that doesn't expose sensitive info
+
+**Reporting:**
+
+- Be factual and specific in findings
+- Provide actionable feedback with file:line references
+- Calculate confidence scores objectively based on criteria
+- Always use attempt_completion to return findings to parent
+	 </best_practices>
+
+<common_mistakes_to_avoid><!-- Meta guidance; not tool calls -->
+**Input Mistakes:**
+
+- Not validating that an argument was provided
+- Incorrectly parsing the input format
+- Not handling different input types appropriately
+
+**Analysis Mistakes:**
+
+- Only looking at diffs without reading full files
+- Missing security vulnerabilities
+- Not checking if requirements are actually met
+- Ignoring code convention violations
+
+**Process Mistakes:**
+
+- Not fetching latest main branch before comparison
+- Forgetting to identify the current branch
+- Not reading the actual files that were changed
+- Making subjective judgments instead of factual assessments
+
+**Reporting Mistakes:**
+
+- Not using attempt_completion to return to parent task
+- Providing vague feedback without specific examples
+- Not calculating a clear confidence score
+- Missing critical issues in the assessment
+	 </common_mistakes_to_avoid>
+</command>`,
+	},
 }
 
 /**

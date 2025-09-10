@@ -5,8 +5,8 @@ describe("Built-in Commands", () => {
 		it("should return all built-in commands", async () => {
 			const commands = await getBuiltInCommands()
 
-			expect(commands).toHaveLength(1)
-			expect(commands.map((cmd) => cmd.name)).toEqual(expect.arrayContaining(["init"]))
+			expect(commands).toHaveLength(2)
+			expect(commands.map((cmd) => cmd.name)).toEqual(expect.arrayContaining(["init", "review"]))
 
 			// Verify all commands have required properties
 			commands.forEach((command) => {
@@ -31,6 +31,15 @@ describe("Built-in Commands", () => {
 			expect(initCommand!.description).toBe(
 				"Analyze codebase and create concise AGENTS.md files for AI assistants",
 			)
+
+			const reviewCommand = commands.find((cmd) => cmd.name === "review")
+			expect(reviewCommand).toBeDefined()
+			expect(reviewCommand!.content).toContain("Review implementation changes")
+			expect(reviewCommand!.content).toContain("github issue")
+			expect(reviewCommand!.description).toBe(
+				"Review implementation changes against original requirements before creating a pull request",
+			)
+			expect(reviewCommand!.argumentHint).toBe("[context]")
 		})
 	})
 
@@ -48,6 +57,20 @@ describe("Built-in Commands", () => {
 			)
 		})
 
+		it("should return review command by name", async () => {
+			const reviewCommand = await getBuiltInCommand("review")
+
+			expect(reviewCommand).toBeDefined()
+			expect(reviewCommand!.name).toBe("review")
+			expect(reviewCommand!.source).toBe("built-in")
+			expect(reviewCommand!.filePath).toBe("<built-in:review>")
+			expect(reviewCommand!.content).toContain("Review implementation changes")
+			expect(reviewCommand!.description).toBe(
+				"Review implementation changes against original requirements before creating a pull request",
+			)
+			expect(reviewCommand!.argumentHint).toBe("[context]")
+		})
+
 		it("should return undefined for non-existent command", async () => {
 			const nonExistentCommand = await getBuiltInCommand("non-existent")
 			expect(nonExistentCommand).toBeUndefined()
@@ -63,10 +86,10 @@ describe("Built-in Commands", () => {
 		it("should return all built-in command names", async () => {
 			const names = await getBuiltInCommandNames()
 
-			expect(names).toHaveLength(1)
-			expect(names).toEqual(expect.arrayContaining(["init"]))
+			expect(names).toHaveLength(2)
+			expect(names).toEqual(expect.arrayContaining(["init", "review"]))
 			// Order doesn't matter since it's based on filesystem order
-			expect(names.sort()).toEqual(["init"])
+			expect(names.sort()).toEqual(["init", "review"])
 		})
 
 		it("should return array of strings", async () => {
@@ -98,6 +121,30 @@ describe("Built-in Commands", () => {
 			expect(content).toContain("rules-debug")
 			expect(content).toContain("rules-ask")
 			expect(content).toContain("rules-architect")
+		})
+
+		it("review command should have comprehensive content", async () => {
+			const command = await getBuiltInCommand("review")
+			const content = command!.content
+
+			// Should contain key sections
+			expect(content).toContain("Review implementation changes against original requirements")
+			expect(content).toContain("Parse Command Arguments")
+			expect(content).toContain("Initialize Review Process")
+			expect(content).toContain("Gather Context Information")
+			expect(content).toContain("Generate Comprehensive Diff")
+			expect(content).toContain("Analyze Implementation Against Requirements")
+
+			// Should mention important concepts
+			expect(content).toContain("github issue")
+			expect(content).toContain("slack comment")
+			expect(content).toContain("github comment")
+			expect(content).toContain("git diff")
+			expect(content).toContain("Requirement Coverage")
+			expect(content).toContain("Code Quality")
+			expect(content).toContain("Security Considerations")
+			expect(content).toContain("Confidence Score")
+			expect(content).toContain("attempt_completion")
 		})
 	})
 })
