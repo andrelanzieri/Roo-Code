@@ -329,7 +329,64 @@ describe("ChutesHandler", () => {
 	it("should handle errors in completePrompt", async () => {
 		const errorMessage = "Chutes API error"
 		mockCreate.mockRejectedValueOnce(new Error(errorMessage))
-		await expect(handler.completePrompt("test prompt")).rejects.toThrow(`Chutes completion error: ${errorMessage}`)
+		await expect(handler.completePrompt("test prompt")).rejects.toThrow(/ChutesAI completion error/)
+	})
+
+	it("should retry on 500 errors and succeed", async () => {
+		const error500 = new Error("Internal Server Error")
+		;(error500 as any).status = 500
+
+		// First attempt fails with 500, second succeeds
+		mockCreate
+			.mockRejectedValueOnce(error500)
+			.mockResolvedValueOnce({ choices: [{ message: { content: "Success after retry" } }] })
+
+		const result = await handler.completePrompt("test prompt")
+		expect(result).toBe("Success after retry")
+		expect(mockCreate).toHaveBeenCalledTimes(2)
+	})
+
+	it("should handle 500 errors with empty response body", async () => {
+		const error500 = new Error("")
+		;(error500 as any).status = 500
+
+		// All attempts fail with empty error
+		mockCreate.mockRejectedValue(error500)
+
+		await expect(handler.completePrompt("test prompt")).rejects.toThrow(/ChutesAI completion error.*500/)
+	})
+
+	it("should not retry on 4xx errors", async () => {
+		const error400 = new Error("Bad Request")
+		;(error400 as any).status = 400
+
+		mockCreate.mockRejectedValueOnce(error400)
+
+		await expect(handler.completePrompt("test prompt")).rejects.toThrow(/ChutesAI completion error.*400/)
+		expect(mockCreate).toHaveBeenCalledTimes(1) // Should not retry
+	})
+
+	it("should handle streaming errors with retry", async () => {
+		const error500 = new Error("Stream failed")
+		;(error500 as any).status = 500
+
+		// First attempt fails, second succeeds
+		mockCreate.mockRejectedValueOnce(error500).mockImplementationOnce(async () => ({
+			[Symbol.asyncIterator]: async function* () {
+				yield {
+					choices: [{ delta: { content: "Retry success" } }],
+					usage: null,
+				}
+			},
+		}))
+
+		const stream = handler.createMessage("system", [])
+		const chunks = []
+		for await (const chunk of stream) {
+			chunks.push(chunk)
+		}
+
+		expect(chunks).toContainEqual({ type: "text", text: "Retry success" })
 	})
 
 	it("createMessage should yield text content from stream", async () => {

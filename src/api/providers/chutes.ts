@@ -11,6 +11,9 @@ import { ApiStream } from "../transform/stream"
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
 
 export class ChutesHandler extends BaseOpenAiCompatibleProvider<ChutesModelId> {
+	private retryCount = 3
+	private retryDelay = 1000 // Start with 1 second delay
+
 	constructor(options: ApiHandlerOptions) {
 		super({
 			...options,
@@ -47,46 +50,127 @@ export class ChutesHandler extends BaseOpenAiCompatibleProvider<ChutesModelId> {
 	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
 		const model = this.getModel()
 
-		if (model.id.includes("DeepSeek-R1")) {
-			const stream = await this.client.chat.completions.create({
-				...this.getCompletionParams(systemPrompt, messages),
-				messages: convertToR1Format([{ role: "user", content: systemPrompt }, ...messages]),
-			})
+		// Add retry logic for transient errors
+		let lastError: Error | null = null
+		for (let attempt = 0; attempt < this.retryCount; attempt++) {
+			try {
+				if (model.id.includes("DeepSeek-R1")) {
+					const stream = await this.client.chat.completions.create({
+						...this.getCompletionParams(systemPrompt, messages),
+						messages: convertToR1Format([{ role: "user", content: systemPrompt }, ...messages]),
+					})
 
-			const matcher = new XmlMatcher(
-				"think",
-				(chunk) =>
-					({
-						type: chunk.matched ? "reasoning" : "text",
-						text: chunk.data,
-					}) as const,
-			)
+					const matcher = new XmlMatcher(
+						"think",
+						(chunk) =>
+							({
+								type: chunk.matched ? "reasoning" : "text",
+								text: chunk.data,
+							}) as const,
+					)
 
-			for await (const chunk of stream) {
-				const delta = chunk.choices[0]?.delta
+					for await (const chunk of stream) {
+						const delta = chunk.choices[0]?.delta
 
-				if (delta?.content) {
-					for (const processedChunk of matcher.update(delta.content)) {
+						if (delta?.content) {
+							for (const processedChunk of matcher.update(delta.content)) {
+								yield processedChunk
+							}
+						}
+
+						if (chunk.usage) {
+							yield {
+								type: "usage",
+								inputTokens: chunk.usage.prompt_tokens || 0,
+								outputTokens: chunk.usage.completion_tokens || 0,
+							}
+						}
+					}
+
+					// Process any remaining content
+					for (const processedChunk of matcher.final()) {
 						yield processedChunk
 					}
+					return // Success, exit the retry loop
+				} else {
+					yield* super.createMessage(systemPrompt, messages)
+					return // Success, exit the retry loop
+				}
+			} catch (error: any) {
+				lastError = error
+				console.error(`ChutesAI API error (attempt ${attempt + 1}/${this.retryCount}):`, {
+					status: error.status,
+					message: error.message,
+					response: error.response,
+					cause: error.cause,
+				})
+
+				// Check if it's a retryable error (5xx errors)
+				if (error.status && error.status >= 500 && error.status < 600 && attempt < this.retryCount - 1) {
+					// Exponential backoff
+					const delay = this.retryDelay * Math.pow(2, attempt)
+					console.log(`Retrying ChutesAI request after ${delay}ms...`)
+					await new Promise((resolve) => setTimeout(resolve, delay))
+					continue
 				}
 
-				if (chunk.usage) {
-					yield {
-						type: "usage",
-						inputTokens: chunk.usage.prompt_tokens || 0,
-						outputTokens: chunk.usage.completion_tokens || 0,
-					}
-				}
+				// For non-retryable errors or final attempt, throw with more context
+				const enhancedError = new Error(
+					`ChutesAI API error (${error.status || "unknown status"}): ${error.message || "Empty response body"}. ` +
+						`This may be a temporary issue with the ChutesAI service. ` +
+						`Please verify your API key and try again.`,
+				)
+				;(enhancedError as any).status = error.status
+				;(enhancedError as any).originalError = error
+				throw enhancedError
 			}
-
-			// Process any remaining content
-			for (const processedChunk of matcher.final()) {
-				yield processedChunk
-			}
-		} else {
-			yield* super.createMessage(systemPrompt, messages)
 		}
+
+		// If we've exhausted all retries
+		if (lastError) {
+			throw lastError
+		}
+	}
+
+	override async completePrompt(prompt: string): Promise<string> {
+		let lastError: Error | null = null
+
+		for (let attempt = 0; attempt < this.retryCount; attempt++) {
+			try {
+				return await super.completePrompt(prompt)
+			} catch (error: any) {
+				lastError = error
+				console.error(`ChutesAI completePrompt error (attempt ${attempt + 1}/${this.retryCount}):`, {
+					status: error.status,
+					message: error.message,
+				})
+
+				// Check if it's a retryable error (5xx errors)
+				if (error.status && error.status >= 500 && error.status < 600 && attempt < this.retryCount - 1) {
+					// Exponential backoff
+					const delay = this.retryDelay * Math.pow(2, attempt)
+					console.log(`Retrying ChutesAI completePrompt after ${delay}ms...`)
+					await new Promise((resolve) => setTimeout(resolve, delay))
+					continue
+				}
+
+				// For non-retryable errors or final attempt, throw with more context
+				const enhancedError = new Error(
+					`ChutesAI completion error (${error.status || "unknown status"}): ${error.message || "Empty response body"}. ` +
+						`Please verify your API key and endpoint configuration.`,
+				)
+				;(enhancedError as any).status = error.status
+				;(enhancedError as any).originalError = error
+				throw enhancedError
+			}
+		}
+
+		// If we've exhausted all retries
+		if (lastError) {
+			throw lastError
+		}
+
+		throw new Error("ChutesAI completion failed after all retry attempts")
 	}
 
 	override getModel() {

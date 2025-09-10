@@ -87,7 +87,24 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 		try {
 			return this.client.chat.completions.create(params, requestOptions)
-		} catch (error) {
+		} catch (error: any) {
+			// Log the raw error for debugging
+			console.error(`${this.providerName} raw error:`, {
+				message: error.message,
+				status: error.status,
+				statusText: error.statusText,
+				response: error.response,
+				cause: error.cause,
+				stack: error.stack,
+			})
+
+			// If it's an OpenAI API error with status code, preserve it
+			if (error.status) {
+				const enhancedError = handleOpenAIError(error, this.providerName)
+				;(enhancedError as any).status = error.status
+				throw enhancedError
+			}
+
 			throw handleOpenAIError(error, this.providerName)
 		}
 	}
@@ -97,25 +114,44 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		const stream = await this.createStream(systemPrompt, messages, metadata)
+		try {
+			const stream = await this.createStream(systemPrompt, messages, metadata)
 
-		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+			for await (const chunk of stream) {
+				const delta = chunk.choices[0]?.delta
 
-			if (delta?.content) {
-				yield {
-					type: "text",
-					text: delta.content,
+				if (delta?.content) {
+					yield {
+						type: "text",
+						text: delta.content,
+					}
+				}
+
+				if (chunk.usage) {
+					yield {
+						type: "usage",
+						inputTokens: chunk.usage.prompt_tokens || 0,
+						outputTokens: chunk.usage.completion_tokens || 0,
+					}
 				}
 			}
+		} catch (error: any) {
+			// Log detailed error information
+			console.error(`${this.providerName} streaming error:`, {
+				message: error.message,
+				status: error.status,
+				statusText: error.statusText,
+				type: error.type,
+				code: error.code,
+			})
 
-			if (chunk.usage) {
-				yield {
-					type: "usage",
-					inputTokens: chunk.usage.prompt_tokens || 0,
-					outputTokens: chunk.usage.completion_tokens || 0,
-				}
+			// Re-throw with status preserved
+			if (error.status) {
+				const enhancedError = new Error(error.message || `${this.providerName} streaming failed`)
+				;(enhancedError as any).status = error.status
+				throw enhancedError
 			}
+			throw error
 		}
 	}
 
@@ -129,7 +165,22 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			})
 
 			return response.choices[0]?.message.content || ""
-		} catch (error) {
+		} catch (error: any) {
+			// Log the raw error for debugging
+			console.error(`${this.providerName} completePrompt raw error:`, {
+				message: error.message,
+				status: error.status,
+				statusText: error.statusText,
+				response: error.response,
+			})
+
+			// If it's an OpenAI API error with status code, preserve it
+			if (error.status) {
+				const enhancedError = handleOpenAIError(error, this.providerName)
+				;(enhancedError as any).status = error.status
+				throw enhancedError
+			}
+
 			throw handleOpenAIError(error, this.providerName)
 		}
 	}
