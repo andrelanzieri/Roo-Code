@@ -599,7 +599,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					try {
 						console.log("queueMessage", text, images)
 						vscode.postMessage({ type: "queueMessage", text, images })
-						setInputValue("")
+						// Don't clear the input when queueing - let the user continue typing
+						// The input will be cleared when the message is actually sent
 						setSelectedImages([])
 					} catch (error) {
 						console.error(
