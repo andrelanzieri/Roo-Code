@@ -49,6 +49,7 @@ export interface WebviewMessage {
 		| "alwaysAllowFollowupQuestions"
 		| "alwaysAllowUpdateTodoList"
 		| "followupAutoApproveTimeoutMs"
+		| "autoExpandReasoningBlocks"
 		| "webviewDidLaunch"
 		| "newTask"
 		| "askResponse"

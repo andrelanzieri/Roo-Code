@@ -1553,6 +1553,10 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("alwaysAllowFollowupQuestions", message.bool ?? false)
 			await provider.postStateToWebview()
 			break
+		case "autoExpandReasoningBlocks":
+			await updateGlobalState("autoExpandReasoningBlocks", message.bool ?? false)
+			await provider.postStateToWebview()
+			break
 		case "followupAutoApproveTimeoutMs":
 			await updateGlobalState("followupAutoApproveTimeoutMs", message.value)
 			await provider.postStateToWebview()

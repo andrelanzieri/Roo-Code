@@ -24,7 +24,7 @@ import UpdateTodoListToolBlock from "./UpdateTodoListToolBlock"
 import CodeAccordian from "../common/CodeAccordian"
 import CodeBlock from "../common/CodeBlock"
 import MarkdownBlock from "../common/MarkdownBlock"
-import { ReasoningBlock } from "./ReasoningBlock"
+import { CollapsibleReasoningBlock } from "./CollapsibleReasoningBlock"
 import Thumbnails from "../common/Thumbnails"
 import ImageBlock from "../common/ImageBlock"
 
@@ -1084,7 +1084,7 @@ export const ChatRowContent = ({
 					)
 				case "reasoning":
 					return (
-						<ReasoningBlock
+						<CollapsibleReasoningBlock
 							content={message.text || ""}
 							ts={message.ts}
 							isStreaming={isStreaming}
