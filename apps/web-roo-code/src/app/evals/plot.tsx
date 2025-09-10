@@ -14,8 +14,33 @@ type PlotProps = {
 
 type LabelPosition = "top" | "bottom" | "left" | "right"
 
+// Constants for chart configuration
+const MAX_COST_LIMIT = 60
+const CHART_ROUNDING_INTERVAL = 5
+
+// Constants for overlap detection thresholds
+const OVERLAP_THRESHOLDS = {
+	horizontal: 4, // Cost units
+	vertical: 5, // Score units
+	labelToPoint: {
+		horizontal: 3,
+		vertical: 6,
+	},
+} as const
+
+// Helper function to calculate rounded domain bounds
+const calculateRoundedDomain = (
+	min: number,
+	max: number,
+	interval: number = CHART_ROUNDING_INTERVAL,
+): [number, number] => {
+	const roundedMin = Math.max(0, Math.round((min - interval) / interval) * interval)
+	const roundedMax = Math.round((max + interval) / interval) * interval
+	return [roundedMin, roundedMax]
+}
+
 export const Plot = ({ tableData }: PlotProps) => {
-	const chartData = useMemo(() => tableData.filter(({ cost }) => cost < 60), [tableData])
+	const chartData = useMemo(() => tableData.filter(({ cost }) => cost < MAX_COST_LIMIT), [tableData])
 
 	const chartConfig = useMemo(
 		() => chartData.reduce((acc, run) => ({ ...acc, [run.label]: run }), {} as ChartConfig),
@@ -39,21 +64,21 @@ export const Plot = ({ tableData }: PlotProps) => {
 			p1: { cost: number; score: number; position: LabelPosition },
 			p2: { cost: number; score: number; position: LabelPosition },
 		): boolean => {
-			// Approximate thresholds for overlap detection.
-			const horizontalThreshold = 4 // Cost units.
-			const verticalThreshold = 5 // Score units.
-
 			const costDiff = Math.abs(p1.cost - p2.cost)
 			const scoreDiff = Math.abs(p1.score - p2.score)
 
 			// If points are far apart, no overlap.
-			if (costDiff > horizontalThreshold * 2 || scoreDiff > verticalThreshold * 2) {
+			if (costDiff > OVERLAP_THRESHOLDS.horizontal * 2 || scoreDiff > OVERLAP_THRESHOLDS.vertical * 2) {
 				return false
 			}
 
 			// Check specific position combinations for overlap.
 			// Same position for nearby points definitely overlaps.
-			if (p1.position === p2.position && costDiff < horizontalThreshold && scoreDiff < verticalThreshold) {
+			if (
+				p1.position === p2.position &&
+				costDiff < OVERLAP_THRESHOLDS.horizontal &&
+				scoreDiff < OVERLAP_THRESHOLDS.vertical
+			) {
 				return true
 			}
 
@@ -66,7 +91,7 @@ export const Plot = ({ tableData }: PlotProps) => {
 			// If both labels are on the same vertical side and points are close
 			// horizontally.
 			if ((p1IsTop && p2IsTop) || (p1IsBottom && p2IsBottom)) {
-				if (costDiff < horizontalThreshold && scoreDiff < verticalThreshold / 2) {
+				if (costDiff < OVERLAP_THRESHOLDS.horizontal && scoreDiff < OVERLAP_THRESHOLDS.vertical / 2) {
 					return true
 				}
 			}
@@ -88,25 +113,41 @@ export const Plot = ({ tableData }: PlotProps) => {
 				switch (position) {
 					case "top":
 						// Label is above, check if there's a point above.
-						if (costDiff < 3 && other.score > point.score && other.score - point.score < 6) {
+						if (
+							costDiff < OVERLAP_THRESHOLDS.labelToPoint.horizontal &&
+							other.score > point.score &&
+							other.score - point.score < OVERLAP_THRESHOLDS.labelToPoint.vertical
+						) {
 							return true
 						}
 						break
 					case "bottom":
 						// Label is below, check if there's a point below.
-						if (costDiff < 3 && other.score < point.score && point.score - other.score < 6) {
+						if (
+							costDiff < OVERLAP_THRESHOLDS.labelToPoint.horizontal &&
+							other.score < point.score &&
+							point.score - other.score < OVERLAP_THRESHOLDS.labelToPoint.vertical
+						) {
 							return true
 						}
 						break
 					case "left":
 						// Label is to the left, check if there's a point to the left.
-						if (scoreDiff < 3 && other.cost < point.cost && point.cost - other.cost < 4) {
+						if (
+							scoreDiff < OVERLAP_THRESHOLDS.labelToPoint.horizontal &&
+							other.cost < point.cost &&
+							point.cost - other.cost < OVERLAP_THRESHOLDS.horizontal
+						) {
 							return true
 						}
 						break
 					case "right":
 						// Label is to the right, check if there's a point to the right.
-						if (scoreDiff < 3 && other.cost > point.cost && other.cost - point.cost < 4) {
+						if (
+							scoreDiff < OVERLAP_THRESHOLDS.labelToPoint.horizontal &&
+							other.cost > point.cost &&
+							other.cost - point.cost < OVERLAP_THRESHOLDS.horizontal
+						) {
 							return true
 						}
 						break
@@ -181,8 +222,8 @@ export const Plot = ({ tableData }: PlotProps) => {
 						dataKey="cost"
 						name="Cost"
 						domain={[
-							(dataMin: number) => Math.max(0, Math.round((dataMin - 5) / 5) * 5),
-							(dataMax: number) => Math.round((dataMax + 5) / 5) * 5,
+							(dataMin: number) => calculateRoundedDomain(dataMin, 0)[0],
+							() => MAX_COST_LIMIT, // Always use 60 as the max
 						]}
 						tickFormatter={(value) => formatCurrency(value)}
 					/>
@@ -191,8 +232,8 @@ export const Plot = ({ tableData }: PlotProps) => {
 						dataKey="score"
 						name="Score"
 						domain={[
-							(dataMin: number) => Math.max(0, Math.round((dataMin - 5) / 5) * 5),
-							(dataMax: number) => Math.min(100, Math.round((dataMax + 5) / 5) * 5),
+							(dataMin: number) => calculateRoundedDomain(dataMin, 0)[0],
+							(dataMax: number) => Math.min(100, calculateRoundedDomain(0, dataMax)[1]),
 						]}
 						tickFormatter={(value) => `${value}%`}
 					/>
@@ -235,7 +276,7 @@ export const Plot = ({ tableData }: PlotProps) => {
 				</ScatterChart>
 			</ChartContainer>
 			<div className="py-4 text-xs opacity-50">
-				(Note: Models with a cost of $60 or more are excluded from the scatter plot.)
+				(Note: Models with a cost of ${MAX_COST_LIMIT} or more are excluded from the scatter plot.)
 			</div>
 		</>
 	)
