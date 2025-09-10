@@ -589,13 +589,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	 * Handles sending messages to the extension
 	 * @param text - The message text to send
 	 * @param images - Array of image data URLs to send with the message
+	 * @param fromQueue - Whether this message is being sent from the queue (should not clear input)
 	 */
 	const handleSendMessage = useCallback(
-		(text: string, images: string[]) => {
+		(text: string, images: string[], fromQueue: boolean = false) => {
 			text = text.trim()
 
 			if (text || images.length > 0) {
-				if (sendingDisabled) {
+				if (sendingDisabled && !fromQueue) {
 					try {
 						console.log("queueMessage", text, images)
 						vscode.postMessage({ type: "queueMessage", text, images })
@@ -648,7 +649,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					vscode.postMessage({ type: "askResponse", askResponse: "messageResponse", text, images })
 				}
 
-				handleChatReset()
+				// Only reset the chat if this is not a queued message being processed
+				// When fromQueue is true, we preserve the current input value
+				if (!fromQueue) {
+					handleChatReset()
+				}
 			}
 		},
 		[handleChatReset, markFollowUpAsAnswered, sendingDisabled], // messagesRef and clineAskRef are stable
@@ -809,7 +814,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							handleChatReset()
 							break
 						case "sendMessage":
-							handleSendMessage(message.text ?? "", message.images ?? [])
+							// Check if this message matches any queued message to determine if it's from the queue
+							const isFromQueue = messageQueue.some(
+								(queuedMsg) =>
+									queuedMsg.text === message.text &&
+									JSON.stringify(queuedMsg.images || []) === JSON.stringify(message.images || []),
+							)
+							handleSendMessage(message.text ?? "", message.images ?? [], isFromQueue)
 							break
 						case "setChatBoxMessage":
 							handleSetChatBoxMessage(message.text ?? "", message.images ?? [])
@@ -846,6 +857,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			handleSetChatBoxMessage,
 			handlePrimaryButtonClick,
 			handleSecondaryButtonClick,
+			messageQueue,
 		],
 	)
 
