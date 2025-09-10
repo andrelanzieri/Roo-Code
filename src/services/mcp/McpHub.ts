@@ -911,7 +911,19 @@ export class McpHub {
 				return []
 			}
 
-			const response = await connection.client.request({ method: "tools/list" }, ListToolsResultSchema)
+			let timeout: number
+			try {
+				const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
+				timeout = (parsedConfig.timeout ?? 60) * 1000
+			} catch (error) {
+				console.error("Failed to parse server config for timeout:", error)
+				// Default to 60 seconds if parsing fails
+				timeout = 60 * 1000
+			}
+
+			const response = await connection.client.request({ method: "tools/list" }, ListToolsResultSchema, {
+				timeout,
+			})
 
 			// Determine the actual source of the server
 			const actualSource = connection.server.source || "global"
@@ -965,7 +977,20 @@ export class McpHub {
 			if (!connection || connection.type !== "connected") {
 				return []
 			}
-			const response = await connection.client.request({ method: "resources/list" }, ListResourcesResultSchema)
+
+			let timeout: number
+			try {
+				const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
+				timeout = (parsedConfig.timeout ?? 60) * 1000
+			} catch (error) {
+				console.error("Failed to parse server config for timeout:", error)
+				// Default to 60 seconds if parsing fails
+				timeout = 60 * 1000
+			}
+
+			const response = await connection.client.request({ method: "resources/list" }, ListResourcesResultSchema, {
+				timeout,
+			})
 			return response?.resources || []
 		} catch (error) {
 			// console.error(`Failed to fetch resources for ${serverName}:`, error)
@@ -982,9 +1007,23 @@ export class McpHub {
 			if (!connection || connection.type !== "connected") {
 				return []
 			}
+
+			let timeout: number
+			try {
+				const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
+				timeout = (parsedConfig.timeout ?? 60) * 1000
+			} catch (error) {
+				console.error("Failed to parse server config for timeout:", error)
+				// Default to 60 seconds if parsing fails
+				timeout = 60 * 1000
+			}
+
 			const response = await connection.client.request(
 				{ method: "resources/templates/list" },
 				ListResourceTemplatesResultSchema,
+				{
+					timeout,
+				},
 			)
 			return response?.resourceTemplates || []
 		} catch (error) {
@@ -1564,6 +1603,17 @@ export class McpHub {
 		if (connection.server.disabled) {
 			throw new Error(`Server "${serverName}" is disabled`)
 		}
+
+		let timeout: number
+		try {
+			const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
+			timeout = (parsedConfig.timeout ?? 60) * 1000
+		} catch (error) {
+			console.error("Failed to parse server config for timeout:", error)
+			// Default to 60 seconds if parsing fails
+			timeout = 60 * 1000
+		}
+
 		return await connection.client.request(
 			{
 				method: "resources/read",
@@ -1572,6 +1622,9 @@ export class McpHub {
 				},
 			},
 			ReadResourceResultSchema,
+			{
+				timeout,
+			},
 		)
 	}
 
