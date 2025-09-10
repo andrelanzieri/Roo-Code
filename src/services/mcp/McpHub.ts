@@ -878,6 +878,22 @@ export class McpHub {
 	}
 
 	/**
+	 * Helper method to get timeout from connection configuration
+	 * @param connection The MCP connection to get timeout from
+	 * @returns The timeout in milliseconds, defaults to 60000ms if parsing fails
+	 */
+	private getTimeoutFromConnection(connection: McpConnection): number {
+		try {
+			const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
+			return (parsedConfig.timeout ?? 60) * 1000
+		} catch (error) {
+			console.error("Failed to parse server config for timeout:", error)
+			// Default to 60 seconds if parsing fails
+			return 60 * 1000
+		}
+	}
+
+	/**
 	 * Helper method to find a connection by server name and source
 	 * @param serverName The name of the server to find
 	 * @param source Optional source to filter by (global or project)
@@ -911,16 +927,7 @@ export class McpHub {
 				return []
 			}
 
-			let timeout: number
-			try {
-				const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
-				timeout = (parsedConfig.timeout ?? 60) * 1000
-			} catch (error) {
-				console.error("Failed to parse server config for timeout:", error)
-				// Default to 60 seconds if parsing fails
-				timeout = 60 * 1000
-			}
-
+			const timeout = this.getTimeoutFromConnection(connection)
 			const response = await connection.client.request({ method: "tools/list" }, ListToolsResultSchema, {
 				timeout,
 			})
@@ -978,16 +985,7 @@ export class McpHub {
 				return []
 			}
 
-			let timeout: number
-			try {
-				const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
-				timeout = (parsedConfig.timeout ?? 60) * 1000
-			} catch (error) {
-				console.error("Failed to parse server config for timeout:", error)
-				// Default to 60 seconds if parsing fails
-				timeout = 60 * 1000
-			}
-
+			const timeout = this.getTimeoutFromConnection(connection)
 			const response = await connection.client.request({ method: "resources/list" }, ListResourcesResultSchema, {
 				timeout,
 			})
@@ -1008,16 +1006,7 @@ export class McpHub {
 				return []
 			}
 
-			let timeout: number
-			try {
-				const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
-				timeout = (parsedConfig.timeout ?? 60) * 1000
-			} catch (error) {
-				console.error("Failed to parse server config for timeout:", error)
-				// Default to 60 seconds if parsing fails
-				timeout = 60 * 1000
-			}
-
+			const timeout = this.getTimeoutFromConnection(connection)
 			const response = await connection.client.request(
 				{ method: "resources/templates/list" },
 				ListResourceTemplatesResultSchema,
@@ -1604,16 +1593,7 @@ export class McpHub {
 			throw new Error(`Server "${serverName}" is disabled`)
 		}
 
-		let timeout: number
-		try {
-			const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
-			timeout = (parsedConfig.timeout ?? 60) * 1000
-		} catch (error) {
-			console.error("Failed to parse server config for timeout:", error)
-			// Default to 60 seconds if parsing fails
-			timeout = 60 * 1000
-		}
-
+		const timeout = this.getTimeoutFromConnection(connection)
 		return await connection.client.request(
 			{
 				method: "resources/read",
@@ -1644,16 +1624,7 @@ export class McpHub {
 			throw new Error(`Server "${serverName}" is disabled and cannot be used`)
 		}
 
-		let timeout: number
-		try {
-			const parsedConfig = ServerConfigSchema.parse(JSON.parse(connection.server.config))
-			timeout = (parsedConfig.timeout ?? 60) * 1000
-		} catch (error) {
-			console.error("Failed to parse server config for timeout:", error)
-			// Default to 60 seconds if parsing fails
-			timeout = 60 * 1000
-		}
-
+		const timeout = this.getTimeoutFromConnection(connection)
 		return await connection.client.request(
 			{
 				method: "tools/call",
