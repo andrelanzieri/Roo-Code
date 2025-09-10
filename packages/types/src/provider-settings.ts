@@ -111,6 +111,9 @@ const baseProviderSettingsSchema = z.object({
 	modelMaxTokens: z.number().optional(),
 	modelMaxThinkingTokens: z.number().optional(),
 
+	// Model input token limit (for providers with per-request limits like Gemini free tier)
+	maxInputTokens: z.number().min(1).optional(),
+
 	// Model verbosity.
 	verbosity: verbosityLevelsSchema.optional(),
 })

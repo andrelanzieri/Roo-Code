@@ -1243,5 +1243,115 @@ describe("Sliding Window", () => {
 			expect(result2).not.toEqual(messagesWithSmallContent)
 			expect(result2.messages.length).toBe(3) // Truncated with 0.5 fraction
 		})
+
+		it("should respect maxInputTokens limit when provided", async () => {
+			const modelInfo = createModelInfo(200000, 8192)
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			// Test with maxInputTokens set to 125000 (Gemini free tier limit)
+			const result = await truncateConversationIfNeeded({
+				messages: messagesWithSmallContent,
+				totalTokens: 150000, // Above the maxInputTokens limit
+				contextWindow: modelInfo.contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				maxInputTokens: 125000, // Gemini free tier limit
+				apiHandler: mockApiHandler,
+				autoCondenseContext: false,
+				autoCondenseContextPercent: 100,
+				systemPrompt: "test",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+			})
+
+			// Should truncate because total tokens exceed maxInputTokens
+			expect(result.messages).toHaveLength(3)
+			expect(result.summary).toBe("")
+			expect(result.cost).toBe(0)
+			expect(result.prevContextTokens).toBe(150000)
+		})
+
+		it("should use the more restrictive limit between maxInputTokens and context window", async () => {
+			const modelInfo = createModelInfo(200000, 8192)
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			// Test where context window limit is more restrictive
+			// Context window limit: 200000 * 0.9 - 8192 = 171808
+			const result1 = await truncateConversationIfNeeded({
+				messages: messagesWithSmallContent,
+				totalTokens: 171809, // Just above context window limit
+				contextWindow: modelInfo.contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				maxInputTokens: 300000, // Higher than context window
+				apiHandler: mockApiHandler,
+				autoCondenseContext: false,
+				autoCondenseContextPercent: 100,
+				systemPrompt: "test",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+			})
+
+			// Should truncate based on context window limit
+			expect(result1.messages).toHaveLength(3)
+
+			// Test where maxInputTokens is more restrictive
+			const result2 = await truncateConversationIfNeeded({
+				messages: messagesWithSmallContent,
+				totalTokens: 100000,
+				contextWindow: modelInfo.contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				maxInputTokens: 50000, // Lower than current tokens
+				apiHandler: mockApiHandler,
+				autoCondenseContext: false,
+				autoCondenseContextPercent: 100,
+				systemPrompt: "test",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+			})
+
+			// Should truncate based on maxInputTokens limit
+			expect(result2.messages).toHaveLength(3)
+			expect(result2.summary).toBe("")
+			expect(result2.cost).toBe(0)
+			expect(result2.prevContextTokens).toBe(100000)
+		})
+
+		it("should not truncate when maxInputTokens is not exceeded", async () => {
+			const modelInfo = createModelInfo(200000, 8192)
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			// Test with tokens below maxInputTokens limit
+			const result = await truncateConversationIfNeeded({
+				messages: messagesWithSmallContent,
+				totalTokens: 50000, // Below the maxInputTokens limit
+				contextWindow: modelInfo.contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				maxInputTokens: 125000, // Gemini free tier limit
+				apiHandler: mockApiHandler,
+				autoCondenseContext: false,
+				autoCondenseContextPercent: 100,
+				systemPrompt: "test",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+			})
+
+			// Should not truncate because total tokens are below maxInputTokens
+			expect(result.messages).toEqual(messagesWithSmallContent)
+			expect(result.summary).toBe("")
+			expect(result.cost).toBe(0)
+			expect(result.prevContextTokens).toBe(50000)
+		})
 	})
 })

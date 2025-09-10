@@ -68,6 +68,7 @@ type TruncateOptions = {
 	totalTokens: number
 	contextWindow: number
 	maxTokens?: number | null
+	maxInputTokens?: number | null
 	apiHandler: ApiHandler
 	autoCondenseContext: boolean
 	autoCondenseContextPercent: number
@@ -93,6 +94,7 @@ export async function truncateConversationIfNeeded({
 	totalTokens,
 	contextWindow,
 	maxTokens,
+	maxInputTokens,
 	apiHandler,
 	autoCondenseContext,
 	autoCondenseContextPercent,
@@ -119,8 +121,16 @@ export async function truncateConversationIfNeeded({
 	const prevContextTokens = totalTokens + lastMessageTokens
 
 	// Calculate available tokens for conversation history
-	// Truncate if we're within TOKEN_BUFFER_PERCENTAGE of the context window
-	const allowedTokens = contextWindow * (1 - TOKEN_BUFFER_PERCENTAGE) - reservedTokens
+	// First check if there's a maxInputTokens limit (e.g., for Gemini free tier)
+	let allowedTokens: number
+	if (maxInputTokens && maxInputTokens > 0) {
+		// Use the more restrictive limit between maxInputTokens and context window
+		const contextWindowLimit = contextWindow * (1 - TOKEN_BUFFER_PERCENTAGE) - reservedTokens
+		allowedTokens = Math.min(maxInputTokens, contextWindowLimit)
+	} else {
+		// Truncate if we're within TOKEN_BUFFER_PERCENTAGE of the context window
+		allowedTokens = contextWindow * (1 - TOKEN_BUFFER_PERCENTAGE) - reservedTokens
+	}
 
 	// Determine the effective threshold to use
 	let effectiveThreshold = autoCondenseContextPercent
