@@ -105,7 +105,21 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			await git.addConfig("user.name", "Roo Code")
 			await git.addConfig("user.email", "noreply@example.com")
 			await this.writeExcludeFile()
-			await this.stageAll(git)
+
+			// For initial commit, stage files but with a timeout to prevent hanging on large repos
+			// Use a promise race to ensure we don't wait forever
+			const stagePromise = this.stageAll(git)
+			const timeoutPromise = new Promise<void>((resolve) => {
+				setTimeout(() => {
+					this.log(
+						`[${this.constructor.name}#initShadowGit] Initial staging timed out after 5 seconds, proceeding with empty commit`,
+					)
+					resolve()
+				}, 5000) // 5 second timeout for initial staging
+			})
+
+			await Promise.race([stagePromise, timeoutPromise])
+
 			const { commit } = await git.commit("initial commit", { "--allow-empty": null })
 			this.baseHash = commit
 			created = true
@@ -145,11 +159,14 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 
 	private async stageAll(git: SimpleGit) {
 		try {
-			await git.add(".")
+			// Add --ignore-errors flag to handle permission issues gracefully
+			// This prevents the operation from failing on files with permission issues
+			await git.add([".", "--ignore-errors"])
 		} catch (error) {
 			this.log(
 				`[${this.constructor.name}#stageAll] failed to add files to git: ${error instanceof Error ? error.message : String(error)}`,
 			)
+			// Don't throw - allow the operation to continue with whatever files were successfully staged
 		}
 	}
 

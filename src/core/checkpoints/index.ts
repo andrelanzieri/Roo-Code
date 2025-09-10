@@ -18,7 +18,11 @@ import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../../se
 
 export async function getCheckpointService(
 	task: Task,
-	{ interval = 250, timeout = 15_000 }: { interval?: number; timeout?: number } = {},
+	{
+		interval = 250,
+		timeout = 15_000,
+		isInitialCall = false,
+	}: { interval?: number; timeout?: number; isInitialCall?: boolean } = {},
 ) {
 	if (!task.enableCheckpoints) {
 		return undefined
@@ -67,13 +71,12 @@ export async function getCheckpointService(
 		}
 
 		if (task.checkpointServiceInitializing) {
-			await pWaitFor(
-				() => {
-					console.log("[Task#getCheckpointService] waiting for service to initialize")
-					return !!task.checkpointService && !!task?.checkpointService?.isInitialized
-				},
-				{ interval, timeout },
-			)
+			// For initial calls, don't apply timeout to allow large repositories to initialize
+			const waitOptions = isInitialCall ? { interval } : { interval, timeout }
+			await pWaitFor(() => {
+				console.log("[Task#getCheckpointService] waiting for service to initialize")
+				return !!task.checkpointService && !!task?.checkpointService?.isInitialized
+			}, waitOptions)
 			if (!task?.checkpointService) {
 				task.enableCheckpoints = false
 				return undefined
