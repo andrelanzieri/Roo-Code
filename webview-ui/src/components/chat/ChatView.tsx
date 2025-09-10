@@ -868,7 +868,7 @@ const ChatViewInner: React.ForwardRefRenderFunction<ChatViewRef, ChatViewProps> 
 
 	useEvent("message", handleMessage)
 
-	// Begin editing from a row (WhatsApp-style overlay)
+	// Begin editing from a row
 	const handleBeginEdit = useCallback(
 		(message: ClineMessage) => {
 			// Save the current draft before starting edit
