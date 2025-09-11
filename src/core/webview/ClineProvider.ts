@@ -56,6 +56,7 @@ import { WebviewMessage } from "../../shared/WebviewMessage"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 import { ProfileValidator } from "../../shared/ProfileValidator"
 import { HUGGING_FACE_OAUTH_CLIENT_ID } from "../../shared/oauth-constants"
+import { huggingFaceDefaultModelId } from "@roo-code/types"
 
 import { Terminal } from "../../integrations/terminal/Terminal"
 import { downloadTask } from "../../integrations/misc/export-markdown"
@@ -1474,7 +1475,7 @@ export class ClineProvider
 				...apiConfiguration,
 				apiProvider: "huggingface",
 				huggingFaceApiKey: accessToken,
-				huggingFaceModelId: apiConfiguration?.huggingFaceModelId || "meta-llama/Llama-3.3-70B-Instruct",
+				huggingFaceModelId: apiConfiguration?.huggingFaceModelId || huggingFaceDefaultModelId,
 				huggingFaceInferenceProvider: apiConfiguration?.huggingFaceInferenceProvider || "auto",
 			}
 
