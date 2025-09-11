@@ -63,35 +63,42 @@ export async function getWatsonxModels(
 		let knownModels: Record<string, ModelInfo> = {}
 
 		try {
-			const response = await service.listFoundationModelSpecs()
+			let response
+			if (embedded) {
+				response = await service.listFoundationModelSpecs({ filters: "function_embedding" })
+			} else {
+				response = await service.listFoundationModelSpecs({ filters: "!function_embedding" })
+			}
 
 			if (response && response.result) {
 				const result = response.result as any
-				const modelsList = result.models || result.resources || result.foundation_models || []
-				if (Array.isArray(modelsList)) {
+				const modelsList = result.resources
+				if (Array.isArray(modelsList) && modelsList.length > 0) {
 					for (const model of modelsList) {
 						const modelId = model.id || model.name || model.model_id
-						const modelInfo = JSON.stringify(model).toLowerCase()
-						if (modelId && !embedded && !modelInfo.includes("embed") && !modelInfo.includes("rtrvr")) {
-							const contextWindow = model.context_length || model.max_input_tokens || 8192
-							const maxTokens = model.max_output_tokens || Math.floor(contextWindow / 2)
+						const contextWindow = model.context_length || model.max_input_tokens || 8192
+						const maxTokens = model.max_output_tokens || Math.floor(contextWindow / 2)
 
-							knownModels[modelId] = {
-								contextWindow,
-								maxTokens,
-								supportsPromptCache: false,
-							}
-						} else {
-							if (modelId && embedded && modelInfo.includes("embed") && modelInfo.includes("rtrvr")) {
-								const contextWindow = model.context_length || model.max_input_tokens || 8192
-								const maxTokens = model.max_output_tokens || Math.floor(contextWindow / 2)
-
-								knownModels[modelId] = {
-									contextWindow,
-									maxTokens,
-									supportsPromptCache: false,
-								}
-							}
+						let description = ""
+						if (model.long_description) {
+							description = model.long_description
+						} else if (model.short_description) {
+							description = model.short_description
+						}
+						const supportsImages = model.modality === "multimodal" || model.modality === "vision" || false
+						const inputPrice = model.pricing?.input_price || 0
+						const outputPrice = model.pricing?.output_price || 0
+						knownModels[modelId] = {
+							contextWindow,
+							maxTokens,
+							supportsPromptCache: false,
+							supportsImages,
+							supportsReasoningEffort: false,
+							supportsReasoningBudget: false,
+							requiredReasoningBudget: false,
+							inputPrice,
+							outputPrice,
+							description,
 						}
 					}
 				}

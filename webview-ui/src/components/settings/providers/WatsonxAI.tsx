@@ -248,7 +248,7 @@ export const WatsonxAI = ({
 	return (
 		<>
 			{/* Platform Selection */}
-			<div className="w-full mb-4">
+			<div className="w-full mb-1">
 				<label className="block font-medium mb-1">Platform</label>
 				<Select
 					value={apiConfiguration.watsonxPlatform}
@@ -265,31 +265,29 @@ export const WatsonxAI = ({
 
 			{/* IBM Cloud specific fields */}
 			{apiConfiguration.watsonxPlatform === "ibmCloud" && (
-				<>
-					<div className="w-full mb-4">
-						<label className="block font-medium mb-1">Region</label>
-						<Select value={selectedRegion} onValueChange={handleRegionSelect}>
-							<SelectTrigger className="w-full">
-								<SelectValue placeholder="Select a region" />
-							</SelectTrigger>
-							<SelectContent>
-								{Object.entries(WATSONX_REGIONS).map(([regionCode, regionName]) => (
-									<SelectItem key={regionCode} value={regionCode}>
-										{regionName}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						<div className="text-sm text-vscode-descriptionForeground mt-1">
-							Selected endpoint: {REGION_TO_URL[selectedRegion as keyof typeof REGION_TO_URL]}
-						</div>
+				<div className="w-full mb-1">
+					<label className="block font-medium mb-1">Region</label>
+					<Select value={selectedRegion} onValueChange={handleRegionSelect}>
+						<SelectTrigger className="w-full">
+							<SelectValue placeholder="Select a region" />
+						</SelectTrigger>
+						<SelectContent>
+							{Object.entries(WATSONX_REGIONS).map(([regionCode, regionName]) => (
+								<SelectItem key={regionCode} value={regionCode}>
+									{regionName}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<div className="text-sm text-vscode-descriptionForeground mt-1">
+						Selected endpoint: {REGION_TO_URL[selectedRegion as keyof typeof REGION_TO_URL]}
 					</div>
-				</>
+				</div>
 			)}
 
 			{/* IBM Cloud Pak for Data specific fields */}
 			{apiConfiguration.watsonxPlatform === "cloudPak" && (
-				<>
+				<div className="w-full mb-1">
 					<VSCodeTextField
 						value={apiConfiguration.watsonxBaseUrl}
 						onInput={handleInputChange("watsonxBaseUrl")}
@@ -297,13 +295,13 @@ export const WatsonxAI = ({
 						className="w-full">
 						<label className="block font-medium mb-1">URL</label>
 					</VSCodeTextField>
-					<div className="text-sm text-vscode-descriptionForeground -mt-2 mb-4">
+					<div className="text-sm text-vscode-descriptionForeground mt-1">
 						Enter the full URL of your IBM Cloud Pak for Data instance
 					</div>
-				</>
+				</div>
 			)}
 
-			<div className="w-full mb-4">
+			<div className="w-full mb-1">
 				<VSCodeTextField
 					value={apiConfiguration?.watsonxProjectId || ""}
 					onInput={handleInputChange("watsonxProjectId")}
@@ -314,7 +312,7 @@ export const WatsonxAI = ({
 			</div>
 
 			{apiConfiguration.watsonxPlatform === "ibmCloud" && (
-				<>
+				<div className="w-full mb-1">
 					<VSCodeTextField
 						value={apiConfiguration?.watsonxApiKey || ""}
 						type="password"
@@ -323,23 +321,25 @@ export const WatsonxAI = ({
 						className="w-full">
 						<label className="block font-medium mb-1">API Key</label>
 					</VSCodeTextField>
-					<div className="text-sm text-vscode-descriptionForeground -mt-2">
+					<div className="text-sm text-vscode-descriptionForeground mt-1">
 						{t("settings:providers.apiKeyStorageNotice")}
 					</div>
-				</>
+				</div>
 			)}
 
 			{apiConfiguration.watsonxPlatform === "cloudPak" && (
 				<>
-					<VSCodeTextField
-						value={apiConfiguration.watsonxUsername ? apiConfiguration.watsonxUsername : ""}
-						onInput={handleInputChange("watsonxUsername")}
-						placeholder="Username"
-						className="w-full">
-						<label className="block font-medium mb-1">Username</label>
-					</VSCodeTextField>
+					<div className="w-full mb-1">
+						<VSCodeTextField
+							value={apiConfiguration.watsonxUsername ? apiConfiguration.watsonxUsername : ""}
+							onInput={handleInputChange("watsonxUsername")}
+							placeholder="Username"
+							className="w-full">
+							<label className="block font-medium mb-1">Username</label>
+						</VSCodeTextField>
+					</div>
 
-					<div className="w-full mt-4">
+					<div className="w-full mb-1">
 						<label className="block font-medium mb-1">Authentication Type</label>
 						<Select
 							value={apiConfiguration.watsonxAuthType}
@@ -355,38 +355,38 @@ export const WatsonxAI = ({
 					</div>
 
 					{apiConfiguration.watsonxAuthType === "apiKey" ? (
-						<>
+						<div className="w-full mb-1">
 							<VSCodeTextField
 								value={apiConfiguration?.watsonxApiKey || ""}
 								type="password"
 								onInput={handleInputChange("watsonxApiKey")}
 								placeholder="API Key"
-								className="w-full mt-4">
+								className="w-full">
 								<label className="block font-medium mb-1">API Key</label>
 							</VSCodeTextField>
-							<div className="text-sm text-vscode-descriptionForeground -mt-2">
+							<div className="text-sm text-vscode-descriptionForeground mt-1">
 								{t("settings:providers.apiKeyStorageNotice")}
 							</div>
-						</>
+						</div>
 					) : (
-						<>
+						<div className="w-full mb-1">
 							<VSCodeTextField
 								value={apiConfiguration.watsonxPassword}
 								type="password"
 								onInput={handleInputChange("watsonxPassword")}
 								placeholder="Password"
-								className="w-full mt-4">
+								className="w-full">
 								<label className="block font-medium mb-1">Password</label>
 							</VSCodeTextField>
-							<div className="text-sm text-vscode-descriptionForeground -mt-2">
+							<div className="text-sm text-vscode-descriptionForeground mt-1">
 								{t("settings:providers.passwordStorageNotice")}
 							</div>
-						</>
+						</div>
 					)}
 				</>
 			)}
 
-			<div className="w-full mb-4">
+			<div className="w-full mb-">
 				<Button
 					variant="outline"
 					onClick={() => {
@@ -402,7 +402,7 @@ export const WatsonxAI = ({
 								(apiConfiguration.watsonxAuthType === "apiKey" && !apiConfiguration.watsonxApiKey) ||
 								(apiConfiguration.watsonxAuthType === "password" && !apiConfiguration.watsonxPassword)))
 					}
-					className="w-full mt-4"
+					className="w-full md-1"
 					title={"Retrieve available models"}>
 					<div className="flex items-center gap-2">
 						{refreshStatus === "loading" ? (
@@ -416,15 +416,17 @@ export const WatsonxAI = ({
 			</div>
 
 			{refreshStatus === "loading" && (
-				<div className="text-sm text-vscode-descriptionForeground">
+				<div className="text-sm text-vscode-descriptionForeground mb-1">
 					{t("settings:providers.refreshModels.loading")}
 				</div>
 			)}
 			{refreshStatus === "success" && (
-				<div className="text-sm text-vscode-foreground">{"Models retrieved successfully"}</div>
+				<div className="text-sm text-vscode-foreground mb-1">{"Models retrieved successfully"}</div>
 			)}
 			{refreshStatus === "error" && (
-				<div className="text-sm text-vscode-errorForeground">{refreshError || "Failed to retrieve models"}</div>
+				<div className="text-sm text-vscode-errorForeground mb-1">
+					{refreshError || "Failed to retrieve models"}
+				</div>
 			)}
 
 			<ModelPicker
