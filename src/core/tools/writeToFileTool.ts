@@ -73,9 +73,11 @@ export async function writeToFileTool(
 		cline.diffViewProvider.editType = fileExists ? "modify" : "create"
 	}
 
-	// pre-processing newContent for cases where weaker models might add artifacts like markdown codeblock markers (deepseek/llama) or extra escape characters (gemini)
+	// Pre-processing newContent for cases where models might add artifacts
+	// Some models (DeepSeek/Llama) add markdown codeblock markers
+	// Others (Gemini) return content with HTML-escaped characters
 	if (newContent.startsWith("```")) {
-		// cline handles cases where it includes language specifiers like ```python ```js
+		// Handle cases where it includes language specifiers like ```python ```js
 		newContent = newContent.split("\n").slice(1).join("\n")
 	}
 
@@ -83,6 +85,8 @@ export async function writeToFileTool(
 		newContent = newContent.split("\n").slice(0, -1).join("\n")
 	}
 
+	// Unescape HTML entities for non-Claude models (e.g., Gemini, DeepSeek, Llama)
+	// These models may return content with escaped characters that need to be unescaped
 	if (!cline.api.getModel().id.includes("claude")) {
 		newContent = unescapeHtmlEntities(newContent)
 	}

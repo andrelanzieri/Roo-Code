@@ -25,6 +25,8 @@ export async function applyDiffToolLegacy(
 	const relPath: string | undefined = block.params.path
 	let diffContent: string | undefined = block.params.diff
 
+	// Unescape HTML entities for non-Claude models (e.g., Gemini, DeepSeek, Llama)
+	// These models may return content with escaped characters that need to be unescaped
 	if (diffContent && !cline.api.getModel().id.includes("claude")) {
 		diffContent = unescapeHtmlEntities(diffContent)
 	}

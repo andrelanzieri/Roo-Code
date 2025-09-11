@@ -91,5 +91,10 @@ export function unescapeHtmlEntities(text: string): string {
 		.replace(/&quot;/g, '"')
 		.replace(/&#39;/g, "'")
 		.replace(/&apos;/g, "'")
-		.replace(/&amp;/g, "&")
+		.replace(/&#x27;/g, "'") // Alternative apostrophe encoding
+		.replace(/&#x2F;/g, "/") // Forward slash
+		.replace(/&#x5C;/g, "\\") // Backslash
+		.replace(/&#x60;/g, "`") // Backtick
+		.replace(/&nbsp;/g, " ") // Non-breaking space
+		.replace(/&amp;/g, "&") // Must be last to avoid double-unescaping
 }
