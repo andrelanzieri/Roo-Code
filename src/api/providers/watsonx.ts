@@ -8,6 +8,7 @@ import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { WatsonXAI } from "@ibm-cloud/watsonx-ai"
 import { convertToWatsonxAiMessages } from "../transform/watsonxai-format"
+import { calculateApiCostOpenAI } from "../../shared/cost"
 
 export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
@@ -145,11 +146,15 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 			usageInfo = response.result.usage || {}
 			const outputTokens = usageInfo.completion_tokens
 
+			const inputTokens = usageInfo?.prompt_tokens || 0
+			const modelInfo = this.getModel().info
+			const totalCost = calculateApiCostOpenAI(modelInfo, inputTokens, outputTokens)
+
 			yield {
 				type: "usage",
-				inputTokens: usageInfo?.prompt_tokens,
+				inputTokens: inputTokens,
 				outputTokens,
-				totalCost: 0, // Actual cost calculation could be added if available
+				totalCost: totalCost,
 			}
 		} catch (error) {
 			await vscode.window.showErrorMessage(error.message)
