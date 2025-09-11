@@ -138,4 +138,59 @@ describe("VertexHandler", () => {
 			expect(modelInfo.info.contextWindow).toBe(1048576)
 		})
 	})
+
+	describe("custom base URL", () => {
+		it("should use custom base URL when provided", async () => {
+			const customBaseUrl = "https://custom-vertex-endpoint.example.com"
+
+			handler = new VertexHandler({
+				apiModelId: "gemini-1.5-pro-001",
+				vertexProjectId: "test-project",
+				vertexRegion: "us-central1",
+				vertexBaseUrl: customBaseUrl,
+			})
+
+			// Mock the generateContent method
+			const mockGenerateContent = vitest.fn().mockResolvedValue({
+				text: "Test response with custom URL",
+			})
+			handler["client"].models.generateContent = mockGenerateContent
+
+			await handler.completePrompt("Test prompt")
+
+			// Verify that the custom base URL was passed in the config
+			expect(mockGenerateContent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: expect.objectContaining({
+						httpOptions: { baseUrl: customBaseUrl },
+					}),
+				}),
+			)
+		})
+
+		it("should not include httpOptions when no custom base URL is provided", async () => {
+			handler = new VertexHandler({
+				apiModelId: "gemini-1.5-pro-001",
+				vertexProjectId: "test-project",
+				vertexRegion: "us-central1",
+			})
+
+			// Mock the generateContent method
+			const mockGenerateContent = vitest.fn().mockResolvedValue({
+				text: "Test response without custom URL",
+			})
+			handler["client"].models.generateContent = mockGenerateContent
+
+			await handler.completePrompt("Test prompt")
+
+			// Verify that httpOptions is undefined when no custom URL
+			expect(mockGenerateContent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: expect.objectContaining({
+						httpOptions: undefined,
+					}),
+				}),
+			)
+		})
+	})
 })

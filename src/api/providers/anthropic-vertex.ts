@@ -34,10 +34,19 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		const projectId = this.options.vertexProjectId ?? "not-provided"
 		const region = this.options.vertexRegion ?? "us-east5"
 
+		const baseOptions: any = {
+			projectId,
+			region,
+		}
+
+		// Add custom base URL if provided
+		if (this.options.vertexBaseUrl) {
+			baseOptions.baseURL = this.options.vertexBaseUrl
+		}
+
 		if (this.options.vertexJsonCredentials) {
 			this.client = new AnthropicVertex({
-				projectId,
-				region,
+				...baseOptions,
 				googleAuth: new GoogleAuth({
 					scopes: ["https://www.googleapis.com/auth/cloud-platform"],
 					credentials: safeJsonParse<JWTInput>(this.options.vertexJsonCredentials, undefined),
@@ -45,15 +54,14 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			})
 		} else if (this.options.vertexKeyFile) {
 			this.client = new AnthropicVertex({
-				projectId,
-				region,
+				...baseOptions,
 				googleAuth: new GoogleAuth({
 					scopes: ["https://www.googleapis.com/auth/cloud-platform"],
 					keyFile: this.options.vertexKeyFile,
 				}),
 			})
 		} else {
-			this.client = new AnthropicVertex({ projectId, region })
+			this.client = new AnthropicVertex(baseOptions)
 		}
 	}
 

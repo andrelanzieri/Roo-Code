@@ -78,9 +78,13 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			tools.push({ googleSearch: {} })
 		}
 
+		// Use vertexBaseUrl if this is a Vertex handler, otherwise use googleGeminiBaseUrl
+		const baseUrl =
+			this.constructor.name === "VertexHandler" ? this.options.vertexBaseUrl : this.options.googleGeminiBaseUrl
+
 		const config: GenerateContentConfig = {
 			systemInstruction,
-			httpOptions: this.options.googleGeminiBaseUrl ? { baseUrl: this.options.googleGeminiBaseUrl } : undefined,
+			httpOptions: baseUrl ? { baseUrl } : undefined,
 			thinkingConfig,
 			maxOutputTokens: this.options.modelMaxTokens ?? maxTokens ?? undefined,
 			temperature: this.options.modelTemperature ?? 0,
@@ -220,10 +224,14 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			if (this.options.enableGrounding) {
 				tools.push({ googleSearch: {} })
 			}
+			// Use vertexBaseUrl if this is a Vertex handler, otherwise use googleGeminiBaseUrl
+			const baseUrl =
+				this.constructor.name === "VertexHandler"
+					? this.options.vertexBaseUrl
+					: this.options.googleGeminiBaseUrl
+
 			const promptConfig: GenerateContentConfig = {
-				httpOptions: this.options.googleGeminiBaseUrl
-					? { baseUrl: this.options.googleGeminiBaseUrl }
-					: undefined,
+				httpOptions: baseUrl ? { baseUrl } : undefined,
 				temperature: this.options.modelTemperature ?? 0,
 				...(tools.length > 0 ? { tools } : {}),
 			}

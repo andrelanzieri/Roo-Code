@@ -809,4 +809,95 @@ describe("VertexHandler", () => {
 			)
 		})
 	})
+
+	describe("custom base URL", () => {
+		it("should use custom base URL when provided with JSON credentials", () => {
+			const customBaseUrl = "https://custom-vertex-endpoint.example.com"
+
+			const handler = new AnthropicVertexHandler({
+				apiModelId: "claude-3-5-sonnet-v2@20241022",
+				vertexProjectId: "test-project",
+				vertexRegion: "us-central1",
+				vertexBaseUrl: customBaseUrl,
+				vertexJsonCredentials: JSON.stringify({
+					type: "service_account",
+					project_id: "test-project",
+					private_key_id: "key-id",
+					private_key: "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----\n",
+					client_email: "test@test.iam.gserviceaccount.com",
+					client_id: "123456789",
+					auth_uri: "https://accounts.google.com/o/oauth2/auth",
+					token_uri: "https://oauth2.googleapis.com/token",
+					auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+					client_x509_cert_url:
+						"https://www.googleapis.com/robot/v1/metadata/x509/test%40test.iam.gserviceaccount.com",
+				}),
+			})
+
+			// Verify that AnthropicVertex was called with baseURL
+			expect(AnthropicVertex).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseURL: customBaseUrl,
+					projectId: "test-project",
+					region: "us-central1",
+				}),
+			)
+		})
+
+		it("should use custom base URL when provided with key file", () => {
+			const customBaseUrl = "https://custom-vertex-endpoint.example.com"
+
+			const handler = new AnthropicVertexHandler({
+				apiModelId: "claude-3-5-sonnet-v2@20241022",
+				vertexProjectId: "test-project",
+				vertexRegion: "us-central1",
+				vertexBaseUrl: customBaseUrl,
+				vertexKeyFile: "/path/to/keyfile.json",
+			})
+
+			// Verify that AnthropicVertex was called with baseURL
+			expect(AnthropicVertex).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseURL: customBaseUrl,
+					projectId: "test-project",
+					region: "us-central1",
+				}),
+			)
+		})
+
+		it("should use custom base URL when provided without credentials", () => {
+			const customBaseUrl = "https://custom-vertex-endpoint.example.com"
+
+			const handler = new AnthropicVertexHandler({
+				apiModelId: "claude-3-5-sonnet-v2@20241022",
+				vertexProjectId: "test-project",
+				vertexRegion: "us-central1",
+				vertexBaseUrl: customBaseUrl,
+			})
+
+			// Verify that AnthropicVertex was called with baseURL
+			expect(AnthropicVertex).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseURL: customBaseUrl,
+					projectId: "test-project",
+					region: "us-central1",
+				}),
+			)
+		})
+
+		it("should not include baseURL when no custom URL is provided", () => {
+			const handler = new AnthropicVertexHandler({
+				apiModelId: "claude-3-5-sonnet-v2@20241022",
+				vertexProjectId: "test-project",
+				vertexRegion: "us-central1",
+			})
+
+			// Verify that AnthropicVertex was called without baseURL
+			expect(AnthropicVertex).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					baseURL: expect.anything(),
+				}),
+			)
+		})
+	})
 })

@@ -168,6 +168,7 @@ const vertexSchema = apiModelIdProviderModelSchema.extend({
 	vertexJsonCredentials: z.string().optional(),
 	vertexProjectId: z.string().optional(),
 	vertexRegion: z.string().optional(),
+	vertexBaseUrl: z.string().optional(),
 	enableUrlContext: z.boolean().optional(),
 	enableGrounding: z.boolean().optional(),
 })

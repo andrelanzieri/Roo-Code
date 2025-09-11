@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { Checkbox } from "vscrui"
 import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
@@ -17,6 +17,8 @@ type VertexProps = {
 
 export const Vertex = ({ apiConfiguration, setApiConfigurationField, fromWelcomeView }: VertexProps) => {
 	const { t } = useAppTranslation()
+
+	const [vertexBaseUrlSelected, setVertexBaseUrlSelected] = useState(!!apiConfiguration?.vertexBaseUrl)
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -92,6 +94,28 @@ export const Vertex = ({ apiConfiguration, setApiConfigurationField, fromWelcome
 						))}
 					</SelectContent>
 				</Select>
+			</div>
+
+			<div className="mt-4">
+				<Checkbox
+					checked={vertexBaseUrlSelected}
+					onChange={(checked: boolean) => {
+						setVertexBaseUrlSelected(checked)
+						if (!checked) {
+							setApiConfigurationField("vertexBaseUrl", "")
+						}
+					}}>
+					{t("settings:providers.useCustomBaseUrl")}
+				</Checkbox>
+				{vertexBaseUrlSelected && (
+					<VSCodeTextField
+						value={apiConfiguration?.vertexBaseUrl || ""}
+						type="url"
+						onInput={handleInputChange("vertexBaseUrl")}
+						placeholder="https://us-central1-aiplatform.googleapis.com"
+						className="w-full mt-1"
+					/>
+				)}
 			</div>
 
 			{!fromWelcomeView && apiConfiguration.apiModelId?.startsWith("gemini") && (
