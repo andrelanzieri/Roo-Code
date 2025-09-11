@@ -1,0 +1,79 @@
+# Global Security Configuration Example
+# This file would typically be placed at ~/.roo-security.yaml
+version: '1.0'
+
+security:
+  enabled: true
+  inheritRules: true  # Allow project and custom configs to override
+  defaultAction: ALLOW
+  askMessagePrefix: "Global security policy"
+  
+  rules:
+    # Protect sensitive user files
+    - pattern: "**/.ssh/**"
+      action: BLOCK
+      priority: 100
+      description: "SSH keys and configuration"
+      applyToCommands: true
+    
+    - pattern: "**/.aws/**"
+      action: BLOCK
+      priority: 100
+      description: "AWS credentials and configuration"
+      applyToCommands: true
+    
+    - pattern: "**/.kube/**"
+      action: BLOCK
+      priority: 100
+      description: "Kubernetes configuration"
+      applyToCommands: true
+    
+    # Ask for approval for environment files
+    - pattern: "**/.env*"
+      action: ASK
+      priority: 90
+      description: "Environment variables may contain secrets"
+      askMessage: "Access to environment file ${file} requires approval. This file may contain sensitive configuration."
+      applyToCommands: true
+    
+    # Protect password and key files
+    - pattern: "**/passwords.*"
+      action: BLOCK
+      priority: 95
+      description: "Password files"
+    
+    - pattern: "**/*.key"
+      action: ASK
+      priority: 85
+      description: "Private key files"
+      askMessage: "Access to key file ${file} requires approval."
+    
+    - pattern: "**/*.pem"
+      action: ASK
+      priority: 85
+      description: "Certificate files"
+      askMessage: "Access to certificate file ${file} requires approval."
+    
+    # Protect common secret patterns
+    - pattern: "**/secrets.*"
+      action: BLOCK
+      priority: 95
+      description: "Secret files"
+    
+    - pattern: "**/credentials.*"
+      action: BLOCK
+      priority: 95
+      description: "Credential files"
+    
+    # Database files
+    - pattern: "**/*.db"
+      action: ASK
+      priority: 70
+      description: "Database files"
+      askMessage: "Access to database file ${file} requires approval. This may contain sensitive data."
+    
+    - pattern: "**/*.sqlite"
+      action: ASK
+      priority: 70
+      description: "SQLite database files"
+      askMessage: "Access to SQLite database ${file} requires approval."

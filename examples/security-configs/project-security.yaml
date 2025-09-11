@@ -1,0 +1,117 @@
+# Project Security Configuration Example
+# This file would be placed at project-root/.roo-security.yaml
+version: '1.0'
+
+security:
+  enabled: true
+  inheritRules: true  # Inherit global rules
+  defaultAction: ALLOW
+  askMessagePrefix: "Project security policy"
+  
+  rules:
+    # Project-specific sensitive files
+    - pattern: "config/production.*"
+      action: BLOCK
+      priority: 100
+      description: "Production configuration files"
+      applyToCommands: true
+    
+    - pattern: "config/staging.*"
+      action: ASK
+      priority: 90
+      description: "Staging configuration files"
+      askMessage: "Access to staging config ${file} requires approval."
+    
+    # API keys and tokens
+    - pattern: "**/api_keys.*"
+      action: BLOCK
+      priority: 100
+      description: "API key files"
+    
+    - pattern: "**/*token*"
+      action: ASK
+      priority: 85
+      description: "Files containing tokens"
+      askMessage: "File ${file} may contain authentication tokens. Approval required."
+    
+    # Build and deployment files
+    - pattern: ".github/workflows/*"
+      action: ASK
+      priority: 80
+      description: "GitHub Actions workflows"
+      askMessage: "Modifying workflow ${file} requires approval. This affects CI/CD."
+    
+    - pattern: "Dockerfile*"
+      action: ASK
+      priority: 75
+      description: "Docker configuration"
+      askMessage: "Modifying Docker configuration ${file} requires approval."
+    
+    - pattern: "docker-compose*.yml"
+      action: ASK
+      priority: 75
+      description: "Docker Compose configuration"
+      askMessage: "Modifying Docker Compose ${file} requires approval."
+    
+    # Infrastructure as Code
+    - pattern: "terraform/**"
+      action: ASK
+      priority: 90
+      description: "Terraform infrastructure files"
+      askMessage: "Access to infrastructure file ${file} requires approval."
+    
+    - pattern: "kubernetes/**"
+      action: ASK
+      priority: 90
+      description: "Kubernetes manifests"
+      askMessage: "Access to Kubernetes manifest ${file} requires approval."
+    
+    # Database migrations and schemas
+    - pattern: "migrations/**"
+      action: ASK
+      priority: 85
+      description: "Database migrations"
+      askMessage: "Modifying migration ${file} requires approval. This affects the database schema."
+    
+    - pattern: "schema.sql"
+      action: ASK
+      priority: 85
+      description: "Database schema"
+      askMessage: "Modifying database schema requires approval."
+    
+    # Backup files
+    - pattern: "**/*.backup"
+      action: BLOCK
+      priority: 95
+      description: "Backup files may contain sensitive data"
+    
+    - pattern: "**/*.bak"
+      action: BLOCK
+      priority: 95
+      description: "Backup files"
+    
+    # Log files with potential sensitive data
+    - pattern: "**/logs/*.log"
+      action: ASK
+      priority: 70
+      description: "Log files may contain sensitive information"
+      askMessage: "Log file ${file} may contain sensitive data. Approval required."
+    
+    # Test data that might contain real data
+    - pattern: "test/fixtures/production_*.json"
+      action: BLOCK
+      priority: 100
+      description: "Production test fixtures"
+    
+    # Package lock files (can reveal internal dependencies)
+    - pattern: "package-lock.json"
+      action: ASK
+      priority: 60
+      description: "NPM lock file"
+      askMessage: "Modifying package-lock.json affects dependency versions."
+    
+    - pattern: "yarn.lock"
+      action: ASK
+      priority: 60
+      description: "Yarn lock file"
+      askMessage: "Modifying yarn.lock affects dependency versions."

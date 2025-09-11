@@ -1,0 +1,126 @@
+# Custom Security Configuration Example
+# This file would be placed at project-root/.roo-security-custom.yaml
+# Users can customize security rules for their specific needs
+version: '1.0'
+
+security:
+  enabled: true
+  inheritRules: true  # Inherit from project, global, and enterprise configs
+  defaultAction: ALLOW
+  askMessagePrefix: "Custom security check"
+  
+  rules:
+    # Override specific project rules with ALLOW for development
+    - pattern: "test/fixtures/production_*.json"
+      action: ALLOW  # Override the BLOCK from project config for testing
+      priority: 200  # Higher priority than project rule
+      description: "Allow access to production fixtures in development"
+    
+    # Personal preferences for additional security
+    - pattern: "**/personal/**"
+      action: BLOCK
+      priority: 150
+      description: "Personal notes and documents"
+    
+    - pattern: "**/drafts/**"
+      action: ASK
+      priority: 140
+      description: "Draft documents"
+      askMessage: "This is a draft document: ${file}. Do you want to proceed?"
+    
+    # Development-specific rules
+    - pattern: "**/node_modules/**"
+      action: ALLOW  # Explicitly allow for debugging
+      priority: 50
+      description: "Allow access to node_modules for debugging"
+    
+    - pattern: "**/.vscode/settings.json"
+      action: ASK
+      priority: 130
+      description: "VS Code workspace settings"
+      askMessage: "Modifying VS Code settings in ${file} may affect your development environment."
+    
+    # Temporary work files
+    - pattern: "**/tmp/**"
+      action: ALLOW
+      priority: 40
+      description: "Temporary files"
+    
+    - pattern: "**/*.tmp"
+      action: ALLOW
+      priority: 40
+      description: "Temporary files"
+    
+    # Custom patterns for current project
+    - pattern: "src/experimental/**"
+      action: ASK
+      priority: 120
+      description: "Experimental features"
+      askMessage: "Accessing experimental feature in ${file}. This code is unstable."
+    
+    - pattern: "src/deprecated/**"
+      action: ASK
+      priority: 110
+      description: "Deprecated code"
+      askMessage: "Accessing deprecated code in ${file}. Consider using newer alternatives."
+    
+    # Local development secrets (different from production)
+    - pattern: ".env.local"
+      action: ALLOW  # Allow for local development
+      priority: 160
+      description: "Local development environment"
+    
+    - pattern: ".env.development"
+      action: ALLOW
+      priority: 160
+      description: "Development environment variables"
+    
+    # Custom regex patterns for specific needs
+    - pattern: "/.*TODO.*SECURITY.*/"
+      action: ASK
+      priority: 100
+      description: "Files with security TODOs"
+      askMessage: "File ${file} contains security TODOs that need attention."
+    
+    - pattern: "/.*FIXME.*AUTH.*/"
+      action: ASK
+      priority: 100
+      description: "Files with authentication FIXMEs"
+      askMessage: "File ${file} contains authentication issues marked as FIXME."
+    
+    # Team-specific conventions
+    - pattern: "**/do-not-commit/**"
+      action: BLOCK
+      priority: 180
+      description: "Files marked as do-not-commit by team convention"
+    
+    - pattern: "**/*.local.*"
+      action: ASK
+      priority: 90
+      description: "Local configuration files"
+      askMessage: "Local configuration file ${file} may contain machine-specific settings."
+    
+    # Documentation with sensitive examples
+    - pattern: "docs/internal/**"
+      action: ASK
+      priority: 80
+      description: "Internal documentation"
+      askMessage: "Internal documentation ${file} may contain sensitive information."
+    
+    # Build artifacts that might leak information
+    - pattern: "dist/**/*.map"
+      action: ASK
+      priority: 70
+      description: "Source maps"
+      askMessage: "Source map ${file} reveals source code structure. Proceed with caution."
+    
+    # Custom allow rules for specific tools
+    - pattern: ".roo-security*.yaml"
+      action: ALLOW
+      priority: 200
+      description: "Allow access to security configuration files for management"
+    
+    - pattern: ".rooignore"
+      action: ALLOW
+      priority: 200
+      description: "Allow access to .rooignore for backward compatibility"

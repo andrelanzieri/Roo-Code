@@ -1,0 +1,158 @@
+# Enterprise Security Configuration Example
+# This would be managed by the organization and deployed via cloud service
+# Organizations can enforce strict security policies that cannot be overridden
+version: '1.0'
+
+security:
+  enabled: true
+  inheritRules: false  # Enterprise rules cannot be overridden
+  defaultAction: ALLOW
+  askMessagePrefix: "Enterprise security policy"
+  
+  rules:
+    # Compliance and regulatory requirements
+    - pattern: "**/pii/**"
+      action: BLOCK
+      priority: 1000  # Highest priority
+      description: "PII data protection (GDPR/CCPA compliance)"
+      applyToCommands: true
+    
+    - pattern: "**/phi/**"
+      action: BLOCK
+      priority: 1000
+      description: "PHI data protection (HIPAA compliance)"
+      applyToCommands: true
+    
+    - pattern: "**/pci/**"
+      action: BLOCK
+      priority: 1000
+      description: "PCI DSS compliance - payment card data"
+      applyToCommands: true
+    
+    # Financial data protection
+    - pattern: "**/financial/**"
+      action: BLOCK
+      priority: 950
+      description: "Financial data protection"
+      applyToCommands: true
+    
+    - pattern: "**/*bank*"
+      action: ASK
+      priority: 900
+      description: "Banking-related files"
+      askMessage: "Enterprise policy: Access to banking file ${file} requires security team approval."
+    
+    # Intellectual property protection
+    - pattern: "**/proprietary/**"
+      action: BLOCK
+      priority: 950
+      description: "Proprietary algorithms and trade secrets"
+    
+    - pattern: "**/patents/**"
+      action: BLOCK
+      priority: 950
+      description: "Patent-related documents"
+    
+    # Security and authentication
+    - pattern: "**/security/keys/**"
+      action: BLOCK
+      priority: 1000
+      description: "Master encryption keys"
+      applyToCommands: true
+    
+    - pattern: "**/auth/providers/**"
+      action: BLOCK
+      priority: 950
+      description: "Authentication provider configurations"
+    
+    - pattern: "**/vault/**"
+      action: BLOCK
+      priority: 1000
+      description: "HashiCorp Vault or similar secret storage"
+      applyToCommands: true
+    
+    # Infrastructure protection
+    - pattern: "**/infrastructure/prod/**"
+      action: BLOCK
+      priority: 950
+      description: "Production infrastructure configuration"
+      applyToCommands: true
+    
+    - pattern: "**/infrastructure/security/**"
+      action: BLOCK
+      priority: 1000
+      description: "Security infrastructure configuration"
+      applyToCommands: true
+    
+    # Audit and compliance logs
+    - pattern: "**/audit/**"
+      action: BLOCK
+      priority: 900
+      description: "Audit logs must not be modified"
+      applyToCommands: true
+    
+    - pattern: "**/compliance/**"
+      action: ASK
+      priority: 850
+      description: "Compliance documentation"
+      askMessage: "Enterprise policy: Modifying compliance file ${file} requires approval from compliance team."
+    
+    # Customer data protection
+    - pattern: "**/customers/**"
+      action: ASK
+      priority: 900
+      description: "Customer data"
+      askMessage: "Enterprise policy: Access to customer data in ${file} requires approval and will be logged."
+    
+    - pattern: "**/users/data/**"
+      action: ASK
+      priority: 900
+      description: "User data"
+      askMessage: "Enterprise policy: Access to user data in ${file} requires approval and will be logged."
+    
+    # Source code protection for critical systems
+    - pattern: "**/core-platform/**"
+      action: ASK
+      priority: 800
+      description: "Core platform code"
+      askMessage: "Enterprise policy: Modifying core platform code in ${file} requires architecture team approval."
+    
+    - pattern: "**/payment-processing/**"
+      action: BLOCK
+      priority: 950
+      description: "Payment processing system"
+    
+    # Legal and contracts
+    - pattern: "**/legal/**"
+      action: BLOCK
+      priority: 950
+      description: "Legal documents and contracts"
+    
+    - pattern: "**/*.contract"
+      action: BLOCK
+      priority: 950
+      description: "Contract files"
+    
+    # HR and employee data
+    - pattern: "**/hr/**"
+      action: BLOCK
+      priority: 950
+      description: "HR data and employee information"
+      applyToCommands: true
+    
+    - pattern: "**/payroll/**"
+      action: BLOCK
+      priority: 1000
+      description: "Payroll information"
+      applyToCommands: true
+    
+    # Regex patterns for sensitive data
+    - pattern: "/.*[Ss][Ss][Nn].*\\d{3}-\\d{2}-\\d{4}.*/"
+      action: BLOCK
+      priority: 1000
+      description: "Files potentially containing SSN patterns"
+    
+    - pattern: "/.*[Cc]redit.*[Cc]ard.*\\d{4}.*/"
+      action: BLOCK
+      priority: 1000
+      description: "Files potentially containing credit card patterns"
