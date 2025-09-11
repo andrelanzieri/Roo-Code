@@ -7,6 +7,7 @@ import ignore from "ignore"
 import { arePathsEqual } from "../../utils/path"
 import { getBinPath } from "../../services/ripgrep"
 import { DIRS_TO_IGNORE } from "./constants"
+import { RooIndexController } from "../../core/index/RooIndexController"
 
 /**
  * Context object for directory scanning operations
@@ -20,6 +21,8 @@ interface ScanContext {
 	basePath: string
 	/** The ignore instance for gitignore handling */
 	ignoreInstance: ReturnType<typeof ignore>
+	/** The RooIndexController for handling .rooindex overrides */
+	rooIndexController?: RooIndexController
 }
 
 /**
@@ -30,7 +33,12 @@ interface ScanContext {
  * @param limit - Maximum number of files to return
  * @returns Tuple of [file paths array, whether the limit was reached]
  */
-export async function listFiles(dirPath: string, recursive: boolean, limit: number): Promise<[string[], boolean]> {
+export async function listFiles(
+	dirPath: string,
+	recursive: boolean,
+	limit: number,
+	includeGitignored: boolean = false,
+): Promise<[string[], boolean]> {
 	// Early return for limit of 0 - no need to scan anything
 	if (limit === 0) {
 		return [[], false]
@@ -46,29 +54,42 @@ export async function listFiles(dirPath: string, recursive: boolean, limit: numb
 	// Get ripgrep path
 	const rgPath = await getRipgrepPath()
 
+	// Initialize RooIndexController if we need to include gitignored files
+	let rooIndexController: RooIndexController | undefined
+	if (includeGitignored) {
+		rooIndexController = new RooIndexController(dirPath)
+		await rooIndexController.initialize()
+	}
+
 	if (!recursive) {
 		// For non-recursive, use the existing approach
-		const files = await listFilesWithRipgrep(rgPath, dirPath, false, limit)
+		const files = await listFilesWithRipgrep(rgPath, dirPath, false, limit, includeGitignored)
 		const ignoreInstance = await createIgnoreInstance(dirPath)
 		// Calculate remaining limit for directories
 		const remainingLimit = Math.max(0, limit - files.length)
-		const directories = await listFilteredDirectories(dirPath, false, ignoreInstance, remainingLimit)
+		const directories = await listFilteredDirectories(
+			dirPath,
+			false,
+			ignoreInstance,
+			remainingLimit,
+			rooIndexController,
+		)
 		return formatAndCombineResults(files, directories, limit)
 	}
 
 	// For recursive mode, use the original approach but ensure first-level directories are included
-	const files = await listFilesWithRipgrep(rgPath, dirPath, true, limit)
+	const files = await listFilesWithRipgrep(rgPath, dirPath, true, limit, includeGitignored)
 	const ignoreInstance = await createIgnoreInstance(dirPath)
 	// Calculate remaining limit for directories
 	const remainingLimit = Math.max(0, limit - files.length)
-	const directories = await listFilteredDirectories(dirPath, true, ignoreInstance, remainingLimit)
+	const directories = await listFilteredDirectories(dirPath, true, ignoreInstance, remainingLimit, rooIndexController)
 
 	// Combine and check if we hit the limits
 	const [results, limitReached] = formatAndCombineResults(files, directories, limit)
 
 	// If we hit the limit, ensure all first-level directories are included
 	if (limitReached) {
-		const firstLevelDirs = await getFirstLevelDirectories(dirPath, ignoreInstance)
+		const firstLevelDirs = await getFirstLevelDirectories(dirPath, ignoreInstance, rooIndexController)
 		return ensureFirstLevelDirectoriesIncluded(results, firstLevelDirs, limit)
 	}
 
@@ -78,7 +99,11 @@ export async function listFiles(dirPath: string, recursive: boolean, limit: numb
 /**
  * Get only the first-level directories in a path
  */
-async function getFirstLevelDirectories(dirPath: string, ignoreInstance: ReturnType<typeof ignore>): Promise<string[]> {
+async function getFirstLevelDirectories(
+	dirPath: string,
+	ignoreInstance: ReturnType<typeof ignore>,
+	rooIndexController?: RooIndexController,
+): Promise<string[]> {
 	const absolutePath = path.resolve(dirPath)
 	const directories: string[] = []
 
@@ -93,6 +118,7 @@ async function getFirstLevelDirectories(dirPath: string, ignoreInstance: ReturnT
 					insideExplicitHiddenTarget: false,
 					basePath: dirPath,
 					ignoreInstance,
+					rooIndexController,
 				}
 				if (shouldIncludeDirectory(entry.name, fullDirPath, context)) {
 					const formattedPath = fullDirPath.endsWith("/") ? fullDirPath : `${fullDirPath}/`
@@ -202,8 +228,9 @@ async function listFilesWithRipgrep(
 	dirPath: string,
 	recursive: boolean,
 	limit: number,
+	includeGitignored: boolean = false,
 ): Promise<string[]> {
-	const rgArgs = buildRipgrepArgs(dirPath, recursive)
+	const rgArgs = buildRipgrepArgs(dirPath, recursive, includeGitignored)
 
 	const relativePaths = await execRipgrep(rgPath, rgArgs, limit)
 
@@ -216,25 +243,28 @@ async function listFilesWithRipgrep(
 /**
  * Build appropriate ripgrep arguments based on whether we're doing a recursive search
  */
-function buildRipgrepArgs(dirPath: string, recursive: boolean): string[] {
+function buildRipgrepArgs(dirPath: string, recursive: boolean, includeGitignored: boolean = false): string[] {
 	// Base arguments to list files
 	const args = ["--files", "--hidden", "--follow"]
 
 	if (recursive) {
-		return [...args, ...buildRecursiveArgs(dirPath), dirPath]
+		return [...args, ...buildRecursiveArgs(dirPath, includeGitignored), dirPath]
 	} else {
-		return [...args, ...buildNonRecursiveArgs(), dirPath]
+		return [...args, ...buildNonRecursiveArgs(includeGitignored), dirPath]
 	}
 }
 
 /**
  * Build ripgrep arguments for recursive directory traversal
  */
-function buildRecursiveArgs(dirPath: string): string[] {
+function buildRecursiveArgs(dirPath: string, includeGitignored: boolean = false): string[] {
 	const args: string[] = []
 
-	// In recursive mode, respect .gitignore by default
-	// (ripgrep does this automatically)
+	// If we want to include gitignored files (for .rooindex support), disable gitignore
+	if (includeGitignored) {
+		args.push("--no-ignore-vcs")
+	}
+	// Otherwise, respect .gitignore by default (ripgrep does this automatically)
 
 	// Check if we're explicitly targeting a hidden directory
 	// Normalize the path first to handle edge cases
@@ -295,15 +325,18 @@ function buildRecursiveArgs(dirPath: string): string[] {
 /**
  * Build ripgrep arguments for non-recursive directory listing
  */
-function buildNonRecursiveArgs(): string[] {
+function buildNonRecursiveArgs(includeGitignored: boolean = false): string[] {
 	const args: string[] = []
 
 	// For non-recursive, limit to the current directory level
 	args.push("-g", "*")
 	args.push("--maxdepth", "1") // ripgrep uses maxdepth, not max-depth
 
-	// Respect .gitignore in non-recursive mode too
-	// (ripgrep respects .gitignore by default)
+	// If we want to include gitignored files (for .rooindex support), disable gitignore
+	if (includeGitignored) {
+		args.push("--no-ignore-vcs")
+	}
+	// Otherwise, respect .gitignore in non-recursive mode too (ripgrep respects .gitignore by default)
 
 	// Apply directory exclusions for non-recursive searches
 	for (const dir of DIRS_TO_IGNORE) {
@@ -389,6 +422,7 @@ async function listFilteredDirectories(
 	recursive: boolean,
 	ignoreInstance: ReturnType<typeof ignore>,
 	limit?: number,
+	rooIndexController?: RooIndexController,
 ): Promise<string[]> {
 	const absolutePath = path.resolve(dirPath)
 	const directories: string[] = []
@@ -406,6 +440,7 @@ async function listFilteredDirectories(
 		insideExplicitHiddenTarget: isExplicitHiddenTarget,
 		basePath: dirPath,
 		ignoreInstance,
+		rooIndexController,
 	}
 
 	async function scanDirectory(currentPath: string, context: ScanContext): Promise<boolean> {
@@ -554,7 +589,14 @@ function shouldIncludeInsideHiddenTarget(dirName: string, fullDirPath: string, c
 	}
 
 	// Check against gitignore patterns
-	return !isIgnoredByGitignore(fullDirPath, context.basePath, context.ignoreInstance)
+	const isGitignored = isIgnoredByGitignore(fullDirPath, context.basePath, context.ignoreInstance)
+
+	// If we have a RooIndexController and the directory is gitignored, check for override
+	if (context.rooIndexController && isGitignored) {
+		return context.rooIndexController.shouldInclude(fullDirPath)
+	}
+
+	return !isGitignored
 }
 
 /**
@@ -568,7 +610,14 @@ function shouldIncludeRegularDirectory(dirName: string, fullDirPath: string, con
 	}
 
 	// Check against gitignore patterns
-	return !isIgnoredByGitignore(fullDirPath, context.basePath, context.ignoreInstance)
+	const isGitignored = isIgnoredByGitignore(fullDirPath, context.basePath, context.ignoreInstance)
+
+	// If we have a RooIndexController and the directory is gitignored, check for override
+	if (context.rooIndexController && isGitignored) {
+		return context.rooIndexController.shouldInclude(fullDirPath)
+	}
+
+	return !isGitignored
 }
 
 /**

@@ -1,6 +1,7 @@
 import { listFiles } from "../../glob/list-files"
 import { Ignore } from "ignore"
 import { RooIgnoreController } from "../../../core/ignore/RooIgnoreController"
+import { RooIndexController } from "../../../core/index/RooIndexController"
 import { stat } from "fs/promises"
 import * as path from "path"
 import { generateNormalizedAbsolutePath, generateRelativeFilePath } from "../shared/get-relative-path"
@@ -76,8 +77,12 @@ export class DirectoryScanner implements IDirectoryScanner {
 		// Capture workspace context at scan start
 		const scanWorkspace = getWorkspacePathForContext(directoryPath)
 
-		// Get all files recursively (handles .gitignore automatically)
-		const [allPaths, _] = await listFiles(directoryPath, true, MAX_LIST_FILES_LIMIT_CODE_INDEX)
+		// Initialize RooIndexController to handle .rooindex overrides
+		const rooIndexController = new RooIndexController(directoryPath)
+		await rooIndexController.initialize()
+
+		// Get all files recursively (handles .gitignore automatically, but includes overrides from .rooindex)
+		const [allPaths, _] = await listFiles(directoryPath, true, MAX_LIST_FILES_LIMIT_CODE_INDEX, true)
 
 		// Filter out directories (marked with trailing '/')
 		const filePaths = allPaths.filter((p) => !p.endsWith("/"))
@@ -97,10 +102,21 @@ export class DirectoryScanner implements IDirectoryScanner {
 
 			// Check if file is in an ignored directory using the shared helper
 			if (isPathInIgnoredDirectory(filePath)) {
-				return false
+				// Check if .rooindex overrides this
+				if (!rooIndexController.shouldInclude(filePath)) {
+					return false
+				}
 			}
 
-			return scannerExtensions.includes(ext) && !this.ignoreInstance.ignores(relativeFilePath)
+			// Check gitignore patterns
+			const isGitignored = this.ignoreInstance.ignores(relativeFilePath)
+
+			// If gitignored, check if .rooindex overrides it
+			if (isGitignored && rooIndexController.shouldInclude(filePath)) {
+				return scannerExtensions.includes(ext)
+			}
+
+			return scannerExtensions.includes(ext) && !isGitignored
 		})
 
 		// Initialize tracking variables
