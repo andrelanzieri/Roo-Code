@@ -1,0 +1,192 @@
+name: JetBrains Integration Build
+
+on:
+  push:
+    paths:
+      - 'jetbrains/**'
+      - 'deps/patches/vscode/jetbrains.patch'
+      - '.github/workflows/jetbrains-build.yml'
+  pull_request:
+    paths:
+      - 'jetbrains/**'
+      - 'deps/patches/vscode/jetbrains.patch'
+      - '.github/workflows/jetbrains-build.yml'
+  workflow_dispatch:
+
+jobs:
+  check-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.2'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Check JetBrains dependencies
+        run: node jetbrains/scripts/check-dependencies.js
+
+  build-host:
+    runs-on: ubuntu-latest
+    needs: check-dependencies
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.2'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.1
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-jetbrains-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-jetbrains-
+
+      - name: Install host dependencies
+        working-directory: jetbrains/host
+        run: npm install
+
+      - name: Apply VSCode patches
+        working-directory: jetbrains/host
+        run: npm run deps:patch
+        continue-on-error: true
+
+      - name: Build host
+        working-directory: jetbrains/host
+        run: npm run build
+
+      - name: Upload host artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jetbrains-host-build
+          path: jetbrains/host/dist/
+
+  build-plugin:
+    runs-on: ubuntu-latest
+    needs: check-dependencies
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build plugin
+        working-directory: jetbrains/plugin
+        run: ./gradlew buildPlugin
+
+      - name: Run plugin tests
+        working-directory: jetbrains/plugin
+        run: ./gradlew test
+
+      - name: Upload plugin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jetbrains-plugin-build
+          path: jetbrains/plugin/build/distributions/*.zip
+
+  test-integration:
+    runs-on: ubuntu-latest
+    needs: [build-host, build-plugin]
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download host artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: jetbrains-host-build
+          path: jetbrains/host/dist/
+
+      - name: Download plugin artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: jetbrains-plugin-build
+          path: jetbrains/plugin/build/distributions/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.2'
+
+      - name: Run integration tests
+        run: |
+          echo "Integration tests would run here"
+          # Add actual integration test commands when available
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-host, build-plugin]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download host artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: jetbrains-host-build
+          path: jetbrains/host/dist/
+
+      - name: Download plugin artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: jetbrains-plugin-build
+          path: jetbrains/plugin/build/distributions/
+
+      - name: Create platform.zip
+        run: |
+          cd jetbrains
+          zip -r platform.zip host/dist plugin/build/distributions
+          echo "Platform package created"
+
+      - name: Upload platform package
+        uses: actions/upload-artifact@v4
+        with:
+          name: jetbrains-platform-package
+          path: jetbrains/platform.zip
+          retention-days: 30

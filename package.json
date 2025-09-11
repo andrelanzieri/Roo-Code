@@ -24,7 +24,17 @@
 		"knip": "knip --include files",
 		"update-contributors": "node scripts/update-contributors.js",
 		"evals": "dotenvx run -f packages/evals/.env.development packages/evals/.env.local -- docker compose -f packages/evals/docker-compose.yml --profile server --profile runner up --build --scale runner=0",
-		"npm:publish:types": "pnpm --filter @roo-code/types npm:publish"
+		"npm:publish:types": "pnpm --filter @roo-code/types npm:publish",
+		"jetbrains:check": "node jetbrains/scripts/check-dependencies.js",
+		"jetbrains:build:host": "cd jetbrains/host && npm run build",
+		"jetbrains:build:plugin": "cd jetbrains/plugin && ./gradlew buildPlugin",
+		"jetbrains:build": "pnpm jetbrains:check && pnpm jetbrains:build:host && pnpm jetbrains:build:plugin",
+		"jetbrains:run": "cd jetbrains/plugin && ./gradlew runIde -PdebugMode=idea",
+		"jetbrains:bundle": "cd jetbrains/plugin && ./gradlew buildPlugin -PdebugMode=release",
+		"jetbrains:run-bundle": "cd jetbrains/plugin && ./gradlew runIde -PdebugMode=release",
+		"jetbrains:dev": "cd jetbrains/host && npm run dev",
+		"jetbrains:patch": "cd jetbrains/host && npm run deps:patch",
+		"jetbrains:clean": "cd jetbrains/host && npm run clean && cd ../plugin && ./gradlew clean"
 	},
 	"devDependencies": {
 		"@changesets/cli": "^2.27.10",

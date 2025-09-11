@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"moduleDetection": "legacy",
+		"experimentalDecorators": true,
+		"noImplicitReturns": false,
+		"noImplicitOverride": false,
+		"noUnusedLocals": false,
+		"noUncheckedSideEffectImports": false,
+		"allowUnreachableCode": false,
+		"strict": false,
+		"exactOptionalPropertyTypes": false,
+		"useUnknownInCatchVariables": false,
+		"forceConsistentCasingInFileNames": true,
+		"target": "es2022",
+		"useDefineForClassFields": false,
+		"lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker.ImportScripts"],
+		"allowSyntheticDefaultImports": true
+	}
+}

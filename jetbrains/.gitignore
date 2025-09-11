@@ -1,0 +1,43 @@
+# JetBrains integration specific ignores
+
+# Host build outputs
+host/dist/
+host/deps/vscode/
+host/*.log
+host/logs/
+host/.turbo/
+host/node_modules/
+
+# Plugin build outputs
+plugin/build/
+plugin/.gradle/
+plugin/out/
+plugin/.idea/
+plugin/*.iml
+plugin/*.ipr
+plugin/*.iws
+plugin/local.properties
+
+# Platform files
+platform.zip
+*.vsix
+
+# Debug and temporary files
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# IDE specific
+.vscode/
+*.code-workspace

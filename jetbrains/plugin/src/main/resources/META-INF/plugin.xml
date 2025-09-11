@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<idea-plugin>
+    <id>ai.roocode.jetbrains</id>
+    <name>Roo Code</name>
+    <vendor email="support@roocode.ai" url="https://roocode.ai">Roo Code</vendor>
+
+    <description><![CDATA[
+    Roo Code is an AI-powered coding assistant that helps developers write better code faster.
+    It provides intelligent code completions, explanations, and suggestions directly in your JetBrains IDE.
+    ]]></description>
+
+    <change-notes><![CDATA[
+    Initial release of Roo Code for JetBrains IDEs.
+    ]]></change-notes>
+
+    <!-- Product and plugin compatibility requirements -->
+    <depends>com.intellij.modules.platform</depends>
+    
+    <!-- Minimum and maximum IDEA versions -->
+    <idea-version since-build="223.0" until-build="241.*"/>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Tool Window -->
+        <toolWindow id="Roo Code"
+                    anchor="right"
+                    icon="/icons/roo-code-icon.svg"
+                    factoryClass="ai.roocode.jetbrains.ui.RooToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <!-- Register action groups and actions -->
+        <group id="ai.roocode.jetbrains.actions.RightClickChatActionGroup"
+               class="ai.roocode.jetbrains.actions.RightClickChatActionGroup"
+               text="Roo Code"
+               popup="true">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </group>
+        
+        <action id="ai.roocode.jetbrains.actions.RegisterCodeActions"
+                class="ai.roocode.jetbrains.actions.RegisterCodeActions"
+                text="Register Roo Code Actions">
+        </action>
+    </actions>
+</idea-plugin>
