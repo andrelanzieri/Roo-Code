@@ -224,38 +224,38 @@
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
-					"command": "roo-cline.marketplaceButtonClicked",
+					"command": "roo-cline.historyButtonClicked",
 					"group": "navigation@2",
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
-					"command": "roo-cline.settingsButtonClicked",
+					"command": "roo-cline.marketplaceButtonClicked",
 					"group": "navigation@3",
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
-					"command": "roo-cline.cloudButtonClicked",
+					"command": "roo-cline.settingsButtonClicked",
 					"group": "navigation@4",
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
-					"command": "roo-cline.historyButtonClicked",
-					"group": "overflow@1",
+					"command": "roo-cline.cloudButtonClicked",
+					"group": "navigation@5",
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
 					"command": "roo-cline.promptsButtonClicked",
-					"group": "overflow@2",
+					"group": "overflow@1",
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
 					"command": "roo-cline.mcpButtonClicked",
-					"group": "overflow@3",
+					"group": "overflow@2",
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
 					"command": "roo-cline.popoutButtonClicked",
-					"group": "overflow@4",
+					"group": "overflow@3",
 					"when": "view == roo-cline.SidebarProvider"
 				}
 			],
@@ -266,38 +266,38 @@
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
-					"command": "roo-cline.marketplaceButtonClicked",
+					"command": "roo-cline.historyButtonClicked",
 					"group": "navigation@2",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
-					"command": "roo-cline.settingsButtonClicked",
+					"command": "roo-cline.marketplaceButtonClicked",
 					"group": "navigation@3",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
-					"command": "roo-cline.cloudButtonClicked",
+					"command": "roo-cline.settingsButtonClicked",
 					"group": "navigation@4",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
-					"command": "roo-cline.historyButtonClicked",
-					"group": "overflow@1",
+					"command": "roo-cline.cloudButtonClicked",
+					"group": "navigation@5",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
 					"command": "roo-cline.promptsButtonClicked",
-					"group": "overflow@2",
+					"group": "overflow@1",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
 					"command": "roo-cline.mcpButtonClicked",
-					"group": "overflow@3",
+					"group": "overflow@2",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
 					"command": "roo-cline.popoutButtonClicked",
-					"group": "overflow@4",
+					"group": "overflow@3",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				}
 			]
