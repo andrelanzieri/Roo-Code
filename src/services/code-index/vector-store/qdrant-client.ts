@@ -7,7 +7,6 @@ import { IVectorStore } from "../interfaces/vector-store"
 import { Payload, VectorStoreSearchResult } from "../interfaces"
 import { DEFAULT_MAX_SEARCH_RESULTS, DEFAULT_SEARCH_MIN_SCORE } from "../constants"
 import { t } from "../../../i18n"
-import { getGitRepositoryInfo } from "../../../utils/git"
 
 /**
  * Qdrant implementation of the vector store interface
@@ -102,7 +101,8 @@ export class QdrantVectorStore implements IVectorStore {
 		if (gitInfo?.repositoryUrl) {
 			// Use repository URL to generate a deterministic name
 			// This ensures the same collection name across worktrees and developers
-			const hash = createHash("sha256").update(gitInfo.repositoryUrl).digest("hex")
+			const normalizedUrl = this.normalizeGitUrl(gitInfo.repositoryUrl)
+			const hash = createHash("sha256").update(normalizedUrl).digest("hex")
 			return `repo-${hash.substring(0, 16)}`
 		}
 
@@ -158,9 +158,7 @@ export class QdrantVectorStore implements IVectorStore {
 				const urlMatch = configContent.match(/url\s*=\s*(.+?)(?:\r?\n|$)/m)
 				if (urlMatch && urlMatch[1]) {
 					const url = urlMatch[1].trim()
-					// Normalize the URL to ensure consistency
-					const normalizedUrl = this.normalizeGitUrl(url)
-					return { repositoryUrl: normalizedUrl }
+					return { repositoryUrl: url }
 				}
 			}
 		} catch (error) {
@@ -176,23 +174,40 @@ export class QdrantVectorStore implements IVectorStore {
 	 * @returns Normalized URL
 	 */
 	private normalizeGitUrl(url: string): string {
-		// Remove credentials
-		let normalized = url.replace(/^https?:\/\/[^@]+@/, "https://")
+		try {
+			// Remove credentials from HTTPS URLs
+			let normalized = url
+			if (url.startsWith("https://") || url.startsWith("http://")) {
+				try {
+					const urlObj = new URL(url)
+					urlObj.username = ""
+					urlObj.password = ""
+					normalized = urlObj.toString()
+				} catch {
+					// If URL parsing fails, just remove obvious credentials
+					normalized = url.replace(/^https?:\/\/[^@]+@/, "https://")
+				}
+			}
 
-		// Convert SSH to HTTPS format for consistency
-		if (normalized.startsWith("git@")) {
-			normalized = normalized.replace(/^git@([^:]+):/, "https://$1/")
-		} else if (normalized.startsWith("ssh://")) {
-			normalized = normalized.replace(/^ssh:\/\/(?:git@)?([^\/]+)\//, "https://$1/")
+			// Convert SSH to HTTPS format for consistency
+			if (normalized.startsWith("git@")) {
+				normalized = normalized.replace(/^git@([^:]+):/, "https://$1/")
+			} else if (normalized.startsWith("ssh://")) {
+				normalized = normalized.replace(/^ssh:\/\/(?:git@)?([^\/]+)\//, "https://$1/")
+			}
+
+			// Remove .git suffix
+			normalized = normalized.replace(/\.git$/, "")
+
+			// Convert to lowercase for consistency
+			normalized = normalized.toLowerCase()
+
+			return normalized
+		} catch (error) {
+			// If normalization fails, return the original URL
+			console.warn(`[QdrantVectorStore] Could not normalize git URL:`, error)
+			return url.toLowerCase()
 		}
-
-		// Remove .git suffix
-		normalized = normalized.replace(/\.git$/, "")
-
-		// Convert to lowercase for consistency
-		normalized = normalized.toLowerCase()
-
-		return normalized
 	}
 
 	/**
