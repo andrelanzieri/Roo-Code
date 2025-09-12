@@ -17,7 +17,8 @@ import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
 import { vscode } from "@src/utils/vscode"
 import { removeLeadingNonAlphanumeric } from "@src/utils/removeLeadingNonAlphanumeric"
 import { getLanguageFromPath } from "@src/utils/getLanguageFromPath"
-import { Button } from "@src/components/ui"
+import { formatTokenStats } from "@src/utils/formatTokens"
+import { Button, StandardTooltip } from "@src/components/ui"
 
 import { ToolUseBlock, ToolUseBlockHeader } from "../common/ToolUseBlock"
 import UpdateTodoListToolBlock from "./UpdateTodoListToolBlock"
@@ -118,6 +119,7 @@ export const ChatRowContent = ({
 
 	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration } = useExtensionState()
 	const { info: model } = useSelectedModel(apiConfiguration)
+	const [reasoningCollapsed, setReasoningCollapsed] = useState(true)
 	const [isDiffErrorExpanded, setIsDiffErrorExpanded] = useState(false)
 	const [showCopySuccess, setShowCopySuccess] = useState(false)
 	const [isEditing, setIsEditing] = useState(false)
@@ -179,13 +181,20 @@ export const ChatRowContent = ({
 		vscode.postMessage({ type: "selectImages", context: "edit", messageTs: message.ts })
 	}, [message.ts])
 
-	const [cost, apiReqCancelReason, apiReqStreamingFailedMessage] = useMemo(() => {
+	const [cost, apiReqCancelReason, apiReqStreamingFailedMessage, tokensIn, tokensOut, cacheReads] = useMemo(() => {
 		if (message.text !== null && message.text !== undefined && message.say === "api_req_started") {
 			const info = safeJsonParse<ClineApiReqInfo>(message.text)
-			return [info?.cost, info?.cancelReason, info?.streamingFailedMessage]
+			return [
+				info?.cost,
+				info?.cancelReason,
+				info?.streamingFailedMessage,
+				info?.tokensIn,
+				info?.tokensOut,
+				info?.cacheReads,
+			]
 		}
 
-		return [undefined, undefined, undefined]
+		return [undefined, undefined, undefined, undefined, undefined, undefined]
 	}, [message.text, message.say])
 
 	// When resuming task, last wont be api_req_failed but a resume_task
@@ -1086,13 +1095,15 @@ export const ChatRowContent = ({
 					return (
 						<ReasoningBlock
 							content={message.text || ""}
-							ts={message.ts}
-							isStreaming={isStreaming}
-							isLast={isLast}
-							metadata={message.metadata as any}
+							elapsed={isLast && isStreaming ? Date.now() - message.ts : undefined}
+							isCollapsed={reasoningCollapsed}
+							onToggleCollapse={() => setReasoningCollapsed(!reasoningCollapsed)}
 						/>
 					)
 				case "api_req_started":
+					const tokenStats = formatTokenStats(tokensIn, tokensOut, cacheReads)
+					const hasTokenData = tokensIn !== undefined || tokensOut !== undefined
+
 					return (
 						<>
 							<div
@@ -1111,13 +1122,97 @@ export const ChatRowContent = ({
 									msUserSelect: "none",
 								}}
 								onClick={handleToggleExpand}>
-								<div style={{ display: "flex", alignItems: "center", gap: "10px", flexGrow: 1 }}>
+								<div
+									style={{
+										display: "flex",
+										alignItems: "center",
+										gap: "10px",
+										flexGrow: 1,
+										minWidth: 0,
+									}}>
 									{icon}
-									{title}
-									<VSCodeBadge
-										style={{ opacity: cost !== null && cost !== undefined && cost > 0 ? 1 : 0 }}>
-										${Number(cost || 0)?.toFixed(4)}
-									</VSCodeBadge>
+									{hasTokenData ? (
+										<StandardTooltip
+											content={
+												<div className="flex flex-col gap-1">
+													<div className="flex items-center gap-2">
+														<span>↑ {t("chat:apiRequest.input")}:</span>
+														<span className="font-mono">{tokenStats.input}</span>
+													</div>
+													<div className="flex items-center gap-2">
+														<span>↓ {t("chat:apiRequest.output")}:</span>
+														<span className="font-mono">{tokenStats.output}</span>
+													</div>
+												</div>
+											}
+											side="top">
+											<span
+												className="api-request-text"
+												style={{
+													display: "inline-block",
+													fontWeight: "bold",
+													color: "var(--vscode-foreground)",
+													whiteSpace: "nowrap",
+													overflow: "hidden",
+													textOverflow: "ellipsis",
+													flexShrink: 1,
+													minWidth: 0,
+													cursor: "default",
+												}}>
+												{title}
+											</span>
+										</StandardTooltip>
+									) : (
+										<span
+											className="api-request-text"
+											style={{
+												display: "inline-block",
+												fontWeight: "bold",
+												color: "var(--vscode-foreground)",
+												whiteSpace: "nowrap",
+												overflow: "hidden",
+												textOverflow: "ellipsis",
+												flexShrink: 1,
+												minWidth: 0,
+											}}>
+											{title}
+										</span>
+									)}
+									<div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+										{hasTokenData && cost !== null && cost !== undefined && cost > 0 ? (
+											<StandardTooltip
+												content={
+													<div className="flex flex-col gap-1">
+														<div className="flex items-center gap-2">
+															<span>↑ {t("chat:apiRequest.input")}:</span>
+															<span className="font-mono">{tokenStats.input}</span>
+														</div>
+														<div className="flex items-center gap-2">
+															<span>↓ {t("chat:apiRequest.output")}:</span>
+															<span className="font-mono">{tokenStats.output}</span>
+														</div>
+													</div>
+												}
+												side="top">
+												<VSCodeBadge
+													style={{
+														opacity: 1,
+														flexShrink: 0,
+														cursor: "default",
+													}}>
+													${Number(cost || 0)?.toFixed(4)}
+												</VSCodeBadge>
+											</StandardTooltip>
+										) : (
+											<VSCodeBadge
+												style={{
+													opacity: cost !== null && cost !== undefined && cost > 0 ? 1 : 0,
+													flexShrink: 0,
+												}}>
+												${Number(cost || 0)?.toFixed(4)}
+											</VSCodeBadge>
+										)}
+									</div>
 								</div>
 								<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>
 							</div>
@@ -1172,10 +1267,9 @@ export const ChatRowContent = ({
 					)
 				case "user_feedback":
 					return (
-						<div
-							className={`bg-vscode-editor-background border rounded-xs overflow-hidden whitespace-pre-wrap ${isEditing ? "p-0" : "p-1"}`}>
+						<div className="bg-vscode-editor-background border rounded-xs p-1 overflow-hidden whitespace-pre-wrap">
 							{isEditing ? (
-								<div className="flex flex-col gap-2">
+								<div className="flex flex-col gap-2 p-2">
 									<ChatTextArea
 										inputValue={editedContent}
 										setInputValue={setEditedContent}
@@ -1196,15 +1290,7 @@ export const ChatRowContent = ({
 								</div>
 							) : (
 								<div className="flex justify-between">
-									<div
-										className="flex-grow px-2 py-1 wrap-anywhere cursor-pointer hover:bg-vscode-list-hoverBackground rounded transition-colors"
-										onClick={(e) => {
-											e.stopPropagation()
-											if (!isStreaming) {
-												handleEditClick()
-											}
-										}}
-										title={t("chat:queuedMessages.clickToEdit")}>
+									<div className="flex-grow px-2 py-1 wrap-anywhere">
 										<Mention text={message.text} withShadow />
 									</div>
 									<div className="flex">

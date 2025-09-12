@@ -100,11 +100,7 @@ export async function summarizeConversation(
 	)
 
 	const response: SummarizeResponse = { messages, cost: 0, summary: "" }
-
-	// Always preserve the first message (which may contain slash command content)
-	const firstMessage = messages[0]
-	// Get messages to summarize, excluding the first message and last N messages
-	const messagesToSummarize = getMessagesSinceLastSummary(messages.slice(1, -N_MESSAGES_TO_KEEP))
+	const messagesToSummarize = getMessagesSinceLastSummary(messages.slice(0, -N_MESSAGES_TO_KEEP))
 
 	if (messagesToSummarize.length <= 1) {
 		const error =
@@ -188,8 +184,7 @@ export async function summarizeConversation(
 		isSummary: true,
 	}
 
-	// Reconstruct messages: [first message, summary, last N messages]
-	const newMessages = [firstMessage, summaryMessage, ...keepMessages]
+	const newMessages = [...messages.slice(0, -N_MESSAGES_TO_KEEP), summaryMessage, ...keepMessages]
 
 	// Count the tokens in the context for the next API request
 	// We only estimate the tokens in summaryMesage if outputTokens is 0, otherwise we use outputTokens

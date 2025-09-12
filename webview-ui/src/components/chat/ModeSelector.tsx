@@ -44,8 +44,6 @@ export const ModeSelector = ({
 	const [open, setOpen] = React.useState(false)
 	const [searchValue, setSearchValue] = React.useState("")
 	const searchInputRef = React.useRef<HTMLInputElement>(null)
-	const selectedItemRef = React.useRef<HTMLDivElement>(null)
-	const scrollContainerRef = React.useRef<HTMLDivElement>(null)
 	const portalContainer = useRooPortal("roo-portal")
 	const { hasOpenedModeSelector, setHasOpenedModeSelector } = useExtensionState()
 	const { t } = useAppTranslation()
@@ -151,37 +149,10 @@ export const ModeSelector = ({
 		[trackModeSelectorOpened],
 	)
 
-	// Auto-focus search input and scroll to selected item when popover opens.
+	// Auto-focus search input when popover opens.
 	React.useEffect(() => {
-		if (open) {
-			// Focus search input
-			if (searchInputRef.current) {
-				searchInputRef.current.focus()
-			}
-
-			requestAnimationFrame(() => {
-				if (selectedItemRef.current && scrollContainerRef.current) {
-					const container = scrollContainerRef.current
-					const item = selectedItemRef.current
-
-					// Calculate positions
-					const containerHeight = container.clientHeight
-					const itemTop = item.offsetTop
-					const itemHeight = item.offsetHeight
-
-					// Center the item in the container
-					const scrollPosition = itemTop - containerHeight / 2 + itemHeight / 2
-
-					// Ensure we don't scroll past boundaries
-					const maxScroll = container.scrollHeight - containerHeight
-					const finalScrollPosition = Math.min(Math.max(0, scrollPosition), maxScroll)
-
-					container.scrollTo({
-						top: finalScrollPosition,
-						behavior: "instant",
-					})
-				}
-			})
+		if (open && searchInputRef.current) {
+			searchInputRef.current.focus()
 		}
 	}, [open])
 
@@ -252,40 +223,36 @@ export const ModeSelector = ({
 					)}
 
 					{/* Mode List */}
-					<div ref={scrollContainerRef} className="max-h-[300px] overflow-y-auto">
+					<div className="max-h-[300px] overflow-y-auto">
 						{filteredModes.length === 0 && searchValue ? (
 							<div className="py-2 px-3 text-sm text-vscode-foreground/70">
 								{t("chat:modeSelector.noResults")}
 							</div>
 						) : (
 							<div className="py-1">
-								{filteredModes.map((mode) => {
-									const isSelected = mode.slug === value
-									return (
-										<div
-											key={mode.slug}
-											ref={isSelected ? selectedItemRef : null}
-											onClick={() => handleSelect(mode.slug)}
-											className={cn(
-												"px-3 py-1.5 text-sm cursor-pointer flex items-center",
-												"hover:bg-vscode-list-hoverBackground",
-												isSelected
-													? "bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground"
-													: "",
+								{filteredModes.map((mode) => (
+									<div
+										key={mode.slug}
+										onClick={() => handleSelect(mode.slug)}
+										className={cn(
+											"px-3 py-1.5 text-sm cursor-pointer flex items-center",
+											"hover:bg-vscode-list-hoverBackground",
+											mode.slug === value
+												? "bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground"
+												: "",
+										)}
+										data-testid="mode-selector-item">
+										<div className="flex-1 min-w-0">
+											<div className="font-bold truncate">{mode.name}</div>
+											{mode.description && (
+												<div className="text-xs text-vscode-descriptionForeground truncate">
+													{mode.description}
+												</div>
 											)}
-											data-testid="mode-selector-item">
-											<div className="flex-1 min-w-0">
-												<div className="font-bold truncate">{mode.name}</div>
-												{mode.description && (
-													<div className="text-xs text-vscode-descriptionForeground truncate">
-														{mode.description}
-													</div>
-												)}
-											</div>
-											{isSelected && <Check className="ml-auto size-4 p-0.5" />}
 										</div>
-									)
-								})}
+										{mode.slug === value && <Check className="ml-auto size-4 p-0.5" />}
+									</div>
+								))}
 							</div>
 						)}
 					</div>

@@ -36,14 +36,14 @@ export class TelemetryService {
 
 	/**
 	 * Updates the telemetry state based on user preferences and VSCode settings
-	 * @param isOptedIn Whether the user is opted into telemetry
+	 * @param didUserOptIn Whether the user has explicitly opted into telemetry
 	 */
-	public updateTelemetryState(isOptedIn: boolean): void {
+	public updateTelemetryState(didUserOptIn: boolean): void {
 		if (!this.isReady) {
 			return
 		}
 
-		this.clients.forEach((client) => client.updateTelemetryState(isOptedIn))
+		this.clients.forEach((client) => client.updateTelemetryState(didUserOptIn))
 	}
 
 	/**

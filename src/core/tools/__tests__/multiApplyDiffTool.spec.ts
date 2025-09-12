@@ -91,7 +91,6 @@ describe("multiApplyDiffTool", () => {
 				trackFileContext: vi.fn().mockResolvedValue(undefined),
 			},
 			didEditFile: false,
-			processQueuedMessages: vi.fn(),
 		} as any
 
 		mockAskApproval = vi.fn().mockResolvedValue(true)

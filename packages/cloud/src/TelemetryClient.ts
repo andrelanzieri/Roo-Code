@@ -233,9 +233,9 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			return false
 		}
 
-		// Only record message telemetry if task sync is enabled
+		// Only record message telemetry if a cloud account is present and explicitly configured to record messages
 		if (eventName === TelemetryEventName.TASK_MESSAGE) {
-			return this.settingsService.isTaskSyncEnabled()
+			return this.settingsService.getSettings()?.cloudSettings?.recordTaskMessages || false
 		}
 
 		// Other telemetry types are capturable at this point

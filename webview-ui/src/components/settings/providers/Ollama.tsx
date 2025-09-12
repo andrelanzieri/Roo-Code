@@ -11,7 +11,6 @@ import { useRouterModels } from "@src/components/ui/hooks/useRouterModels"
 import { vscode } from "@src/utils/vscode"
 
 import { inputEventTransform } from "../transforms"
-import { ModelRecord } from "@roo/api"
 
 type OllamaProps = {
 	apiConfiguration: ProviderSettings
@@ -21,7 +20,7 @@ type OllamaProps = {
 export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaProps) => {
 	const { t } = useAppTranslation()
 
-	const [ollamaModels, setOllamaModels] = useState<ModelRecord>({})
+	const [ollamaModels, setOllamaModels] = useState<string[]>([])
 	const routerModels = useRouterModels()
 
 	const handleInputChange = useCallback(
@@ -41,7 +40,7 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 		switch (message.type) {
 			case "ollamaModels":
 				{
-					const newModels = message.ollamaModels ?? {}
+					const newModels = message.ollamaModels ?? []
 					setOllamaModels(newModels)
 				}
 				break
@@ -62,7 +61,7 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 		if (!selectedModel) return false
 
 		// Check if model exists in local ollama models
-		if (Object.keys(ollamaModels).length > 0 && selectedModel in ollamaModels) {
+		if (ollamaModels.length > 0 && ollamaModels.includes(selectedModel)) {
 			return false // Model is available locally
 		}
 
@@ -117,13 +116,15 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 					</div>
 				</div>
 			)}
-			{Object.keys(ollamaModels).length > 0 && (
+			{ollamaModels.length > 0 && (
 				<VSCodeRadioGroup
 					value={
-						(apiConfiguration?.ollamaModelId || "") in ollamaModels ? apiConfiguration?.ollamaModelId : ""
+						ollamaModels.includes(apiConfiguration?.ollamaModelId || "")
+							? apiConfiguration?.ollamaModelId
+							: ""
 					}
 					onChange={handleInputChange("ollamaModelId")}>
-					{Object.keys(ollamaModels).map((model) => (
+					{ollamaModels.map((model) => (
 						<VSCodeRadio key={model} value={model} checked={apiConfiguration?.ollamaModelId === model}>
 							{model}
 						</VSCodeRadio>

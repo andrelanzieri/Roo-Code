@@ -211,9 +211,6 @@ describe("mergeExtensionState", () => {
 			hasOpenedModeSelector: false, // Add the new required property
 			maxImageFileSize: 5,
 			maxTotalImageSize: 20,
-			remoteControlEnabled: false,
-			taskSyncEnabled: false,
-			featureRoomoteControlEnabled: false,
 		}
 
 		const prevState: ExtensionState = {

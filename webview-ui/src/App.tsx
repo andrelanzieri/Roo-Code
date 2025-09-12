@@ -192,11 +192,11 @@ const App = () => {
 	useEvent("message", onMessage)
 
 	useEffect(() => {
-		if (shouldShowAnnouncement && tab === "chat") {
+		if (shouldShowAnnouncement) {
 			setShowAnnouncement(true)
 			vscode.postMessage({ type: "didShowAnnouncement" })
 		}
-	}, [shouldShowAnnouncement, tab])
+	}, [shouldShowAnnouncement])
 
 	useEffect(() => {
 		if (didHydrateState) {

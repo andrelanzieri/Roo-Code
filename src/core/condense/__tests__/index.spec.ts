@@ -188,14 +188,11 @@ describe("summarizeConversation", () => {
 		expect(maybeRemoveImageBlocks).toHaveBeenCalled()
 
 		// Verify the structure of the result
-		// The result should be: first message + summary + last N messages
-		expect(result.messages.length).toBe(1 + 1 + N_MESSAGES_TO_KEEP) // First + summary + last N
-
-		// Check that the first message is preserved
-		expect(result.messages[0]).toEqual(messages[0])
+		// The result should be: original messages (except last N) + summary + last N messages
+		expect(result.messages.length).toBe(messages.length + 1) // Original + summary
 
 		// Check that the summary message was inserted correctly
-		const summaryMessage = result.messages[1]
+		const summaryMessage = result.messages[result.messages.length - N_MESSAGES_TO_KEEP - 1]
 		expect(summaryMessage.role).toBe("assistant")
 		expect(summaryMessage.content).toBe("This is a summary")
 		expect(summaryMessage.isSummary).toBe(true)
@@ -398,8 +395,7 @@ describe("summarizeConversation", () => {
 		)
 
 		// Should successfully summarize
-		// Result should be: first message + summary + last N messages
-		expect(result.messages.length).toBe(1 + 1 + N_MESSAGES_TO_KEEP) // First + summary + last N
+		expect(result.messages.length).toBe(messages.length + 1) // Original + summary
 		expect(result.cost).toBe(0.03)
 		expect(result.summary).toBe("Concise summary")
 		expect(result.error).toBeUndefined()

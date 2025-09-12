@@ -1,8 +1,4 @@
-export const formatDuration = (durationMs: number | null | undefined) => {
-	if (durationMs === null || durationMs === undefined) {
-		return "-"
-	}
-
+export const formatDuration = (durationMs: number) => {
 	const seconds = Math.floor(durationMs / 1000)
 	const hours = Math.floor(seconds / 3600)
 	const minutes = Math.floor((seconds % 3600) / 60)

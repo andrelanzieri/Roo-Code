@@ -1,8 +1,4 @@
-export const formatTokens = (tokens: number | null | undefined, decimals = 0) => {
-	if (tokens === null || tokens === undefined) {
-		return "-"
-	}
-
+export const formatTokens = (tokens: number, decimals = 0) => {
 	if (tokens < 1000) {
 		return tokens.toString()
 	}

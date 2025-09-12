@@ -133,7 +133,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		if (data.state === "logged-out") {
 			try {
-				await provider.remoteControlEnabled(false)
+				await BridgeOrchestrator.disconnect()
 				cloudLogger("[CloudService] BridgeOrchestrator disconnected on logout")
 			} catch (error) {
 				cloudLogger(
@@ -148,7 +148,20 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		if (userInfo && CloudService.instance.cloudAPI) {
 			try {
-				provider.remoteControlEnabled(CloudService.instance.isTaskSyncEnabled())
+				const config = await CloudService.instance.cloudAPI.bridgeConfig()
+
+				const isCloudAgent =
+					typeof process.env.ROO_CODE_CLOUD_TOKEN === "string" && process.env.ROO_CODE_CLOUD_TOKEN.length > 0
+
+				const remoteControlEnabled = isCloudAgent
+					? true
+					: (CloudService.instance.getUserSettings()?.settings?.extensionBridgeEnabled ?? false)
+
+				await BridgeOrchestrator.connectOrDisconnect(userInfo, remoteControlEnabled, {
+					...config,
+					provider,
+					sessionId: vscode.env.sessionId,
+				})
 			} catch (error) {
 				cloudLogger(
 					`[CloudService] BridgeOrchestrator#connectOrDisconnect failed on settings change: ${error instanceof Error ? error.message : String(error)}`,
@@ -168,7 +181,20 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 
 		try {
-			provider.remoteControlEnabled(CloudService.instance.isTaskSyncEnabled())
+			const config = await CloudService.instance.cloudAPI.bridgeConfig()
+
+			const isCloudAgent =
+				typeof process.env.ROO_CODE_CLOUD_TOKEN === "string" && process.env.ROO_CODE_CLOUD_TOKEN.length > 0
+
+			const remoteControlEnabled = isCloudAgent
+				? true
+				: (CloudService.instance.getUserSettings()?.settings?.extensionBridgeEnabled ?? false)
+
+			await BridgeOrchestrator.connectOrDisconnect(userInfo, remoteControlEnabled, {
+				...config,
+				provider,
+				sessionId: vscode.env.sessionId,
+			})
 		} catch (error) {
 			cloudLogger(
 				`[CloudService] BridgeOrchestrator#connectOrDisconnect failed on user change: ${error instanceof Error ? error.message : String(error)}`,

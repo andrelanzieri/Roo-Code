@@ -16,8 +16,12 @@
 	"startRouter": "We raden aan om een LLM-router te gebruiken:",
 	"startCustom": "Of je kunt je eigen API-sleutel gebruiken:",
 	"telemetry": {
-		"helpImprove": "Help Roo Code verbeteren",
-		"helpImproveMessage": "Roo Code verzamelt fout- en gebruiksgegevens om ons te helpen bugs op te lossen en de extensie te verbeteren. Deze telemetrie verzamelt geen code, prompts of persoonlijke informatie. Je kunt dit uitschakelen in de <settingsLink>instellingen</settingsLink>."
+		"title": "Help Roo Code verbeteren",
+		"anonymousTelemetry": "Stuur anonieme fout- en gebruiksgegevens om ons te helpen bugs op te lossen en de extensie te verbeteren. Er worden nooit code, prompts of persoonlijke gegevens verzonden.",
+		"changeSettings": "Je kunt dit altijd wijzigen onderaan de <settingsLink>instellingen</settingsLink>",
+		"settings": "instellingen",
+		"allow": "Toestaan",
+		"deny": "Weigeren"
 	},
 	"importSettings": "Instellingen importeren"
 }
