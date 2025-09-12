@@ -34,7 +34,14 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		const projectId = this.options.vertexProjectId ?? "not-provided"
 		const region = this.options.vertexRegion ?? "us-east5"
 
-		const baseOptions: any = {
+		type VertexOptions = {
+			projectId: string
+			region: string
+			baseURL?: string
+			googleAuth?: GoogleAuth
+		}
+
+		const baseOptions: VertexOptions = {
 			projectId,
 			region,
 		}

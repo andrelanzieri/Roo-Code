@@ -184,13 +184,8 @@ describe("VertexHandler", () => {
 			await handler.completePrompt("Test prompt")
 
 			// Verify that httpOptions is undefined when no custom URL
-			expect(mockGenerateContent).toHaveBeenCalledWith(
-				expect.objectContaining({
-					config: expect.objectContaining({
-						httpOptions: undefined,
-					}),
-				}),
-			)
+			const callArgs = mockGenerateContent.mock.calls[0][0]
+			expect(callArgs.config.httpOptions).toBeUndefined()
 		})
 	})
 })

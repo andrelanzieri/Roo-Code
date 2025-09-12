@@ -27,6 +27,7 @@ type GeminiHandlerOptions = ApiHandlerOptions & {
 
 export class GeminiHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
+	private isVertex: boolean
 
 	private client: GoogleGenAI
 
@@ -34,6 +35,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		super()
 
 		this.options = options
+		this.isVertex = isVertex ?? false
 
 		const project = this.options.vertexProjectId ?? "not-provided"
 		const location = this.options.vertexRegion ?? "not-provided"
@@ -79,8 +81,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		}
 
 		// Use vertexBaseUrl if this is a Vertex handler, otherwise use googleGeminiBaseUrl
-		const baseUrl =
-			this.constructor.name === "VertexHandler" ? this.options.vertexBaseUrl : this.options.googleGeminiBaseUrl
+		const baseUrl = this.isVertex ? this.options.vertexBaseUrl : this.options.googleGeminiBaseUrl
 
 		const config: GenerateContentConfig = {
 			systemInstruction,
@@ -225,10 +226,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 				tools.push({ googleSearch: {} })
 			}
 			// Use vertexBaseUrl if this is a Vertex handler, otherwise use googleGeminiBaseUrl
-			const baseUrl =
-				this.constructor.name === "VertexHandler"
-					? this.options.vertexBaseUrl
-					: this.options.googleGeminiBaseUrl
+			const baseUrl = this.isVertex ? this.options.vertexBaseUrl : this.options.googleGeminiBaseUrl
 
 			const promptConfig: GenerateContentConfig = {
 				httpOptions: baseUrl ? { baseUrl } : undefined,

@@ -893,11 +893,8 @@ describe("VertexHandler", () => {
 			})
 
 			// Verify that AnthropicVertex was called without baseURL
-			expect(AnthropicVertex).toHaveBeenCalledWith(
-				expect.not.objectContaining({
-					baseURL: expect.anything(),
-				}),
-			)
+			const callArgs = (AnthropicVertex as any).mock.calls[0][0]
+			expect(callArgs.baseURL).toBeUndefined()
 		})
 	})
 })
