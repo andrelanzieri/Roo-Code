@@ -60,10 +60,11 @@ export const ImageGenerationSettings = ({
 	useEffect(() => {
 		setOpenRouterApiKeyLocal(openRouterImageApiKey || "")
 		setGeminiApiKeyLocal(geminiApiKey || "")
-		setProvider(imageGenerationProvider || "openrouter")
-		// Calculate selected model directly in the effect
+		const newProvider = imageGenerationProvider || "openrouter"
+		setProvider(newProvider)
+		// Calculate selected model based on the new provider value
 		const newSelectedModel =
-			provider === "openrouter"
+			newProvider === "openrouter"
 				? openRouterImageGenerationSelectedModel || getDefaultModel("openrouter")
 				: geminiImageGenerationSelectedModel || getDefaultModel("gemini")
 		setSelectedModel(newSelectedModel)
@@ -73,7 +74,6 @@ export const ImageGenerationSettings = ({
 		openRouterImageGenerationSelectedModel,
 		geminiImageGenerationSelectedModel,
 		imageGenerationProvider,
-		provider,
 	])
 
 	// Handle provider change
