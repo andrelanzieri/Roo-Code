@@ -114,6 +114,7 @@ import { Gpt5Metadata, ClineMessageWithMetadata } from "./types"
 import { MessageQueueService } from "../message-queue/MessageQueueService"
 
 import { AutoApprovalHandler } from "./AutoApprovalHandler"
+import { ToolErrorGuidance } from "../tools/errorGuidance"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -263,6 +264,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	consecutiveMistakeLimit: number
 	consecutiveMistakeCountForApplyDiff: Map<string, number> = new Map()
 	toolUsage: ToolUsage = {}
+	toolErrorHistory: Array<{ toolName: ToolName; error?: string; timestamp: number }> = []
 
 	// Checkpoints
 	enableCheckpoints: boolean
@@ -1725,10 +1727,37 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 
 			if (this.consecutiveMistakeLimit > 0 && this.consecutiveMistakeCount >= this.consecutiveMistakeLimit) {
-				const { response, text, images } = await this.ask(
-					"mistake_limit_reached",
-					t("common:errors.mistake_limit_guidance"),
-				)
+				// Build error patterns from the tool error history
+				const toolErrorMap = new Map<ToolName, { count: number; lastError?: string }>()
+				const recentTools: ToolName[] = []
+
+				// Process error history to build patterns
+				for (const error of this.toolErrorHistory) {
+					recentTools.push(error.toolName)
+					const existing = toolErrorMap.get(error.toolName) || { count: 0 }
+					toolErrorMap.set(error.toolName, {
+						count: existing.count + 1,
+						lastError: error.error || existing.lastError,
+					})
+				}
+
+				// Build error patterns using the ToolErrorGuidance helper
+				const errorPatterns = ToolErrorGuidance.buildErrorPatterns(recentTools, toolErrorMap)
+
+				// Create guidance context
+				const guidanceContext = {
+					recentTools,
+					errorPatterns,
+					consecutiveMistakeCount: this.consecutiveMistakeCount,
+				}
+
+				// Get contextual guidance
+				const contextualGuidance = ToolErrorGuidance.getContextualGuidance(guidanceContext)
+
+				// Format the guidance message
+				let guidanceMessage = ToolErrorGuidance.formatGuidanceMessage(contextualGuidance)
+
+				const { response, text, images } = await this.ask("mistake_limit_reached", guidanceMessage)
 
 				if (response === "messageResponse") {
 					currentUserContent.push(
@@ -1745,6 +1774,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 
 				this.consecutiveMistakeCount = 0
+				// Clear error history after providing guidance
+				this.toolErrorHistory = []
 			}
 
 			// In this Cline request loop, we need to check if this task instance
@@ -2827,6 +2858,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		this.toolUsage[toolName].failures++
+
+		// Track error in history for contextual guidance
+		this.toolErrorHistory.push({
+			toolName,
+			error,
+			timestamp: Date.now(),
+		})
+
+		// Keep only recent errors (last 20)
+		if (this.toolErrorHistory.length > 20) {
+			this.toolErrorHistory = this.toolErrorHistory.slice(-20)
+		}
 
 		if (error) {
 			this.emit(RooCodeEventName.TaskToolFailed, this.taskId, toolName, error)
