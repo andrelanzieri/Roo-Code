@@ -9,6 +9,9 @@ import { AutoApproveToggle, AutoApproveSetting, autoApproveSettingsConfig } from
 import { StandardTooltip } from "@src/components/ui"
 import { useAutoApprovalState } from "@src/hooks/useAutoApprovalState"
 import { useAutoApprovalToggles } from "@src/hooks/useAutoApprovalToggles"
+import DismissibleUpsell from "@src/components/common/DismissibleUpsell"
+import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
+import { CloudUpsellDialog } from "@src/components/cloud/CloudUpsellDialog"
 
 interface AutoApproveMenuProps {
 	style?: React.CSSProperties
@@ -35,7 +38,12 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 
 	const { t } = useAppTranslation()
 
+	const { isOpen, openUpsell, closeUpsell, handleConnect } = useCloudUpsell({
+		autoOpenOnAuth: false,
+	})
+
 	const baseToggles = useAutoApprovalToggles()
+	const enabledCount = useMemo(() => Object.values(baseToggles).filter(Boolean).length, [baseToggles])
 
 	// AutoApproveMenu needs alwaysApproveResubmit in addition to the base toggles
 	const toggles = useMemo(
@@ -157,12 +165,48 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 				overflowY: "auto",
 				...style,
 			}}>
+			{isExpanded && (
+				<div className="flex flex-col gap-2 py-4">
+					<div
+						style={{
+							color: "var(--vscode-descriptionForeground)",
+							fontSize: "12px",
+						}}>
+						<Trans
+							i18nKey="chat:autoApprove.description"
+							components={{
+								settingsLink: <VSCodeLink href="#" onClick={handleOpenSettings} />,
+							}}
+						/>
+					</div>
+
+					<AutoApproveToggle {...toggles} onToggle={onAutoApproveToggle} />
+
+					{enabledCount > 7 && (
+						<>
+							<DismissibleUpsell
+								upsellId="autoApprovePowerUserA"
+								onClick={() => openUpsell()}
+								dismissOnClick={false}
+								variant="banner">
+								<Trans
+									i18nKey="cloud:upsell.autoApprovePowerUser"
+									components={{
+										learnMoreLink: <VSCodeLink href="#" />,
+									}}
+								/>
+							</DismissibleUpsell>
+						</>
+					)}
+				</div>
+			)}
+
 			<div
 				style={{
 					display: "flex",
 					alignItems: "center",
 					gap: "8px",
-					padding: isExpanded ? "8px 0" : "2px 0 0 0",
+					padding: "2px 0 0 0",
 					cursor: "pointer",
 				}}
 				onClick={toggleExpanded}>
@@ -215,33 +259,13 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 						{displayText}
 					</span>
 					<span
-						className={`codicon codicon-chevron-${isExpanded ? "down" : "right"}`}
-						style={{
-							flexShrink: 0,
-							marginLeft: isExpanded ? "2px" : "-2px",
-						}}
+						className={`codicon codicon-chevron-right flex-shrink-0 transition-transform duration-200 ease-in-out ${
+							isExpanded ? "-rotate-90 ml-[2px]" : "rotate-0 -ml-[2px]"
+						}`}
 					/>
 				</div>
 			</div>
-
-			{isExpanded && (
-				<div className="flex flex-col gap-2">
-					<div
-						style={{
-							color: "var(--vscode-descriptionForeground)",
-							fontSize: "12px",
-						}}>
-						<Trans
-							i18nKey="chat:autoApprove.description"
-							components={{
-								settingsLink: <VSCodeLink href="#" onClick={handleOpenSettings} />,
-							}}
-						/>
-					</div>
-
-					<AutoApproveToggle {...toggles} onToggle={onAutoApproveToggle} />
-				</div>
-			)}
+			<CloudUpsellDialog open={isOpen} onOpenChange={closeUpsell} onConnect={handleConnect} />
 		</div>
 	)
 }

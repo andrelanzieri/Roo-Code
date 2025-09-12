@@ -9,8 +9,11 @@ import type {
 	ClineMessage,
 	MarketplaceItem,
 	TodoItem,
+	CloudUserInfo,
+	OrganizationAllowList,
+	ShareVisibility,
+	QueuedMessage,
 } from "@roo-code/types"
-import type { CloudUserInfo, OrganizationAllowList, ShareVisibility } from "@roo-code/cloud"
 
 import { GitCommit } from "../utils/git"
 
@@ -21,7 +24,7 @@ import { ModelRecord, RouterModels } from "./api"
 // Command interface for frontend/backend communication
 export interface Command {
 	name: string
-	source: "global" | "project"
+	source: "global" | "project" | "built-in"
 	filePath?: string
 	description?: string
 	argumentHint?: string
@@ -120,6 +123,7 @@ export interface ExtensionMessage {
 		| "showEditMessageDialog"
 		| "commands"
 		| "insertTextIntoTextarea"
+		| "dismissedUpsells"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -129,7 +133,7 @@ export interface ExtensionMessage {
 		| "historyButtonClicked"
 		| "promptsButtonClicked"
 		| "marketplaceButtonClicked"
-		| "accountButtonClicked"
+		| "cloudButtonClicked"
 		| "didBecomeVisible"
 		| "focusInput"
 		| "switchTab"
@@ -145,7 +149,7 @@ export interface ExtensionMessage {
 	clineMessage?: ClineMessage
 	routerModels?: RouterModels
 	openAiModels?: string[]
-	ollamaModels?: string[]
+	ollamaModels?: ModelRecord
 	lmStudioModels?: ModelRecord
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
 	huggingFaceModels?: Array<{
@@ -192,8 +196,11 @@ export interface ExtensionMessage {
 	rulesFolderPath?: string
 	settings?: any
 	messageTs?: number
+	hasCheckpoint?: boolean
 	context?: string
 	commands?: Command[]
+	queuedMessages?: QueuedMessage[]
+	list?: string[] // For dismissedUpsells
 }
 
 export type ExtensionState = Pick<
@@ -204,6 +211,7 @@ export type ExtensionState = Pick<
 	// | "lastShownAnnouncementId"
 	| "customInstructions"
 	// | "taskHistory" // Optional in GlobalSettings, required here.
+	| "dismissedUpsells"
 	| "autoApprovalEnabled"
 	| "alwaysAllowReadOnly"
 	| "alwaysAllowReadOnlyOutsideWorkspace"
@@ -217,8 +225,10 @@ export type ExtensionState = Pick<
 	| "alwaysAllowMcp"
 	| "alwaysAllowModeSwitch"
 	| "alwaysAllowSubtasks"
+	| "alwaysAllowFollowupQuestions"
 	| "alwaysAllowExecute"
 	| "alwaysAllowUpdateTodoList"
+	| "followupAutoApproveTimeoutMs"
 	| "allowedCommands"
 	| "deniedCommands"
 	| "allowedMaxRequests"
@@ -227,6 +237,7 @@ export type ExtensionState = Pick<
 	| "browserViewportSize"
 	| "screenshotQuality"
 	| "remoteBrowserEnabled"
+	| "cachedChromeHostUrl"
 	| "remoteBrowserHost"
 	// | "enableCheckpoints" // Optional in GlobalSettings, required here.
 	| "ttsEnabled"
@@ -270,13 +281,14 @@ export type ExtensionState = Pick<
 	| "profileThresholds"
 	| "includeDiagnosticMessages"
 	| "maxDiagnosticMessages"
-	| "remoteControlEnabled"
+	| "openRouterImageGenerationSelectedModel"
+	| "includeTaskHistoryInEnhance"
 > & {
 	version: string
 	clineMessages: ClineMessage[]
 	currentTaskItem?: HistoryItem
 	currentTaskTodos?: TodoItem[] // Initial todos for the current task
-	apiConfiguration?: ProviderSettings
+	apiConfiguration: ProviderSettings
 	uriScheme?: string
 	shouldShowAnnouncement: boolean
 
@@ -324,6 +336,17 @@ export type ExtensionState = Pick<
 	marketplaceInstalledMetadata?: { project: Record<string, any>; global: Record<string, any> }
 	profileThresholds: Record<string, number>
 	hasOpenedModeSelector: boolean
+	openRouterImageApiKey?: string
+	openRouterUseMiddleOutTransform?: boolean
+	messageQueue?: QueuedMessage[]
+	lastShownAnnouncementId?: string
+	apiModelId?: string
+	mcpServers?: McpServer[]
+	hasSystemPromptOverride?: boolean
+	mdmCompliant?: boolean
+	remoteControlEnabled: boolean
+	taskSyncEnabled: boolean
+	featureRoomoteControlEnabled: boolean
 }
 
 export interface ClineSayTool {
@@ -343,6 +366,9 @@ export interface ClineSayTool {
 		| "finishTask"
 		| "searchAndReplace"
 		| "insertContent"
+		| "generateImage"
+		| "imageGenerated"
+		| "runSlashCommand"
 	path?: string
 	diff?: string
 	content?: string
@@ -379,6 +405,12 @@ export interface ClineSayTool {
 		}>
 	}>
 	question?: string
+	imageData?: string // Base64 encoded image data for generated images
+	// Properties for runSlashCommand tool
+	command?: string
+	args?: string
+	source?: string
+	description?: string
 }
 
 // Must keep in sync with system prompt.
