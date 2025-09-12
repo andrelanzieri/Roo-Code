@@ -18,6 +18,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { type ApiMessage } from "../task-persistence/apiMessages"
 import { saveTaskMessages } from "../task-persistence"
+import { type IndexingStatus } from "../../shared/ExtensionMessage"
 
 import { ClineProvider } from "./ClineProvider"
 import { handleCheckpointRestoreOperation } from "./checkpointRestoreHandler"
@@ -2547,7 +2548,7 @@ export const webviewMessageHandler = async (
 				return
 			}
 
-			const status = manager
+			const baseStatus = manager
 				? manager.getCurrentStatus()
 				: {
 						systemStatus: "Standby",
@@ -2558,7 +2559,8 @@ export const webviewMessageHandler = async (
 						workspacePath: undefined,
 					}
 
-			// Add workspace-specific indexing enabled state
+			// Create a new status object with workspace-specific indexing enabled state
+			let status: IndexingStatus = { ...baseStatus }
 			if (manager && provider.cwd) {
 				const workspaceEnabled = manager.configManager?.getWorkspaceIndexEnabled(provider.cwd)
 				if (workspaceEnabled !== undefined) {
