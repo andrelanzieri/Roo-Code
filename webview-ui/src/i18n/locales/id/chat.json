@@ -148,7 +148,9 @@
 		"failed": "Permintaan API Gagal",
 		"streaming": "Permintaan API...",
 		"cancelled": "Permintaan API Dibatalkan",
-		"streamingFailed": "Streaming API Gagal"
+		"streamingFailed": "Streaming API Gagal",
+		"input": "Input",
+		"output": "Output"
 	},
 	"checkpoint": {
 		"regular": "Checkpoint",

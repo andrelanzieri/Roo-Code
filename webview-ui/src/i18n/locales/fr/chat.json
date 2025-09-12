@@ -139,7 +139,9 @@
 		"failed": "Échec de la requête API",
 		"streaming": "Requête API...",
 		"cancelled": "Requête API annulée",
-		"streamingFailed": "Échec du streaming API"
+		"streamingFailed": "Échec du streaming API",
+		"input": "Input",
+		"output": "Output"
 	},
 	"checkpoint": {
 		"regular": "Point de contrôle",

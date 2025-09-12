@@ -139,7 +139,9 @@
 		"failed": "Yêu cầu API thất bại",
 		"streaming": "Yêu cầu API...",
 		"cancelled": "Yêu cầu API đã hủy",
-		"streamingFailed": "Streaming API thất bại"
+		"streamingFailed": "Streaming API thất bại",
+		"input": "Input",
+		"output": "Output"
 	},
 	"checkpoint": {
 		"regular": "Điểm kiểm tra",

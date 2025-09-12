@@ -139,7 +139,9 @@
 		"failed": "APIリクエスト失敗",
 		"streaming": "APIリクエスト...",
 		"cancelled": "APIリクエストキャンセル",
-		"streamingFailed": "APIストリーミング失敗"
+		"streamingFailed": "APIストリーミング失敗",
+		"input": "Input",
+		"output": "Output"
 	},
 	"checkpoint": {
 		"regular": "チェックポイント",

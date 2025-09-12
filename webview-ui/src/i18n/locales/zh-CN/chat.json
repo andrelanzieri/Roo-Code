@@ -139,7 +139,9 @@
 		"failed": "API请求失败",
 		"streaming": "API请求...",
 		"cancelled": "API请求已取消",
-		"streamingFailed": "API流式传输失败"
+		"streamingFailed": "API流式传输失败",
+		"input": "Input",
+		"output": "Output"
 	},
 	"checkpoint": {
 		"regular": "检查点",

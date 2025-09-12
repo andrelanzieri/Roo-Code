@@ -139,7 +139,9 @@
 		"failed": "Sol·licitud API ha fallat",
 		"streaming": "Sol·licitud API...",
 		"cancelled": "Sol·licitud API cancel·lada",
-		"streamingFailed": "Transmissió API ha fallat"
+		"streamingFailed": "Transmissió API ha fallat",
+		"input": "Input",
+		"output": "Output"
 	},
 	"checkpoint": {
 		"regular": "Punt de control",

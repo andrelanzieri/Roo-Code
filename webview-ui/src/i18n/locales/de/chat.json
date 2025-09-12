@@ -139,7 +139,9 @@
 		"failed": "API-Anfrage fehlgeschlagen",
 		"streaming": "API-Anfrage...",
 		"cancelled": "API-Anfrage abgebrochen",
-		"streamingFailed": "API-Streaming fehlgeschlagen"
+		"streamingFailed": "API-Streaming fehlgeschlagen",
+		"input": "Input",
+		"output": "Output"
 	},
 	"checkpoint": {
 		"regular": "Checkpoint",

@@ -142,7 +142,9 @@
 		"failed": "Richiesta API fallita",
 		"streaming": "Richiesta API...",
 		"cancelled": "Richiesta API annullata",
-		"streamingFailed": "Streaming API fallito"
+		"streamingFailed": "Streaming API fallito",
+		"input": "Input",
+		"output": "Output"
 	},
 	"checkpoint": {
 		"regular": "Checkpoint",
