@@ -195,6 +195,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		openRouterImageApiKey,
 		openRouterImageGenerationSelectedModel,
 		reasoningBlockCollapsed,
+		imageGenerationProvider,
+		geminiImageApiKey,
+		geminiImageGenerationSelectedModel,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -292,11 +295,28 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 	const setImageGenerationSelectedModel = useCallback((model: string) => {
 		setCachedState((prevState) => {
-			// Only set change detected if value actually changed
-			if (prevState.openRouterImageGenerationSelectedModel !== model) {
-				setChangeDetected(true)
+			setChangeDetected(true)
+			// Update the appropriate model field based on the current provider
+			const provider = prevState.imageGenerationProvider || "openrouter"
+			if (provider === "openrouter") {
+				return { ...prevState, openRouterImageGenerationSelectedModel: model }
+			} else {
+				return { ...prevState, geminiImageGenerationSelectedModel: model }
 			}
-			return { ...prevState, openRouterImageGenerationSelectedModel: model }
+		})
+	}, [])
+
+	const setImageGenerationProvider = useCallback((provider: "gemini" | "openrouter" | undefined) => {
+		setCachedState((prevState) => {
+			setChangeDetected(true)
+			return { ...prevState, imageGenerationProvider: provider }
+		})
+	}, [])
+
+	const setGeminiImageApiKey = useCallback((apiKey: string) => {
+		setCachedState((prevState) => {
+			setChangeDetected(true)
+			return { ...prevState, geminiImageApiKey: apiKey }
 		})
 	}, [])
 
@@ -391,6 +411,12 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			vscode.postMessage({
 				type: "openRouterImageGenerationSelectedModel",
 				text: openRouterImageGenerationSelectedModel,
+			})
+			vscode.postMessage({ type: "imageGenerationProvider", text: imageGenerationProvider })
+			vscode.postMessage({ type: "geminiImageApiKey", text: geminiImageApiKey })
+			vscode.postMessage({
+				type: "geminiImageGenerationSelectedModel",
+				text: geminiImageGenerationSelectedModel,
 			})
 			setChangeDetected(false)
 		}
@@ -797,8 +823,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							openRouterImageGenerationSelectedModel={
 								openRouterImageGenerationSelectedModel as string | undefined
 							}
+							imageGenerationProvider={imageGenerationProvider as string | undefined}
+							geminiImageApiKey={geminiImageApiKey as string | undefined}
+							geminiImageGenerationSelectedModel={
+								geminiImageGenerationSelectedModel as string | undefined
+							}
 							setOpenRouterImageApiKey={setOpenRouterImageApiKey}
 							setImageGenerationSelectedModel={setImageGenerationSelectedModel}
+							setImageGenerationProvider={setImageGenerationProvider}
+							setGeminiImageApiKey={setGeminiImageApiKey}
 						/>
 					)}
 

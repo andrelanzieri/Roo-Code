@@ -343,6 +343,9 @@ export type ExtensionState = Pick<
 	profileThresholds: Record<string, number>
 	hasOpenedModeSelector: boolean
 	openRouterImageApiKey?: string
+	imageGenerationProvider?: "openrouter" | "gemini"
+	geminiImageApiKey?: string
+	geminiImageGenerationSelectedModel?: string
 	openRouterUseMiddleOutTransform?: boolean
 	messageQueue?: QueuedMessage[]
 	lastShownAnnouncementId?: string
