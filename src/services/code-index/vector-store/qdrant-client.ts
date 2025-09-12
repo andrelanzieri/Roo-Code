@@ -1,11 +1,13 @@
 import { QdrantClient, Schemas } from "@qdrant/js-client-rest"
 import { createHash } from "crypto"
 import * as path from "path"
+import * as fs from "fs"
 import { getWorkspacePath } from "../../../utils/path"
 import { IVectorStore } from "../interfaces/vector-store"
 import { Payload, VectorStoreSearchResult } from "../interfaces"
 import { DEFAULT_MAX_SEARCH_RESULTS, DEFAULT_SEARCH_MIN_SCORE } from "../constants"
 import { t } from "../../../i18n"
+import { getGitRepositoryInfo } from "../../../utils/git"
 
 /**
  * Qdrant implementation of the vector store interface
@@ -77,10 +79,135 @@ export class QdrantVectorStore implements IVectorStore {
 			})
 		}
 
-		// Generate collection name from workspace path
-		const hash = createHash("sha256").update(workspacePath).digest("hex")
+		// Generate deterministic collection name
 		this.vectorSize = vectorSize
-		this.collectionName = `ws-${hash.substring(0, 16)}`
+		this.collectionName = this.generateCollectionName(workspacePath)
+	}
+
+	/**
+	 * Generates a deterministic collection name based on repository or workspace
+	 * @param workspacePath Path to the workspace
+	 * @returns Collection name
+	 */
+	private generateCollectionName(workspacePath: string): string {
+		// First, check for a custom collection name in .roo/codebase-index.json
+		const customName = this.loadCustomCollectionName(workspacePath)
+		if (customName) {
+			// Sanitize the custom name to ensure it's valid for Qdrant
+			return this.sanitizeCollectionName(customName)
+		}
+
+		// Try to get git repository information for deterministic naming
+		const gitInfo = this.getGitInfoSync(workspacePath)
+		if (gitInfo?.repositoryUrl) {
+			// Use repository URL to generate a deterministic name
+			// This ensures the same collection name across worktrees and developers
+			const hash = createHash("sha256").update(gitInfo.repositoryUrl).digest("hex")
+			return `repo-${hash.substring(0, 16)}`
+		}
+
+		// Fallback to workspace path hash (original behavior)
+		const hash = createHash("sha256").update(workspacePath).digest("hex")
+		return `ws-${hash.substring(0, 16)}`
+	}
+
+	/**
+	 * Loads custom collection name from .roo/codebase-index.json if it exists
+	 * @param workspacePath Path to the workspace
+	 * @returns Custom collection name or undefined
+	 */
+	private loadCustomCollectionName(workspacePath: string): string | undefined {
+		try {
+			const configPath = path.join(workspacePath, ".roo", "codebase-index.json")
+			if (fs.existsSync(configPath)) {
+				const config = JSON.parse(fs.readFileSync(configPath, "utf8"))
+				if (config.collectionName && typeof config.collectionName === "string") {
+					return config.collectionName
+				}
+			}
+		} catch (error) {
+			// Ignore errors reading config file
+			console.warn(
+				`[QdrantVectorStore] Could not read custom collection name from .roo/codebase-index.json:`,
+				error,
+			)
+		}
+		return undefined
+	}
+
+	/**
+	 * Synchronously gets git repository information
+	 * @param workspacePath Path to the workspace
+	 * @returns Git repository info or undefined
+	 */
+	private getGitInfoSync(workspacePath: string): { repositoryUrl?: string } | undefined {
+		try {
+			const gitDir = path.join(workspacePath, ".git")
+
+			// Check if .git directory exists
+			if (!fs.existsSync(gitDir)) {
+				return undefined
+			}
+
+			// Try to read git config file
+			const configPath = path.join(gitDir, "config")
+			if (fs.existsSync(configPath)) {
+				const configContent = fs.readFileSync(configPath, "utf8")
+
+				// Extract remote URL
+				const urlMatch = configContent.match(/url\s*=\s*(.+?)(?:\r?\n|$)/m)
+				if (urlMatch && urlMatch[1]) {
+					const url = urlMatch[1].trim()
+					// Normalize the URL to ensure consistency
+					const normalizedUrl = this.normalizeGitUrl(url)
+					return { repositoryUrl: normalizedUrl }
+				}
+			}
+		} catch (error) {
+			// Ignore errors and fall back to workspace-based naming
+			console.warn(`[QdrantVectorStore] Could not read git repository info:`, error)
+		}
+		return undefined
+	}
+
+	/**
+	 * Normalizes a git URL for consistent hashing
+	 * @param url Git URL to normalize
+	 * @returns Normalized URL
+	 */
+	private normalizeGitUrl(url: string): string {
+		// Remove credentials
+		let normalized = url.replace(/^https?:\/\/[^@]+@/, "https://")
+
+		// Convert SSH to HTTPS format for consistency
+		if (normalized.startsWith("git@")) {
+			normalized = normalized.replace(/^git@([^:]+):/, "https://$1/")
+		} else if (normalized.startsWith("ssh://")) {
+			normalized = normalized.replace(/^ssh:\/\/(?:git@)?([^\/]+)\//, "https://$1/")
+		}
+
+		// Remove .git suffix
+		normalized = normalized.replace(/\.git$/, "")
+
+		// Convert to lowercase for consistency
+		normalized = normalized.toLowerCase()
+
+		return normalized
+	}
+
+	/**
+	 * Sanitizes a collection name to ensure it's valid for Qdrant
+	 * @param name Collection name to sanitize
+	 * @returns Sanitized collection name
+	 */
+	private sanitizeCollectionName(name: string): string {
+		// Qdrant collection names must be alphanumeric with underscores or hyphens
+		// Max length is typically 255 characters
+		return name
+			.toLowerCase()
+			.replace(/[^a-z0-9_-]/g, "-")
+			.replace(/^-+|-+$/g, "") // Remove leading/trailing hyphens
+			.substring(0, 255)
 	}
 
 	/**
