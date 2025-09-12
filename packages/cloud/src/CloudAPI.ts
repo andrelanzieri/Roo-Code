@@ -111,6 +111,8 @@ export class CloudAPI {
 	async shareTask(taskId: string, visibility: ShareVisibility = "organization"): Promise<ShareResponse> {
 		this.log(`[CloudAPI] Sharing task ${taskId} with visibility: ${visibility}`)
 
+		// The server should validate that the authenticated user owns this task
+		// by checking the session token's user ID against the task's owner
 		const response = await this.request("/api/extension/share", {
 			method: "POST",
 			body: JSON.stringify({ taskId, visibility }),

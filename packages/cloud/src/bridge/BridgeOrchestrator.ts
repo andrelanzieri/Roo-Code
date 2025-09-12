@@ -191,6 +191,7 @@ export class BridgeOrchestrator {
 			instanceId: this.instanceId,
 			appProperties: this.appProperties,
 			gitProperties: this.gitProperties,
+			userId: this.userId,
 		})
 	}
 

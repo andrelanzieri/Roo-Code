@@ -403,4 +403,130 @@ describe("TaskChannel", () => {
 			errorSpy.mockRestore()
 		})
 	})
+
+	describe("User ID Validation", () => {
+		it("should include userId in JOIN payload when userId is provided", async () => {
+			const userId = "test-user-123"
+			const channelWithUserId = new TaskChannel({
+				instanceId,
+				appProperties,
+				userId,
+			})
+
+			// Mock the publish method to capture the payload
+			let capturedPayload: any = null
+			const channel = channelWithUserId as any
+			channel.publish = vi.fn((event: string, data: any, callback?: Function) => {
+				if (event === TaskSocketEvents.JOIN) {
+					capturedPayload = data
+					if (callback) {
+						callback({ success: true })
+					}
+				}
+				return true
+			})
+
+			await channelWithUserId.onConnect(mockSocket)
+			await channel.subscribeToTask(mockTask, mockSocket)
+
+			// Verify the JOIN payload includes userId
+			expect(capturedPayload).toEqual({
+				taskId,
+				userId,
+			})
+		})
+
+		it("should not include userId in JOIN payload when userId is not provided", async () => {
+			// Mock the publish method to capture the payload
+			let capturedPayload: any = null
+			const channel = taskChannel as any
+			channel.publish = vi.fn((event: string, data: any, callback?: Function) => {
+				if (event === TaskSocketEvents.JOIN) {
+					capturedPayload = data
+					if (callback) {
+						callback({ success: true })
+					}
+				}
+				return true
+			})
+
+			await taskChannel.onConnect(mockSocket)
+			await channel.subscribeToTask(mockTask, mockSocket)
+
+			// Verify the JOIN payload does not include userId
+			expect(capturedPayload).toEqual({
+				taskId,
+			})
+		})
+
+		it("should handle subscription failure when user is not authorized", async () => {
+			const userId = "unauthorized-user"
+			const channelWithUserId = new TaskChannel({
+				instanceId,
+				appProperties,
+				userId,
+			})
+
+			// Mock the publish method to simulate authorization failure
+			const channel = channelWithUserId as any
+			channel.publish = vi.fn((event: string, data: any, callback?: Function) => {
+				if (event === TaskSocketEvents.JOIN && callback) {
+					// Simulate authorization failure
+					callback({
+						success: false,
+						error: "User not authorized to access this task",
+					})
+				}
+				return true
+			})
+
+			const errorSpy = vi.spyOn(console, "error")
+
+			await channelWithUserId.onConnect(mockSocket)
+			await channel.subscribeToTask(mockTask, mockSocket)
+
+			// Verify error was logged
+			expect(errorSpy).toHaveBeenCalledWith(
+				`[TaskChannel#subscribeToTask] failed to subscribe to ${taskId}: User not authorized to access this task`,
+			)
+
+			// Verify task was not added to subscribedTasks
+			expect(channel.subscribedTasks.has(taskId)).toBe(false)
+
+			errorSpy.mockRestore()
+		})
+
+		it("should successfully subscribe when user is authorized", async () => {
+			const userId = "authorized-user"
+			const channelWithUserId = new TaskChannel({
+				instanceId,
+				appProperties,
+				userId,
+			})
+
+			// Mock the publish method to simulate successful authorization
+			const channel = channelWithUserId as any
+			channel.publish = vi.fn((event: string, data: any, callback?: Function) => {
+				if (event === TaskSocketEvents.JOIN && callback) {
+					// Simulate successful authorization
+					callback({ success: true })
+				}
+				return true
+			})
+
+			const logSpy = vi.spyOn(console, "log")
+
+			await channelWithUserId.onConnect(mockSocket)
+			await channel.subscribeToTask(mockTask, mockSocket)
+
+			// Verify success was logged
+			expect(logSpy).toHaveBeenCalledWith(`[TaskChannel#subscribeToTask] subscribed to ${taskId}`)
+
+			// Verify task was added to subscribedTasks
+			expect(channel.subscribedTasks.has(taskId)).toBe(true)
+			expect(channel.subscribedTasks.get(taskId)).toBe(mockTask)
+
+			logSpy.mockRestore()
+		})
+	})
 })

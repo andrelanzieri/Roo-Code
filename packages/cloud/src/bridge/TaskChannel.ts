@@ -26,8 +26,9 @@ type TaskEventMapping = {
 	createPayload: (task: TaskLike, ...args: any[]) => any // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface TaskChannelOptions extends BaseChannelOptions {}
+interface TaskChannelOptions extends BaseChannelOptions {
+	userId?: string
+}
 
 /**
  * Manages task-level communication channels.
@@ -41,6 +42,7 @@ export class TaskChannel extends BaseChannel<
 	private subscribedTasks: Map<string, TaskLike> = new Map()
 	private pendingTasks: Map<string, TaskLike> = new Map()
 	private taskListeners: Map<string, Map<TaskBridgeEventName, TaskEventListener>> = new Map()
+	private readonly userId?: string
 
 	private readonly eventMapping: readonly TaskEventMapping[] = [
 		{
@@ -74,6 +76,7 @@ export class TaskChannel extends BaseChannel<
 
 	constructor(options: TaskChannelOptions) {
 		super(options)
+		this.userId = options.userId
 	}
 
 	protected async handleCommandImplementation(command: TaskBridgeCommand): Promise<void> {
@@ -160,7 +163,10 @@ export class TaskChannel extends BaseChannel<
 	public async subscribeToTask(task: TaskLike, _socket: Socket): Promise<void> {
 		const taskId = task.taskId
 
-		await this.publish(TaskSocketEvents.JOIN, { taskId }, (response: JoinResponse) => {
+		// Include userId in the join request for server-side validation
+		const joinPayload = this.userId ? { taskId, userId: this.userId } : { taskId }
+
+		await this.publish(TaskSocketEvents.JOIN, joinPayload, (response: JoinResponse) => {
 			if (response.success) {
 				console.log(`[TaskChannel#subscribeToTask] subscribed to ${taskId}`)
 				this.subscribedTasks.set(taskId, task)
