@@ -159,17 +159,27 @@ export async function truncateConversationIfNeeded({
 			if (result.error) {
 				error = result.error
 				cost = result.cost
+				// If summarization failed but we still need to reduce context,
+				// fall back to sliding window truncation
+				if (prevContextTokens > allowedTokens) {
+					const truncatedMessages = truncateConversation(messages, 0.5, taskId)
+					return { messages: truncatedMessages, prevContextTokens, summary: "", cost, error }
+				}
 			} else {
 				return { ...result, prevContextTokens }
 			}
 		}
+	} else {
+		// When auto-condense is disabled, only perform sliding window truncation
+		// if we absolutely must (i.e., exceeding hard token limit)
+		// This is a forced truncation scenario (e.g., context window exceeded error)
+		if (prevContextTokens > allowedTokens) {
+			// Use sliding window truncation instead of condensing
+			const truncatedMessages = truncateConversation(messages, 0.5, taskId)
+			return { messages: truncatedMessages, prevContextTokens, summary: "", cost, error }
+		}
 	}
 
-	// Fall back to sliding window truncation if needed
-	if (prevContextTokens > allowedTokens) {
-		const truncatedMessages = truncateConversation(messages, 0.5, taskId)
-		return { messages: truncatedMessages, prevContextTokens, summary: "", cost, error }
-	}
 	// No truncation or condensation needed
 	return { messages, summary: "", cost, prevContextTokens, error }
 }

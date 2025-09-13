@@ -2438,7 +2438,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	private async handleContextWindowExceededError(): Promise<void> {
 		const state = await this.providerRef.deref()?.getState()
-		const { profileThresholds = {} } = state ?? {}
+		const { profileThresholds = {}, autoCondenseContext = true } = state ?? {}
 
 		const { contextTokens } = this.getTokenUsage()
 		const modelInfo = this.api.getModel().info
@@ -2461,14 +2461,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				`Forcing truncation to ${FORCED_CONTEXT_REDUCTION_PERCENT}% of current context.`,
 		)
 
-		// Force aggressive truncation by keeping only 75% of the conversation history
+		// When context window is exceeded, we must reduce context size
+		// If auto-condense is enabled, use intelligent condensing
+		// If auto-condense is disabled, use sliding window truncation
 		const truncateResult = await truncateConversationIfNeeded({
 			messages: this.apiConversationHistory,
 			totalTokens: contextTokens || 0,
 			maxTokens,
 			contextWindow,
 			apiHandler: this.api,
-			autoCondenseContext: true,
+			autoCondenseContext: autoCondenseContext, // Respect user's setting
 			autoCondenseContextPercent: FORCED_CONTEXT_REDUCTION_PERCENT,
 			systemPrompt: await this.getSystemPrompt(),
 			taskId: this.taskId,
