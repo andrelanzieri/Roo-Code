@@ -74,9 +74,12 @@ export async function getQueuePosition(runId: number): Promise<number | null> {
 
 	// Find position (1-based)
 	for (let i = 0; i < items.length; i++) {
-		const queuedRun: QueuedRun = JSON.parse(items[i])
-		if (queuedRun.runId === runId) {
-			return i + 1
+		const item = items[i]
+		if (item) {
+			const queuedRun: QueuedRun = JSON.parse(item)
+			if (queuedRun.runId === runId) {
+				return i + 1
+			}
 		}
 	}
 
