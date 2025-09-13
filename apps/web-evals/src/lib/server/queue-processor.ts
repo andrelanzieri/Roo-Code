@@ -11,6 +11,7 @@ import {
 	releaseQueueLock,
 	getActiveRun,
 	getQueuedRuns,
+	dequeueRun,
 } from "./queue"
 
 const POLL_INTERVAL = 5000 // 5 seconds
@@ -215,6 +216,3 @@ export async function cancelQueuedRun(runId: number): Promise<boolean> {
 
 	return removed
 }
-
-// Import dequeueRun from queue module
-import { dequeueRun } from "./queue"
