@@ -580,14 +580,24 @@ export const webviewMessageHandler = async (
 		case "askResponse":
 			provider.getCurrentTask()?.handleWebviewAskResponse(message.askResponse!, message.text, message.images)
 			break
-		case "autoCondenseContext":
-			await updateGlobalState("autoCondenseContext", message.bool)
-			await provider.postStateToWebview()
+		case "autoCondenseContext": {
+			const currentValue = getGlobalState("autoCondenseContext")
+			// Only update if the value has actually changed
+			if (currentValue !== message.bool) {
+				await updateGlobalState("autoCondenseContext", message.bool)
+				await provider.postStateToWebview()
+			}
 			break
-		case "autoCondenseContextPercent":
-			await updateGlobalState("autoCondenseContextPercent", message.value)
-			await provider.postStateToWebview()
+		}
+		case "autoCondenseContextPercent": {
+			const currentValue = getGlobalState("autoCondenseContextPercent")
+			// Only update if the value has actually changed
+			if (currentValue !== message.value) {
+				await updateGlobalState("autoCondenseContextPercent", message.value)
+				await provider.postStateToWebview()
+			}
 			break
+		}
 		case "terminalOperation":
 			if (message.terminalOperation) {
 				provider.getCurrentTask()?.handleTerminalOperation(message.terminalOperation)
