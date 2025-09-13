@@ -1,10 +1,10 @@
 import { useCallback, useState, useRef } from "react"
 import Link from "next/link"
-import { Ellipsis, ClipboardList, Copy, Check, LoaderCircle, Trash } from "lucide-react"
+import { Ellipsis, ClipboardList, Copy, Check, LoaderCircle, Trash, Clock, Play, X } from "lucide-react"
 
 import type { Run as EvalsRun, TaskMetrics as EvalsTaskMetrics } from "@roo-code/evals"
 
-import { deleteRun } from "@/actions/runs"
+import { deleteRun, cancelRun } from "@/actions/runs"
 import { formatCurrency, formatDuration, formatTokens, formatToolUsageSuccessRate } from "@/lib/formatters"
 import { useCopyRun } from "@/hooks/use-copy-run"
 import {
@@ -23,16 +23,19 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
+	Badge,
 } from "@/components/ui"
 
 type RunProps = {
-	run: EvalsRun
+	run: EvalsRun & { status?: string; queuePosition?: number | null }
 	taskMetrics: EvalsTaskMetrics | null
 }
 
 export function Run({ run, taskMetrics }: RunProps) {
 	const [deleteRunId, setDeleteRunId] = useState<number>()
+	const [cancelRunId, setCancelRunId] = useState<number>()
 	const continueRef = useRef<HTMLButtonElement>(null)
+	const cancelRef = useRef<HTMLButtonElement>(null)
 	const { isPending, copyRun, copied } = useCopyRun(run.id)
 
 	const onConfirmDelete = useCallback(async () => {
@@ -48,16 +51,62 @@ export function Run({ run, taskMetrics }: RunProps) {
 		}
 	}, [deleteRunId])
 
+	const onConfirmCancel = useCallback(async () => {
+		if (!cancelRunId) {
+			return
+		}
+
+		try {
+			await cancelRun(cancelRunId)
+			setCancelRunId(undefined)
+		} catch (error) {
+			console.error(error)
+		}
+	}, [cancelRunId])
+
+	const getStatusBadge = () => {
+		if (run.status === "queued") {
+			return (
+				<Badge variant="secondary" className="gap-1">
+					<Clock className="h-3 w-3" />
+					Queued {run.queuePosition ? `#${run.queuePosition}` : ""}
+				</Badge>
+			)
+		} else if (run.status === "running") {
+			return (
+				<Badge variant="default" className="gap-1">
+					<Play className="h-3 w-3" />
+					Running
+				</Badge>
+			)
+		} else if (run.status === "cancelled") {
+			return (
+				<Badge variant="destructive" className="gap-1">
+					<X className="h-3 w-3" />
+					Cancelled
+				</Badge>
+			)
+		}
+		return null
+	}
+
 	return (
 		<>
 			<TableRow>
-				<TableCell>{run.model}</TableCell>
-				<TableCell>{run.passed}</TableCell>
-				<TableCell>{run.failed}</TableCell>
 				<TableCell>
-					{run.passed + run.failed > 0 && (
-						<span>{((run.passed / (run.passed + run.failed)) * 100).toFixed(1)}%</span>
-					)}
+					<div className="flex items-center gap-2">
+						{run.model}
+						{getStatusBadge()}
+					</div>
+				</TableCell>
+				<TableCell>{run.status === "completed" || run.status === "failed" ? run.passed : "-"}</TableCell>
+				<TableCell>{run.status === "completed" || run.status === "failed" ? run.failed : "-"}</TableCell>
+				<TableCell>
+					{run.status === "completed" || run.status === "failed"
+						? run.passed + run.failed > 0 && (
+								<span>{((run.passed / (run.passed + run.failed)) * 100).toFixed(1)}%</span>
+							)
+						: "-"}
 				</TableCell>
 				<TableCell>
 					{taskMetrics && (
@@ -116,6 +165,18 @@ export function Run({ run, taskMetrics }: RunProps) {
 									</div>
 								</DropdownMenuItem>
 							)}
+							{run.status === "queued" && (
+								<DropdownMenuItem
+									onClick={() => {
+										setCancelRunId(run.id)
+										setTimeout(() => cancelRef.current?.focus(), 0)
+									}}>
+									<div className="flex items-center gap-1">
+										<X />
+										<div>Cancel</div>
+									</div>
+								</DropdownMenuItem>
+							)}
 							<DropdownMenuItem
 								onClick={() => {
 									setDeleteRunId(run.id)
@@ -140,6 +201,22 @@ export function Run({ run, taskMetrics }: RunProps) {
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction ref={continueRef} onClick={onConfirmDelete}>
 							Continue
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+			<AlertDialog open={!!cancelRunId} onOpenChange={() => setCancelRunId(undefined)}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Cancel queued run?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This will remove the run from the queue. The run will not be executed.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Keep in Queue</AlertDialogCancel>
+						<AlertDialogAction ref={cancelRef} onClick={onConfirmCancel}>
+							Cancel Run
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

@@ -27,6 +27,8 @@ export const runs = pgTable("runs", {
 	timeout: integer().default(5).notNull(),
 	passed: integer().default(0).notNull(),
 	failed: integer().default(0).notNull(),
+	status: text().default("queued").notNull(), // 'queued', 'running', 'completed', 'failed'
+	queuePosition: integer("queue_position"),
 	createdAt: timestamp("created_at").notNull(),
 })
 
