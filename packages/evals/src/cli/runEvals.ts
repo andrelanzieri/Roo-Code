@@ -6,6 +6,7 @@ import { EVALS_REPO_PATH } from "../exercises/index.js"
 import { Logger, getTag, isDockerContainer, resetEvalsRepo, commitEvalsRepoChanges } from "./utils.js"
 import { startHeartbeat, stopHeartbeat } from "./redis.js"
 import { processTask, processTaskInContainer } from "./runTask.js"
+import { finishActiveRunAndDispatch } from "./queue.js"
 
 export const runEvals = async (runId: number) => {
 	const run = await findRun(runId)
@@ -67,6 +68,7 @@ export const runEvals = async (runId: number) => {
 	} finally {
 		logger.info("cleaning up")
 		stopHeartbeat(run.id, heartbeat)
+		await finishActiveRunAndDispatch()
 		logger.close()
 	}
 }

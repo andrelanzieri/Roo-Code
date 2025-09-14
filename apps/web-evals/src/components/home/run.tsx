@@ -1,10 +1,13 @@
 import { useCallback, useState, useRef } from "react"
 import Link from "next/link"
-import { Ellipsis, ClipboardList, Copy, Check, LoaderCircle, Trash } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { Ellipsis, ClipboardList, Copy, Check, LoaderCircle, Trash, XCircle } from "lucide-react"
 
 import type { Run as EvalsRun, TaskMetrics as EvalsTaskMetrics } from "@roo-code/evals"
 
 import { deleteRun } from "@/actions/runs"
+import { getHeartbeat } from "@/actions/heartbeat"
+import { getQueuePosition, cancelQueuedRun } from "@/actions/queue"
 import { formatCurrency, formatDuration, formatTokens, formatToolUsageSuccessRate } from "@/lib/formatters"
 import { useCopyRun } from "@/hooks/use-copy-run"
 import {
@@ -35,6 +38,23 @@ export function Run({ run, taskMetrics }: RunProps) {
 	const continueRef = useRef<HTMLButtonElement>(null)
 	const { isPending, copyRun, copied } = useCopyRun(run.id)
 
+	// Poll heartbeat and queue position for status column
+	const { data: heartbeat } = useQuery({
+		queryKey: ["getHeartbeat", run.id],
+		queryFn: () => getHeartbeat(run.id),
+		refetchInterval: 10_000,
+	})
+
+	const { data: queuePosition } = useQuery({
+		queryKey: ["getQueuePosition", run.id],
+		queryFn: () => getQueuePosition(run.id),
+		refetchInterval: 10_000,
+	})
+
+	const isCompleted = !!run.taskMetricsId
+	const isRunning = !!heartbeat
+	const isQueued = !isCompleted && !isRunning && queuePosition !== null && queuePosition !== undefined
+
 	const onConfirmDelete = useCallback(async () => {
 		if (!deleteRunId) {
 			return
@@ -51,6 +71,9 @@ export function Run({ run, taskMetrics }: RunProps) {
 	return (
 		<>
 			<TableRow>
+				<TableCell>
+					{isCompleted ? "Completed" : isRunning ? "Running" : isQueued ? <>Queued (#{queuePosition})</> : ""}
+				</TableCell>
 				<TableCell>{run.model}</TableCell>
 				<TableCell>{run.passed}</TableCell>
 				<TableCell>{run.failed}</TableCell>
@@ -113,6 +136,21 @@ export function Run({ run, taskMetrics }: RunProps) {
 												Copy to Production
 											</>
 										)}
+									</div>
+								</DropdownMenuItem>
+							)}
+							{isQueued && (
+								<DropdownMenuItem
+									onClick={async () => {
+										try {
+											await cancelQueuedRun(run.id)
+										} catch (error) {
+											console.error(error)
+										}
+									}}>
+									<div className="flex items-center gap-1">
+										<XCircle />
+										<div>Cancel</div>
 									</div>
 								</DropdownMenuItem>
 							)}

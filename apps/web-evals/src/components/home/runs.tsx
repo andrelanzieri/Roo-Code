@@ -18,6 +18,7 @@ export function Runs({ runs }: { runs: RunWithTaskMetrics[] }) {
 			<Table className="border border-t-0">
 				<TableHeader>
 					<TableRow>
+						<TableHead>Status</TableHead>
 						<TableHead>Model</TableHead>
 						<TableHead>Passed</TableHead>
 						<TableHead>Failed</TableHead>
@@ -34,7 +35,7 @@ export function Runs({ runs }: { runs: RunWithTaskMetrics[] }) {
 						runs.map(({ taskMetrics, ...run }) => <Row key={run.id} run={run} taskMetrics={taskMetrics} />)
 					) : (
 						<TableRow>
-							<TableCell colSpan={9} className="text-center">
+							<TableCell colSpan={10} className="text-center">
 								No eval runs yet.
 								<Button variant="link" onClick={() => router.push("/runs/new")}>
 									Launch

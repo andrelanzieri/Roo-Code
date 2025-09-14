@@ -1,9 +1,9 @@
 "use server"
 
 import * as path from "path"
-import fs from "fs"
 import { fileURLToPath } from "url"
-import { spawn } from "child_process"
+
+import { enqueueRun, dispatchNextRun } from "@/actions/queue"
 
 import { revalidatePath } from "next/cache"
 import pMap from "p-map"
@@ -52,41 +52,9 @@ export async function createRun({ suite, exercises = [], systemPrompt, timeout, 
 	revalidatePath("/runs")
 
 	try {
-		const isRunningInDocker = fs.existsSync("/.dockerenv")
-
-		const dockerArgs = [
-			`--name evals-controller-${run.id}`,
-			"--rm",
-			"--network evals_default",
-			"-v /var/run/docker.sock:/var/run/docker.sock",
-			"-v /tmp/evals:/var/log/evals",
-			"-e HOST_EXECUTION_METHOD=docker",
-		]
-
-		const cliCommand = `pnpm --filter @roo-code/evals cli --runId ${run.id}`
-
-		const command = isRunningInDocker
-			? `docker run ${dockerArgs.join(" ")} evals-runner sh -c "${cliCommand}"`
-			: cliCommand
-
-		console.log("spawn ->", command)
-
-		const childProcess = spawn("sh", ["-c", command], {
-			detached: true,
-			stdio: ["ignore", "pipe", "pipe"],
-		})
-
-		const logStream = fs.createWriteStream("/tmp/roo-code-evals.log", { flags: "a" })
-
-		if (childProcess.stdout) {
-			childProcess.stdout.pipe(logStream)
-		}
-
-		if (childProcess.stderr) {
-			childProcess.stderr.pipe(logStream)
-		}
-
-		childProcess.unref()
+		// Enqueue the run and attempt to dispatch if no active run exists.
+		await enqueueRun(run.id)
+		await dispatchNextRun()
 	} catch (error) {
 		console.error(error)
 	}
