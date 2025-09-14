@@ -1,0 +1,29 @@
+# IDA Pro MCP Marketplace Submission
+# This file contains the marketplace entry for the IDA Pro MCP server
+# Format matches the structure used in https://app.roocode.com/api/marketplace/mcps
+
+- id: 'ida-pro'
+  name: 'IDA Pro'
+  description: 'MCP Server for IDA Pro that enables advanced reverse engineering capabilities through LLM integration. Provides decompilation, disassembly, function analysis, cross-references, debugging, and code annotation features for binary analysis.'
+  author: 'mrexodia'
+  url: 'https://github.com/mrexodia/ida-pro-mcp'
+  tags:
+    - 'reverse-engineering'
+    - 'ida-pro'
+    - 'disassembly'
+    - 'decompilation'
+    - 'binary-analysis'
+    - 'debugging'
+    - 'security'
+    - 'malware-analysis'
+  prerequisites:
+    - 'Python 3.11 or higher'
+    - 'IDA Pro 8.3 or higher (IDA Free not supported)'
+    - 'ida-pro-mcp Python package installed'
+  content: |
+    {
+      "command": "ida-pro-mcp",
+      "args": ["--unsafe"],
+      "env": {}
+    }
+  parameters: []
