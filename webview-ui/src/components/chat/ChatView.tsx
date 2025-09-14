@@ -188,6 +188,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const prevExpandedRowsRef = useRef<Record<number, boolean>>()
 	const scrollContainerRef = useRef<HTMLDivElement>(null)
 	const disableAutoScrollRef = useRef(false)
+	const userHasScrolledUpRef = useRef(false)
 	const [showScrollToBottom, setShowScrollToBottom] = useState(false)
 	const [isAtBottom, setIsAtBottom] = useState(false)
 	const lastTtsRef = useRef<string>("")
@@ -477,6 +478,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 		// Reset user response flag for new task
 		userRespondedRef.current = false
+		// Reset scroll state for new task
+		disableAutoScrollRef.current = false
+		userHasScrolledUpRef.current = false
 	}, [task?.ts])
 
 	useEffect(() => {
@@ -508,6 +512,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 		if (wasAnyRowExpandedByUser) {
 			disableAutoScrollRef.current = true
+			userHasScrolledUpRef.current = true
 		}
 		prevExpandedRowsRef.current = expandedRows // Store current state for next comparison
 	}, [expandedRows])
@@ -582,6 +587,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		// setPrimaryButtonText(undefined)
 		// setSecondaryButtonText(undefined)
 		disableAutoScrollRef.current = false
+		userHasScrolledUpRef.current = false
 	}, [])
 
 	/**
@@ -1407,16 +1413,25 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		}
 	}, [groupedMessages.length, scrollToBottomSmooth])
 
-	const handleWheel = useCallback((event: Event) => {
-		const wheelEvent = event as WheelEvent
+	const handleWheel = useCallback(
+		(event: Event) => {
+			const wheelEvent = event as WheelEvent
 
-		if (wheelEvent.deltaY && wheelEvent.deltaY < 0) {
 			if (scrollContainerRef.current?.contains(wheelEvent.target as Node)) {
-				// User scrolled up
-				disableAutoScrollRef.current = true
+				if (wheelEvent.deltaY < 0) {
+					// User scrolled up - disable auto-scroll and mark that user has scrolled up
+					disableAutoScrollRef.current = true
+					userHasScrolledUpRef.current = true
+				} else if (wheelEvent.deltaY > 0 && isAtBottom) {
+					// User scrolled down while at bottom - re-enable auto-scroll
+					// This indicates intentional scrolling to bottom to resume following output
+					disableAutoScrollRef.current = false
+					userHasScrolledUpRef.current = false
+				}
 			}
-		}
-	}, [])
+		},
+		[isAtBottom],
+	)
 
 	useEvent("wheel", handleWheel, window, { passive: true }) // passive improves scrolling performance
 
@@ -1880,7 +1895,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							itemContent={itemContent}
 							atBottomStateChange={(isAtBottom: boolean) => {
 								setIsAtBottom(isAtBottom)
-								if (isAtBottom) {
+								// Only re-enable auto-scroll if user hasn't manually scrolled up
+								// When user manually scrolls to bottom, the wheel handler will re-enable it
+								if (isAtBottom && !userHasScrolledUpRef.current) {
 									disableAutoScrollRef.current = false
 								}
 								setShowScrollToBottom(disableAutoScrollRef.current && !isAtBottom)
@@ -1905,7 +1922,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 										className="flex-[2]"
 										onClick={() => {
 											scrollToBottomSmooth()
+											// User explicitly clicked to scroll to bottom - re-enable auto-scroll
 											disableAutoScrollRef.current = false
+											userHasScrolledUpRef.current = false
 										}}>
 										<span className="codicon codicon-chevron-down"></span>
 									</VSCodeButton>
