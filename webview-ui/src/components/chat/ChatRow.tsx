@@ -125,6 +125,7 @@ export const ChatRowContent = ({
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
 	const [editImages, setEditImages] = useState<string[]>([])
 	const { copyWithFeedback } = useCopyToClipboard()
+	const userEditRef = useRef<HTMLDivElement>(null)
 
 	// Handle message events for image selection during edit mode
 	useEffect(() => {
@@ -350,6 +351,22 @@ export const ChatRowContent = ({
 		}
 		return null
 	}, [message.type, message.ask, message.partial, message.text])
+
+	// Scroll to user edits when they appear
+	useEffect(() => {
+		if (message.say === "user_feedback_diff" && userEditRef.current) {
+			const tool = safeJsonParse<ClineSayTool>(message.text)
+			if (tool?.diff) {
+				// Use a small delay to ensure the element is rendered
+				setTimeout(() => {
+					userEditRef.current?.scrollIntoView({
+						behavior: "smooth",
+						block: "center",
+					})
+				}, 100)
+			}
+		}
+	}, [message.say, message.text])
 
 	if (tool) {
 		const toolIcon = (name: string) => (
@@ -1241,7 +1258,7 @@ export const ChatRowContent = ({
 				case "user_feedback_diff":
 					const tool = safeJsonParse<ClineSayTool>(message.text)
 					return (
-						<div style={{ marginTop: -10, width: "100%" }}>
+						<div ref={userEditRef} style={{ marginTop: -10, width: "100%" }}>
 							<CodeAccordian
 								code={tool?.diff}
 								language="diff"
