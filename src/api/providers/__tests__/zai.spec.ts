@@ -44,6 +44,13 @@ describe("ZAiHandler", () => {
 			expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({ baseURL: "https://api.z.ai/api/paas/v4" }))
 		})
 
+		it("should use the international GLM Coding Plan URL when toggle is enabled", () => {
+			new ZAiHandler({ zaiApiKey: "test-zai-api-key", zaiApiLine: "international", zaiUseGlmCodingPlan: true })
+			expect(OpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({ baseURL: "https://api.z.ai/api/coding/paas/v4" }),
+			)
+		})
+
 		it("should use the provided API key for international", () => {
 			const zaiApiKey = "test-zai-api-key"
 			new ZAiHandler({ zaiApiKey, zaiApiLine: "international" })
@@ -78,6 +85,13 @@ describe("ZAiHandler", () => {
 			new ZAiHandler({ zaiApiKey: "test-zai-api-key", zaiApiLine: "china" })
 			expect(OpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({ baseURL: "https://open.bigmodel.cn/api/paas/v4" }),
+			)
+		})
+
+		it("should use the China GLM Coding Plan URL when toggle is enabled", () => {
+			new ZAiHandler({ zaiApiKey: "test-zai-api-key", zaiApiLine: "china", zaiUseGlmCodingPlan: true })
+			expect(OpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({ baseURL: "https://open.bigmodel.cn/api/coding/paas/v4" }),
 			)
 		})
 
@@ -119,6 +133,16 @@ describe("ZAiHandler", () => {
 		it("should use 'not-provided' as default API key when none is specified", () => {
 			new ZAiHandler({ zaiApiLine: "international" })
 			expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: "not-provided" }))
+		})
+
+		it("should use standard URL when GLM Coding Plan toggle is false", () => {
+			new ZAiHandler({ zaiApiKey: "test-zai-api-key", zaiApiLine: "international", zaiUseGlmCodingPlan: false })
+			expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({ baseURL: "https://api.z.ai/api/paas/v4" }))
+		})
+
+		it("should use standard URL when GLM Coding Plan toggle is undefined", () => {
+			new ZAiHandler({ zaiApiKey: "test-zai-api-key", zaiApiLine: "international" })
+			expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({ baseURL: "https://api.z.ai/api/paas/v4" }))
 		})
 	})
 

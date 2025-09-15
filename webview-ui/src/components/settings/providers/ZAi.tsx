@@ -1,5 +1,5 @@
 import { useCallback } from "react"
-import { VSCodeTextField, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField, VSCodeDropdown, VSCodeOption, VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 
 import type { ProviderSettings } from "@roo-code/types"
 
@@ -70,6 +70,16 @@ export const ZAi = ({ apiConfiguration, setApiConfigurationField }: ZAiProps) =>
 						{t("settings:providers.getZaiApiKey")}
 					</VSCodeButtonLink>
 				)}
+			</div>
+			<div>
+				<VSCodeCheckbox
+					checked={apiConfiguration?.zaiUseGlmCodingPlan || false}
+					onChange={(e: any) => setApiConfigurationField("zaiUseGlmCodingPlan", e.target.checked)}>
+					{t("settings:providers.zaiUseGlmCodingPlan")}
+				</VSCodeCheckbox>
+				<div className="text-xs text-vscode-descriptionForeground mt-1">
+					{t("settings:providers.zaiUseGlmCodingPlanDescription")}
+				</div>
 			</div>
 		</>
 	)

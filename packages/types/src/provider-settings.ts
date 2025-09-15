@@ -311,6 +311,7 @@ const sambaNovaSchema = apiModelIdProviderModelSchema.extend({
 const zaiSchema = apiModelIdProviderModelSchema.extend({
 	zaiApiKey: z.string().optional(),
 	zaiApiLine: z.union([z.literal("china"), z.literal("international")]).optional(),
+	zaiUseGlmCodingPlan: z.boolean().optional(),
 })
 
 const fireworksSchema = apiModelIdProviderModelSchema.extend({
