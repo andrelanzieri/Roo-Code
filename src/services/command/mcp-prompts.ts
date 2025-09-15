@@ -146,8 +146,13 @@ export function parsePromptArguments(prompt: McpPrompt, argsString: string): Rec
 		return {}
 	}
 
+	const trimmedArgs = argsString.trim()
+	if (trimmedArgs.length === 0) {
+		return {}
+	}
+
 	const args: Record<string, unknown> = {}
-	const parts = argsString.trim().split(/\s+/)
+	const parts = trimmedArgs.split(/\s+/)
 
 	// Simple positional argument parsing
 	// In a more sophisticated implementation, we could support named arguments
