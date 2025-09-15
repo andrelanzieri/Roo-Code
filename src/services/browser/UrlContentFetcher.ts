@@ -58,10 +58,20 @@ export class UrlContentFetcher {
 			"--disable-gpu",
 			"--disable-features=VizDisplayCompositor",
 		]
-		if (process.platform === "linux") {
-			// Fixes network errors on Linux hosts (see https://github.com/puppeteer/puppeteer/issues/8246)
-			args.push("--no-sandbox")
+
+		// Add sandbox flags for container environments (Codespaces, Docker, Linux)
+		if (process.platform === "linux" || process.env.CODESPACES === "true" || process.env.CONTAINER === "true") {
+			// Fixes network errors on Linux hosts and container environments
+			// See https://github.com/puppeteer/puppeteer/issues/8246
+			args.push(
+				"--no-sandbox",
+				"--disable-setuid-sandbox",
+				"--disable-web-security",
+				"--disable-features=IsolateOrigins,site-per-process",
+			)
+			console.log("Running in container/Linux environment, adding sandbox flags for UrlContentFetcher")
 		}
+
 		this.browser = await stats.puppeteer.launch({
 			args,
 			executablePath: stats.executablePath,

@@ -66,10 +66,27 @@ export class BrowserSession {
 	private async launchLocalBrowser(): Promise<void> {
 		console.log("Launching local browser")
 		const stats = await this.ensureChromiumExists()
+
+		// Prepare browser launch arguments
+		const args = [
+			"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+		]
+
+		// Add sandbox flags for container environments (Codespaces, Docker, etc.)
+		if (process.env.CODESPACES === "true" || process.env.CONTAINER === "true" || process.platform === "linux") {
+			args.push(
+				"--no-sandbox",
+				"--disable-setuid-sandbox",
+				"--disable-dev-shm-usage",
+				"--disable-gpu",
+				"--disable-web-security",
+				"--disable-features=IsolateOrigins,site-per-process",
+			)
+			console.log("Running in container/Linux environment, adding sandbox flags")
+		}
+
 		this.browser = await stats.puppeteer.launch({
-			args: [
-				"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-			],
+			args,
 			executablePath: stats.executablePath,
 			defaultViewport: this.getViewport(),
 			// headless: false,
