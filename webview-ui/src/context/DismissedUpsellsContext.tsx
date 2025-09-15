@@ -23,7 +23,7 @@ interface DismissedUpsellsProviderProps {
 
 export const DismissedUpsellsProvider: React.FC<DismissedUpsellsProviderProps> = ({ children }) => {
 	const [dismissedUpsells, setDismissedUpsells] = useState<string[]>([])
-	const [isLoading, setIsLoading] = useState(true)
+	const [isLoading, setIsLoading] = useState(false)
 
 	// Request dismissed upsells from extension
 	const refreshDismissedUpsells = useCallback(() => {

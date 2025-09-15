@@ -59,7 +59,7 @@ import { Cloud } from "lucide-react"
 import { CloudUpsellDialog } from "@src/components/cloud/CloudUpsellDialog"
 import DismissibleUpsell from "../common/DismissibleUpsell"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
-import { useUpsellVisibility, UPSELL_IDS } from "@/hooks/useUpsellVisibility"
+import { useUpsellVisibility, UPSELL_IDS } from "@src/hooks/useUpsellVisibility"
 
 export interface ChatViewProps {
 	isHidden: boolean
