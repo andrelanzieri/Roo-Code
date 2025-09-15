@@ -184,6 +184,9 @@ describe("UrlContentFetcher", () => {
 						"--disable-gpu",
 						"--disable-features=VizDisplayCompositor",
 						"--no-sandbox", // Linux-specific argument
+						"--disable-setuid-sandbox",
+						"--disable-web-security",
+						"--disable-features=IsolateOrigins,site-per-process",
 					],
 					executablePath: "/path/to/chromium",
 				})
