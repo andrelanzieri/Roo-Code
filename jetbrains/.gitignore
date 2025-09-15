@@ -1,0 +1,23 @@
+# Build output
+dist/
+RunVSAgent-RooCode.zip
+
+# RunVSAgent build artifacts (in submodule)
+RunVSAgent/jetbrains_plugin/build/
+RunVSAgent/jetbrains_plugin/.gradle/
+RunVSAgent/extension_host/dist/
+RunVSAgent/extension_host/node_modules/
+RunVSAgent/deps/roo-code/bin/
+RunVSAgent/deps/roo-code/node_modules/
+RunVSAgent/jetbrains_plugin/prodDep.txt
+RunVSAgent/jetbrains_plugin/src/main/resources/com/sina/weibo/agent/plugin/config/plugin.properties
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Temp files
+RunVSAgent/tmp/
+RunVSAgent/build/

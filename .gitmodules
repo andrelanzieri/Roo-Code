@@ -1,0 +1,3 @@
+[submodule "jetbrains/RunVSAgent"]
+	path = jetbrains/RunVSAgent
+	url = https://github.com/wecode-ai/RunVSAgent.git
