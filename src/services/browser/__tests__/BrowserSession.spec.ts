@@ -9,6 +9,19 @@ vi.mock("vscode", () => ({
 	Uri: {
 		file: vi.fn((path) => ({ fsPath: path })),
 	},
+	window: {
+		showErrorMessage: vi.fn(),
+		showInformationMessage: vi.fn(),
+		withProgress: vi.fn((options, task) => task({ report: vi.fn() })),
+	},
+	workspace: {
+		getConfiguration: vi.fn(() => ({
+			get: vi.fn((key, defaultValue) => defaultValue),
+		})),
+	},
+	ProgressLocation: {
+		Notification: 15,
+	},
 }))
 
 // Mock puppeteer-core
@@ -69,6 +82,27 @@ vi.mock("../browserDiscovery", () => ({
 	tryChromeHostUrl: vi.fn().mockResolvedValue(false),
 }))
 
+// Mock browserEnvironment
+vi.mock("../browserEnvironment", () => ({
+	detectEnvironment: vi.fn().mockResolvedValue({
+		isCodespaces: false,
+		isContainer: false,
+		isLinux: false,
+		hasDocker: false,
+		hasSystemChrome: false,
+		missingDependencies: [],
+	}),
+	installChromeDependencies: vi.fn().mockResolvedValue(true),
+	getSystemChromePath: vi.fn().mockResolvedValue(null),
+	getDockerBrowserConfig: vi.fn().mockReturnValue({
+		enabled: false,
+		image: "browserless/chrome:latest",
+		autoStart: true,
+	}),
+	startDockerBrowser: vi.fn().mockResolvedValue(null),
+	stopDockerBrowser: vi.fn().mockResolvedValue(undefined),
+}))
+
 // Mock delay
 vi.mock("delay", () => ({
 	default: vi.fn().mockResolvedValue(undefined),
@@ -83,8 +117,28 @@ describe("BrowserSession", () => {
 	let browserSession: BrowserSession
 	let mockContext: any
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks()
+
+		// Import and clear mocks for browserEnvironment
+		const browserEnv = await import("../browserEnvironment")
+		vi.mocked(browserEnv.detectEnvironment).mockResolvedValue({
+			isCodespaces: false,
+			isContainer: false,
+			isLinux: false,
+			hasDocker: false,
+			hasSystemChrome: false,
+			missingDependencies: [],
+		})
+		vi.mocked(browserEnv.installChromeDependencies).mockResolvedValue(true)
+		vi.mocked(browserEnv.getSystemChromePath).mockResolvedValue(null)
+		vi.mocked(browserEnv.getDockerBrowserConfig).mockReturnValue({
+			enabled: false,
+			image: "browserless/chrome:latest",
+			autoStart: true,
+		})
+		vi.mocked(browserEnv.startDockerBrowser).mockResolvedValue(null)
+		vi.mocked(browserEnv.stopDockerBrowser).mockResolvedValue(undefined)
 
 		// Set up mock context
 		mockContext = {

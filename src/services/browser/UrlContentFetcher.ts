@@ -8,6 +8,7 @@ import TurndownService from "turndown"
 import PCR from "puppeteer-chromium-resolver"
 import { fileExistsAtPath } from "../../utils/fs"
 import { serializeError } from "serialize-error"
+import { detectEnvironment, installChromeDependencies, getSystemChromePath } from "./browserEnvironment"
 
 // Timeout constants
 const URL_FETCH_TIMEOUT = 30_000 // 30 seconds
@@ -49,7 +50,35 @@ export class UrlContentFetcher {
 		if (this.browser) {
 			return
 		}
-		const stats = await this.ensureChromiumExists()
+
+		// Detect environment and check for missing dependencies
+		const env = await detectEnvironment()
+
+		// In Codespaces or containers, try to install dependencies automatically
+		if ((env.isCodespaces || env.isContainer) && env.missingDependencies.length > 0) {
+			console.log("Detected missing Chrome dependencies, attempting automatic installation...")
+			const installed = await installChromeDependencies(this.context)
+			if (!installed) {
+				throw new Error(
+					"Chrome dependencies are missing. Please install them manually:\n" +
+						"sudo apt-get update && sudo apt-get install -y libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2",
+				)
+			}
+		}
+
+		// Try to use system Chrome if available
+		const systemChromePath = await getSystemChromePath()
+		let executablePath: string
+
+		if (systemChromePath) {
+			console.log(`Using system Chrome at: ${systemChromePath}`)
+			executablePath = systemChromePath
+		} else {
+			// Fall back to puppeteer-chromium-resolver
+			const stats = await this.ensureChromiumExists()
+			executablePath = stats.executablePath
+		}
+
 		const args = [
 			"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
 			"--disable-dev-shm-usage",
@@ -58,13 +87,16 @@ export class UrlContentFetcher {
 			"--disable-gpu",
 			"--disable-features=VizDisplayCompositor",
 		]
-		if (process.platform === "linux") {
-			// Fixes network errors on Linux hosts (see https://github.com/puppeteer/puppeteer/issues/8246)
-			args.push("--no-sandbox")
+
+		// Add sandbox flags for Linux/container environments
+		if (env.isLinux || env.isContainer || env.isCodespaces) {
+			args.push("--no-sandbox", "--disable-setuid-sandbox")
 		}
+
+		const stats = await this.ensureChromiumExists()
 		this.browser = await stats.puppeteer.launch({
 			args,
-			executablePath: stats.executablePath,
+			executablePath,
 		})
 		// (latest version of puppeteer does not add headless to user agent)
 		this.page = await this.browser?.newPage()

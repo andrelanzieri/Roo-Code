@@ -9,6 +9,14 @@ import delay from "delay"
 import { fileExistsAtPath } from "../../utils/fs"
 import { BrowserActionResult } from "../../shared/ExtensionMessage"
 import { discoverChromeHostUrl, tryChromeHostUrl } from "./browserDiscovery"
+import {
+	detectEnvironment,
+	installChromeDependencies,
+	getSystemChromePath,
+	getDockerBrowserConfig,
+	startDockerBrowser,
+	stopDockerBrowser,
+} from "./browserEnvironment"
 
 // Timeout constants
 const BROWSER_NAVIGATION_TIMEOUT = 15_000 // 15 seconds
@@ -61,16 +69,77 @@ export class BrowserSession {
 	}
 
 	/**
-	 * Launches a local browser instance
+	 * Launches a local browser instance with automatic dependency handling
 	 */
 	private async launchLocalBrowser(): Promise<void> {
 		console.log("Launching local browser")
+
+		// Detect environment and check for missing dependencies
+		const env = await detectEnvironment()
+
+		// In Codespaces or containers, try to install dependencies automatically
+		if ((env.isCodespaces || env.isContainer) && env.missingDependencies.length > 0) {
+			console.log("Detected missing Chrome dependencies, attempting automatic installation...")
+			const installed = await installChromeDependencies(this.context)
+			if (!installed) {
+				// If automatic installation failed, try Docker as fallback
+				const dockerConfig = getDockerBrowserConfig(this.context)
+				if (dockerConfig.enabled && env.hasDocker) {
+					console.log("Falling back to Docker browser...")
+					const dockerEndpoint = await startDockerBrowser(dockerConfig)
+					if (dockerEndpoint) {
+						await this.connectWithChromeHostUrl(dockerEndpoint)
+						return
+					}
+				}
+
+				// If all else fails, show detailed error
+				throw new Error(
+					"Chrome dependencies are missing. Please install them manually:\n" +
+						"sudo apt-get update && sudo apt-get install -y libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2",
+				)
+			}
+		}
+
+		// Check if we should use Docker browser
+		const dockerConfig = getDockerBrowserConfig(this.context)
+		if (dockerConfig.enabled && dockerConfig.autoStart && env.hasDocker) {
+			console.log("Using Docker browser as configured...")
+			const dockerEndpoint = await startDockerBrowser(dockerConfig)
+			if (dockerEndpoint) {
+				await this.connectWithChromeHostUrl(dockerEndpoint)
+				return
+			}
+		}
+
+		// Try to use system Chrome if available
+		const systemChromePath = await getSystemChromePath()
+		let executablePath: string
+
+		if (systemChromePath) {
+			console.log(`Using system Chrome at: ${systemChromePath}`)
+			executablePath = systemChromePath
+		} else {
+			// Fall back to puppeteer-chromium-resolver
+			const stats = await this.ensureChromiumExists()
+			executablePath = stats.executablePath
+		}
+
+		// Prepare launch arguments
+		const args = [
+			"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+		]
+
+		// Add sandbox flags for Linux/container environments
+		if (env.isLinux || env.isContainer || env.isCodespaces) {
+			args.push("--no-sandbox", "--disable-setuid-sandbox")
+		}
+
+		// Launch the browser
 		const stats = await this.ensureChromiumExists()
 		this.browser = await stats.puppeteer.launch({
-			args: [
-				"--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-			],
-			executablePath: stats.executablePath,
+			args,
+			executablePath,
 			defaultViewport: this.getViewport(),
 			// headless: false,
 		})
@@ -205,6 +274,13 @@ export class BrowserSession {
 			}
 			this.resetBrowserState()
 		}
+
+		// Stop Docker browser if it was started
+		const dockerConfig = getDockerBrowserConfig(this.context)
+		if (dockerConfig.enabled) {
+			await stopDockerBrowser().catch(() => {})
+		}
+
 		return {}
 	}
 
