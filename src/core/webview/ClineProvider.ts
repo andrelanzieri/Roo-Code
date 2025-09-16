@@ -836,6 +836,10 @@ export class ClineProvider
 				historyItem.mode = defaultModeSlug
 			}
 
+			// Update tab-specific mode
+			this.tabSpecificMode = historyItem.mode
+
+			// Also update global state for backward compatibility
 			await this.updateGlobalState("mode", historyItem.mode)
 
 			// Load the saved API config for the restored mode if it exists.
@@ -851,6 +855,8 @@ export class ClineProvider
 
 				if (profile?.name) {
 					try {
+						// Update tab-specific API config name
+						this.tabSpecificApiConfigName = profile.name
 						await this.activateProviderProfile({ name: profile.name })
 					} catch (error) {
 						// Log the error but continue with task restoration.
