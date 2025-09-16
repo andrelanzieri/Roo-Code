@@ -124,6 +124,8 @@ export interface ExtensionMessage {
 		| "commands"
 		| "insertTextIntoTextarea"
 		| "dismissedUpsells"
+		| "messageQueued"
+		| "showNotification"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -201,6 +203,9 @@ export interface ExtensionMessage {
 	commands?: Command[]
 	queuedMessages?: QueuedMessage[]
 	list?: string[] // For dismissedUpsells
+	messageId?: string // For messageQueued response
+	level?: "error" | "warning" | "info" // For showNotification
+	message?: string // For showNotification
 }
 
 export type ExtensionState = Pick<

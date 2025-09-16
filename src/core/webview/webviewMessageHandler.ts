@@ -2995,17 +2995,59 @@ export const webviewMessageHandler = async (
 		 */
 
 		case "queueMessage": {
-			provider.getCurrentTask()?.messageQueueService.addMessage(message.text ?? "", message.images)
+			const currentTask = provider.getCurrentTask()
+			if (currentTask && currentTask.messageQueueService) {
+				const queuedMessage = currentTask.messageQueueService.addMessage(message.text ?? "", message.images)
+				if (queuedMessage) {
+					provider.log(`Message queued successfully: ${queuedMessage.id}`)
+					// Send confirmation back to webview
+					provider.postMessageToWebview({
+						type: "messageQueued",
+						success: true,
+						messageId: queuedMessage.id,
+					})
+					// Show VS Code notification for success
+					vscode.window.showInformationMessage("Message queued. It will be sent when the AI is ready.")
+				} else {
+					provider.log(`Failed to queue message: empty text and no images`)
+					provider.postMessageToWebview({
+						type: "messageQueued",
+						success: false,
+						error: "Message cannot be empty",
+						text: message.text,
+						images: message.images,
+					})
+				}
+			} else {
+				provider.log(`Failed to queue message: No active task or message queue service`)
+				provider.postMessageToWebview({
+					type: "messageQueued",
+					success: false,
+					error: "No active task to queue message",
+					text: message.text,
+					images: message.images,
+				})
+				// Show VS Code notification for failure
+				vscode.window.showErrorMessage("Failed to queue message: No active task. Please try again.")
+			}
 			break
 		}
 		case "removeQueuedMessage": {
-			provider.getCurrentTask()?.messageQueueService.removeMessage(message.text ?? "")
+			const currentTask = provider.getCurrentTask()
+			if (currentTask && currentTask.messageQueueService) {
+				const success = currentTask.messageQueueService.removeMessage(message.text ?? "")
+				provider.log(`Message removal ${success ? "successful" : "failed"}: ${message.text}`)
+			}
 			break
 		}
 		case "editQueuedMessage": {
 			if (message.payload) {
 				const { id, text, images } = message.payload as EditQueuedMessagePayload
-				provider.getCurrentTask()?.messageQueueService.updateMessage(id, text, images)
+				const currentTask = provider.getCurrentTask()
+				if (currentTask && currentTask.messageQueueService) {
+					const success = currentTask.messageQueueService.updateMessage(id, text, images)
+					provider.log(`Message edit ${success ? "successful" : "failed"}: ${id}`)
+				}
 			}
 
 			break

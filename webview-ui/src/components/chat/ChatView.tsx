@@ -595,15 +595,22 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			if (text || images.length > 0) {
 				if (sendingDisabled) {
+					// Queue the message when sending is disabled
 					try {
 						console.log("queueMessage", text, images)
 						vscode.postMessage({ type: "queueMessage", text, images })
+
+						// Clear the input immediately for better UX
+						// The backend will confirm if queueing was successful
 						setInputValue("")
 						setSelectedImages([])
 					} catch (error) {
 						console.error(
 							`Failed to queue message: ${error instanceof Error ? error.message : String(error)}`,
 						)
+						// Keep the input so user doesn't lose their message
+						// In webview context, we can't show VS Code notifications directly
+						// The error will be logged to console for debugging
 					}
 
 					return
@@ -781,6 +788,30 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			const message: ExtensionMessage = e.data
 
 			switch (message.type) {
+				case "messageQueued":
+					// Handle message queue confirmation from backend
+					if (!message.success) {
+						// If queueing failed, show error and restore the input
+						console.error("Message queueing failed:", message.error)
+						// Restore the user's input since queueing failed
+						if (message.text || message.images?.length) {
+							setInputValue(message.text || "")
+							setSelectedImages(message.images || [])
+						}
+					} else {
+						console.log("Message queued successfully:", message.messageId)
+					}
+					break
+				case "showNotification":
+					// Handle notification messages from backend
+					if (message.level === "error") {
+						console.error(message.message)
+					} else if (message.level === "warning") {
+						console.warn(message.message)
+					} else {
+						console.log(message.message)
+					}
+					break
 				case "action":
 					switch (message.action!) {
 						case "didBecomeVisible":
