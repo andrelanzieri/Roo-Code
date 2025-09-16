@@ -1166,8 +1166,11 @@ export class ClineProvider
 			}
 		}
 
-		// Update tab-specific mode instead of global state
+		// Update tab-specific mode
 		this.tabSpecificMode = newMode
+
+		// Also update global state for backward compatibility with tests and other components
+		await this.updateGlobalState("mode", newMode)
 
 		this.emit(RooCodeEventName.ModeChanged, newMode)
 
@@ -1297,6 +1300,9 @@ export class ClineProvider
 	async activateProviderProfile(args: { name: string } | { id: string }) {
 		const { name, id, ...providerSettings } = await this.providerSettingsManager.activateProfile(args)
 
+		// Update tab-specific API config name
+		this.tabSpecificApiConfigName = name
+
 		// See `upsertProviderProfile` for a description of what this is doing.
 		await Promise.all([
 			this.contextProxy.setValue("listApiConfigMeta", await this.providerSettingsManager.listConfig()),
@@ -1334,8 +1340,9 @@ export class ClineProvider
 		// Update list metadata globally (this is fine to share)
 		await this.contextProxy.setValue("listApiConfigMeta", await this.providerSettingsManager.listConfig())
 
-		// Store provider settings in context for this tab's use
-		// Note: We don't update global currentApiConfigName to avoid affecting other tabs
+		// For backward compatibility, also update global currentApiConfigName
+		await this.contextProxy.setValue("currentApiConfigName", name)
+		await this.contextProxy.setProviderSettings(providerSettings)
 
 		const mode = this.tabSpecificMode || this.getGlobalState("mode") || defaultModeSlug
 
