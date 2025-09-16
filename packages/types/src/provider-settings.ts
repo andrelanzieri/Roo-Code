@@ -28,6 +28,12 @@ import {
 } from "./providers/index.js"
 
 /**
+ * constants
+ */
+
+export const DEFAULT_CONSECUTIVE_MISTAKE_LIMIT = 3
+
+/**
  * ProviderName
  */
 
@@ -75,6 +81,67 @@ export const providerNamesSchema = z.enum(providerNames)
 export type ProviderName = z.infer<typeof providerNamesSchema>
 
 /**
+ * DynamicProvider
+ *
+ * Dynamic provider requires external API calls in order to get the model list.
+ */
+
+export const dynamicProviders = [
+	"glama",
+	"huggingface",
+	"litellm",
+	"openrouter",
+	"requesty",
+	"unbound",
+	"deepinfra",
+	"vercel-ai-gateway",
+] as const satisfies readonly ProviderName[]
+
+export type DynamicProvider = (typeof dynamicProviders)[number]
+
+export const isDynamicProvider = (key: string): key is DynamicProvider =>
+	dynamicProviders.includes(key as DynamicProvider)
+
+/**
+ * FauxProvider
+ *
+ * Faux providers do not make external inference calls and therefore do not have
+ * model lists.
+ */
+
+export const fauxProviders = ["fake-ai", "human-relay"] as const satisfies readonly ProviderName[]
+
+export type FauxProvider = (typeof fauxProviders)[number]
+
+export const isFauxProvider = (key: string): key is FauxProvider => fauxProviders.includes(key as FauxProvider)
+
+/**
+ * CustomProvider
+ *
+ * Custom providers are completely configurable within Roo Code settings.
+ */
+
+export const customProviders = ["openai-native"] as const satisfies readonly ProviderName[]
+
+export type CustomProvider = (typeof customProviders)[number]
+
+export const isCustomProvider = (key: string): key is CustomProvider => customProviders.includes(key as CustomProvider)
+
+/**
+ * InternalProvider
+ *
+ * Internal providers require internal VSCode API calls in order to get the
+ * model list.
+ */
+
+export const internalProviders = ["vscode-lm"] as const satisfies readonly ProviderName[]
+
+export type InternalProvider = (typeof internalProviders)[number]
+
+export const isInternalProvider = (key: string): key is InternalProvider =>
+	internalProviders.includes(key as InternalProvider)
+
+/**
  * ProviderSettingsEntry
  */
 
@@ -90,11 +157,6 @@ export type ProviderSettingsEntry = z.infer<typeof providerSettingsEntrySchema>
 /**
  * ProviderSettings
  */
-
-/**
- * Default value for consecutive mistake limit
- */
-export const DEFAULT_CONSECUTIVE_MISTAKE_LIMIT = 3
 
 const baseProviderSettingsSchema = z.object({
 	includeMaxTokens: z.boolean().optional(),
@@ -124,7 +186,7 @@ const anthropicSchema = apiModelIdProviderModelSchema.extend({
 	apiKey: z.string().optional(),
 	anthropicBaseUrl: z.string().optional(),
 	anthropicUseAuthToken: z.boolean().optional(),
-	anthropicBeta1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window
+	anthropicBeta1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
 })
 
 const claudeCodeSchema = apiModelIdProviderModelSchema.extend({
@@ -160,7 +222,7 @@ const bedrockSchema = apiModelIdProviderModelSchema.extend({
 	awsModelContextWindow: z.number().optional(),
 	awsBedrockEndpointEnabled: z.boolean().optional(),
 	awsBedrockEndpoint: z.string().optional(),
-	awsBedrock1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window
+	awsBedrock1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
 })
 
 const vertexSchema = apiModelIdProviderModelSchema.extend({
@@ -335,7 +397,7 @@ const qwenCodeSchema = apiModelIdProviderModelSchema.extend({
 })
 
 const rooSchema = apiModelIdProviderModelSchema.extend({
-	// No additional fields needed - uses cloud authentication
+	// No additional fields needed - uses cloud authentication.
 })
 
 const vercelAiGatewaySchema = baseProviderSettingsSchema.extend({
@@ -440,6 +502,10 @@ export type ProviderSettingsWithId = z.infer<typeof providerSettingsWithIdSchema
 
 export const PROVIDER_SETTINGS_KEYS = providerSettingsSchema.keyof().options
 
+/**
+ * ModelIdKey
+ */
+
 export const modelIdKeys = [
 	"apiModelId",
 	"glamaModelId",
@@ -464,7 +530,7 @@ export const getModelId = (settings: ProviderSettings): string | undefined => {
 	return modelIdKey ? settings[modelIdKey] : undefined
 }
 
-export const modelIdKeysByProvider: Record<ProviderName, ModelIdKey> = {
+export const modelIdKeysByProvider: Record<Exclude<ProviderName, FauxProvider | CustomProvider>, ModelIdKey> = {
 	anthropic: "apiModelId",
 	"claude-code": "apiModelId",
 	glama: "glamaModelId",
@@ -477,7 +543,6 @@ export const modelIdKeysByProvider: Record<ProviderName, ModelIdKey> = {
 	lmstudio: "lmStudioModelId",
 	gemini: "apiModelId",
 	"gemini-cli": "apiModelId",
-	"openai-native": "openAiModelId",
 	mistral: "apiModelId",
 	moonshot: "apiModelId",
 	deepseek: "apiModelId",
@@ -486,8 +551,6 @@ export const modelIdKeysByProvider: Record<ProviderName, ModelIdKey> = {
 	"qwen-code": "apiModelId",
 	unbound: "unboundModelId",
 	requesty: "requestyModelId",
-	"human-relay": "apiModelId",
-	"fake-ai": "apiModelId",
 	xai: "apiModelId",
 	groq: "apiModelId",
 	chutes: "apiModelId",
@@ -502,6 +565,10 @@ export const modelIdKeysByProvider: Record<ProviderName, ModelIdKey> = {
 	roo: "apiModelId",
 	"vercel-ai-gateway": "vercelAiGatewayModelId",
 }
+
+/**
+ * ANTHROPIC_STYLE_PROVIDERS
+ */
 
 // Providers that use Anthropic-style API protocol.
 export const ANTHROPIC_STYLE_PROVIDERS: ProviderName[] = ["anthropic", "claude-code", "bedrock"]
@@ -522,6 +589,10 @@ export const getApiProtocol = (provider: ProviderName | undefined, modelId?: str
 
 	return "openai"
 }
+
+/**
+ * MODELS_BY_PROVIDER
+ */
 
 export const MODELS_BY_PROVIDER: Record<
 	Exclude<ProviderName, "fake-ai" | "human-relay" | "gemini-cli" | "lmstudio" | "openai" | "ollama">,
@@ -620,19 +691,3 @@ export const MODELS_BY_PROVIDER: Record<
 	deepinfra: { id: "deepinfra", label: "DeepInfra", models: [] },
 	"vercel-ai-gateway": { id: "vercel-ai-gateway", label: "Vercel AI Gateway", models: [] },
 }
-
-export const dynamicProviders = [
-	"glama",
-	"huggingface",
-	"litellm",
-	"openrouter",
-	"requesty",
-	"unbound",
-	"deepinfra",
-	"vercel-ai-gateway",
-] as const satisfies readonly ProviderName[]
-
-export type DynamicProvider = (typeof dynamicProviders)[number]
-
-export const isDynamicProvider = (key: string): key is DynamicProvider =>
-	dynamicProviders.includes(key as DynamicProvider)
