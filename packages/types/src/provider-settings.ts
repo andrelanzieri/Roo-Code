@@ -34,56 +34,6 @@ import {
 export const DEFAULT_CONSECUTIVE_MISTAKE_LIMIT = 3
 
 /**
- * ProviderName
- */
-
-export const providerNames = [
-	"anthropic",
-	"claude-code",
-	"glama",
-	"openrouter",
-	"bedrock",
-	"vertex",
-	"openai",
-	"ollama",
-	"vscode-lm",
-	"lmstudio",
-	"gemini",
-	"gemini-cli",
-	"openai-native",
-	"mistral",
-	"moonshot",
-	"deepseek",
-	"deepinfra",
-	"doubao",
-	"qwen-code",
-	"unbound",
-	"requesty",
-	"human-relay",
-	"fake-ai",
-	"xai",
-	"groq",
-	"chutes",
-	"litellm",
-	"huggingface",
-	"cerebras",
-	"sambanova",
-	"zai",
-	"fireworks",
-	"featherless",
-	"io-intelligence",
-	"roo",
-	"vercel-ai-gateway",
-] as const
-
-export const providerNamesSchema = z.enum(providerNames)
-
-export type ProviderName = z.infer<typeof providerNamesSchema>
-
-export const isProviderName = (key: unknown): key is ProviderName =>
-	typeof key === "string" && providerNames.includes(key as ProviderName)
-
-/**
  * DynamicProvider
  *
  * Dynamic provider requires external API calls in order to get the model list.
@@ -99,7 +49,7 @@ export const dynamicProviders = [
 	"requesty",
 	"unbound",
 	"glama",
-] as const satisfies readonly ProviderName[]
+] as const
 
 export type DynamicProvider = (typeof dynamicProviders)[number]
 
@@ -112,36 +62,11 @@ export const isDynamicProvider = (key: string): key is DynamicProvider =>
  * Local providers require localhost API calls in order to get the model list.
  */
 
-export const localProviders = ["ollama", "lmstudio"] as const satisfies readonly ProviderName[]
+export const localProviders = ["ollama", "lmstudio"] as const
 
 export type LocalProvider = (typeof localProviders)[number]
 
 export const isLocalProvider = (key: string): key is LocalProvider => localProviders.includes(key as LocalProvider)
-
-/**
- * FauxProvider
- *
- * Faux providers do not make external inference calls and therefore do not have
- * model lists.
- */
-
-export const fauxProviders = ["fake-ai", "human-relay"] as const satisfies readonly ProviderName[]
-
-export type FauxProvider = (typeof fauxProviders)[number]
-
-export const isFauxProvider = (key: string): key is FauxProvider => fauxProviders.includes(key as FauxProvider)
-
-/**
- * CustomProvider
- *
- * Custom providers are completely configurable within Roo Code settings.
- */
-
-export const customProviders = ["openai-native"] as const satisfies readonly ProviderName[]
-
-export type CustomProvider = (typeof customProviders)[number]
-
-export const isCustomProvider = (key: string): key is CustomProvider => customProviders.includes(key as CustomProvider)
 
 /**
  * InternalProvider
@@ -150,12 +75,77 @@ export const isCustomProvider = (key: string): key is CustomProvider => customPr
  * model list.
  */
 
-export const internalProviders = ["vscode-lm"] as const satisfies readonly ProviderName[]
+export const internalProviders = ["vscode-lm"] as const
 
 export type InternalProvider = (typeof internalProviders)[number]
 
 export const isInternalProvider = (key: string): key is InternalProvider =>
 	internalProviders.includes(key as InternalProvider)
+
+/**
+ * CustomProvider
+ *
+ * Custom providers are completely configurable within Roo Code settings.
+ */
+
+export const customProviders = ["openai"] as const
+
+export type CustomProvider = (typeof customProviders)[number]
+
+export const isCustomProvider = (key: string): key is CustomProvider => customProviders.includes(key as CustomProvider)
+
+/**
+ * FauxProvider
+ *
+ * Faux providers do not make external inference calls and therefore do not have
+ * model lists.
+ */
+
+export const fauxProviders = ["fake-ai", "human-relay"] as const
+
+export type FauxProvider = (typeof fauxProviders)[number]
+
+export const isFauxProvider = (key: string): key is FauxProvider => fauxProviders.includes(key as FauxProvider)
+
+/**
+ * ProviderName
+ */
+
+export const providerNames = [
+	...dynamicProviders,
+	...localProviders,
+	...internalProviders,
+	...customProviders,
+	...fauxProviders,
+	"anthropic",
+	"bedrock",
+	"cerebras",
+	"chutes",
+	"claude-code",
+	"doubao",
+	"deepseek",
+	"featherless",
+	"fireworks",
+	"gemini",
+	"gemini-cli",
+	"groq",
+	"mistral",
+	"moonshot",
+	"openai-native",
+	"qwen-code",
+	"roo",
+	"sambanova",
+	"vertex",
+	"xai",
+	"zai",
+] as const
+
+export const providerNamesSchema = z.enum(providerNames)
+
+export type ProviderName = z.infer<typeof providerNamesSchema>
+
+export const isProviderName = (key: unknown): key is ProviderName =>
+	typeof key === "string" && providerNames.includes(key as ProviderName)
 
 /**
  * ProviderSettingsEntry
@@ -546,16 +536,18 @@ export const getModelId = (settings: ProviderSettings): string | undefined => {
 	return modelIdKey ? settings[modelIdKey] : undefined
 }
 
-export const modelIdKeysByProvider: Record<Exclude<ProviderName, FauxProvider | CustomProvider>, ModelIdKey> = {
+export const modelIdKeysByProvider: Record<
+	Exclude<ProviderName, InternalProvider | CustomProvider | FauxProvider>,
+	ModelIdKey
+> = {
 	anthropic: "apiModelId",
 	"claude-code": "apiModelId",
 	glama: "glamaModelId",
 	openrouter: "openRouterModelId",
 	bedrock: "apiModelId",
 	vertex: "apiModelId",
-	openai: "openAiModelId",
+	"openai-native": "openAiModelId",
 	ollama: "ollamaModelId",
-	"vscode-lm": "apiModelId", // This doesn't appear to use `ModelIdKey` at all.
 	lmstudio: "lmStudioModelId",
 	gemini: "apiModelId",
 	"gemini-cli": "apiModelId",
