@@ -440,7 +440,7 @@ export type ProviderSettingsWithId = z.infer<typeof providerSettingsWithIdSchema
 
 export const PROVIDER_SETTINGS_KEYS = providerSettingsSchema.keyof().options
 
-export const MODEL_ID_KEYS: Partial<keyof ProviderSettings>[] = [
+export const modelIdKeys = [
 	"apiModelId",
 	"glamaModelId",
 	"openRouterModelId",
@@ -455,11 +455,52 @@ export const MODEL_ID_KEYS: Partial<keyof ProviderSettings>[] = [
 	"ioIntelligenceModelId",
 	"vercelAiGatewayModelId",
 	"deepInfraModelId",
-]
+] as const satisfies readonly (keyof ProviderSettings)[]
+
+export type ModelIdKey = (typeof modelIdKeys)[number]
 
 export const getModelId = (settings: ProviderSettings): string | undefined => {
-	const modelIdKey = MODEL_ID_KEYS.find((key) => settings[key])
-	return modelIdKey ? (settings[modelIdKey] as string) : undefined
+	const modelIdKey = modelIdKeys.find((key) => settings[key])
+	return modelIdKey ? settings[modelIdKey] : undefined
+}
+
+export const modelIdKeysByProvider: Record<ProviderName, ModelIdKey> = {
+	anthropic: "apiModelId",
+	"claude-code": "apiModelId",
+	glama: "glamaModelId",
+	openrouter: "openRouterModelId",
+	bedrock: "apiModelId",
+	vertex: "apiModelId",
+	openai: "openAiModelId",
+	ollama: "ollamaModelId",
+	"vscode-lm": "apiModelId", // This doesn't appear to use `ModelIdKey` at all.
+	lmstudio: "lmStudioModelId",
+	gemini: "apiModelId",
+	"gemini-cli": "apiModelId",
+	"openai-native": "openAiModelId",
+	mistral: "apiModelId",
+	moonshot: "apiModelId",
+	deepseek: "apiModelId",
+	deepinfra: "deepInfraModelId",
+	doubao: "apiModelId",
+	"qwen-code": "apiModelId",
+	unbound: "unboundModelId",
+	requesty: "requestyModelId",
+	"human-relay": "apiModelId",
+	"fake-ai": "apiModelId",
+	xai: "apiModelId",
+	groq: "apiModelId",
+	chutes: "apiModelId",
+	litellm: "litellmModelId",
+	huggingface: "huggingFaceModelId",
+	cerebras: "apiModelId",
+	sambanova: "apiModelId",
+	zai: "apiModelId",
+	fireworks: "apiModelId",
+	featherless: "apiModelId",
+	"io-intelligence": "ioIntelligenceModelId",
+	roo: "apiModelId",
+	"vercel-ai-gateway": "vercelAiGatewayModelId",
 }
 
 // Providers that use Anthropic-style API protocol.
