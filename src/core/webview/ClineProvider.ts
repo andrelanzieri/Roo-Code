@@ -134,6 +134,7 @@ export class ClineProvider
 	private taskCreationCallback: (task: Task) => void
 	private taskEventListeners: WeakMap<Task, Array<() => void>> = new WeakMap()
 	private currentWorkspacePath: string | undefined
+	private isWebviewRestored: boolean = false // Track if webview is being restored after restart
 
 	private recentTasksCache?: string[]
 	private pendingOperations: Map<string, PendingEditOperation> = new Map()
@@ -686,6 +687,9 @@ export class ClineProvider
 	}
 
 	async resolveWebviewView(webviewView: vscode.WebviewView | vscode.WebviewPanel) {
+		// Check if we already have a task stack (indicating a restore after extension host restart)
+		const hasExistingTasks = this.clineStack.length > 0
+
 		this.view = webviewView
 		const inTabMode = "onDidChangeViewState" in webviewView
 
@@ -694,6 +698,9 @@ export class ClineProvider
 		} else if ("onDidChangeVisibility" in webviewView) {
 			setPanel(webviewView, "sidebar")
 		}
+
+		// Mark that we're restoring if we have existing tasks
+		this.isWebviewRestored = hasExistingTasks
 
 		// Initialize out-of-scope variables that need to receive persistent
 		// global state values.
@@ -810,8 +817,17 @@ export class ClineProvider
 		})
 		this.webviewDisposables.push(configDisposable)
 
-		// If the extension is starting a new session, clear previous task state.
-		await this.removeClineFromStack()
+		// Only clear task state if this is a fresh start, not when restoring after extension host restart
+		// When the extension host restarts in a new window, we want to preserve the task state
+		if (!hasExistingTasks) {
+			// This is a fresh start, clear any previous task state
+			await this.removeClineFromStack()
+		} else {
+			// We're restoring after an extension host restart, preserve the task state
+			this.log("Preserving task state after extension host restart")
+			// Post the current state to the webview so it can restore the UI
+			await this.postStateToWebview()
+		}
 	}
 
 	public async createTaskWithHistoryItem(historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task }) {

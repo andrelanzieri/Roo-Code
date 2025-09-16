@@ -443,6 +443,13 @@ export const webviewMessageHandler = async (
 				provider.postMessageToWebview({ type: "mcpServers", mcpServers: mcpHub.getAllServers() })
 			}
 
+			// If we have an active task (after extension host restart), notify the webview to restore it
+			const activeTask = provider.getCurrentTask()
+			if (activeTask) {
+				provider.log("Restoring active task after extension host restart")
+				// The state will be posted by postStateToWebview() above, which includes the current task
+			}
+
 			provider.providerSettingsManager
 				.listConfig()
 				.then(async (listApiConfig) => {
