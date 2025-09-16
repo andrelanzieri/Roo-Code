@@ -2910,6 +2910,33 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
+	 * Get all workspace folders for multi-root workspace support
+	 * @returns Array of all workspace folder paths
+	 */
+	public get workspaceFolders(): string[] {
+		const folders = vscode.workspace.workspaceFolders
+		if (!folders || folders.length === 0) {
+			return [this.workspacePath]
+		}
+		return folders.map((folder) => folder.uri.fsPath)
+	}
+
+	/**
+	 * Check if a path is within any of the workspace folders
+	 * @param filePath The file path to check
+	 * @returns true if the path is in a workspace folder, false otherwise
+	 */
+	public isPathInWorkspace(filePath: string): boolean {
+		const absolutePath = path.resolve(filePath)
+		const normalizedPath = path.normalize(absolutePath)
+
+		return this.workspaceFolders.some((folderPath) => {
+			const normalizedFolderPath = path.normalize(folderPath)
+			return normalizedPath === normalizedFolderPath || normalizedPath.startsWith(normalizedFolderPath + path.sep)
+		})
+	}
+
+	/**
 	 * Process any queued messages by dequeuing and submitting them.
 	 * This ensures that queued user messages are sent when appropriate,
 	 * preventing them from getting stuck in the queue.

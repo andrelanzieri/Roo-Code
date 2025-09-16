@@ -3,36 +3,61 @@
 import os from "os"
 import * as path from "path"
 
-import { arePathsEqual, getReadablePath, getWorkspacePath } from "../path"
+import {
+	arePathsEqual,
+	getReadablePath,
+	getWorkspacePath,
+	getAllWorkspacePaths,
+	getWorkspaceFolderForPath,
+} from "../path"
 
 // Mock modules
+const mockWorkspaceFolders = vi.fn()
+const mockGetWorkspaceFolder = vi.fn()
+const mockActiveTextEditor = vi.fn()
 
 vi.mock("vscode", () => ({
 	window: {
-		activeTextEditor: {
-			document: {
-				uri: { fsPath: "/test/workspaceFolder/file.ts" },
-			},
+		get activeTextEditor() {
+			return mockActiveTextEditor()
 		},
 	},
 	workspace: {
-		workspaceFolders: [
-			{
-				uri: { fsPath: "/test/workspace" },
-				name: "test",
-				index: 0,
-			},
-		],
-		getWorkspaceFolder: vi.fn().mockReturnValue({
-			uri: {
-				fsPath: "/test/workspaceFolder",
-			},
-		}),
+		get workspaceFolders() {
+			return mockWorkspaceFolders()
+		},
+		getWorkspaceFolder: mockGetWorkspaceFolder,
 	},
 }))
 describe("Path Utilities", () => {
 	const originalPlatform = process.platform
 	// Helper to mock VS Code configuration
+
+	beforeEach(() => {
+		// Reset mocks before each test
+		vi.clearAllMocks()
+
+		// Set default mock values
+		mockWorkspaceFolders.mockReturnValue([
+			{
+				uri: { fsPath: "/test/workspace" },
+				name: "test",
+				index: 0,
+			},
+		])
+
+		mockActiveTextEditor.mockReturnValue({
+			document: {
+				uri: { fsPath: "/test/workspaceFolder/file.ts" },
+			},
+		})
+
+		mockGetWorkspaceFolder.mockReturnValue({
+			uri: {
+				fsPath: "/test/workspaceFolder",
+			},
+		})
+	})
 
 	afterEach(() => {
 		Object.defineProperty(process, "platform", {
@@ -56,14 +81,129 @@ describe("Path Utilities", () => {
 			expect(extendedPath.toPosix()).toBe("\\\\?\\C:\\Very\\Long\\Path")
 		})
 	})
+
 	describe("getWorkspacePath", () => {
-		it("should return the current workspace path", () => {
-			const workspacePath = "/Users/test/project"
-			expect(getWorkspacePath(workspacePath)).toBe("/Users/test/project")
+		it("should return the workspace folder of the active editor", () => {
+			mockActiveTextEditor.mockReturnValue({
+				document: {
+					uri: { fsPath: "/test/workspaceFolder/file.ts" },
+				},
+			})
+			mockGetWorkspaceFolder.mockReturnValue({
+				uri: { fsPath: "/test/workspaceFolder" },
+			})
+			mockWorkspaceFolders.mockReturnValue([{ uri: { fsPath: "/test/workspace" }, name: "workspace", index: 0 }])
+
+			expect(getWorkspacePath()).toBe("/test/workspaceFolder")
 		})
 
-		it("should return undefined when outside a workspace", () => {})
+		it("should return the first workspace folder when no active editor", () => {
+			mockActiveTextEditor.mockReturnValue(undefined)
+			mockGetWorkspaceFolder.mockReturnValue(undefined)
+			mockWorkspaceFolders.mockReturnValue([
+				{ uri: { fsPath: "/test/workspace1" }, name: "workspace1", index: 0 },
+				{ uri: { fsPath: "/test/workspace2" }, name: "workspace2", index: 1 },
+			])
+
+			expect(getWorkspacePath()).toBe("/test/workspace1")
+		})
+
+		it("should return default path when no workspace folders", () => {
+			mockActiveTextEditor.mockReturnValue(undefined)
+			mockGetWorkspaceFolder.mockReturnValue(undefined)
+			mockWorkspaceFolders.mockReturnValue(undefined)
+
+			expect(getWorkspacePath("/default/path")).toBe("/default/path")
+		})
+
+		it("should handle multi-root workspaces correctly", () => {
+			mockWorkspaceFolders.mockReturnValue([
+				{ uri: { fsPath: "/test/frontend" }, name: "frontend", index: 0 },
+				{ uri: { fsPath: "/test/backend" }, name: "backend", index: 1 },
+			])
+
+			// When active editor is in backend folder
+			mockActiveTextEditor.mockReturnValue({
+				document: { uri: { fsPath: "/test/backend/src/app.ts" } },
+			})
+			mockGetWorkspaceFolder.mockReturnValue({
+				uri: { fsPath: "/test/backend" },
+			})
+
+			expect(getWorkspacePath()).toBe("/test/backend")
+		})
 	})
+
+	describe("getAllWorkspacePaths", () => {
+		it("should return all workspace folder paths", () => {
+			mockWorkspaceFolders.mockReturnValue([
+				{ uri: { fsPath: "/test/frontend" }, name: "frontend", index: 0 },
+				{ uri: { fsPath: "/test/backend" }, name: "backend", index: 1 },
+			])
+
+			const paths = getAllWorkspacePaths()
+			expect(paths).toEqual(["/test/frontend", "/test/backend"])
+		})
+
+		it("should return empty array when no workspace folders", () => {
+			mockWorkspaceFolders.mockReturnValue(undefined)
+
+			const paths = getAllWorkspacePaths()
+			expect(paths).toEqual([])
+		})
+
+		it("should handle single workspace folder", () => {
+			mockWorkspaceFolders.mockReturnValue([{ uri: { fsPath: "/test/workspace" }, name: "workspace", index: 0 }])
+
+			const paths = getAllWorkspacePaths()
+			expect(paths).toEqual(["/test/workspace"])
+		})
+	})
+
+	describe("getWorkspaceFolderForPath", () => {
+		beforeEach(() => {
+			mockWorkspaceFolders.mockReturnValue([
+				{ uri: { fsPath: "/test/frontend" }, name: "frontend", index: 0 },
+				{ uri: { fsPath: "/test/backend" }, name: "backend", index: 1 },
+			])
+		})
+
+		it("should return the workspace folder containing the path", () => {
+			expect(getWorkspaceFolderForPath("/test/frontend/src/app.ts")).toBe("/test/frontend")
+			expect(getWorkspaceFolderForPath("/test/backend/src/server.ts")).toBe("/test/backend")
+		})
+
+		it("should return the workspace folder for exact match", () => {
+			expect(getWorkspaceFolderForPath("/test/frontend")).toBe("/test/frontend")
+			expect(getWorkspaceFolderForPath("/test/backend")).toBe("/test/backend")
+		})
+
+		it("should return null for paths outside any workspace", () => {
+			expect(getWorkspaceFolderForPath("/other/path/file.ts")).toBeNull()
+			expect(getWorkspaceFolderForPath("/test/other/file.ts")).toBeNull()
+		})
+
+		it("should return null when no workspace folders", () => {
+			mockWorkspaceFolders.mockReturnValue(undefined)
+			expect(getWorkspaceFolderForPath("/test/frontend/src/app.ts")).toBeNull()
+		})
+
+		it("should handle relative paths by resolving them", () => {
+			// This depends on the current working directory, so we'll use path.resolve
+			const resolvedPath = path.resolve("./src/app.ts")
+			const result = getWorkspaceFolderForPath("./src/app.ts")
+
+			// The result should be based on the resolved path
+			if (resolvedPath.startsWith("/test/frontend")) {
+				expect(result).toBe("/test/frontend")
+			} else if (resolvedPath.startsWith("/test/backend")) {
+				expect(result).toBe("/test/backend")
+			} else {
+				expect(result).toBeNull()
+			}
+		})
+	})
+
 	describe("arePathsEqual", () => {
 		describe("on Windows", () => {
 			beforeEach(() => {

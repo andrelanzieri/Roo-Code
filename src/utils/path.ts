@@ -107,13 +107,61 @@ export const toRelativePath = (filePath: string, cwd: string) => {
 }
 
 export const getWorkspacePath = (defaultCwdPath = "") => {
-	const cwdPath = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) || defaultCwdPath
+	// For multi-root workspaces, we should consider all workspace folders
+	const workspaceFolders = vscode.workspace.workspaceFolders
+
+	// If no workspace folders, return the default
+	if (!workspaceFolders || workspaceFolders.length === 0) {
+		return defaultCwdPath
+	}
+
+	// If there's an active editor, use its workspace folder
 	const currentFileUri = vscode.window.activeTextEditor?.document.uri
 	if (currentFileUri) {
 		const workspaceFolder = vscode.workspace.getWorkspaceFolder(currentFileUri)
-		return workspaceFolder?.uri.fsPath || cwdPath
+		if (workspaceFolder) {
+			return workspaceFolder.uri.fsPath
+		}
 	}
-	return cwdPath
+
+	// For multi-root workspaces, we'll return the first folder as the default
+	// but the system should be aware of all folders
+	return workspaceFolders[0].uri.fsPath
+}
+
+/**
+ * Get all workspace paths in a multi-root workspace
+ * @returns Array of all workspace folder paths
+ */
+export const getAllWorkspacePaths = (): string[] => {
+	const workspaceFolders = vscode.workspace.workspaceFolders
+	if (!workspaceFolders || workspaceFolders.length === 0) {
+		return []
+	}
+	return workspaceFolders.map((folder) => folder.uri.fsPath)
+}
+
+/**
+ * Check if a path belongs to any workspace folder
+ * @param filePath The file path to check
+ * @returns The workspace folder path if the file belongs to a workspace, null otherwise
+ */
+export const getWorkspaceFolderForPath = (filePath: string): string | null => {
+	const workspaceFolders = vscode.workspace.workspaceFolders
+	if (!workspaceFolders || workspaceFolders.length === 0) {
+		return null
+	}
+
+	const normalizedFilePath = path.normalize(filePath)
+
+	for (const folder of workspaceFolders) {
+		const folderPath = path.normalize(folder.uri.fsPath)
+		if (normalizedFilePath === folderPath || normalizedFilePath.startsWith(folderPath + path.sep)) {
+			return folder.uri.fsPath
+		}
+	}
+
+	return null
 }
 
 export const getWorkspacePathForContext = (contextPath?: string): string => {
