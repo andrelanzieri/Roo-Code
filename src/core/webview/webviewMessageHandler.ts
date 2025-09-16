@@ -1848,7 +1848,12 @@ export const webviewMessageHandler = async (
 		case "loadApiConfiguration":
 			if (message.text) {
 				try {
-					await provider.activateProviderProfile({ name: message.text })
+					// Use tab-specific activation method if available
+					if (typeof provider.activateProviderProfileForTab === "function") {
+						await provider.activateProviderProfileForTab({ name: message.text })
+					} else {
+						await provider.activateProviderProfile({ name: message.text })
+					}
 				} catch (error) {
 					provider.log(
 						`Error load api configuration: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
@@ -1860,7 +1865,12 @@ export const webviewMessageHandler = async (
 		case "loadApiConfigurationById":
 			if (message.text) {
 				try {
-					await provider.activateProviderProfile({ id: message.text })
+					// Use tab-specific activation method if available
+					if (typeof provider.activateProviderProfileForTab === "function") {
+						await provider.activateProviderProfileForTab({ id: message.text })
+					} else {
+						await provider.activateProviderProfile({ id: message.text })
+					}
 				} catch (error) {
 					provider.log(
 						`Error load api configuration by ID: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,

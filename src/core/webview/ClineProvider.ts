@@ -139,6 +139,11 @@ export class ClineProvider
 	private pendingOperations: Map<string, PendingEditOperation> = new Map()
 	private static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
 
+	// Tab-specific state for mode and model
+	private tabSpecificMode?: Mode
+	private tabSpecificApiConfigName?: string
+	private readonly instanceId: string = Math.random().toString(36).substring(7)
+
 	public isViewLaunched = false
 	public settingsImportedAt?: number
 	public readonly latestAnnouncementId = "sep-2025-roo-code-cloud" // Roo Code Cloud announcement
@@ -1161,7 +1166,8 @@ export class ClineProvider
 			}
 		}
 
-		await this.updateGlobalState("mode", newMode)
+		// Update tab-specific mode instead of global state
+		this.tabSpecificMode = newMode
 
 		this.emit(RooCodeEventName.ModeChanged, newMode)
 
@@ -1177,11 +1183,11 @@ export class ClineProvider
 			const profile = listApiConfig.find(({ id }) => id === savedConfigId)
 
 			if (profile?.name) {
-				await this.activateProviderProfile({ name: profile.name })
+				await this.activateProviderProfileForTab({ name: profile.name })
 			}
 		} else {
 			// If no saved config for this mode, save current config as default.
-			const currentApiConfigName = this.getGlobalState("currentApiConfigName")
+			const currentApiConfigName = this.tabSpecificApiConfigName || this.getGlobalState("currentApiConfigName")
 
 			if (currentApiConfigName) {
 				const config = listApiConfig.find((c) => c.name === currentApiConfigName)
@@ -1299,6 +1305,39 @@ export class ClineProvider
 		])
 
 		const { mode } = await this.getState()
+
+		if (id) {
+			await this.providerSettingsManager.setModeConfig(mode, id)
+		}
+
+		// Change the provider for the current task.
+		const task = this.getCurrentTask()
+
+		if (task) {
+			task.api = buildApiHandler(providerSettings)
+		}
+
+		await this.postStateToWebview()
+
+		if (providerSettings.apiProvider) {
+			this.emit(RooCodeEventName.ProviderProfileChanged, { name, provider: providerSettings.apiProvider })
+		}
+	}
+
+	// New method for tab-specific provider profile activation
+	async activateProviderProfileForTab(args: { name: string } | { id: string }) {
+		const { name, id, ...providerSettings } = await this.providerSettingsManager.activateProfile(args)
+
+		// Update tab-specific API config name
+		this.tabSpecificApiConfigName = name
+
+		// Update list metadata globally (this is fine to share)
+		await this.contextProxy.setValue("listApiConfigMeta", await this.providerSettingsManager.listConfig())
+
+		// Store provider settings in context for this tab's use
+		// Note: We don't update global currentApiConfigName to avoid affecting other tabs
+
+		const mode = this.tabSpecificMode || this.getGlobalState("mode") || defaultModeSlug
 
 		if (id) {
 			await this.providerSettingsManager.setModeConfig(mode, id)
@@ -1855,10 +1894,10 @@ export class ClineProvider
 			enableMcpServerCreation: enableMcpServerCreation ?? true,
 			alwaysApproveResubmit: alwaysApproveResubmit ?? false,
 			requestDelaySeconds: requestDelaySeconds ?? 10,
-			currentApiConfigName: currentApiConfigName ?? "default",
+			currentApiConfigName: this.tabSpecificApiConfigName ?? currentApiConfigName ?? "default",
 			listApiConfigMeta: listApiConfigMeta ?? [],
 			pinnedApiConfigs: pinnedApiConfigs ?? {},
-			mode: mode ?? defaultModeSlug,
+			mode: this.tabSpecificMode ?? mode ?? defaultModeSlug,
 			customModePrompts: customModePrompts ?? {},
 			customSupportPrompts: customSupportPrompts ?? {},
 			enhancementApiConfigId,
@@ -2070,13 +2109,13 @@ export class ClineProvider
 			terminalZshP10k: stateValues.terminalZshP10k ?? false,
 			terminalZdotdir: stateValues.terminalZdotdir ?? false,
 			terminalCompressProgressBar: stateValues.terminalCompressProgressBar ?? true,
-			mode: stateValues.mode ?? defaultModeSlug,
+			mode: this.tabSpecificMode ?? stateValues.mode ?? defaultModeSlug,
 			language: stateValues.language ?? formatLanguage(vscode.env.language),
 			mcpEnabled: stateValues.mcpEnabled ?? true,
 			enableMcpServerCreation: stateValues.enableMcpServerCreation ?? true,
 			alwaysApproveResubmit: stateValues.alwaysApproveResubmit ?? false,
 			requestDelaySeconds: Math.max(5, stateValues.requestDelaySeconds ?? 10),
-			currentApiConfigName: stateValues.currentApiConfigName ?? "default",
+			currentApiConfigName: this.tabSpecificApiConfigName ?? stateValues.currentApiConfigName ?? "default",
 			listApiConfigMeta: stateValues.listApiConfigMeta ?? [],
 			pinnedApiConfigs: stateValues.pinnedApiConfigs ?? {},
 			modeApiConfigs: stateValues.modeApiConfigs ?? ({} as Record<Mode, string>),
