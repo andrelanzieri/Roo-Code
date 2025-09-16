@@ -16,6 +16,7 @@ import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider
 
 import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../../services/checkpoints"
 
+const WARNING_THRESHOLD_MS = 5000
 const waitWarn = t("common:errors.wait_checkpoint_long_time")
 const failWarn = t("common:errors.init_checkpoint_fail_long_time")
 
@@ -84,8 +85,8 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 				() => {
 					const elapsed = Date.now() - checkpointInitStartTime
 
-					// Show warning if we're past 5 seconds and haven't shown it yet
-					if (!warningShown && elapsed >= 5000) {
+					// Show warning if we're past the threshold and haven't shown it yet
+					if (!warningShown && elapsed >= WARNING_THRESHOLD_MS) {
 						warningShown = true
 						sendCheckpointInitWarn(task, waitWarn)
 					}
@@ -101,6 +102,8 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 				sendCheckpointInitWarn(task, failWarn)
 				task.enableCheckpoints = false
 				return undefined
+			} else {
+				sendCheckpointInitWarn(task, "")
 			}
 			return task.checkpointService
 		}
@@ -118,7 +121,7 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 		}
 		return service
 	} catch (err) {
-		if (err.name == "TimeoutError" && task.enableCheckpoints) {
+		if (err.name === "TimeoutError" && task.enableCheckpoints) {
 			sendCheckpointInitWarn(task, failWarn)
 		}
 		log(`[Task#getCheckpointService] ${err.message}`)
