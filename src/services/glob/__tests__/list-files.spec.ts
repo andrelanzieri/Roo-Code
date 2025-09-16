@@ -558,3 +558,243 @@ describe("buildRecursiveArgs edge cases", () => {
 		expect(args).not.toContain("--no-ignore")
 	})
 })
+
+describe("node_modules/@types scenarios", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("should include files when targeting paths inside node_modules", async () => {
+		const mockSpawn = vi.mocked(childProcess.spawn)
+		const mockProcess = {
+			stdout: {
+				on: vi.fn((event, callback) => {
+					if (event === "data") {
+						// Simulate files that should be found in node_modules/@types/stream-json
+						setTimeout(() => {
+							callback("index.d.ts\n")
+							callback("Parser.d.ts\n")
+							callback("StreamBase.d.ts\n")
+						}, 10)
+					}
+				}),
+			},
+			stderr: {
+				on: vi.fn(),
+			},
+			on: vi.fn((event, callback) => {
+				if (event === "close") {
+					setTimeout(() => callback(0), 20)
+				}
+			}),
+			kill: vi.fn(),
+		}
+		mockSpawn.mockReturnValue(mockProcess as any)
+
+		// Mock directory listing for node_modules/@types/stream-json
+		const mockReaddir = vi.fn()
+		vi.mocked(fs.promises).readdir = mockReaddir
+		mockReaddir.mockResolvedValueOnce([])
+
+		// Call listFiles targeting node_modules/@types/stream-json
+		const [files] = await listFiles("/test/node_modules/@types/stream-json", true, 100)
+
+		// Verify ripgrep was called with correct arguments
+		const [rgPath, args] = mockSpawn.mock.calls[0]
+
+		// When targeting a path inside node_modules, these flags should be present
+		expect(args).toContain("--no-ignore-vcs")
+		expect(args).toContain("--no-ignore")
+
+		// Check for the inclusion patterns
+		expect(args).toContain("-g")
+		const gIndex = args.indexOf("-g")
+		expect(args[gIndex + 1]).toBe("*")
+
+		// Verify that files are included in the results
+		const fileNames = files.map((f) => path.basename(f))
+		expect(fileNames).toContain("index.d.ts")
+		expect(fileNames).toContain("Parser.d.ts")
+		expect(fileNames).toContain("StreamBase.d.ts")
+	})
+
+	it("should include files when targeting nested paths inside ignored directories", async () => {
+		const mockSpawn = vi.mocked(childProcess.spawn)
+		const mockProcess = {
+			stdout: {
+				on: vi.fn((event, callback) => {
+					if (event === "data") {
+						// Simulate files in a deeply nested ignored path
+						setTimeout(() => {
+							callback("lib/index.js\n")
+							callback("lib/utils.js\n")
+							callback("package.json\n")
+						}, 10)
+					}
+				}),
+			},
+			stderr: {
+				on: vi.fn(),
+			},
+			on: vi.fn((event, callback) => {
+				if (event === "close") {
+					setTimeout(() => callback(0), 20)
+				}
+			}),
+			kill: vi.fn(),
+		}
+		mockSpawn.mockReturnValue(mockProcess as any)
+
+		// Mock directory listing
+		const mockReaddir = vi.fn()
+		vi.mocked(fs.promises).readdir = mockReaddir
+		mockReaddir.mockResolvedValueOnce([{ name: "lib", isDirectory: () => true, isSymbolicLink: () => false }])
+
+		// Call listFiles targeting a path deep inside node_modules
+		const [files] = await listFiles("/test/node_modules/some-package/dist", true, 100)
+
+		// Verify ripgrep was called with correct arguments
+		const [rgPath, args] = mockSpawn.mock.calls[0]
+
+		// Should have the special flags for ignored paths
+		expect(args).toContain("--no-ignore-vcs")
+		expect(args).toContain("--no-ignore")
+
+		// Verify files are included
+		const fileNames = files.map((f) => path.basename(f))
+		expect(fileNames).toContain("index.js")
+		expect(fileNames).toContain("utils.js")
+		expect(fileNames).toContain("package.json")
+	})
+
+	it("should handle non-recursive listing inside ignored directories", async () => {
+		const mockSpawn = vi.mocked(childProcess.spawn)
+		const mockProcess = {
+			stdout: {
+				on: vi.fn((event, callback) => {
+					if (event === "data") {
+						// Simulate files at the root of node_modules/@types
+						setTimeout(() => {
+							callback("stream-json/\n")
+							callback("node/\n")
+						}, 10)
+					}
+				}),
+			},
+			stderr: {
+				on: vi.fn(),
+			},
+			on: vi.fn((event, callback) => {
+				if (event === "close") {
+					setTimeout(() => callback(0), 20)
+				}
+			}),
+			kill: vi.fn(),
+		}
+		mockSpawn.mockReturnValue(mockProcess as any)
+
+		// Mock directory listing
+		const mockReaddir = vi.fn()
+		vi.mocked(fs.promises).readdir = mockReaddir
+		mockReaddir.mockResolvedValueOnce([
+			{ name: "stream-json", isDirectory: () => true, isSymbolicLink: () => false },
+			{ name: "node", isDirectory: () => true, isSymbolicLink: () => false },
+		])
+
+		// Call listFiles non-recursively inside node_modules/@types
+		const [files] = await listFiles("/test/node_modules/@types", false, 100)
+
+		// Verify ripgrep was called with correct arguments
+		const [rgPath, args] = mockSpawn.mock.calls[0]
+
+		// Should have the special flags for ignored paths
+		expect(args).toContain("--no-ignore-vcs")
+		expect(args).toContain("--no-ignore")
+		expect(args).toContain("--maxdepth")
+		expect(args).toContain("1")
+
+		// Verify directories are included
+		const dirNames = files
+			.filter((f) => f.endsWith("/"))
+			.map((f) => {
+				const parts = f.split("/")
+				return parts[parts.length - 2] + "/"
+			})
+		expect(dirNames).toContain("stream-json/")
+		expect(dirNames).toContain("node/")
+	})
+
+	it("should not apply node_modules exclusion to paths containing node_modules", async () => {
+		const mockSpawn = vi.mocked(childProcess.spawn)
+		const mockProcess = {
+			stdout: {
+				on: vi.fn((event, callback) => {
+					if (event === "data") {
+						setTimeout(() => callback("file.txt\n"), 10)
+					}
+				}),
+			},
+			stderr: {
+				on: vi.fn(),
+			},
+			on: vi.fn((event, callback) => {
+				if (event === "close") {
+					setTimeout(() => callback(0), 20)
+				}
+			}),
+			kill: vi.fn(),
+		}
+		mockSpawn.mockReturnValue(mockProcess as any)
+
+		// Test with a path containing node_modules
+		await listFiles("/test/node_modules/package/src", true, 100)
+
+		const [rgPath, args] = mockSpawn.mock.calls[0]
+
+		// Should NOT have the node_modules exclusion pattern since we're inside node_modules
+		expect(args).not.toContain("!**/node_modules/**")
+
+		// Should have the flags to ignore gitignore rules
+		expect(args).toContain("--no-ignore-vcs")
+		expect(args).toContain("--no-ignore")
+	})
+
+	it("should handle paths with multiple ignored segments correctly", async () => {
+		const mockSpawn = vi.mocked(childProcess.spawn)
+		const mockProcess = {
+			stdout: {
+				on: vi.fn((event, callback) => {
+					if (event === "data") {
+						setTimeout(() => callback("output.js\n"), 10)
+					}
+				}),
+			},
+			stderr: {
+				on: vi.fn(),
+			},
+			on: vi.fn((event, callback) => {
+				if (event === "close") {
+					setTimeout(() => callback(0), 20)
+				}
+			}),
+			kill: vi.fn(),
+		}
+		mockSpawn.mockReturnValue(mockProcess as any)
+
+		// Test with a path containing multiple ignored segments
+		await listFiles("/test/node_modules/package/dist/bundle", true, 100)
+
+		const [rgPath, args] = mockSpawn.mock.calls[0]
+
+		// Should have the special handling flags
+		expect(args).toContain("--no-ignore-vcs")
+		expect(args).toContain("--no-ignore")
+
+		// Should not exclude the first ignored segment found (node_modules)
+		expect(args).not.toContain("!**/node_modules/**")
+
+		// But should still exclude other ignored directories not in the path
+		expect(args).toContain("!**/__pycache__/**")
+		expect(args).toContain("!**/venv/**")
+	})
+})

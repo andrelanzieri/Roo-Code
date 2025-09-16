@@ -223,8 +223,40 @@ function buildRipgrepArgs(dirPath: string, recursive: boolean): string[] {
 	if (recursive) {
 		return [...args, ...buildRecursiveArgs(dirPath), dirPath]
 	} else {
-		return [...args, ...buildNonRecursiveArgs(), dirPath]
+		return [...args, ...buildNonRecursiveArgs(dirPath), dirPath]
 	}
+}
+
+/**
+ * Check if a path contains any ignored directory segment
+ * @param dirPath - The directory path to check
+ * @returns Object with flags indicating if path contains ignored segments
+ */
+function checkPathForIgnoredSegments(dirPath: string): {
+	hasHiddenSegment: boolean
+	ignoredSegment: string | null
+} {
+	// Normalize the path first to handle edge cases
+	const normalizedPath = path.normalize(dirPath)
+	// Split by separator and filter out empty parts
+	// This handles cases like trailing slashes, multiple separators, etc.
+	const pathParts = normalizedPath.split(path.sep).filter((part) => part.length > 0)
+
+	// Check for hidden directories (starting with .)
+	const hasHiddenSegment = pathParts.some((part) => part.startsWith("."))
+
+	// Check if any segment in the path is in the ignore list
+	let ignoredSegment: string | null = null
+	for (const part of pathParts) {
+		// Skip the ".*" pattern as it's handled separately via hasHiddenSegment
+		const nonHiddenIgnorePatterns = DIRS_TO_IGNORE.filter((pattern) => pattern !== ".*")
+		if (nonHiddenIgnorePatterns.includes(part)) {
+			ignoredSegment = part
+			break
+		}
+	}
+
+	return { hasHiddenSegment, ignoredSegment }
 }
 
 /**
@@ -236,21 +268,12 @@ function buildRecursiveArgs(dirPath: string): string[] {
 	// In recursive mode, respect .gitignore by default
 	// (ripgrep does this automatically)
 
-	// Check if we're explicitly targeting a hidden directory
-	// Normalize the path first to handle edge cases
-	const normalizedPath = path.normalize(dirPath)
-	// Split by separator and filter out empty parts
-	// This handles cases like trailing slashes, multiple separators, etc.
-	const pathParts = normalizedPath.split(path.sep).filter((part) => part.length > 0)
-	const isTargetingHiddenDir = pathParts.some((part) => part.startsWith("."))
+	// Check if the path contains any ignored segments (not just the basename)
+	const { hasHiddenSegment, ignoredSegment } = checkPathForIgnoredSegments(dirPath)
 
-	// Get the target directory name to check if it's in the ignore list
-	const targetDirName = path.basename(dirPath)
-	const isTargetInIgnoreList = DIRS_TO_IGNORE.includes(targetDirName)
-
-	// If targeting a hidden directory or a directory in the ignore list,
-	// use special handling to ensure all files are shown
-	if (isTargetingHiddenDir || isTargetInIgnoreList) {
+	// If path contains ignored segments (either hidden or explicitly ignored),
+	// treat it the same as explicitly targeting that ignored directory
+	if (hasHiddenSegment || ignoredSegment) {
 		args.push("--no-ignore-vcs")
 		args.push("--no-ignore")
 
@@ -261,27 +284,23 @@ function buildRecursiveArgs(dirPath: string): string[] {
 	}
 
 	// Apply directory exclusions for recursive searches
+	// But skip exclusions for directories that are in the path we're targeting
 	for (const dir of DIRS_TO_IGNORE) {
 		// Special handling for hidden directories pattern
 		if (dir === ".*") {
-			// If we're explicitly targeting a hidden directory, don't exclude hidden files/dirs
-			// This allows the target hidden directory and all its contents to be listed
-			if (!isTargetingHiddenDir) {
-				// Not targeting hidden dir: exclude all hidden directories
+			// If path contains hidden segments, don't exclude hidden files/dirs
+			if (!hasHiddenSegment) {
+				// Not targeting path with hidden segments: exclude all hidden directories
 				args.push("-g", `!**/.*/**`)
 			}
-			// If targeting hidden dir: don't add any exclusion for hidden directories
+			// If path contains hidden segments: don't add any exclusion for hidden directories
 			continue
 		}
 
-		// When explicitly targeting a directory that's in the ignore list (e.g., "temp"),
-		// we need special handling:
-		// - Don't add any exclusion pattern for the target directory itself
-		// - Only exclude nested subdirectories with the same name
-		// This ensures all files in the target directory are listed, while still
-		// preventing recursion into nested directories with the same ignored name
-		if (dir === targetDirName && isTargetInIgnoreList) {
-			// Skip adding any exclusion pattern - we want to see everything in the target directory
+		// If this ignored directory is part of our target path, don't exclude it
+		// This allows listing contents inside ignored ancestors like node_modules/@types/
+		if (ignoredSegment === dir) {
+			// Skip adding any exclusion pattern - we want to see everything in paths containing this segment
 			continue
 		}
 
@@ -295,8 +314,17 @@ function buildRecursiveArgs(dirPath: string): string[] {
 /**
  * Build ripgrep arguments for non-recursive directory listing
  */
-function buildNonRecursiveArgs(): string[] {
+function buildNonRecursiveArgs(dirPath: string): string[] {
 	const args: string[] = []
+
+	// Check if the path contains any ignored segments
+	const { hasHiddenSegment, ignoredSegment } = checkPathForIgnoredSegments(dirPath)
+
+	// If path contains ignored segments, use special handling
+	if (hasHiddenSegment || ignoredSegment) {
+		args.push("--no-ignore-vcs")
+		args.push("--no-ignore")
+	}
 
 	// For non-recursive, limit to the current directory level
 	args.push("-g", "*")
@@ -306,17 +334,20 @@ function buildNonRecursiveArgs(): string[] {
 	// (ripgrep respects .gitignore by default)
 
 	// Apply directory exclusions for non-recursive searches
-	for (const dir of DIRS_TO_IGNORE) {
-		if (dir === ".*") {
-			// For hidden directories in non-recursive mode, we want to show the directories
-			// themselves but not their contents. Since we're using --maxdepth 1, this
-			// naturally happens - we just need to avoid excluding the directories entirely.
-			// We'll let the directory scanning logic handle the visibility.
-			continue
-		} else {
-			// Direct children only
-			args.push("-g", `!${dir}`)
-			args.push("-g", `!${dir}/**`)
+	// But skip exclusions if we're inside an ignored path
+	if (!hasHiddenSegment && !ignoredSegment) {
+		for (const dir of DIRS_TO_IGNORE) {
+			if (dir === ".*") {
+				// For hidden directories in non-recursive mode, we want to show the directories
+				// themselves but not their contents. Since we're using --maxdepth 1, this
+				// naturally happens - we just need to avoid excluding the directories entirely.
+				// We'll let the directory scanning logic handle the visibility.
+				continue
+			} else {
+				// Direct children only
+				args.push("-g", `!${dir}`)
+				args.push("-g", `!${dir}/**`)
+			}
 		}
 	}
 
