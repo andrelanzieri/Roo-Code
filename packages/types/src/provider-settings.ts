@@ -80,6 +80,9 @@ export const providerNamesSchema = z.enum(providerNames)
 
 export type ProviderName = z.infer<typeof providerNamesSchema>
 
+export const isProviderName = (key: unknown): key is ProviderName =>
+	typeof key === "string" && providerNames.includes(key as ProviderName)
+
 /**
  * DynamicProvider
  *
@@ -87,20 +90,33 @@ export type ProviderName = z.infer<typeof providerNamesSchema>
  */
 
 export const dynamicProviders = [
-	"glama",
+	"openrouter",
+	"vercel-ai-gateway",
 	"huggingface",
 	"litellm",
-	"openrouter",
+	"deepinfra",
+	"io-intelligence",
 	"requesty",
 	"unbound",
-	"deepinfra",
-	"vercel-ai-gateway",
+	"glama",
 ] as const satisfies readonly ProviderName[]
 
 export type DynamicProvider = (typeof dynamicProviders)[number]
 
 export const isDynamicProvider = (key: string): key is DynamicProvider =>
 	dynamicProviders.includes(key as DynamicProvider)
+
+/**
+ * LocalProvider
+ *
+ * Local providers require localhost API calls in order to get the model list.
+ */
+
+export const localProviders = ["ollama", "lmstudio"] as const satisfies readonly ProviderName[]
+
+export type LocalProvider = (typeof localProviders)[number]
+
+export const isLocalProvider = (key: string): key is LocalProvider => localProviders.includes(key as LocalProvider)
 
 /**
  * FauxProvider
