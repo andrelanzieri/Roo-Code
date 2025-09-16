@@ -22,6 +22,7 @@ import {
 	processImageFile,
 	ImageMemoryTracker,
 } from "./helpers/imageHelpers"
+import { validateMultipleFiles, readFileInChunks, FileReadingConfig } from "./contextValidator"
 
 export function getReadFileToolDescription(blockName: string, blockParams: any): string {
 	// Handle both single path and multiple files via args
@@ -442,6 +443,58 @@ export async function readFileTool(
 			maxTotalImageSize = DEFAULT_MAX_TOTAL_IMAGE_SIZE_MB,
 		} = state ?? {}
 
+		// Get file reading configuration (using defaults for now, can be extended with state later)
+		const fileReadingConfig: FileReadingConfig = {
+			largeFileHandling: "truncate", // Default to truncate for safety
+			safetyBufferPercent: 25,
+			maxChunkLines: 1000,
+			showDefinitionsOnTruncate: true,
+		}
+
+		// Validate all approved files for context limits
+		const approvedPaths = fileResults
+			.filter((r) => r.status === "approved")
+			.map((r) => path.resolve(cline.cwd, r.path))
+
+		// Get model info and current token usage
+		const modelInfo = cline.api.getModel().info
+		const currentTokenUsage = 0 // We'll use 0 for now since getTokenUsage might not exist
+
+		const contextValidations = await validateMultipleFiles(approvedPaths, {
+			model: modelInfo,
+			apiConfiguration: cline.apiConfiguration,
+			currentTokenUsage: currentTokenUsage,
+			config: fileReadingConfig,
+			partialReadsEnabled: maxReadFileLine !== 0,
+		})
+
+		// Show message about files that will be truncated or skipped
+		const truncatedFiles: string[] = []
+		const skippedFiles: string[] = []
+
+		for (const [filePath, validation] of contextValidations) {
+			const relPath = path.relative(cline.cwd, filePath)
+			if (!validation.canRead && fileReadingConfig.largeFileHandling === "fail") {
+				skippedFiles.push(relPath)
+			} else if (validation.suggestedAction === "read_partial") {
+				truncatedFiles.push(relPath)
+			}
+		}
+
+		if (truncatedFiles.length > 0 || skippedFiles.length > 0) {
+			let message = ""
+			if (truncatedFiles.length > 0) {
+				message += `Files will be truncated to fit context limits:\n${truncatedFiles.map((f) => `  - ${f}`).join("\n")}\n`
+			}
+			if (skippedFiles.length > 0) {
+				message += `Files cannot be read (exceeding context limits):\n${skippedFiles.map((f) => `  - ${f}`).join("\n")}\n`
+			}
+			message += "\nUse line_range parameter to read specific sections of large files."
+
+			// Log the message for debugging
+			console.log(`[read_file] Context validation message: ${message}`)
+		}
+
 		// Then process only approved files
 		for (const fileResult of fileResults) {
 			// Skip files that weren't approved
@@ -451,9 +504,18 @@ export async function readFileTool(
 
 			const relPath = fileResult.path
 			const fullPath = path.resolve(cline.cwd, relPath)
+			const contextValidation = contextValidations.get(fullPath)
 
 			// Process approved files
 			try {
+				// Check context validation first
+				if (contextValidation && !contextValidation.canRead) {
+					updateFileResult(relPath, {
+						xmlContent: `<file><path>${relPath}</path>\n<error>${contextValidation.message}</error>\n</file>`,
+					})
+					continue
+				}
+
 				const [totalLines, isBinary] = await Promise.all([countFileLines(fullPath), isBinaryFile(fullPath)])
 
 				// Handle binary files (but allow specific file types that extractTextFromFile can handle)
@@ -528,7 +590,7 @@ export async function readFileTool(
 					}
 				}
 
-				// Handle range reads (bypass maxReadFileLine)
+				// Handle range reads (bypass maxReadFileLine and context validation)
 				if (fileResult.lineRanges && fileResult.lineRanges.length > 0) {
 					const rangeResults: string[] = []
 					for (const range of fileResult.lineRanges) {
@@ -545,12 +607,65 @@ export async function readFileTool(
 					continue
 				}
 
+				// Use context validation to determine how to read the file
+				if (contextValidation) {
+					if (contextValidation.suggestedAction === "read_partial") {
+						// Read only the safe number of lines
+						const maxLines = contextValidation.maxSafeLines
+						const content = addLineNumbers(await readLines(fullPath, maxLines - 1, 0))
+						const lineRangeAttr = ` lines="1-${maxLines}"`
+						let xmlInfo = `<content${lineRangeAttr}>\n${content}</content>\n`
+
+						// Add definitions if configured
+						if (fileReadingConfig.showDefinitionsOnTruncate) {
+							try {
+								const defResult = await parseSourceCodeDefinitionsForFile(
+									fullPath,
+									cline.rooIgnoreController,
+								)
+								if (defResult) {
+									xmlInfo += `<list_code_definition_names>${defResult}</list_code_definition_names>\n`
+								}
+							} catch (error) {
+								// Log but don't fail
+								console.warn(`[read_file] Could not parse definitions: ${error}`)
+							}
+						}
+
+						xmlInfo += `<notice>${contextValidation.message}</notice>\n`
+						updateFileResult(relPath, {
+							xmlContent: `<file><path>${relPath}</path>\n${xmlInfo}</file>`,
+						})
+						continue
+					} else if (contextValidation.suggestedAction === "read_chunks") {
+						// Read file in chunks (for now, just read the first chunk)
+						const chunkIterator = readFileInChunks(fullPath, fileReadingConfig.maxChunkLines, totalLines)
+						const firstChunk = await chunkIterator.next()
+
+						if (!firstChunk.done) {
+							const { content, startLine, endLine, isLastChunk } = firstChunk.value
+							const numberedContent = addLineNumbers(content, startLine)
+							const lineRangeAttr = ` lines="${startLine}-${endLine}"`
+							let xmlInfo = `<content${lineRangeAttr}>\n${numberedContent}</content>\n`
+
+							if (!isLastChunk) {
+								xmlInfo += `<notice>Showing chunk 1 (lines ${startLine}-${endLine} of ${totalLines}). File is being read in chunks to fit context limits.</notice>\n`
+							}
+
+							updateFileResult(relPath, {
+								xmlContent: `<file><path>${relPath}</path>\n${xmlInfo}</file>`,
+							})
+						}
+						continue
+					}
+				}
+
 				// Handle definitions-only mode
 				if (maxReadFileLine === 0) {
 					try {
 						const defResult = await parseSourceCodeDefinitionsForFile(fullPath, cline.rooIgnoreController)
 						if (defResult) {
-							let xmlInfo = `<notice>Showing only ${maxReadFileLine} of ${totalLines} total lines. Use line_range if you need to read more lines</notice>\n`
+							let xmlInfo = `<notice>Showing only definitions. Use line_range if you need to read actual content.</notice>\n`
 							updateFileResult(relPath, {
 								xmlContent: `<file><path>${relPath}</path>\n<list_code_definition_names>${defResult}</list_code_definition_names>\n${xmlInfo}</file>`,
 							})
@@ -567,7 +682,7 @@ export async function readFileTool(
 					continue
 				}
 
-				// Handle files exceeding line threshold
+				// Handle files exceeding line threshold (legacy behavior for backward compatibility)
 				if (maxReadFileLine > 0 && totalLines > maxReadFileLine) {
 					const content = addLineNumbers(await readLines(fullPath, maxReadFileLine - 1, 0))
 					const lineRangeAttr = ` lines="1-${maxReadFileLine}"`
