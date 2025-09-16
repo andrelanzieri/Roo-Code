@@ -152,7 +152,7 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 
 	private async stageAll(git: SimpleGit) {
 		try {
-			await git.add(".")
+			await git.add([".", "--ignore-errors"])
 		} catch (error) {
 			this.log(
 				`[${this.constructor.name}#stageAll] failed to add files to git: ${error instanceof Error ? error.message : String(error)}`,
@@ -240,7 +240,7 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 
 			const startTime = Date.now()
 			await this.stageAll(this.git)
-			const commitArgs = options?.allowEmpty ? { "--allow-empty": null } : undefined
+			const commitArgs = options?.allowEmpty ? { "--allow-empty": null, "--no-verify": null } : undefined
 			const result = await this.git.commit(message, commitArgs)
 			const fromHash = this._checkpoints[this._checkpoints.length - 1] ?? this.baseHash!
 			const toHash = result.commit || fromHash

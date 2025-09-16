@@ -125,6 +125,7 @@ export interface TaskOptions extends CreateTaskOptions {
 	apiConfiguration: ProviderSettings
 	enableDiff?: boolean
 	enableCheckpoints?: boolean
+	checkpointTimeout?: number
 	enableBridge?: boolean
 	fuzzyMatchThreshold?: number
 	consecutiveMistakeLimit?: number
@@ -266,6 +267,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Checkpoints
 	enableCheckpoints: boolean
+	checkpointTimeout: number
 	checkpointService?: RepoPerTaskCheckpointService
 	checkpointServiceInitializing = false
 
@@ -302,6 +304,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		apiConfiguration,
 		enableDiff = false,
 		enableCheckpoints = true,
+		checkpointTimeout = 15,
 		enableBridge = false,
 		fuzzyMatchThreshold = 1.0,
 		consecutiveMistakeLimit = DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
@@ -361,6 +364,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.globalStoragePath = provider.context.globalStorageUri.fsPath
 		this.diffViewProvider = new DiffViewProvider(this.cwd, this)
 		this.enableCheckpoints = enableCheckpoints
+		this.checkpointTimeout = checkpointTimeout
 		this.enableBridge = enableBridge
 
 		this.parentTask = parentTask
