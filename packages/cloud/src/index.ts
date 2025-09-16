@@ -1,4 +1,5 @@
-export * from "./config"
+export * from "./config.js"
 
-export * from "./CloudAPI"
-export * from "./CloudService"
+export { CloudService } from "./CloudService.js"
+
+export { BridgeOrchestrator } from "./bridge/index.js"

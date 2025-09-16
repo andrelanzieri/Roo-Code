@@ -2,12 +2,15 @@
 	"greeting": "Roo Code'a Hoş Geldiniz",
 	"task": {
 		"title": "Görev",
+		"expand": "Görevi genişlet",
+		"collapse": "Görevi daralt",
 		"seeMore": "Daha fazla gör",
 		"seeLess": "Daha az gör",
-		"tokens": "Tokenlar:",
-		"cache": "Önbellek:",
-		"apiCost": "API Maliyeti:",
-		"contextWindow": "Bağlam Uzunluğu:",
+		"tokens": "Tokenlar",
+		"cache": "Önbellek",
+		"apiCost": "API Maliyeti",
+		"size": "Boyut",
+		"contextWindow": "Bağlam Uzunluğu",
 		"closeAndStart": "Görevi kapat ve yeni bir görev başlat",
 		"export": "Görev geçmişini dışa aktar",
 		"delete": "Görevi sil (Onayı atlamak için Shift + Tıkla)",
@@ -21,7 +24,9 @@
 		"connectToCloudDescription": "Görevleri paylaşmak için Roo Code Cloud'a giriş yap",
 		"sharingDisabledByOrganization": "Paylaşım kuruluş tarafından devre dışı bırakıldı",
 		"shareSuccessOrganization": "Organizasyon bağlantısı panoya kopyalandı",
-		"shareSuccessPublic": "Genel bağlantı panoya kopyalandı"
+		"shareSuccessPublic": "Genel bağlantı panoya kopyalandı",
+		"openInCloud": "Görevi Roo Code Cloud'da aç",
+		"openInCloudIntro": "Roo'yu her yerden izlemeye veya etkileşime devam et. Açmak için tara, tıkla veya kopyala."
 	},
 	"unpin": "Sabitlemeyi iptal et",
 	"pin": "Sabitle",
@@ -139,7 +144,6 @@
 		"streamingFailed": "API Akışı Başarısız"
 	},
 	"checkpoint": {
-		"initial": "İlk Kontrol Noktası",
 		"regular": "Kontrol Noktası",
 		"initializingWarning": "Kontrol noktası hala başlatılıyor... Bu çok uzun sürerse, <settingsLink>ayarlar</settingsLink> bölümünden kontrol noktalarını devre dışı bırakabilir ve görevinizi yeniden başlatabilirsiniz.",
 		"menu": {
@@ -173,7 +177,11 @@
 		"wantsToInsertAtEnd": "Roo bu dosyanın sonuna içerik eklemek istiyor:",
 		"wantsToReadAndXMore": "Roo bu dosyayı ve {{count}} tane daha okumak istiyor:",
 		"wantsToReadMultiple": "Roo birden fazla dosya okumak istiyor:",
-		"wantsToApplyBatchChanges": "Roo birden fazla dosyaya değişiklik uygulamak istiyor:"
+		"wantsToApplyBatchChanges": "Roo birden fazla dosyaya değişiklik uygulamak istiyor:",
+		"wantsToGenerateImage": "Roo bir görsel oluşturmak istiyor:",
+		"wantsToGenerateImageOutsideWorkspace": "Roo çalışma alanının dışında bir görsel oluşturmak istiyor:",
+		"wantsToGenerateImageProtected": "Roo korumalı bir konumda görsel oluşturmak istiyor:",
+		"didGenerateImage": "Roo bir görsel oluşturdu:"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Roo bu dizindeki üst düzey dosyaları görüntülemek istiyor:",
@@ -239,12 +247,19 @@
 		"issues": "Windows PowerShell ile ilgili sorunlar yaşıyor gibi görünüyorsunuz, lütfen şu konuya bakın"
 	},
 	"autoApprove": {
-		"title": "Otomatik-onay:",
+		"tooltip": "Otomatik onay ayarlarını yönet",
+		"title": "Otomatik onayla",
+		"all": "Tümü",
 		"none": "Hiçbiri",
-		"description": "Otomatik onay, Roo Code'un izin istemeden işlemler gerçekleştirmesine olanak tanır. Yalnızca tamamen güvendiğiniz eylemler için etkinleştirin. Daha detaylı yapılandırma <settingsLink>Ayarlar</settingsLink>'da mevcuttur.",
-		"selectOptionsFirst": "Otomatik onayı etkinleştirmek için aşağıdan en az bir seçenek belirleyin",
-		"toggleAriaLabel": "Otomatik onayı değiştir",
-		"disabledAriaLabel": "Otomatik onay devre dışı - önce seçenekleri belirleyin"
+		"description": "İzin istemeden bu eylemleri gerçekleştirin. Bunu yalnızca tamamen güvendiğiniz eylemler için etkinleştirin.",
+		"selectOptionsFirst": "Otomatik onayı etkinleştirmek için aşağıdan en az bir seçenek seçin",
+		"toggleAriaLabel": "Otomatik onayı aç/kapat",
+		"disabledAriaLabel": "Otomatik onay devre dışı - önce seçenekleri seçin",
+		"triggerLabel_zero": "Otomatik onay yok",
+		"triggerLabel_one": "1 otomatik onaylandı",
+		"triggerLabel_other": "{{count}} otomatik onaylandı",
+		"triggerLabelAll": "YOLO",
+		"triggerLabelOff": "Otomatik onay kapalı"
 	},
 	"reasoning": {
 		"thinking": "Düşünüyor",
@@ -263,13 +278,12 @@
 	},
 	"announcement": {
 		"title": "🎉 Roo Code {{version}} Yayınlandı",
-		"description": "Roo Code {{version}}, geliştirme iş akışınızı geliştirmek için güçlü yeni özellikler ve önemli iyileştirmeler getiriyor.",
-		"whatsNew": "Yenilikler",
-		"feature1": "<bold>Mesaj Kuyruğu</bold>: Roo çalışırken birden fazla mesajı kuyruğa alın, iş akışınızı kesintisiz olarak planlamaya devam etmenizi sağlar.",
-		"feature2": "<bold>Özel Slash Komutları</bold>: Sık kullanılan promptlara ve iş akışlarına hızlı erişim için kişiselleştirilmiş slash komutları oluşturun, tam UI yönetimi ile.",
-		"feature3": "<bold>Gelişmiş Gemini Araçları</bold>: Yeni URL bağlamı ve Google Arama temellendirilmesi yetenekleri, Gemini modellerine gerçek zamanlı web bilgileri ve gelişmiş araştırma yetenekleri sağlar.",
-		"hideButton": "Duyuruyu gizle",
-		"detailsDiscussLinks": "<discordLink>Discord</discordLink> ve <redditLink>Reddit</redditLink>'te daha fazla ayrıntı alın ve tartışmalara katılın 🚀"
+		"description": "<bold>Roo Code Cloud</bold> Tanıtımı: Roo'nun gücünü IDE'nin ötesine taşıyoruz",
+		"feature1": "<bold>Görev ilerlemesini her yerden takip edin (Ücretsiz):</bold> IDE'nizde sıkışıp kalmadan uzun süren görevlerin gerçek zamanlı güncellemelerini alın",
+		"feature2": "<bold>Roo Uzantısını uzaktan kontrol edin (Pro):</bold> Sohbet tabanlı tarayıcı arayüzünden görevleri başlatın, durdurun ve etkileşime geçin.",
+		"learnMore": "Kontrolü ele almaya hazır mısınız? Daha fazlasını <learnMoreLink>buradan</learnMoreLink> öğrenin.",
+		"visitCloudButton": "Roo Code Cloud'u Ziyaret Et",
+		"socialLinks": "Bize <xLink>X</xLink>, <discordLink>Discord</discordLink>, veya <redditLink>r/RooCode</redditLink>'da katılın"
 	},
 	"browser": {
 		"rooWantsToUse": "Roo tarayıcıyı kullanmak istiyor:",
@@ -347,9 +361,9 @@
 		"ariaLabel": "Sürüm {{version}} - Sürüm notlarını görüntülemek için tıklayın"
 	},
 	"rooCloudCTA": {
-		"title": "Roo Code Cloud yakında geliyor!",
+		"title": "Roo Code Cloud gelişiyor!",
 		"description": "Bulutta uzak ajanlar çalıştırın, görevlerinize her yerden erişin, başkalarıyla işbirliği yapın ve daha fazlası.",
-		"joinWaitlist": "Erken erişim için bekleme listesine katılın."
+		"joinWaitlist": "En son güncellemeleri almak için kaydolun."
 	},
 	"editMessage": {
 		"placeholder": "Mesajını düzenle..."
@@ -360,7 +374,9 @@
 	"slashCommands": {
 		"tooltip": "Eğik çizgi komutlarını yönet",
 		"title": "Eğik Çizgi Komutları",
-		"description": "Sık kullanılan komut istemleri ve iş akışlarına hızlı erişim için özel eğik çizgi komutları oluşturun. <DocsLink>Belgeler</DocsLink>",
+		"description": "Yerleşik eğik çizgi komutlarını kullanın veya sık kullanılan komut istemleri ve iş akışlarına hızlı erişim için özel komutlar oluşturun. <DocsLink>Belgeler</DocsLink>",
+		"manageCommands": "Ayarlarda eğik çizgi komutlarını yönet",
+		"builtInCommands": "Yerleşik Komutlar",
 		"globalCommands": "Genel Komutlar",
 		"workspaceCommands": "Çalışma Alanı Komutları",
 		"globalCommand": "Genel komut",
@@ -375,8 +391,18 @@
 			"confirm": "Sil"
 		}
 	},
+	"contextMenu": {
+		"noResults": "Sonuç yok",
+		"problems": "Sorunlar",
+		"terminal": "Terminal",
+		"url": "İçeriği getirmek için URL'yi yapıştırın"
+	},
 	"queuedMessages": {
 		"title": "Sıradaki Mesajlar:",
 		"clickToEdit": "Mesajı düzenlemek için tıkla"
+	},
+	"slashCommand": {
+		"wantsToRun": "Roo bir slash komutu çalıştırmak istiyor:",
+		"didRun": "Roo bir slash komutu çalıştırdı:"
 	}
 }

@@ -3,17 +3,15 @@
 import type { MockedFunction } from "vitest"
 import * as vscode from "vscode"
 
-import { CloudAPI } from "../CloudAPI"
-import { CloudShareService } from "../CloudShareService"
-import type { SettingsService } from "../SettingsService"
-import type { AuthService } from "../auth"
-import { CloudAPIError, TaskNotFoundError } from "../errors"
+import type { SettingsService, AuthService } from "@roo-code/types"
 
-// Mock fetch
+import { CloudAPI } from "../CloudAPI.js"
+import { CloudShareService } from "../CloudShareService.js"
+import { CloudAPIError, TaskNotFoundError } from "../errors.js"
+
 const mockFetch = vi.fn()
 global.fetch = mockFetch as any
 
-// Mock vscode
 vi.mock("vscode", () => ({
 	window: {
 		showInformationMessage: vi.fn(),
@@ -36,12 +34,10 @@ vi.mock("vscode", () => ({
 	},
 }))
 
-// Mock config
 vi.mock("../Config", () => ({
 	getRooCodeApiUrl: () => "https://app.roocode.com",
 }))
 
-// Mock utils
 vi.mock("../utils", () => ({
 	getUserAgent: () => "Roo-Code 1.0.0",
 }))
@@ -69,6 +65,7 @@ describe("CloudShareService", () => {
 		} as any
 
 		mockCloudAPI = new CloudAPI(mockAuthService, mockLog)
+
 		shareService = new CloudShareService(mockCloudAPI, mockSettingsService, mockLog)
 	})
 
@@ -80,6 +77,7 @@ describe("CloudShareService", () => {
 			}
 
 			;(mockAuthService.getSessionToken as any).mockReturnValue("session-token")
+
 			mockFetch.mockResolvedValue({
 				ok: true,
 				json: vi.fn().mockResolvedValue(mockResponseData),
@@ -89,6 +87,7 @@ describe("CloudShareService", () => {
 
 			expect(result.success).toBe(true)
 			expect(result.shareUrl).toBe("https://app.roocode.com/share/abc123")
+
 			expect(mockFetch).toHaveBeenCalledWith("https://app.roocode.com/api/extension/share", {
 				method: "POST",
 				headers: {
@@ -96,9 +95,13 @@ describe("CloudShareService", () => {
 					Authorization: "Bearer session-token",
 					"User-Agent": "Roo-Code 1.0.0",
 				},
-				body: JSON.stringify({ taskId: "task-123", visibility: "organization" }),
+				body: JSON.stringify({
+					taskId: "task-123",
+					visibility: "organization",
+				}),
 				signal: expect.any(AbortSignal),
 			})
+
 			expect(vscode.env.clipboard.writeText).toHaveBeenCalledWith("https://app.roocode.com/share/abc123")
 		})
 
@@ -109,6 +112,7 @@ describe("CloudShareService", () => {
 			}
 
 			;(mockAuthService.getSessionToken as any).mockReturnValue("session-token")
+
 			mockFetch.mockResolvedValue({
 				ok: true,
 				json: vi.fn().mockResolvedValue(mockResponseData),
@@ -117,6 +121,7 @@ describe("CloudShareService", () => {
 			const result = await shareService.shareTask("task-123", "public")
 
 			expect(result.success).toBe(true)
+
 			expect(mockFetch).toHaveBeenCalledWith("https://app.roocode.com/api/extension/share", {
 				method: "POST",
 				headers: {
@@ -151,7 +156,10 @@ describe("CloudShareService", () => {
 					Authorization: "Bearer session-token",
 					"User-Agent": "Roo-Code 1.0.0",
 				},
-				body: JSON.stringify({ taskId: "task-123", visibility: "organization" }),
+				body: JSON.stringify({
+					taskId: "task-123",
+					visibility: "organization",
+				}),
 				signal: expect.any(AbortSignal),
 			})
 		})

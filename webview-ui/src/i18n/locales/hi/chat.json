@@ -2,12 +2,15 @@
 	"greeting": "Roo Code में आपका स्वागत है",
 	"task": {
 		"title": "कार्य",
+		"expand": "कार्य विस्तृत करें",
+		"collapse": "कार्य संक्षिप्त करें",
 		"seeMore": "अधिक देखें",
 		"seeLess": "कम देखें",
-		"tokens": "Tokens:",
-		"cache": "कैश:",
-		"apiCost": "API लागत:",
-		"contextWindow": "संदर्भ लंबाई:",
+		"tokens": "Tokens",
+		"cache": "कैश",
+		"apiCost": "API लागत",
+		"size": "आकार",
+		"contextWindow": "संदर्भ लंबाई",
 		"closeAndStart": "कार्य बंद करें और नया शुरू करें",
 		"export": "कार्य इतिहास निर्यात करें",
 		"delete": "कार्य हटाएं (पुष्टि को छोड़ने के लिए Shift + क्लिक)",
@@ -21,7 +24,9 @@
 		"connectToCloudDescription": "कार्य साझा करने के लिए Roo Code Cloud में साइन इन करें",
 		"sharingDisabledByOrganization": "संगठन द्वारा साझाकरण अक्षम किया गया",
 		"shareSuccessOrganization": "संगठन लिंक क्लिपबोर्ड में कॉपी किया गया",
-		"shareSuccessPublic": "सार्वजनिक लिंक क्लिपबोर्ड में कॉपी किया गया"
+		"shareSuccessPublic": "सार्वजनिक लिंक क्लिपबोर्ड में कॉपी किया गया",
+		"openInCloud": "Roo Code Cloud में कार्य खोलें",
+		"openInCloudIntro": "कहीं से भी Roo की निगरानी या इंटरैक्ट करना जारी रखें। खोलने के लिए स्कैन करें, क्लिक करें या कॉपी करें।"
 	},
 	"unpin": "पिन करें",
 	"pin": "अवपिन करें",
@@ -139,7 +144,6 @@
 		"streamingFailed": "API स्ट्रीमिंग विफल हुई"
 	},
 	"checkpoint": {
-		"initial": "प्रारंभिक चेकपॉइंट",
 		"regular": "चेकपॉइंट",
 		"initializingWarning": "चेकपॉइंट अभी भी आरंभ हो रहा है... अगर यह बहुत समय ले रहा है, तो आप <settingsLink>सेटिंग्स</settingsLink> में चेकपॉइंट को अक्षम कर सकते हैं और अपने कार्य को पुनः आरंभ कर सकते हैं।",
 		"menu": {
@@ -173,7 +177,11 @@
 		"wantsToInsertAtEnd": "Roo इस फ़ाइल के अंत में सामग्री जोड़ना चाहता है:",
 		"wantsToReadAndXMore": "रू इस फ़ाइल को और {{count}} अन्य को पढ़ना चाहता है:",
 		"wantsToReadMultiple": "Roo कई फ़ाइलें पढ़ना चाहता है:",
-		"wantsToApplyBatchChanges": "Roo कई फ़ाइलों में परिवर्तन लागू करना चाहता है:"
+		"wantsToApplyBatchChanges": "Roo कई फ़ाइलों में परिवर्तन लागू करना चाहता है:",
+		"wantsToGenerateImage": "Roo एक छवि बनाना चाहता है:",
+		"wantsToGenerateImageOutsideWorkspace": "Roo कार्यक्षेत्र के बाहर एक छवि बनाना चाहता है:",
+		"wantsToGenerateImageProtected": "Roo एक संरक्षित स्थान पर छवि बनाना चाहता है:",
+		"didGenerateImage": "Roo ने एक छवि बनाई:"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Roo इस निर्देशिका में शीर्ष स्तर की फ़ाइलें देखना चाहता है:",
@@ -239,12 +247,19 @@
 		"issues": "ऐसा लगता है कि आपको Windows PowerShell के साथ समस्याएँ हो रही हैं, कृपया इसे देखें"
 	},
 	"autoApprove": {
-		"title": "स्वत:-स्वीकृति:",
+		"tooltip": "स्वतः-अनुमोदन सेटिंग्स प्रबंधित करें",
+		"title": "स्वतः-अनुमोदन",
+		"all": "सभी",
 		"none": "कोई नहीं",
-		"description": "स्वत:-स्वीकृति Roo Code को अनुमति मांगे बिना क्रियाएँ करने की अनुमति देती है। केवल उन क्रियाओं के लिए सक्षम करें जिन पर आप पूरी तरह से विश्वास करते हैं। अधिक विस्तृत कॉन्फ़िगरेशन <settingsLink>सेटिंग्स</settingsLink> में उपलब्ध है।",
-		"selectOptionsFirst": "स्वतः-अनुमोदन सक्षम करने के लिए नीचे दिए گئے विकल्पों में से कम से कम एक का चयन करें",
+		"description": "अनुमति मांगे बिना इन क्रियाओं को चलाएं। इसे केवल उन क्रियाओं के लिए सक्षम करें जिन पर आप पूरी तरह भरोसा करते हैं।",
+		"selectOptionsFirst": "स्वतः-अनुमोदन सक्षम करने के लिए नीचे दिए गए कम से कम एक विकल्प का चयन करें",
 		"toggleAriaLabel": "स्वतः-अनुमोदन टॉगल करें",
-		"disabledAriaLabel": "स्वतः-अनुमोदन अक्षम - पहले विकल्प चुनें"
+		"disabledAriaLabel": "स्वतः-अनुमोदन अक्षम - पहले विकल्प चुनें",
+		"triggerLabel_zero": "कोई स्वतः-अनुमोदन नहीं",
+		"triggerLabel_one": "1 स्वतः-अनुमोदित",
+		"triggerLabel_other": "{{count}} स्वतः-अनुमोदित",
+		"triggerLabelAll": "योलो",
+		"triggerLabelOff": "स्वतः-अनुमोदन बंद"
 	},
 	"reasoning": {
 		"thinking": "विचार कर रहा है",
@@ -263,13 +278,12 @@
 	},
 	"announcement": {
 		"title": "🎉 Roo Code {{version}} रिलीज़ हुआ",
-		"description": "Roo Code {{version}} आपके विकास वर्कफ़्लो को बेहतर बनाने के लिए शक्तिशाली नई सुविधाएं और महत्वपूर्ण सुधार लेकर आया है।",
-		"whatsNew": "नया क्या है",
-		"feature1": "<bold>संदेश कतार</bold>: Roo के काम करते समय कई संदेशों को कतार में रखें, जिससे आप बिना रुकावट के अपने वर्कफ़्लो की योजना बना सकते हैं।",
-		"feature2": "<bold>कस्टम स्लैश कमांड</bold>: अक्सर उपयोग किए जाने वाले प्रॉम्प्ट और वर्कफ़्लो तक त्वरित पहुंच के लिए व्यक्तिगत स्लैश कमांड बनाएं, पूर्ण UI प्रबंधन के साथ।",
-		"feature3": "<bold>उन्नत Gemini उपकरण</bold>: नए URL संदर्भ और Google खोज आधार क्षमताएं Gemini मॉडल को वास्तविक समय वेब जानकारी और बेहतर अनुसंधान क्षमताएं प्रदान करती हैं।",
-		"hideButton": "घोषणा छुपाएं",
-		"detailsDiscussLinks": "<discordLink>Discord</discordLink> और <redditLink>Reddit</redditLink> पर अधिक विवरण प्राप्त करें और चर्चाओं में शामिल हों 🚀"
+		"description": "<bold>Roo Code Cloud</bold> का परिचय: Roo की शक्ति को IDE से आगे ले जाना",
+		"feature1": "<bold>कहीं से भी कार्य प्रगति ट्रैक करें (निःशुल्क):</bold> लंबे समय तक चलने वाले कार्यों के लिए रीयल-टाइम अपडेट प्राप्त करें बिना अपने IDE में फंसे",
+		"feature2": "<bold>Roo एक्सटेंशन को दूर से नियंत्रित करें (Pro):</bold> चैट-आधारित ब्राउज़र इंटरफ़ेस से कार्य शुरू करें, रोकें और बातचीत करें।",
+		"learnMore": "नियंत्रण लेने के लिए तैयार हैं? <learnMoreLink>यहां</learnMoreLink> और जानें।",
+		"visitCloudButton": "Roo Code Cloud पर जाएं",
+		"socialLinks": "<xLink>X</xLink>, <discordLink>Discord</discordLink>, या <redditLink>r/RooCode</redditLink> पर हमसे जुड़ें"
 	},
 	"browser": {
 		"rooWantsToUse": "Roo ब्राउज़र का उपयोग करना चाहता है:",
@@ -347,9 +361,9 @@
 		"ariaLabel": "संस्करण {{version}} - रिलीज़ नोट्स देखने के लिए क्लिक करें"
 	},
 	"rooCloudCTA": {
-		"title": "Roo Code Cloud जल्द आ रहा है!",
+		"title": "Roo Code Cloud विकसित हो रहा है!",
 		"description": "क्लाउड में रिमोट एजेंट चलाएं, कहीं से भी अपने कार्यों तक पहुंचें, दूसरों के साथ सहयोग करें, और बहुत कुछ।",
-		"joinWaitlist": "जल्दी पहुंच पाने के लिए प्रतीक्षा सूची में शामिल हों।"
+		"joinWaitlist": "नवीनतम अपडेट प्राप्त करने के लिए साइन अप करें।"
 	},
 	"editMessage": {
 		"placeholder": "अपना संदेश संपादित करें..."
@@ -360,7 +374,9 @@
 	"slashCommands": {
 		"tooltip": "स्लैश कमांड प्रबंधित करें",
 		"title": "स्लैश कमांड",
-		"description": "बार-बार उपयोग किए जाने वाले प्रॉम्प्ट और वर्कफ़्लो तक त्वरित पहुंच के लिए कस्टम स्लैश कमांड बनाएं। <DocsLink>दस्तावेज़</DocsLink>",
+		"description": "बिल्ट-इन स्लैश कमांड का उपयोग करें या बार-बार उपयोग किए जाने वाले प्रॉम्प्ट और वर्कफ़्लो तक त्वरित पहुंच के लिए कस्टम स्लैश कमांड बनाएं। <DocsLink>दस्तावेज़</DocsLink>",
+		"manageCommands": "सेटिंग्स में स्लैश कमांड प्रबंधित करें",
+		"builtInCommands": "बिल्ट-इन कमांड",
 		"globalCommands": "वैश्विक कमांड",
 		"workspaceCommands": "कार्यक्षेत्र कमांड",
 		"globalCommand": "वैश्विक कमांड",
@@ -375,8 +391,18 @@
 			"confirm": "हटाएं"
 		}
 	},
+	"contextMenu": {
+		"noResults": "कोई परिणाम नहीं",
+		"problems": "समस्याएँ",
+		"terminal": "टर्मिनल",
+		"url": "सामग्री लाने के लिए URL पेस्ट करें"
+	},
 	"queuedMessages": {
 		"title": "कतार में संदेश:",
 		"clickToEdit": "संदेश संपादित करने के लिए क्लिक करें"
+	},
+	"slashCommand": {
+		"wantsToRun": "Roo एक स्लैश कमांड चलाना चाहता है:",
+		"didRun": "Roo ने एक स्लैश कमांड चलाया:"
 	}
 }

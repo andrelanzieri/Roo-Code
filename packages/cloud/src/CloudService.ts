@@ -1,57 +1,94 @@
-import * as vscode from "vscode"
+import type { Disposable, ExtensionContext } from "vscode"
 import EventEmitter from "events"
 
 import type {
-	CloudUserInfo,
 	TelemetryEvent,
+	ClineMessage,
+	CloudServiceEvents,
+	AuthService,
+	SettingsService,
+	CloudUserInfo,
 	OrganizationAllowList,
 	OrganizationSettings,
-	ClineMessage,
 	ShareVisibility,
+	UserSettingsConfig,
+	UserSettingsData,
+	UserFeatures,
 } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
 
-import { CloudServiceEvents } from "./types"
-import { TaskNotFoundError } from "./errors"
-import type { AuthService } from "./auth"
-import { WebAuthService, StaticTokenAuthService } from "./auth"
-import type { SettingsService } from "./SettingsService"
-import { CloudSettingsService } from "./CloudSettingsService"
-import { StaticSettingsService } from "./StaticSettingsService"
-import { TelemetryClient } from "./TelemetryClient"
-import { CloudShareService } from "./CloudShareService"
-import { CloudAPI } from "./CloudAPI"
+import { TaskNotFoundError } from "./errors.js"
+import { WebAuthService } from "./WebAuthService.js"
+import { StaticTokenAuthService } from "./StaticTokenAuthService.js"
+import { CloudSettingsService } from "./CloudSettingsService.js"
+import { StaticSettingsService } from "./StaticSettingsService.js"
+import { CloudTelemetryClient as TelemetryClient } from "./TelemetryClient.js"
+import { CloudShareService } from "./CloudShareService.js"
+import { CloudAPI } from "./CloudAPI.js"
 
 type AuthStateChangedPayload = CloudServiceEvents["auth-state-changed"][0]
 type AuthUserInfoPayload = CloudServiceEvents["user-info"][0]
 type SettingsPayload = CloudServiceEvents["settings-updated"][0]
 
-export class CloudService extends EventEmitter<CloudServiceEvents> implements vscode.Disposable {
+export class CloudService extends EventEmitter<CloudServiceEvents> implements Disposable {
 	private static _instance: CloudService | null = null
 
-	private context: vscode.ExtensionContext
+	private context: ExtensionContext
+
 	private authStateListener: (data: AuthStateChangedPayload) => void
 	private authUserInfoListener: (data: AuthUserInfoPayload) => void
-	private authService: AuthService | null = null
 	private settingsListener: (data: SettingsPayload) => void
-	private settingsService: SettingsService | null = null
-	private telemetryClient: TelemetryClient | null = null
-	private shareService: CloudShareService | null = null
-	private cloudAPI: CloudAPI | null = null
+
 	private isInitialized = false
 	private log: (...args: unknown[]) => void
 
-	private constructor(context: vscode.ExtensionContext, log?: (...args: unknown[]) => void) {
+	/**
+	 * Services
+	 */
+
+	private _authService: AuthService | null = null
+
+	public get authService() {
+		return this._authService
+	}
+
+	private _settingsService: SettingsService | null = null
+
+	public get settingsService() {
+		return this._settingsService
+	}
+
+	private _telemetryClient: TelemetryClient | null = null
+
+	public get telemetryClient() {
+		return this._telemetryClient
+	}
+
+	private _shareService: CloudShareService | null = null
+
+	public get shareService() {
+		return this._shareService
+	}
+
+	private _cloudAPI: CloudAPI | null = null
+
+	public get cloudAPI() {
+		return this._cloudAPI
+	}
+
+	private constructor(context: ExtensionContext, log?: (...args: unknown[]) => void) {
 		super()
 
 		this.context = context
 		this.log = log || console.log
+
 		this.authStateListener = (data: AuthStateChangedPayload) => {
 			this.emit("auth-state-changed", data)
 		}
+
 		this.authUserInfoListener = (data: AuthUserInfoPayload) => {
 			this.emit("user-info", data)
 		}
+
 		this.settingsListener = (data: SettingsPayload) => {
 			this.emit("settings-updated", data)
 		}
@@ -63,42 +100,40 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements vs
 		}
 
 		try {
+			// For testing you can create a token with:
+			// `pnpm --filter @roo-code-cloud/roomote-cli development auth job-token --job-id 1 --user-id user_2xmBhejNeDTwanM8CgIOnMgVxzC --org-id org_2wbhchVXZMQl8OS1yt0mrDazCpW`
+			// The token will last for 1 hour.
 			const cloudToken = process.env.ROO_CODE_CLOUD_TOKEN
 
 			if (cloudToken && cloudToken.length > 0) {
-				this.authService = new StaticTokenAuthService(this.context, cloudToken, this.log)
+				this._authService = new StaticTokenAuthService(this.context, cloudToken, this.log)
 			} else {
-				this.authService = new WebAuthService(this.context, this.log)
+				this._authService = new WebAuthService(this.context, this.log)
 			}
 
-			await this.authService.initialize()
-
-			this.authService.on("auth-state-changed", this.authStateListener)
-			this.authService.on("user-info", this.authUserInfoListener)
+			this._authService.on("auth-state-changed", this.authStateListener)
+			this._authService.on("user-info", this.authUserInfoListener)
+			await this._authService.initialize()
 
 			// Check for static settings environment variable.
 			const staticOrgSettings = process.env.ROO_CODE_CLOUD_ORG_SETTINGS
 
 			if (staticOrgSettings && staticOrgSettings.length > 0) {
-				this.settingsService = new StaticSettingsService(staticOrgSettings, this.log)
+				this._settingsService = new StaticSettingsService(staticOrgSettings, this.log)
 			} else {
-				const cloudSettingsService = new CloudSettingsService(this.context, this.authService, this.log)
-				cloudSettingsService.initialize()
+				const cloudSettingsService = new CloudSettingsService(this.context, this._authService, this.log)
 
 				cloudSettingsService.on("settings-updated", this.settingsListener)
+				await cloudSettingsService.initialize()
 
-				this.settingsService = cloudSettingsService
+				this._settingsService = cloudSettingsService
 			}
 
-			this.cloudAPI = new CloudAPI(this.authService, this.log)
-			this.telemetryClient = new TelemetryClient(this.authService, this.settingsService)
-			this.shareService = new CloudShareService(this.cloudAPI, this.settingsService, this.log)
+			this._cloudAPI = new CloudAPI(this._authService, this.log)
 
-			try {
-				TelemetryService.instance.register(this.telemetryClient)
-			} catch (error) {
-				this.log("[CloudService] Failed to register TelemetryClient:", error)
-			}
+			this._telemetryClient = new TelemetryClient(this._authService, this._settingsService)
+
+			this._shareService = new CloudShareService(this._cloudAPI, this._settingsService, this.log)
 
 			this.isInitialized = true
 		} catch (error) {
@@ -193,6 +228,31 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements vs
 		return this.settingsService!.getSettings()
 	}
 
+	public getUserSettings(): UserSettingsData | undefined {
+		this.ensureInitialized()
+		return this.settingsService!.getUserSettings()
+	}
+
+	public getUserFeatures(): UserFeatures {
+		this.ensureInitialized()
+		return this.settingsService!.getUserFeatures()
+	}
+
+	public getUserSettingsConfig(): UserSettingsConfig {
+		this.ensureInitialized()
+		return this.settingsService!.getUserSettingsConfig()
+	}
+
+	public async updateUserSettings(settings: Partial<UserSettingsConfig>): Promise<boolean> {
+		this.ensureInitialized()
+		return this.settingsService!.updateUserSettings(settings)
+	}
+
+	public isTaskSyncEnabled(): boolean {
+		this.ensureInitialized()
+		return this.settingsService!.isTaskSyncEnabled()
+	}
+
 	// TelemetryClient
 
 	public captureEvent(event: TelemetryEvent): void {
@@ -217,6 +277,7 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements vs
 				await this.telemetryClient!.backfillMessages(clineMessages, taskId)
 				return await this.shareService!.shareTask(taskId, visibility)
 			}
+
 			throw error
 		}
 	}
@@ -238,6 +299,7 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements vs
 			if (this.settingsService instanceof CloudSettingsService) {
 				this.settingsService.off("settings-updated", this.settingsListener)
 			}
+
 			this.settingsService.dispose()
 		}
 
@@ -259,15 +321,33 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements vs
 	}
 
 	static async createInstance(
-		context: vscode.ExtensionContext,
+		context: ExtensionContext,
 		log?: (...args: unknown[]) => void,
+		eventHandlers?: Partial<{
+			[K in keyof CloudServiceEvents]: (...args: CloudServiceEvents[K]) => void
+		}>,
 	): Promise<CloudService> {
 		if (this._instance) {
 			throw new Error("CloudService instance already created")
 		}
 
 		this._instance = new CloudService(context, log)
+
 		await this._instance.initialize()
+
+		if (eventHandlers) {
+			for (const [event, handler] of Object.entries(eventHandlers)) {
+				if (handler) {
+					this._instance.on(
+						event as keyof CloudServiceEvents,
+						handler as (...args: CloudServiceEvents[keyof CloudServiceEvents]) => void,
+					)
+				}
+			}
+		}
+
+		await this._instance.authService?.broadcast()
+
 		return this._instance
 	}
 

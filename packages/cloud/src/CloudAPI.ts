@@ -1,9 +1,10 @@
-import { type ShareVisibility, type ShareResponse, shareResponseSchema } from "@roo-code/types"
+import { z } from "zod"
 
-import { getRooCodeApiUrl } from "./config"
-import type { AuthService } from "./auth"
-import { getUserAgent } from "./utils"
-import { AuthenticationError, CloudAPIError, NetworkError, TaskNotFoundError } from "./errors"
+import { type AuthService, type ShareVisibility, type ShareResponse, shareResponseSchema } from "@roo-code/types"
+
+import { getRooCodeApiUrl } from "./config.js"
+import { getUserAgent } from "./utils.js"
+import { AuthenticationError, CloudAPIError, NetworkError, TaskNotFoundError } from "./errors.js"
 
 interface CloudAPIRequestOptions extends Omit<RequestInit, "headers"> {
 	timeout?: number
@@ -27,7 +28,7 @@ export class CloudAPI {
 			parseResponse?: (data: unknown) => T
 		} = {},
 	): Promise<T> {
-		const { timeout = 10000, parseResponse, headers = {}, ...fetchOptions } = options
+		const { timeout = 30_000, parseResponse, headers = {}, ...fetchOptions } = options
 
 		const sessionToken = this.authService.getSessionToken()
 
@@ -118,5 +119,19 @@ export class CloudAPI {
 
 		this.log("[CloudAPI] Share response:", response)
 		return response
+	}
+
+	async bridgeConfig() {
+		return this.request("/api/extension/bridge/config", {
+			method: "GET",
+			parseResponse: (data) =>
+				z
+					.object({
+						userId: z.string(),
+						socketBridgeUrl: z.string(),
+						token: z.string(),
+					})
+					.parse(data),
+		})
 	}
 }

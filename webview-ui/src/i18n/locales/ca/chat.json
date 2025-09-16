@@ -2,12 +2,15 @@
 	"greeting": "Benvingut a Roo Code",
 	"task": {
 		"title": "Tasca",
+		"expand": "Expandir tasca",
+		"collapse": "Replegar tasca",
 		"seeMore": "Veure més",
 		"seeLess": "Veure menys",
-		"tokens": "Tokens:",
-		"cache": "Caché:",
-		"apiCost": "Cost d'API:",
-		"contextWindow": "Finestra de context:",
+		"tokens": "Tokens",
+		"cache": "Caché",
+		"apiCost": "Cost d'API",
+		"size": "Mida",
+		"contextWindow": "Finestra de context",
 		"closeAndStart": "Tancar tasca i iniciar-ne una de nova",
 		"export": "Exportar historial de tasques",
 		"delete": "Eliminar tasca (Shift + Clic per ometre confirmació)",
@@ -21,7 +24,9 @@
 		"connectToCloudDescription": "Inicia sessió a Roo Code Cloud per compartir tasques",
 		"sharingDisabledByOrganization": "Compartició deshabilitada per l'organització",
 		"shareSuccessOrganization": "Enllaç d'organització copiat al porta-retalls",
-		"shareSuccessPublic": "Enllaç públic copiat al porta-retalls"
+		"shareSuccessPublic": "Enllaç públic copiat al porta-retalls",
+		"openInCloud": "Obrir tasca a Roo Code Cloud",
+		"openInCloudIntro": "Continua monitoritzant o interactuant amb Roo des de qualsevol lloc. Escaneja, fes clic o copia per obrir."
 	},
 	"unpin": "Desfixar",
 	"pin": "Fixar",
@@ -139,7 +144,6 @@
 		"streamingFailed": "Transmissió API ha fallat"
 	},
 	"checkpoint": {
-		"initial": "Punt de control inicial",
 		"regular": "Punt de control",
 		"initializingWarning": "Encara s'està inicialitzant el punt de control... Si això triga massa, pots desactivar els punts de control a la <settingsLink>configuració</settingsLink> i reiniciar la teva tasca.",
 		"menu": {
@@ -173,7 +177,11 @@
 		"wantsToInsertAtEnd": "Roo vol afegir contingut al final d'aquest fitxer:",
 		"wantsToReadAndXMore": "En Roo vol llegir aquest fitxer i {{count}} més:",
 		"wantsToReadMultiple": "Roo vol llegir diversos fitxers:",
-		"wantsToApplyBatchChanges": "Roo vol aplicar canvis a múltiples fitxers:"
+		"wantsToApplyBatchChanges": "Roo vol aplicar canvis a múltiples fitxers:",
+		"wantsToGenerateImage": "Roo vol generar una imatge:",
+		"wantsToGenerateImageOutsideWorkspace": "Roo vol generar una imatge fora de l'espai de treball:",
+		"wantsToGenerateImageProtected": "Roo vol generar una imatge en una ubicació protegida:",
+		"didGenerateImage": "Roo ha generat una imatge:"
 	},
 	"directoryOperations": {
 		"wantsToViewTopLevel": "Roo vol veure els fitxers de nivell superior en aquest directori:",
@@ -239,12 +247,19 @@
 		"issues": "Sembla que estàs tenint problemes amb Windows PowerShell, si us plau consulta aquesta documentació per a més informació."
 	},
 	"autoApprove": {
-		"title": "Aprovació automàtica:",
+		"tooltip": "Gestiona la configuració d'aprovació automàtica",
+		"title": "Aprovació automàtica",
+		"all": "Totes",
 		"none": "Cap",
-		"description": "L'aprovació automàtica permet a Roo Code realitzar accions sense demanar permís. Activa-la només per a accions en les que confies plenament. Configuració més detallada disponible a la <settingsLink>Configuració</settingsLink>.",
-		"selectOptionsFirst": "Selecciona almenys una opció a continuació per activar l'aprovació automàtica",
+		"description": "Executeu aquestes accions sense demanar permís. Activeu-ho només per a les accions en què confieu plenament.",
+		"selectOptionsFirst": "Seleccioneu almenys una opció a continuació per activar l'aprovació automàtica",
 		"toggleAriaLabel": "Commuta l'aprovació automàtica",
-		"disabledAriaLabel": "Aprovació automàtica desactivada: seleccioneu primer les opcions"
+		"disabledAriaLabel": "Aprovació automàtica desactivada: seleccioneu primer les opcions",
+		"triggerLabel_zero": "Sense aprovació automàtica",
+		"triggerLabel_one": "1 aprovació automàtica",
+		"triggerLabel_other": "{{count}} aprovacions automàtiques",
+		"triggerLabelAll": "YOLO",
+		"triggerLabelOff": "Auto-approve desactivat"
 	},
 	"reasoning": {
 		"thinking": "Pensant",
@@ -263,13 +278,12 @@
 	},
 	"announcement": {
 		"title": "🎉 Roo Code {{version}} Llançat",
-		"description": "Roo Code {{version}} porta noves funcions potents i millores significatives per millorar el vostre flux de treball de desenvolupament.",
-		"whatsNew": "Novetats",
-		"feature1": "<bold>Cua de Missatges</bold>: Posa en cua múltiples missatges mentre Roo està treballant, permetent-te continuar planificant el teu flux de treball sense interrupcions.",
-		"feature2": "<bold>Comandaments de Barra Personalitzats</bold>: Crea comandaments de barra personalitzats per a accés ràpid a prompts i fluxos de treball utilitzats freqüentment, amb gestió completa de la interfície d'usuari.",
-		"feature3": "<bold>Eines Gemini Millorades</bold>: Noves capacitats de context d'URL i fonamentació de cerca de Google proporcionen als models Gemini informació web en temps real i capacitats de recerca millorades.",
-		"hideButton": "Amaga l'anunci",
-		"detailsDiscussLinks": "Obtén més detalls i uneix-te a les discussions a <discordLink>Discord</discordLink> i <redditLink>Reddit</redditLink> 🚀"
+		"description": "Presentem <bold>Roo Code Cloud:</bold> Portant el poder de Roo més enllà de l'IDE",
+		"feature1": "<bold>Segueix el progrés de les tasques des de qualsevol lloc (Gratuït):</bold> Obté actualitzacions en temps real de tasques de llarga durada sense quedar-te atrapat a la teva IDE",
+		"feature2": "<bold>Controla l'Extensió Roo remotament (Pro):</bold> Inicia, atura i interactua amb tasques des d'una interfície de navegador basada en xat.",
+		"learnMore": "Llest per prendre el control? Aprèn més <learnMoreLink>aquí</learnMoreLink>.",
+		"visitCloudButton": "Visita Roo Code Cloud",
+		"socialLinks": "Uneix-te a nosaltres a <xLink>X</xLink>, <discordLink>Discord</discordLink>, o <redditLink>r/RooCode</redditLink>"
 	},
 	"browser": {
 		"rooWantsToUse": "Roo vol utilitzar el navegador:",
@@ -347,9 +361,9 @@
 		"ariaLabel": "Versió {{version}} - Feu clic per veure les notes de llançament"
 	},
 	"rooCloudCTA": {
-		"title": "Roo Code Cloud arribarà aviat!",
+		"title": "Roo Code Cloud està evolucionant!",
 		"description": "Executa agents remots al núvol, accedeix a les teves tasques des de qualsevol lloc, col·labora amb altres i molt més.",
-		"joinWaitlist": "Uneix-te a la llista d'espera per obtenir accés anticipat."
+		"joinWaitlist": "Registra't per rebre les últimes actualitzacions."
 	},
 	"editMessage": {
 		"placeholder": "Edita el teu missatge..."
@@ -360,7 +374,9 @@
 	"slashCommands": {
 		"tooltip": "Gestionar ordres de barra",
 		"title": "Ordres de Barra",
-		"description": "Crea ordres de barra personalitzades per accedir ràpidament a indicacions i fluxos de treball utilitzats amb freqüència. <DocsLink>Documentació</DocsLink>",
+		"description": "Utilitza ordres de barra integrades o crea personalitzades per accedir ràpidament a indicacions i fluxos de treball utilitzats amb freqüència. <DocsLink>Documentació</DocsLink>",
+		"manageCommands": "Gestiona les ordres de barra a la configuració",
+		"builtInCommands": "Ordres Integrades",
 		"globalCommands": "Ordres Globals",
 		"workspaceCommands": "Ordres de l'Espai de Treball",
 		"globalCommand": "Ordre global",
@@ -378,5 +394,15 @@
 	"queuedMessages": {
 		"title": "Missatges en cua:",
 		"clickToEdit": "Feu clic per editar el missatge"
+	},
+	"slashCommand": {
+		"wantsToRun": "Roo vol executar una comanda slash:",
+		"didRun": "Roo ha executat una comanda slash:"
+	},
+	"contextMenu": {
+		"noResults": "Sense resultats",
+		"problems": "Problemes",
+		"terminal": "Terminal",
+		"url": "Enganxa la URL per obtenir-ne el contingut"
 	}
 }

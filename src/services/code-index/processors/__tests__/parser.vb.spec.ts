@@ -1,6 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest"
 import { CodeParser } from "../parser"
-import * as path from "path"
 
 // Mock TelemetryService
 vi.mock("../../../../../packages/telemetry/src/TelemetryService", () => ({
@@ -243,6 +241,7 @@ describe("Fallback Extensions Configuration", () => {
 		// Extensions that should use fallback
 		expect(shouldUseFallbackChunking(".vb")).toBe(true)
 		expect(shouldUseFallbackChunking(".scala")).toBe(true)
+		expect(shouldUseFallbackChunking(".swift")).toBe(true)
 
 		// Extensions that should not use fallback (have working parsers)
 		expect(shouldUseFallbackChunking(".js")).toBe(false)

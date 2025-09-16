@@ -6,6 +6,8 @@ import {
 	type CustomModePrompts,
 	type ModeConfig,
 	type ExperimentId,
+	type TodoItem,
+	type TelemetrySetting,
 	type OrganizationAllowList,
 	ORGANIZATION_ALLOW_ALL,
 } from "@roo-code/types"
@@ -17,7 +19,6 @@ import { checkExistKey } from "@roo/checkExistApiConfig"
 import { Mode, defaultModeSlug, defaultPrompts } from "@roo/modes"
 import { CustomSupportPrompts } from "@roo/support-prompt"
 import { experimentDefault } from "@roo/experiments"
-import { TelemetrySetting } from "@roo/TelemetrySetting"
 import { RouterModels } from "@roo/api"
 
 import { vscode } from "@src/utils/vscode"
@@ -31,6 +32,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	mcpServers: McpServer[]
 	hasSystemPromptOverride?: boolean
 	currentCheckpoint?: string
+	currentTaskTodos?: TodoItem[] // Initial todos for the current task
 	filePaths: string[]
 	openedTabs: Array<{ label: string; isActive: boolean; path?: string }>
 	commands: Command[]
@@ -97,6 +99,12 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setMcpEnabled: (value: boolean) => void
 	enableMcpServerCreation: boolean
 	setEnableMcpServerCreation: (value: boolean) => void
+	remoteControlEnabled: boolean
+	setRemoteControlEnabled: (value: boolean) => void
+	taskSyncEnabled: boolean
+	setTaskSyncEnabled: (value: boolean) => void
+	featureRoomoteControlEnabled: boolean
+	setFeatureRoomoteControlEnabled: (value: boolean) => void
 	alwaysApproveResubmit?: boolean
 	setAlwaysApproveResubmit: (value: boolean) => void
 	requestDelaySeconds: number
@@ -172,7 +180,8 @@ export const mergeExtensionState = (prevState: ExtensionState, newState: Extensi
 }
 
 export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-	const [state, setState] = useState<ExtensionState & { organizationAllowList?: OrganizationAllowList }>({
+	const [state, setState] = useState<ExtensionState>({
+		apiConfiguration: {},
 		version: "",
 		clineMessages: [],
 		taskHistory: [],
@@ -195,6 +204,9 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		terminalShellIntegrationTimeout: 4000,
 		mcpEnabled: true,
 		enableMcpServerCreation: false,
+		remoteControlEnabled: false,
+		taskSyncEnabled: false,
+		featureRoomoteControlEnabled: false,
 		alwaysApproveResubmit: false,
 		requestDelaySeconds: 5,
 		currentApiConfigName: "default",
@@ -248,6 +260,8 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		fileEncodingMap: {},
 		includeDiagnosticMessages: true,
 		maxDiagnosticMessages: 50,
+		openRouterImageApiKey: "",
+		openRouterImageGenerationSelectedModel: "",
 	})
 
 	const [didHydrateState, setDidHydrateState] = useState(false)
@@ -266,7 +280,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		project: {},
 		global: {},
 	})
-	const [includeTaskHistoryInEnhance, setIncludeTaskHistoryInEnhance] = useState(false)
+	const [includeTaskHistoryInEnhance, setIncludeTaskHistoryInEnhance] = useState(true)
 
 	const setListApiConfigMeta = useCallback(
 		(value: ProviderSettingsEntry[]) => setState((prevState) => ({ ...prevState, listApiConfigMeta: value })),
@@ -409,6 +423,9 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		profileThresholds: state.profileThresholds ?? {},
 		alwaysAllowFollowupQuestions,
 		followupAutoApproveTimeoutMs,
+		remoteControlEnabled: state.remoteControlEnabled ?? false,
+		taskSyncEnabled: state.taskSyncEnabled,
+		featureRoomoteControlEnabled: state.featureRoomoteControlEnabled ?? false,
 		setExperimentEnabled: (id, enabled) =>
 			setState((prevState) => ({ ...prevState, experiments: { ...prevState.experiments, [id]: enabled } })),
 		setApiConfiguration,
@@ -455,6 +472,10 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setMcpEnabled: (value) => setState((prevState) => ({ ...prevState, mcpEnabled: value })),
 		setEnableMcpServerCreation: (value) =>
 			setState((prevState) => ({ ...prevState, enableMcpServerCreation: value })),
+		setRemoteControlEnabled: (value) => setState((prevState) => ({ ...prevState, remoteControlEnabled: value })),
+		setTaskSyncEnabled: (value) => setState((prevState) => ({ ...prevState, taskSyncEnabled: value }) as any),
+		setFeatureRoomoteControlEnabled: (value) =>
+			setState((prevState) => ({ ...prevState, featureRoomoteControlEnabled: value })),
 		setAlwaysApproveResubmit: (value) => setState((prevState) => ({ ...prevState, alwaysApproveResubmit: value })),
 		setRequestDelaySeconds: (value) => setState((prevState) => ({ ...prevState, requestDelaySeconds: value })),
 		setCurrentApiConfigName: (value) => setState((prevState) => ({ ...prevState, currentApiConfigName: value })),

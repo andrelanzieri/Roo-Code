@@ -24,13 +24,13 @@ import {
 	MessageSquare,
 	FileText,
 	LucideIcon,
+	SquareSlash,
 } from "lucide-react"
 
-import type { ProviderSettings, ExperimentId } from "@roo-code/types"
-
-import { TelemetrySetting } from "@roo/TelemetrySetting"
+import type { ProviderSettings, ExperimentId, TelemetrySetting } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
+import { cn } from "@src/lib/utils"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { ExtensionStateContextType, useExtensionState } from "@src/context/ExtensionStateContext"
 import {
@@ -67,7 +67,7 @@ import { LanguageSettings } from "./LanguageSettings"
 import { About } from "./About"
 import { Section } from "./Section"
 import PromptsSettings from "./PromptsSettings"
-import { cn } from "@/lib/utils"
+import { SlashCommandsSettings } from "./SlashCommandsSettings"
 
 export const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
 export const settingsTabList =
@@ -83,6 +83,7 @@ export interface SettingsViewRef {
 const sectionNames = [
 	"providers",
 	"autoApprove",
+	"slashCommands",
 	"browser",
 	"checkpoints",
 	"notifications",
@@ -116,6 +117,11 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			? (targetSection as SectionName)
 			: "providers",
 	)
+
+	const scrollPositions = useRef<Record<SectionName, number>>(
+		Object.fromEntries(sectionNames.map((s) => [s, 0])) as Record<SectionName, number>,
+	)
+	const contentRef = useRef<HTMLDivElement | null>(null)
 
 	const prevApiConfigName = useRef(currentApiConfigName)
 	const confirmDialogHandler = useRef<() => void>()
@@ -187,6 +193,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		includeDiagnosticMessages,
 		maxDiagnosticMessages,
 		includeTaskHistoryInEnhance,
+		openRouterImageApiKey,
+		openRouterImageGenerationSelectedModel,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -223,7 +231,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	}, [])
 
 	const setApiConfigurationField = useCallback(
-		<K extends keyof ProviderSettings>(field: K, value: ProviderSettings[K]) => {
+		<K extends keyof ProviderSettings>(field: K, value: ProviderSettings[K], isUserAction: boolean = true) => {
 			setCachedState((prevState) => {
 				if (prevState.apiConfiguration?.[field] === value) {
 					return prevState
@@ -231,9 +239,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 				const previousValue = prevState.apiConfiguration?.[field]
 
-				// Don't treat initial sync from undefined to a defined value as a user change
-				// This prevents the dirty state when the component initializes and auto-syncs the model ID
-				const isInitialSync = previousValue === undefined && value !== undefined
+				// Only skip change detection for automatic initialization (not user actions)
+				// This prevents the dirty state when the component initializes and auto-syncs values
+				const isInitialSync = !isUserAction && previousValue === undefined && value !== undefined
 
 				if (!isInitialSync) {
 					setChangeDetected(true)
@@ -263,6 +271,20 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 			setChangeDetected(true)
 			return { ...prevState, telemetrySetting: setting }
+		})
+	}, [])
+
+	const setOpenRouterImageApiKey = useCallback((apiKey: string) => {
+		setCachedState((prevState) => {
+			setChangeDetected(true)
+			return { ...prevState, openRouterImageApiKey: apiKey }
+		})
+	}, [])
+
+	const setImageGenerationSelectedModel = useCallback((model: string) => {
+		setCachedState((prevState) => {
+			setChangeDetected(true)
+			return { ...prevState, openRouterImageGenerationSelectedModel: model }
 		})
 	}, [])
 
@@ -345,12 +367,17 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			vscode.postMessage({ type: "condensingApiConfigId", text: condensingApiConfigId || "" })
 			vscode.postMessage({ type: "updateCondensingPrompt", text: customCondensingPrompt || "" })
 			vscode.postMessage({ type: "updateSupportPrompt", values: customSupportPrompts || {} })
-			vscode.postMessage({ type: "includeTaskHistoryInEnhance", bool: includeTaskHistoryInEnhance ?? false })
+			vscode.postMessage({ type: "includeTaskHistoryInEnhance", bool: includeTaskHistoryInEnhance ?? true })
 			vscode.postMessage({ type: "upsertApiConfiguration", text: currentApiConfigName, apiConfiguration })
 			vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
 			vscode.postMessage({ type: "profileThresholds", values: profileThresholds })
-			vscode.postMessage({ type: "fileEncodingMap", values: fileEncodingMap || {} })
+			vscode.postMessage({ type: "openRouterImageApiKey", text: openRouterImageApiKey })
+			vscode.postMessage({
+				type: "openRouterImageGenerationSelectedModel",
+				text: openRouterImageGenerationSelectedModel,
+			})
 			setChangeDetected(false)
+			vscode.postMessage({ type: "fileEncodingMap", values: fileEncodingMap || {} })
 		}
 	}
 
@@ -384,11 +411,19 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	// Handle tab changes with unsaved changes check
 	const handleTabChange = useCallback(
 		(newTab: SectionName) => {
-			// Directly switch tab without checking for unsaved changes
+			if (contentRef.current) {
+				scrollPositions.current[activeTab] = contentRef.current.scrollTop
+			}
 			setActiveTab(newTab)
 		},
-		[], // No dependency on isChangeDetected needed anymore
+		[activeTab],
 	)
+
+	useLayoutEffect(() => {
+		if (contentRef.current) {
+			contentRef.current.scrollTop = scrollPositions.current[activeTab] ?? 0
+		}
+	}, [activeTab])
 
 	// Store direct DOM element refs for each tab
 	const tabRefs = useRef<Record<SectionName, HTMLButtonElement | null>>(
@@ -421,6 +456,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		() => [
 			{ id: "providers", icon: Webhook },
 			{ id: "autoApprove", icon: CheckCheck },
+			{ id: "slashCommands", icon: SquareSlash },
 			{ id: "browser", icon: SquareMousePointer },
 			{ id: "checkpoints", icon: GitBranch },
 			{ id: "notifications", icon: Bell },
@@ -566,7 +602,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 				</TabList>
 
 				{/* Content area */}
-				<TabContent className="p-0 flex-1 overflow-auto">
+				<TabContent ref={contentRef} className="p-0 flex-1 overflow-auto">
 					{/* Providers Section */}
 					{activeTab === "providers" && (
 						<div>
@@ -635,10 +671,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							alwaysAllowUpdateTodoList={alwaysAllowUpdateTodoList}
 							followupAutoApproveTimeoutMs={followupAutoApproveTimeoutMs}
 							allowedCommands={allowedCommands}
+							allowedMaxRequests={allowedMaxRequests ?? undefined}
+							allowedMaxCost={allowedMaxCost ?? undefined}
 							deniedCommands={deniedCommands}
 							setCachedStateField={setCachedStateField}
 						/>
 					)}
+
+					{/* Slash Commands Section */}
+					{activeTab === "slashCommands" && <SlashCommandsSettings />}
 
 					{/* Browser Section */}
 					{activeTab === "browser" && (
@@ -732,7 +773,18 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 					{/* Experimental Section */}
 					{activeTab === "experimental" && (
-						<ExperimentalSettings setExperimentEnabled={setExperimentEnabled} experiments={experiments} />
+						<ExperimentalSettings
+							setExperimentEnabled={setExperimentEnabled}
+							experiments={experiments}
+							apiConfiguration={apiConfiguration}
+							setApiConfigurationField={setApiConfigurationField}
+							openRouterImageApiKey={openRouterImageApiKey as string | undefined}
+							openRouterImageGenerationSelectedModel={
+								openRouterImageGenerationSelectedModel as string | undefined
+							}
+							setOpenRouterImageApiKey={setOpenRouterImageApiKey}
+							setImageGenerationSelectedModel={setImageGenerationSelectedModel}
+						/>
 					)}
 
 					{/* Language Section */}

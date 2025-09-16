@@ -17,6 +17,7 @@ export class QdrantVectorStore implements IVectorStore {
 	private client: QdrantClient
 	private readonly collectionName: string
 	private readonly qdrantUrl: string = "http://localhost:6333"
+	private readonly workspacePath: string
 
 	/**
 	 * Creates a new Qdrant vector store
@@ -29,6 +30,7 @@ export class QdrantVectorStore implements IVectorStore {
 
 		// Store the resolved URL for our property
 		this.qdrantUrl = parsedUrl
+		this.workspacePath = workspacePath
 
 		try {
 			const urlObj = new URL(parsedUrl)
@@ -155,6 +157,12 @@ export class QdrantVectorStore implements IVectorStore {
 					vectors: {
 						size: this.vectorSize,
 						distance: this.DISTANCE_METRIC,
+						on_disk: true,
+					},
+					hnsw_config: {
+						m: 64,
+						ef_construct: 512,
+						on_disk: true,
 					},
 				})
 				created = true
@@ -244,6 +252,12 @@ export class QdrantVectorStore implements IVectorStore {
 				vectors: {
 					size: this.vectorSize,
 					distance: this.DISTANCE_METRIC,
+					on_disk: true,
+				},
+				hnsw_config: {
+					m: 64,
+					ef_construct: 512,
+					on_disk: true,
 				},
 			})
 			console.log(`[QdrantVectorStore] Successfully created new collection ${this.collectionName}`)
@@ -375,13 +389,26 @@ export class QdrantVectorStore implements IVectorStore {
 			let filter = undefined
 
 			if (directoryPrefix) {
-				const segments = directoryPrefix.split(path.sep).filter(Boolean)
-
-				filter = {
-					must: segments.map((segment, index) => ({
-						key: `pathSegments.${index}`,
-						match: { value: segment },
-					})),
+				// Check if the path represents current directory
+				const normalizedPrefix = path.posix.normalize(directoryPrefix.replace(/\\/g, "/"))
+				// Note: path.posix.normalize("") returns ".", and normalize("./") returns "./"
+				if (normalizedPrefix === "." || normalizedPrefix === "./") {
+					// Don't create a filter - search entire workspace
+					filter = undefined
+				} else {
+					// Remove leading "./" from paths like "./src" to normalize them
+					const cleanedPrefix = path.posix.normalize(
+						normalizedPrefix.startsWith("./") ? normalizedPrefix.slice(2) : normalizedPrefix,
+					)
+					const segments = cleanedPrefix.split("/").filter(Boolean)
+					if (segments.length > 0) {
+						filter = {
+							must: segments.map((segment, index) => ({
+								key: `pathSegments.${index}`,
+								match: { value: segment },
+							})),
+						}
+					}
 				}
 			}
 
@@ -432,7 +459,7 @@ export class QdrantVectorStore implements IVectorStore {
 				return
 			}
 
-			const workspaceRoot = getWorkspacePath()
+			const workspaceRoot = this.workspacePath
 
 			// Build filters using pathSegments to match the indexed fields
 			const filters = filePaths.map((filePath) => {
@@ -478,8 +505,6 @@ export class QdrantVectorStore implements IVectorStore {
 				// Include first few file paths for debugging (avoid logging too many)
 				samplePaths: filePaths.slice(0, 3),
 			})
-
-			throw error
 		}
 	}
 

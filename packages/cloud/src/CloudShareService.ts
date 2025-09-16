@@ -1,9 +1,7 @@
-import * as vscode from "vscode"
+import type { SettingsService, ShareResponse, ShareVisibility } from "@roo-code/types"
 
-import type { ShareResponse, ShareVisibility } from "@roo-code/types"
-
-import type { CloudAPI } from "./CloudAPI"
-import type { SettingsService } from "./SettingsService"
+import { importVscode } from "./importVscode.js"
+import type { CloudAPI } from "./CloudAPI.js"
 
 export class CloudShareService {
 	private cloudAPI: CloudAPI
@@ -21,8 +19,17 @@ export class CloudShareService {
 			const response = await this.cloudAPI.shareTask(taskId, visibility)
 
 			if (response.success && response.shareUrl) {
-				// Copy to clipboard.
-				await vscode.env.clipboard.writeText(response.shareUrl)
+				const vscode = await importVscode()
+
+				if (vscode?.env?.clipboard?.writeText) {
+					try {
+						await vscode.env.clipboard.writeText(response.shareUrl)
+					} catch (copyErr) {
+						this.log("[ShareService] Clipboard write failed (non-fatal):", copyErr)
+					}
+				} else {
+					this.log("[ShareService] VS Code clipboard unavailable; running outside extension host.")
+				}
 			}
 
 			return response
