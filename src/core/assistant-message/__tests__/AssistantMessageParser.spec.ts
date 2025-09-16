@@ -325,8 +325,8 @@ describe("AssistantMessageParser (streaming)", () => {
 
 	describe("size limit handling", () => {
 		it("should throw an error when MAX_ACCUMULATOR_SIZE is exceeded", () => {
-			// Create a message that exceeds 1MB (MAX_ACCUMULATOR_SIZE)
-			const largeMessage = "x".repeat(1024 * 1024 + 1) // 1MB + 1 byte
+			// Create a message that exceeds 10MB (MAX_ACCUMULATOR_SIZE)
+			const largeMessage = "x".repeat(10 * 1024 * 1024 + 1) // 10MB + 1 byte
 
 			expect(() => {
 				parser.processChunk(largeMessage)

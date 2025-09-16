@@ -14,8 +14,8 @@ export class AssistantMessageParser {
 	private currentToolUseStartIndex = 0
 	private currentParamName: ToolParamName | undefined = undefined
 	private currentParamValueStartIndex = 0
-	private readonly MAX_ACCUMULATOR_SIZE = 1024 * 1024 // 1MB limit
-	private readonly MAX_PARAM_LENGTH = 1024 * 100 // 100KB per parameter limit
+	private readonly MAX_ACCUMULATOR_SIZE = 10 * 1024 * 1024 // 10MB limit to accommodate browser screenshots
+	private readonly MAX_PARAM_LENGTH = 5 * 1024 * 1024 // 5MB per parameter limit for large screenshots
 	private accumulator = ""
 
 	/**
