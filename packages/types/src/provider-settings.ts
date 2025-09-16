@@ -536,10 +536,16 @@ export const getModelId = (settings: ProviderSettings): string | undefined => {
 	return modelIdKey ? settings[modelIdKey] : undefined
 }
 
-export const modelIdKeysByProvider: Record<
-	Exclude<ProviderName, InternalProvider | CustomProvider | FauxProvider>,
-	ModelIdKey
-> = {
+/**
+ * TypicalProvider
+ */
+
+export type TypicalProvider = Exclude<ProviderName, InternalProvider | CustomProvider | FauxProvider>
+
+export const isTypicalProvider = (key: unknown): key is TypicalProvider =>
+	isProviderName(key) && !isInternalProvider(key) && !isCustomProvider(key) && !isFauxProvider(key)
+
+export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
 	anthropic: "apiModelId",
 	"claude-code": "apiModelId",
 	glama: "glamaModelId",
