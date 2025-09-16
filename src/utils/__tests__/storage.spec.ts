@@ -5,6 +5,12 @@ vi.mock("fs/promises", async () => {
 	return (mod as any).default ?? mod
 })
 
+// Mock the remoteEnvironment module
+vi.mock("../remoteEnvironment", () => ({
+	isRemoteEnvironment: vi.fn(() => false),
+	getEnvironmentStoragePath: vi.fn((path: string) => path),
+}))
+
 describe("getStorageBasePath - customStoragePath", () => {
 	const defaultPath = "/test/global-storage"
 
@@ -63,9 +69,13 @@ describe("getStorageBasePath - customStoragePath", () => {
 		const firstArg = showErrorSpy.mock.calls[0][0]
 		expect(typeof firstArg).toBe("string")
 	})
-	it("returns the default path when customStoragePath is an empty string and does not touch fs", async () => {
+	it("returns the default path when customStoragePath is an empty string", async () => {
 		vi.spyOn(vscode.workspace, "getConfiguration").mockReturnValue({
-			get: vi.fn().mockReturnValue(""),
+			get: vi.fn((key: string) => {
+				if (key === "customStoragePath") return ""
+				if (key === "persistChatInRemote") return true
+				return undefined
+			}),
 		} as any)
 
 		const fsPromises = await import("fs/promises")
@@ -74,7 +84,9 @@ describe("getStorageBasePath - customStoragePath", () => {
 		const result = await getStorageBasePath(defaultPath)
 
 		expect(result).toBe(defaultPath)
-		expect((fsPromises as any).mkdir).not.toHaveBeenCalled()
+		// Now it will create the directory for the final path
+		expect((fsPromises as any).mkdir).toHaveBeenCalledWith(defaultPath, { recursive: true })
+		// Access check is not called since we're using the default path
 		expect((fsPromises as any).access).not.toHaveBeenCalled()
 	})
 

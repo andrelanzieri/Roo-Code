@@ -384,6 +384,11 @@
 					"default": "",
 					"description": "%settings.customStoragePath.description%"
 				},
+				"roo-cline.persistChatInRemote": {
+					"type": "boolean",
+					"default": true,
+					"description": "%settings.persistChatInRemote.description%"
+				},
 				"roo-cline.enableCodeActions": {
 					"type": "boolean",
 					"default": true,

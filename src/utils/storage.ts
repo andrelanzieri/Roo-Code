@@ -5,6 +5,7 @@ import { constants as fsConstants } from "fs"
 
 import { Package } from "../shared/package"
 import { t } from "../i18n"
+import { getEnvironmentStoragePath, isRemoteEnvironment } from "./remoteEnvironment"
 
 /**
  * Gets the base storage path for conversations
@@ -12,39 +13,64 @@ import { t } from "../i18n"
  * Otherwise uses the default VSCode extension global storage path
  */
 export async function getStorageBasePath(defaultPath: string): Promise<string> {
-	// Get user-configured custom storage path
+	// Get user-configured custom storage path and remote persistence setting
 	let customStoragePath = ""
+	let persistChatInRemote = true
 
 	try {
 		// This is the line causing the error in tests
 		const config = vscode.workspace.getConfiguration(Package.name)
 		customStoragePath = config.get<string>("customStoragePath", "")
+		persistChatInRemote = config.get<boolean>("persistChatInRemote", true)
 	} catch (error) {
 		console.warn("Could not access VSCode configuration - using default path")
-		return defaultPath
+		// Apply remote environment path adjustment even for default path if enabled
+		return persistChatInRemote ? getEnvironmentStoragePath(defaultPath) : defaultPath
 	}
 
-	// If no custom path is set, use default path
+	// Determine the base path (custom or default)
+	let basePath: string
+
 	if (!customStoragePath) {
-		return defaultPath
-	}
+		basePath = defaultPath
+	} else {
+		try {
+			// Ensure custom path exists
+			await fs.mkdir(customStoragePath, { recursive: true })
 
-	try {
-		// Ensure custom path exists
-		await fs.mkdir(customStoragePath, { recursive: true })
+			// Check directory write permission without creating temp files
+			await fs.access(customStoragePath, fsConstants.R_OK | fsConstants.W_OK | fsConstants.X_OK)
 
-		// Check directory write permission without creating temp files
-		await fs.access(customStoragePath, fsConstants.R_OK | fsConstants.W_OK | fsConstants.X_OK)
-
-		return customStoragePath
-	} catch (error) {
-		// If path is unusable, report error and fall back to default path
-		console.error(`Custom storage path is unusable: ${error instanceof Error ? error.message : String(error)}`)
-		if (vscode.window) {
-			vscode.window.showErrorMessage(t("common:errors.custom_storage_path_unusable", { path: customStoragePath }))
+			basePath = customStoragePath
+		} catch (error) {
+			// If path is unusable, report error and fall back to default path
+			console.error(`Custom storage path is unusable: ${error instanceof Error ? error.message : String(error)}`)
+			if (vscode.window) {
+				vscode.window.showErrorMessage(
+					t("common:errors.custom_storage_path_unusable", { path: customStoragePath }),
+				)
+			}
+			basePath = defaultPath
 		}
-		return defaultPath
 	}
+
+	// Apply remote environment path adjustment if enabled
+	// This will add a remote-specific subdirectory if in a remote environment
+	const finalPath = persistChatInRemote ? getEnvironmentStoragePath(basePath) : basePath
+
+	// Ensure the final path exists
+	try {
+		await fs.mkdir(finalPath, { recursive: true })
+	} catch (error) {
+		console.warn(`Could not create storage path: ${error}`)
+	}
+
+	// Log the storage path being used for debugging
+	if (isRemoteEnvironment() && persistChatInRemote) {
+		console.log(`Using remote-specific storage path: ${finalPath}`)
+	}
+
+	return finalPath
 }
 
 /**
