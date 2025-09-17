@@ -176,7 +176,7 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 		case "vercel-ai-gateway":
 			return new VercelAiGatewayHandler(options)
 		default:
-			apiProvider satisfies "gemini-cli" | "codex-cli-native" | undefined
+			apiProvider satisfies "gemini-cli" | undefined
 			return new AnthropicHandler(options)
 	}
 }
