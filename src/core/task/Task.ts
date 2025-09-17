@@ -2312,8 +2312,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							includeFileDetails: false, // Subsequent iterations don't need file details
 						})
 
-						// Add periodic yielding to prevent blocking
-						await new Promise((resolve) => setImmediate(resolve))
+						// Removed setImmediate delay to improve streaming response speed
+						// The async/await pattern already provides natural yielding
 					}
 					// Continue to next iteration instead of setting didEndLoop from recursive call
 					continue
