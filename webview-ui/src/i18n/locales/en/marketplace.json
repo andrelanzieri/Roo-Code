@@ -45,6 +45,23 @@
 		"organizationMcps": "{{organization}} MCPs",
 		"marketplace": "Marketplace"
 	},
+	"customMcp": {
+		"button": "Add Custom MCP",
+		"title": "Add Custom MCP Server",
+		"description": "Configure a custom MCP server that's not available in the marketplace",
+		"serverName": "Server Name",
+		"serverNamePlaceholder": "e.g., serena-mcp",
+		"command": "Command",
+		"commandPlaceholder": "e.g., npx -y @serena/mcp-server",
+		"args": "Arguments (optional)",
+		"argsPlaceholder": "Comma-separated arguments",
+		"env": "Environment Variables (optional)",
+		"envPlaceholder": "KEY=value, one per line",
+		"cancel": "Cancel",
+		"add": "Add Server",
+		"success": "Custom MCP server added successfully",
+		"error": "Failed to add custom MCP server: {{error}}"
+	},
 	"type-group": {
 		"modes": "Modes",
 		"mcps": "MCP Servers"

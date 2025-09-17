@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { X, ChevronsUpDown } from "lucide-react"
+import { X, ChevronsUpDown, Plus } from "lucide-react"
 import { MarketplaceItemCard } from "./components/MarketplaceItemCard"
 import { MarketplaceViewStateManager } from "./MarketplaceViewStateManager"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useStateManager } from "./useStateManager"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { IssueFooter } from "./IssueFooter"
+import { CustomMcpDialog } from "./components/CustomMcpDialog"
 
 export interface MarketplaceListViewProps {
 	stateManager: MarketplaceViewStateManager
@@ -25,6 +26,7 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 	const { marketplaceInstalledMetadata, cloudUserInfo } = useExtensionState()
 	const [isTagPopoverOpen, setIsTagPopoverOpen] = React.useState(false)
 	const [tagSearch, setTagSearch] = React.useState("")
+	const [showCustomMcpDialog, setShowCustomMcpDialog] = React.useState(false)
 	const allItems = state.displayItems || []
 	const organizationMcps = state.displayOrganizationMcps || []
 
@@ -39,7 +41,32 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 
 	return (
 		<>
+			{/* Custom MCP Dialog */}
+			{showCustomMcpDialog && (
+				<CustomMcpDialog
+					onClose={() => setShowCustomMcpDialog(false)}
+					onSuccess={() => {
+						setShowCustomMcpDialog(false)
+						// Optionally refresh the marketplace data
+						manager.transition({ type: "REFRESH" })
+					}}
+				/>
+			)}
+
 			<div className="mb-4">
+				{/* Add Custom MCP Button for MCP tab */}
+				{filterByType === "mcp" && (
+					<div className="mb-3 flex justify-end">
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() => setShowCustomMcpDialog(true)}
+							className="flex items-center gap-2">
+							<Plus className="h-4 w-4" />
+							{t("marketplace:customMcp.button")}
+						</Button>
+					</div>
+				)}
 				<div className="relative">
 					<Input
 						type="text"

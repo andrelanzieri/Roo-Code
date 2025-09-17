@@ -3044,5 +3044,80 @@ export const webviewMessageHandler = async (
 			})
 			break
 		}
+		case "addCustomMcpServer": {
+			if (!message.serverName || !message.customMcpConfig) {
+				vscode.window.showErrorMessage(
+					t("marketplace:customMcp.error") || "Invalid custom MCP server configuration",
+				)
+				break
+			}
+
+			try {
+				// Get the MCP hub instance
+				const mcpHub = provider.getMcpHub()
+				if (!mcpHub) {
+					vscode.window.showErrorMessage(t("mcp:errors.hub_not_available") || "MCP hub is not available")
+					break
+				}
+
+				// Determine the target (project or global)
+				const target = vscode.workspace.workspaceFolders?.length ? "project" : "global"
+
+				// Get the appropriate MCP settings file path
+				let mcpSettingsPath: string
+				if (target === "project") {
+					const workspaceFolder = getCurrentCwd()
+					const rooDir = path.join(workspaceFolder, ".roo")
+					mcpSettingsPath = path.join(rooDir, "mcp.json")
+
+					// Ensure .roo directory exists
+					await fs.mkdir(rooDir, { recursive: true })
+				} else {
+					// Global settings
+					mcpSettingsPath = (await mcpHub.getMcpSettingsFilePath()) || ""
+				}
+
+				// Read existing MCP settings or create new
+				let mcpSettings: any = { mcpServers: {} }
+				try {
+					const existingContent = await fs.readFile(mcpSettingsPath, "utf-8")
+					mcpSettings = JSON.parse(existingContent)
+					if (!mcpSettings.mcpServers) {
+						mcpSettings.mcpServers = {}
+					}
+				} catch (error) {
+					// File doesn't exist or is invalid, use default
+				}
+
+				// Add the new custom MCP server
+				mcpSettings.mcpServers[message.serverName] = message.customMcpConfig
+
+				// Write the updated settings
+				await safeWriteJson(mcpSettingsPath, mcpSettings)
+
+				// Refresh MCP connections to load the new server
+				await mcpHub.refreshAllConnections()
+
+				// Show success message
+				vscode.window.showInformationMessage(
+					t("marketplace:customMcp.success") ||
+						`Custom MCP server "${message.serverName}" added successfully`,
+				)
+
+				// Update the webview state
+				await provider.postStateToWebview()
+
+				// Open the MCP settings file to show the new server
+				await openFile(mcpSettingsPath)
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error)
+				provider.log(`Failed to add custom MCP server: ${errorMessage}`)
+				vscode.window.showErrorMessage(
+					t("marketplace:customMcp.error", { error: errorMessage }) ||
+						`Failed to add custom MCP server: ${errorMessage}`,
+				)
+			}
+			break
+		}
 	}
 }

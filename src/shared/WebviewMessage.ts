@@ -225,6 +225,7 @@ export interface WebviewMessage {
 		| "editQueuedMessage"
 		| "dismissUpsell"
 		| "getDismissedUpsells"
+		| "addCustomMcpServer"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
@@ -268,6 +269,7 @@ export interface WebviewMessage {
 	mpInstallOptions?: InstallMarketplaceItemOptions
 	config?: Record<string, any> // Add config to the payload
 	visibility?: ShareVisibility // For share visibility
+	customMcpConfig?: { command: string; args?: string[]; env?: Record<string, string> } // For custom MCP server
 	hasContent?: boolean // For checkRulesDirectoryResult
 	checkOnly?: boolean // For deleteCustomMode check
 	upsellId?: string // For dismissUpsell
