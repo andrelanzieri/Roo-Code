@@ -173,7 +173,7 @@ Roo Code를 더 좋게 만드는 데 도움을 준 모든 기여자들에게 감
 
 <!-- START CONTRIBUTORS SECTION - AUTO-GENERATED, DO NOT EDIT MANUALLY -->
 
-[![Contributors](https://contrib.rocks/image?repo=RooCodeInc/roo-code&max=120&columns=12&cacheBust=0000000000)](https://github.com/RooCodeInc/roo-code/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=RooCodeInc/roo-code&max=120&columns=12&cacheBust=1758141720)](https://github.com/RooCodeInc/roo-code/graphs/contributors)
 
 <!-- END CONTRIBUTORS SECTION -->
 

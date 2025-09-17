@@ -173,7 +173,7 @@ Gràcies a tots els nostres col·laboradors que han ajudat a millorar Roo Code!
 
 <!-- START CONTRIBUTORS SECTION - AUTO-GENERATED, DO NOT EDIT MANUALLY -->
 
-[![Contributors](https://contrib.rocks/image?repo=RooCodeInc/roo-code&max=120&columns=12&cacheBust=0000000000)](https://github.com/RooCodeInc/roo-code/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=RooCodeInc/roo-code&max=120&columns=12&cacheBust=1758141720)](https://github.com/RooCodeInc/roo-code/graphs/contributors)
 
 <!-- END CONTRIBUTORS SECTION -->
 
