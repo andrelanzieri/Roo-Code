@@ -8,6 +8,8 @@ import {
 	bedrockModels,
 	cerebrasDefaultModelId,
 	cerebrasModels,
+	codexCliDefaultModelId,
+	codexCliModels,
 	deepSeekDefaultModelId,
 	deepSeekModels,
 	moonshotDefaultModelId,
@@ -343,6 +345,11 @@ function getSelectedModel({
 			const info = qwenCodeModels[id as keyof typeof qwenCodeModels]
 			return { id, info }
 		}
+		case "codex-cli": {
+			const id = apiConfiguration.apiModelId ?? codexCliDefaultModelId
+			const info = codexCliModels[id as keyof typeof codexCliModels]
+			return { id, info }
+		}
 		case "vercel-ai-gateway": {
 			const id = apiConfiguration.vercelAiGatewayModelId ?? vercelAiGatewayDefaultModelId
 			const info = routerModels["vercel-ai-gateway"]?.[id]
@@ -352,7 +359,7 @@ function getSelectedModel({
 		// case "human-relay":
 		// case "fake-ai":
 		default: {
-			provider satisfies "anthropic" | "gemini-cli" | "qwen-code" | "human-relay" | "fake-ai"
+			provider satisfies "anthropic" | "gemini-cli" | "human-relay" | "fake-ai"
 			const id = apiConfiguration.apiModelId ?? anthropicDefaultModelId
 			const baseInfo = anthropicModels[id as keyof typeof anthropicModels]
 
