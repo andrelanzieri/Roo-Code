@@ -757,8 +757,16 @@ export class ClineProvider
 		const activeEditorSubscription = vscode.window.onDidChangeActiveTextEditor(() => {
 			// Update subscription when workspace might have changed.
 			this.updateCodeIndexStatusSubscription()
+			// Update editor selection state
+			this.updateEditorSelectionState()
 		})
 		this.webviewDisposables.push(activeEditorSubscription)
+
+		// Listen for selection changes in the editor
+		const selectionChangeSubscription = vscode.window.onDidChangeTextEditorSelection(() => {
+			this.updateEditorSelectionState()
+		})
+		this.webviewDisposables.push(selectionChangeSubscription)
 
 		// Listen for when the panel becomes visible.
 		// https://github.com/microsoft/vscode-discussions/discussions/840
@@ -1920,7 +1928,27 @@ export class ClineProvider
 			openRouterImageGenerationSelectedModel,
 			openRouterUseMiddleOutTransform,
 			featureRoomoteControlEnabled,
+			hasEditorSelection: this.hasEditorSelection(),
 		}
+	}
+
+	/**
+	 * Check if there's currently a text selection in the active editor
+	 */
+	private hasEditorSelection(): boolean {
+		const activeEditor = vscode.window.activeTextEditor
+		return !!(activeEditor && !activeEditor.selection.isEmpty)
+	}
+
+	/**
+	 * Update the webview with the current editor selection state
+	 */
+	private updateEditorSelectionState(): void {
+		const hasSelection = this.hasEditorSelection()
+		this.postMessageToWebview({
+			type: "editorSelectionChanged",
+			hasSelection,
+		})
 	}
 
 	/**

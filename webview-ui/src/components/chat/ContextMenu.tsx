@@ -144,6 +144,25 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 				return <span>{t("chat:contextMenu.terminal")}</span>
 			case ContextMenuOptionType.URL:
 				return <span>{t("chat:contextMenu.url")}</span>
+			case ContextMenuOptionType.CurrentEditorSelection:
+				return (
+					<div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+						<span style={{ lineHeight: "1.2" }}>{option.label}</span>
+						{option.description && (
+							<span
+								style={{
+									opacity: 0.5,
+									fontSize: "0.9em",
+									lineHeight: "1.2",
+									whiteSpace: "nowrap",
+									overflow: "hidden",
+									textOverflow: "ellipsis",
+								}}>
+								{option.description}
+							</span>
+						)}
+					</div>
+				)
 			case ContextMenuOptionType.NoResults:
 				return <span>{t("chat:contextMenu.noResults")}</span>
 			case ContextMenuOptionType.Git:
@@ -230,6 +249,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 				return "link"
 			case ContextMenuOptionType.Git:
 				return "git-commit"
+			case ContextMenuOptionType.CurrentEditorSelection:
+				return "selection"
 			case ContextMenuOptionType.NoResults:
 				return "info"
 			default:

@@ -124,6 +124,8 @@ export interface ExtensionMessage {
 		| "commands"
 		| "insertTextIntoTextarea"
 		| "dismissedUpsells"
+		| "currentEditorSelection"
+		| "editorSelectionChanged"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -201,6 +203,15 @@ export interface ExtensionMessage {
 	commands?: Command[]
 	queuedMessages?: QueuedMessage[]
 	list?: string[] // For dismissedUpsells
+	hasSelection?: boolean // For editorSelectionChanged
+	selection?: {
+		text: string
+		fileName: string
+		range: {
+			start: { line: number; character: number }
+			end: { line: number; character: number }
+		}
+	} | null // For currentEditorSelection
 }
 
 export type ExtensionState = Pick<
@@ -347,6 +358,7 @@ export type ExtensionState = Pick<
 	remoteControlEnabled: boolean
 	taskSyncEnabled: boolean
 	featureRoomoteControlEnabled: boolean
+	hasEditorSelection?: boolean
 }
 
 export interface ClineSayTool {

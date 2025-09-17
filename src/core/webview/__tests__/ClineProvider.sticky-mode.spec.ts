@@ -27,6 +27,8 @@ vi.mock("vscode", () => ({
 		showWarningMessage: vi.fn(),
 		showErrorMessage: vi.fn(),
 		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
+		onDidChangeTextEditorSelection: vi.fn(() => ({ dispose: vi.fn() })),
+		activeTextEditor: undefined,
 	},
 	workspace: {
 		getConfiguration: vi.fn().mockReturnValue({

@@ -87,6 +87,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			taskHistory,
 			clineMessages,
 			commands,
+			hasEditorSelection,
 		} = useExtensionState()
 
 		// Find the ID and display text for the currently selected API configuration.
@@ -121,7 +122,43 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			const messageHandler = (event: MessageEvent) => {
 				const message = event.data
 
-				if (message.type === "enhancedPrompt") {
+				if (message.type === "editorSelectionChanged") {
+					// Update will happen through ExtensionStateContext
+					// No need to handle here as hasEditorSelection comes from state
+				} else if (message.type === "currentEditorSelection") {
+					// Handle the editor selection response
+					if (message.selection && textAreaRef.current) {
+						const selection = message.selection
+						const mentionText = `@${selection.fileName}:${selection.range.start.line + 1}-${selection.range.end.line + 1}`
+
+						// Insert the mention at the current cursor position
+						const currentValue = inputValue
+						const cursorPos = textAreaRef.current.selectionStart || 0
+
+						// Check if we need to add a space before the mention
+						const textBefore = currentValue.slice(0, cursorPos)
+						const needsSpaceBefore = textBefore.length > 0 && !textBefore.endsWith(" ")
+						const prefix = needsSpaceBefore ? " " : ""
+
+						// Insert the mention at cursor position
+						const newValue =
+							currentValue.slice(0, cursorPos) +
+							prefix +
+							mentionText +
+							" " +
+							currentValue.slice(cursorPos)
+						setInputValue(newValue)
+
+						// Set cursor position after the inserted mention
+						const newCursorPos = cursorPos + prefix.length + mentionText.length + 1
+						setTimeout(() => {
+							if (textAreaRef.current) {
+								textAreaRef.current.focus()
+								textAreaRef.current.setSelectionRange(newCursorPos, newCursorPos)
+							}
+						}, 0)
+					}
+				} else if (message.type === "enhancedPrompt") {
 					if (message.text && textAreaRef.current) {
 						try {
 							// Use execCommand to replace text while preserving undo history
@@ -251,7 +288,19 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		}, [inputValue])
 
 		const queryItems = useMemo(() => {
-			return [
+			const items = []
+
+			// Add current editor selection if available
+			if (hasEditorSelection) {
+				items.push({
+					type: ContextMenuOptionType.CurrentEditorSelection,
+					value: "current-selection",
+					label: t("chat:contextMenu.currentEditorSelection"),
+					description: t("chat:contextMenu.currentEditorSelectionDescription"),
+				})
+			}
+
+			items.push(
 				{ type: ContextMenuOptionType.Problems, value: "problems" },
 				{ type: ContextMenuOptionType.Terminal, value: "terminal" },
 				...gitCommits,
@@ -268,8 +317,10 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						type: path.endsWith("/") ? ContextMenuOptionType.Folder : ContextMenuOptionType.File,
 						value: path,
 					})),
-			]
-		}, [filePaths, gitCommits, openedTabs])
+			)
+
+			return items
+		}, [filePaths, gitCommits, openedTabs, hasEditorSelection, t])
 
 		useEffect(() => {
 			const handleClickOutside = (event: MouseEvent) => {
@@ -323,6 +374,14 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							textAreaRef.current.focus()
 						}
 					}, 0)
+					return
+				}
+
+				if (type === ContextMenuOptionType.CurrentEditorSelection) {
+					// Request current editor selection from the extension
+					setShowContextMenu(false)
+					setSelectedType(null)
+					vscode.postMessage({ type: "requestCurrentEditorSelection" })
 					return
 				}
 

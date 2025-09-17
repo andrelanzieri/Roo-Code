@@ -399,6 +399,8 @@
 		"noResults": "No results",
 		"problems": "Problems",
 		"terminal": "Terminal",
-		"url": "Paste URL to fetch contents"
+		"url": "Paste URL to fetch contents",
+		"currentEditorSelection": "Current Editor Selection",
+		"currentEditorSelectionDescription": "Include the currently selected text from the editor"
 	}
 }

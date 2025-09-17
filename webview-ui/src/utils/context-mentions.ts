@@ -109,6 +109,7 @@ export enum ContextMenuOptionType {
 	Mode = "mode", // Add mode type
 	Command = "command", // Add command type
 	SectionHeader = "sectionHeader", // Add section header type
+	CurrentEditorSelection = "currentEditorSelection", // Add current editor selection type
 }
 
 export interface ContextMenuQueryItem {
@@ -249,7 +250,7 @@ export function getContextMenuOptions(
 			return commits.length > 0 ? [workingChanges, ...commits] : [workingChanges]
 		}
 
-		return [
+		const defaultOptions = [
 			{ type: ContextMenuOptionType.Problems },
 			{ type: ContextMenuOptionType.Terminal },
 			{ type: ContextMenuOptionType.URL },
@@ -257,6 +258,10 @@ export function getContextMenuOptions(
 			{ type: ContextMenuOptionType.File },
 			{ type: ContextMenuOptionType.Git },
 		]
+
+		// Add CurrentEditorSelection at the top if there's an active selection
+		// This will be determined by the extension host checking if there's selected text
+		return defaultOptions
 	}
 
 	const lowerQuery = query.toLowerCase()

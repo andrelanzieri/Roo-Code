@@ -3044,5 +3044,28 @@ export const webviewMessageHandler = async (
 			})
 			break
 		}
+		case "requestCurrentEditorSelection": {
+			// Get the current editor selection
+			const activeEditor = vscode.window.activeTextEditor
+			if (activeEditor && !activeEditor.selection.isEmpty) {
+				const selectedText = activeEditor.document.getText(activeEditor.selection)
+				const fileName = activeEditor.document.fileName
+
+				// Insert the selected text as a mention in the chat
+				await provider.postMessageToWebview({
+					type: "currentEditorSelection",
+					text: selectedText,
+					values: { fileName },
+				})
+			} else {
+				// No selection available
+				await provider.postMessageToWebview({
+					type: "currentEditorSelection",
+					text: undefined,
+					values: { hasSelection: false },
+				})
+			}
+			break
+		}
 	}
 }
