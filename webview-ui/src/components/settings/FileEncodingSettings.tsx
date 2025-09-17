@@ -18,7 +18,7 @@ import { Section } from "./Section"
 import { SetCachedStateField } from "./types"
 
 interface FileEncodingSettingsProps {
-	fileEncodingMap: Record<string, string> | undefined
+	fileEncodingMap?: Record<string, string>
 	setCachedStateField: SetCachedStateField<"fileEncodingMap">
 }
 

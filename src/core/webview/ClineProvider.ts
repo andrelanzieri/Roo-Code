@@ -74,6 +74,7 @@ import { setTtsEnabled, setTtsSpeed } from "../../utils/tts"
 import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
+import { FileEncodingService } from "../../utils/fileEncodingService"
 
 import { setPanel } from "../../activate/registerCommands"
 
@@ -725,6 +726,11 @@ export class ClineProvider
 
 		this.getState().then(({ ttsSpeed }) => {
 			setTtsSpeed(ttsSpeed ?? 1)
+		})
+
+		// Initialize FileEncodingService with saved file encoding mappings
+		this.getState().then(({ fileEncodingMap }) => {
+			FileEncodingService.updateEncodingMap(fileEncodingMap || {})
 		})
 
 		// Set up webview options with proper resource roots
@@ -2140,6 +2146,7 @@ export class ClineProvider
 			})(),
 			openRouterImageApiKey: stateValues.openRouterImageApiKey,
 			openRouterImageGenerationSelectedModel: stateValues.openRouterImageGenerationSelectedModel,
+			fileEncodingMap: stateValues.fileEncodingMap ?? {},
 			featureRoomoteControlEnabled: (() => {
 				try {
 					const userSettings = CloudService.instance.getUserSettings()
