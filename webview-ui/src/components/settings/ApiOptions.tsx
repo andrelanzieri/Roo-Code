@@ -36,6 +36,8 @@ import {
 	featherlessDefaultModelId,
 	ioIntelligenceDefaultModelId,
 	rooDefaultModelId,
+	vercelAiGatewayDefaultModelId,
+	deepInfraDefaultModelId,
 } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
@@ -93,6 +95,8 @@ import {
 	ZAi,
 	Fireworks,
 	Featherless,
+	VercelAiGateway,
+	DeepInfra,
 } from "./providers"
 
 import { MODELS_BY_PROVIDER, PROVIDERS } from "./constants"
@@ -226,6 +230,8 @@ const ApiOptions = ({
 				vscode.postMessage({ type: "requestVsCodeLmModels" })
 			} else if (selectedProvider === "litellm") {
 				vscode.postMessage({ type: "requestRouterModels" })
+			} else if (selectedProvider === "deepinfra") {
+				vscode.postMessage({ type: "requestRouterModels" })
 			} else if (selectedProvider === "watsonx") {
 				vscode.postMessage({ type: "requestWatsonxModels" })
 			}
@@ -240,6 +246,8 @@ const ApiOptions = ({
 			apiConfiguration?.lmStudioBaseUrl,
 			apiConfiguration?.litellmBaseUrl,
 			apiConfiguration?.litellmApiKey,
+			apiConfiguration?.deepInfraApiKey,
+			apiConfiguration?.deepInfraBaseUrl,
 			apiConfiguration.watsonxApiKey,
 			apiConfiguration.watsonxProjectId,
 			apiConfiguration.watsonxBaseUrl,
@@ -310,6 +318,7 @@ const ApiOptions = ({
 					}
 				>
 			> = {
+				deepinfra: { field: "deepInfraModelId", default: deepInfraDefaultModelId },
 				openrouter: { field: "openRouterModelId", default: openRouterDefaultModelId },
 				glama: { field: "glamaModelId", default: glamaDefaultModelId },
 				unbound: { field: "unboundModelId", default: unboundDefaultModelId },
@@ -342,6 +351,7 @@ const ApiOptions = ({
 				featherless: { field: "apiModelId", default: featherlessDefaultModelId },
 				"io-intelligence": { field: "ioIntelligenceModelId", default: ioIntelligenceDefaultModelId },
 				roo: { field: "apiModelId", default: rooDefaultModelId },
+				"vercel-ai-gateway": { field: "vercelAiGatewayModelId", default: vercelAiGatewayDefaultModelId },
 				openai: { field: "openAiModelId" },
 				ollama: { field: "ollamaModelId" },
 				lmstudio: { field: "lmStudioModelId" },
@@ -492,6 +502,17 @@ const ApiOptions = ({
 				/>
 			)}
 
+			{selectedProvider === "deepinfra" && (
+				<DeepInfra
+					apiConfiguration={apiConfiguration}
+					setApiConfigurationField={setApiConfigurationField}
+					routerModels={routerModels}
+					refetchRouterModels={refetchRouterModels}
+					organizationAllowList={organizationAllowList}
+					modelValidationError={modelValidationError}
+				/>
+			)}
+
 			{selectedProvider === "anthropic" && (
 				<Anthropic apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
 			)}
@@ -501,7 +522,11 @@ const ApiOptions = ({
 			)}
 
 			{selectedProvider === "openai-native" && (
-				<OpenAI apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
+				<OpenAI
+					apiConfiguration={apiConfiguration}
+					setApiConfigurationField={setApiConfigurationField}
+					selectedModelInfo={selectedModelInfo}
+				/>
 			)}
 
 			{selectedProvider === "mistral" && (
@@ -619,6 +644,16 @@ const ApiOptions = ({
 				<IOIntelligence
 					apiConfiguration={apiConfiguration}
 					setApiConfigurationField={setApiConfigurationField}
+					organizationAllowList={organizationAllowList}
+					modelValidationError={modelValidationError}
+				/>
+			)}
+
+			{selectedProvider === "vercel-ai-gateway" && (
+				<VercelAiGateway
+					apiConfiguration={apiConfiguration}
+					setApiConfigurationField={setApiConfigurationField}
+					routerModels={routerModels}
 					organizationAllowList={organizationAllowList}
 					modelValidationError={modelValidationError}
 				/>
@@ -747,11 +782,13 @@ const ApiOptions = ({
 							fuzzyMatchThreshold={apiConfiguration.fuzzyMatchThreshold}
 							onChange={(field, value) => setApiConfigurationField(field, value)}
 						/>
-						<TemperatureControl
-							value={apiConfiguration.modelTemperature}
-							onChange={handleInputChange("modelTemperature", noTransform)}
-							maxValue={2}
-						/>
+						{selectedModelInfo?.supportsTemperature !== false && (
+							<TemperatureControl
+								value={apiConfiguration.modelTemperature}
+								onChange={handleInputChange("modelTemperature", noTransform)}
+								maxValue={2}
+							/>
+						)}
 						<RateLimitSecondsControl
 							value={apiConfiguration.rateLimitSeconds || 0}
 							onChange={(value) => setApiConfigurationField("rateLimitSeconds", value)}

@@ -14,6 +14,7 @@ export interface CodeIndexConfig {
 	openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
 	geminiOptions?: { apiKey: string }
 	mistralOptions?: { apiKey: string }
+	vercelAiGatewayOptions?: { apiKey: string }
 	watsonxOptions?: {
 		codebaseIndexWatsonxApiKey: string
 		codebaseIndexWatsonxProjectId?: string
@@ -39,6 +40,7 @@ export type PreviousConfigSnapshot = {
 	openAiCompatibleApiKey?: string
 	geminiApiKey?: string
 	mistralApiKey?: string
+	vercelAiGatewayApiKey?: string
 	codebaseIndexWatsonxApiKey?: string
 	codebaseIndexWatsonxProjectId?: string
 	qdrantUrl?: string

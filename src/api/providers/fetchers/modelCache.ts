@@ -10,6 +10,7 @@ import { RouterName, ModelRecord } from "../../../shared/api"
 import { fileExistsAtPath } from "../../../utils/fs"
 
 import { getOpenRouterModels } from "./openrouter"
+import { getVercelAiGatewayModels } from "./vercel-ai-gateway"
 import { getRequestyModels } from "./requesty"
 import { getGlamaModels } from "./glama"
 import { getUnboundModels } from "./unbound"
@@ -18,6 +19,7 @@ import { GetModelsOptions } from "../../../shared/api"
 import { getOllamaModels } from "./ollama"
 import { getLMStudioModels } from "./lmstudio"
 import { getIOIntelligenceModels } from "./io-intelligence"
+import { getDeepInfraModels } from "./deepinfra"
 import { getWatsonxModels } from "./watsonx"
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
@@ -74,13 +76,19 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 				models = await getLiteLLMModels(options.apiKey, options.baseUrl)
 				break
 			case "ollama":
-				models = await getOllamaModels(options.baseUrl)
+				models = await getOllamaModels(options.baseUrl, options.apiKey)
 				break
 			case "lmstudio":
 				models = await getLMStudioModels(options.baseUrl)
 				break
+			case "deepinfra":
+				models = await getDeepInfraModels(options.apiKey, options.baseUrl)
+				break
 			case "io-intelligence":
 				models = await getIOIntelligenceModels(options.apiKey)
+				break
+			case "vercel-ai-gateway":
+				models = await getVercelAiGatewayModels()
 				break
 			case "watsonx":
 				models = await getWatsonxModels(options.apiKey)

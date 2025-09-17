@@ -211,6 +211,9 @@ describe("mergeExtensionState", () => {
 			hasOpenedModeSelector: false, // Add the new required property
 			maxImageFileSize: 5,
 			maxTotalImageSize: 20,
+			remoteControlEnabled: false,
+			taskSyncEnabled: false,
+			featureRoomoteControlEnabled: false,
 		}
 
 		const prevState: ExtensionState = {
@@ -230,6 +233,8 @@ describe("mergeExtensionState", () => {
 				multiFileApplyDiff: true,
 				preventFocusDisruption: false,
 				newTaskRequireTodos: false,
+				imageGeneration: false,
+				runSlashCommand: false,
 			} as Record<ExperimentId, boolean>,
 		}
 
@@ -248,6 +253,8 @@ describe("mergeExtensionState", () => {
 			multiFileApplyDiff: true,
 			preventFocusDisruption: false,
 			newTaskRequireTodos: false,
+			imageGeneration: false,
+			runSlashCommand: false,
 		})
 	})
 })
