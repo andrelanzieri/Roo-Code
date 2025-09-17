@@ -22,7 +22,6 @@ export const codebaseIndexConfigSchema = z.object({
 	codebaseIndexEnabled: z.boolean().optional(),
 	codebaseIndexQdrantUrl: z.string().optional(),
 	codebaseIndexEmbedderProvider: z
-		.enum(["openai", "ollama", "openai-compatible", "gemini", "mistral", "watsonx"])
 		.enum(["openai", "ollama", "openai-compatible", "gemini", "mistral", "vercel-ai-gateway", "watsonx"])
 		.optional(),
 	codebaseIndexEmbedderBaseUrl: z.string().optional(),
