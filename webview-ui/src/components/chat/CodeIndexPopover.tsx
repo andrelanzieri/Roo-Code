@@ -1392,7 +1392,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 														) : (
 															<span className="codicon codicon-refresh" />
 														)}
-														{refreshingModels ? "Loading Models..." : "Refresh Models"}
+														{refreshingModels ? "Loading Models..." : "Retrieve Models"}
 													</div>
 												</VSCodeButton>
 											</div>
