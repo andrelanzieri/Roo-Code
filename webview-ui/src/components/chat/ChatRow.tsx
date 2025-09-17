@@ -1090,6 +1090,8 @@ export const ChatRowContent = ({
 							isStreaming={isStreaming}
 							isLast={isLast}
 							metadata={message.metadata as any}
+							isExpanded={isExpanded}
+							onToggleExpand={handleToggleExpand}
 						/>
 					)
 				case "api_req_started":
