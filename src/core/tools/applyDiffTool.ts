@@ -11,7 +11,6 @@ import { ToolUse, RemoveClosingTag, AskApproval, HandleError, PushToolResult } f
 import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
-import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 
 export async function applyDiffToolLegacy(
@@ -25,9 +24,8 @@ export async function applyDiffToolLegacy(
 	const relPath: string | undefined = block.params.path
 	let diffContent: string | undefined = block.params.diff
 
-	if (diffContent && !cline.api.getModel().id.includes("claude")) {
-		diffContent = unescapeHtmlEntities(diffContent)
-	}
+	// HTML entities should be preserved exactly as provided
+	// to ensure accurate diff matching and prevent unintended changes
 
 	const sharedMessageProps: ClineSayTool = {
 		tool: "appliedDiff",
