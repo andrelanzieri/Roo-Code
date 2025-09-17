@@ -14,7 +14,6 @@ import type {
 	CloudUserInfo,
 	ShareVisibility,
 	QueuedMessage,
-	ModelInfo,
 } from "@roo-code/types"
 
 import { GitCommit } from "../utils/git"
