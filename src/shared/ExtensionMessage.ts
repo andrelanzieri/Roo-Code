@@ -10,6 +10,10 @@ import type {
 	MarketplaceItem,
 	TodoItem,
 	ModelInfo,
+	OrganizationAllowList,
+	CloudUserInfo,
+	ShareVisibility,
+	QueuedMessage,
 } from "@roo-code/types"
 
 import { GitCommit } from "../utils/git"
