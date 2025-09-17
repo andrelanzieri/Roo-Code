@@ -2323,6 +2323,102 @@ export const webviewMessageHandler = async (
 
 			break
 		}
+		case "codexCliNativeCheckToken": {
+			// Check if token exists in secrets
+			const token = await provider.context.secrets.get("codexCliOpenAiNativeToken")
+			await provider.postMessageToWebview({
+				type: "codexCliNativeTokenStatus",
+				hasToken: !!token,
+			})
+			break
+		}
+		case "codexCliNativeSignIn": {
+			try {
+				// Import the CLI handler module
+				const { CodexCliHandler } = await import("../../services/codex-cli/CodexCliHandler")
+
+				// Get the CLI path from settings or use default
+				const cliPath = message.text || "codex"
+
+				// Run the sign-in flow
+				const handler = new CodexCliHandler(cliPath)
+				const token = await handler.signIn()
+
+				if (token) {
+					// Store the token in secrets
+					await provider.context.secrets.store("codexCliOpenAiNativeToken", token)
+
+					// Notify the webview of success
+					await provider.postMessageToWebview({
+						type: "codexCliNativeSignInResult",
+						success: true,
+					})
+
+					// Update the state to reflect the new token
+					await provider.postStateToWebview()
+				} else {
+					throw new Error("Failed to obtain token from CLI")
+				}
+			} catch (error) {
+				provider.log(`CodexCliNative sign-in failed: ${error}`)
+				await provider.postMessageToWebview({
+					type: "codexCliNativeSignInResult",
+					success: false,
+					error: error instanceof Error ? error.message : String(error),
+				})
+			}
+			break
+		}
+		case "codexCliNativeSignOut": {
+			try {
+				// Clear the token from secrets
+				await provider.context.secrets.delete("codexCliOpenAiNativeToken")
+
+				// Notify the webview of success
+				await provider.postMessageToWebview({
+					type: "codexCliNativeSignOutResult",
+					success: true,
+				})
+
+				// Update the state
+				await provider.postStateToWebview()
+			} catch (error) {
+				provider.log(`CodexCliNative sign-out failed: ${error}`)
+				await provider.postMessageToWebview({
+					type: "codexCliNativeSignOutResult",
+					success: false,
+					error: error instanceof Error ? error.message : String(error),
+				})
+			}
+			break
+		}
+		case "codexCliNativeDetect": {
+			try {
+				// Import the CLI handler module
+				const { CodexCliHandler } = await import("../../services/codex-cli/CodexCliHandler")
+
+				// Get the CLI path from settings or use default
+				const cliPath = message.text || "codex"
+
+				// Check if CLI is available
+				const handler = new CodexCliHandler(cliPath)
+				const isAvailable = await handler.detect()
+
+				await provider.postMessageToWebview({
+					type: "codexCliNativeDetectResult",
+					available: isAvailable,
+					path: isAvailable ? cliPath : undefined,
+				})
+			} catch (error) {
+				provider.log(`CodexCliNative detect failed: ${error}`)
+				await provider.postMessageToWebview({
+					type: "codexCliNativeDetectResult",
+					available: false,
+					error: error instanceof Error ? error.message : String(error),
+				})
+			}
+			break
+		}
 		case "rooCloudManualUrl": {
 			try {
 				if (!message.text) {

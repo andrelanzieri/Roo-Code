@@ -34,6 +34,7 @@ import {
 export const providerNames = [
 	"anthropic",
 	"claude-code",
+	"codex-cli-native",
 	"glama",
 	"openrouter",
 	"bedrock",
@@ -343,6 +344,11 @@ const vercelAiGatewaySchema = baseProviderSettingsSchema.extend({
 	vercelAiGatewayModelId: z.string().optional(),
 })
 
+const codexCliNativeSchema = apiModelIdProviderModelSchema.extend({
+	codexCliPath: z.string().optional(),
+	// No API key field - uses token from secrets
+})
+
 const defaultSchema = z.object({
 	apiProvider: z.undefined(),
 })
@@ -350,6 +356,7 @@ const defaultSchema = z.object({
 export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProvider", [
 	anthropicSchema.merge(z.object({ apiProvider: z.literal("anthropic") })),
 	claudeCodeSchema.merge(z.object({ apiProvider: z.literal("claude-code") })),
+	codexCliNativeSchema.merge(z.object({ apiProvider: z.literal("codex-cli-native") })),
 	glamaSchema.merge(z.object({ apiProvider: z.literal("glama") })),
 	openRouterSchema.merge(z.object({ apiProvider: z.literal("openrouter") })),
 	bedrockSchema.merge(z.object({ apiProvider: z.literal("bedrock") })),
@@ -391,6 +398,7 @@ export const providerSettingsSchema = z.object({
 	apiProvider: providerNamesSchema.optional(),
 	...anthropicSchema.shape,
 	...claudeCodeSchema.shape,
+	...codexCliNativeSchema.shape,
 	...glamaSchema.shape,
 	...openRouterSchema.shape,
 	...bedrockSchema.shape,
@@ -483,7 +491,10 @@ export const getApiProtocol = (provider: ProviderName | undefined, modelId?: str
 }
 
 export const MODELS_BY_PROVIDER: Record<
-	Exclude<ProviderName, "fake-ai" | "human-relay" | "gemini-cli" | "lmstudio" | "openai" | "ollama">,
+	Exclude<
+		ProviderName,
+		"fake-ai" | "human-relay" | "gemini-cli" | "lmstudio" | "openai" | "ollama" | "codex-cli-native"
+	>,
 	{ id: ProviderName; label: string; models: string[] }
 > = {
 	anthropic: {

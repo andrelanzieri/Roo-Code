@@ -225,6 +225,10 @@ export interface WebviewMessage {
 		| "editQueuedMessage"
 		| "dismissUpsell"
 		| "getDismissedUpsells"
+		| "codexCliNativeCheckToken"
+		| "codexCliNativeSignIn"
+		| "codexCliNativeSignOut"
+		| "codexCliNativeDetect"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"

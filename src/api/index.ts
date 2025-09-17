@@ -95,6 +95,16 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new AnthropicHandler(options)
 		case "claude-code":
 			return new ClaudeCodeHandler(options)
+		case "codex-cli-native":
+			// Reuse OpenAI Native handler with token from secrets
+			// The token will be injected from the secret storage
+			// Note: The token is stored in secrets as codexCliOpenAiNativeToken
+			// and will be injected into openAiNativeApiKey for the handler
+			return new OpenAiNativeHandler({
+				...options,
+				openAiNativeApiKey: (options as any).codexCliOpenAiNativeToken,
+				openAiNativeBaseUrl: options.openAiNativeBaseUrl || "https://api.openai.com",
+			})
 		case "glama":
 			return new GlamaHandler(options)
 		case "openrouter":
@@ -166,7 +176,7 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 		case "vercel-ai-gateway":
 			return new VercelAiGatewayHandler(options)
 		default:
-			apiProvider satisfies "gemini-cli" | undefined
+			apiProvider satisfies "gemini-cli" | "codex-cli-native" | undefined
 			return new AnthropicHandler(options)
 	}
 }

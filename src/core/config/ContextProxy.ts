@@ -267,13 +267,37 @@ export class ContextProxy {
 		const values = this.getValues()
 
 		try {
-			return providerSettingsSchema.parse(values)
+			const settings = providerSettingsSchema.parse(values)
+
+			// For codex-cli-native provider, inject the token from secrets
+			if (settings.apiProvider === "codex-cli-native") {
+				const token = this.getSecret("codexCliOpenAiNativeToken" as SecretStateKey)
+				if (token) {
+					// Add the token to the settings object so it can be used by the API handler
+					;(settings as any).codexCliOpenAiNativeToken = token
+				}
+			}
+
+			return settings
 		} catch (error) {
 			if (error instanceof ZodError) {
 				TelemetryService.instance.captureSchemaValidationError({ schemaName: "ProviderSettings", error })
 			}
 
-			return PROVIDER_SETTINGS_KEYS.reduce((acc, key) => ({ ...acc, [key]: values[key] }), {} as ProviderSettings)
+			const settings = PROVIDER_SETTINGS_KEYS.reduce(
+				(acc, key) => ({ ...acc, [key]: values[key] }),
+				{} as ProviderSettings,
+			)
+
+			// For codex-cli-native provider, inject the token from secrets (fallback case)
+			if (settings.apiProvider === "codex-cli-native") {
+				const token = this.getSecret("codexCliOpenAiNativeToken" as SecretStateKey)
+				if (token) {
+					;(settings as any).codexCliOpenAiNativeToken = token
+				}
+			}
+
+			return settings
 		}
 	}
 

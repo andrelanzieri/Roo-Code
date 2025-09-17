@@ -124,6 +124,10 @@ export interface ExtensionMessage {
 		| "commands"
 		| "insertTextIntoTextarea"
 		| "dismissedUpsells"
+		| "codexCliNativeTokenStatus"
+		| "codexCliNativeSignInResult"
+		| "codexCliNativeSignOutResult"
+		| "codexCliNativeDetectResult"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -201,6 +205,9 @@ export interface ExtensionMessage {
 	commands?: Command[]
 	queuedMessages?: QueuedMessage[]
 	list?: string[] // For dismissedUpsells
+	hasToken?: boolean // For codexCliNativeTokenStatus
+	available?: boolean // For codexCliNativeDetectResult
+	path?: string // For codexCliNativeDetectResult
 }
 
 export type ExtensionState = Pick<

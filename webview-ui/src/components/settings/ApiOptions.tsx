@@ -68,6 +68,7 @@ import {
 	Cerebras,
 	Chutes,
 	ClaudeCode,
+	CodexCliNative,
 	DeepSeek,
 	Doubao,
 	Gemini,
@@ -322,6 +323,7 @@ const ApiOptions = ({
 				"claude-code": { field: "apiModelId", default: claudeCodeDefaultModelId },
 				"qwen-code": { field: "apiModelId", default: qwenCodeDefaultModelId },
 				"openai-native": { field: "apiModelId", default: openAiNativeDefaultModelId },
+				"codex-cli-native": { field: "apiModelId", default: openAiNativeDefaultModelId },
 				gemini: { field: "apiModelId", default: geminiDefaultModelId },
 				deepseek: { field: "apiModelId", default: deepSeekDefaultModelId },
 				doubao: { field: "apiModelId", default: doubaoDefaultModelId },
@@ -511,6 +513,13 @@ const ApiOptions = ({
 
 			{selectedProvider === "claude-code" && (
 				<ClaudeCode apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
+			)}
+
+			{selectedProvider === "codex-cli-native" && (
+				<CodexCliNative
+					apiConfiguration={apiConfiguration}
+					setApiConfigurationField={setApiConfigurationField}
+				/>
 			)}
 
 			{selectedProvider === "openai-native" && (
