@@ -11,7 +11,7 @@ import {
 	type ClineMessage,
 	type TelemetrySetting,
 	TelemetryEventName,
-	UserSettingsConfig
+	UserSettingsConfig,
 } from "@roo-code/types"
 import { CloudService } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -2545,7 +2545,6 @@ export const webviewMessageHandler = async (
 						settings.codebaseIndexVercelAiGatewayApiKey,
 					)
 				}
-
 				if (settings.codebaseIndexWatsonxApiKey !== undefined) {
 					await provider.contextProxy.storeSecret(
 						"codebaseIndexWatsonxApiKey",
@@ -2558,7 +2557,6 @@ export const webviewMessageHandler = async (
 						settings.codebaseIndexWatsonxProjectId,
 					)
 				}
-
 				// Send success response first - settings are saved regardless of validation
 				await provider.postMessageToWebview({
 					type: "codeIndexSettingsSaved",

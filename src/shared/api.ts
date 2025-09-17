@@ -156,5 +156,4 @@ export type GetModelsOptions =
 	| { provider: "deepinfra"; apiKey?: string; baseUrl?: string }
 	| { provider: "io-intelligence"; apiKey: string }
 	| { provider: "vercel-ai-gateway" }
-	| { provider: "watsonx"; apiKey: string }
 	| { provider: "watsonx"; apiKey: string; baseUrl: string }

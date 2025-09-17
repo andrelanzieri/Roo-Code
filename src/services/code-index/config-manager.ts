@@ -252,12 +252,15 @@ export class CodeIndexConfigManager {
 			const qdrantUrl = this.qdrantUrl
 			const isConfigured = !!(apiKey && qdrantUrl)
 			return isConfigured
-		} else if (this.embedderProvider === "vercel-ai-gateway") {
-			const apiKey = this.vercelAiGatewayOptions?.apiKey
 		} else if (this.embedderProvider === "watsonx") {
 			const apiKey = this.watsonxOptions?.codebaseIndexWatsonxApiKey
+			const projectId = this.watsonxOptions?.codebaseIndexWatsonxProjectId
 			const qdrantUrl = this.qdrantUrl
-			const isConfigured = !!(apiKey && qdrantUrl)
+			const isConfigured = !!(apiKey && projectId && qdrantUrl)
+			return isConfigured
+		} else if (this.embedderProvider === "vercel-ai-gateway") {
+			const apiKey = this.vercelAiGatewayOptions?.apiKey
+			const isConfigured = !!apiKey
 			return isConfigured
 		}
 		return false // Should not happen if embedderProvider is always set correctly
@@ -362,14 +365,13 @@ export class CodeIndexConfigManager {
 			return true
 		}
 
-		if (prevVercelAiGatewayApiKey !== currentVercelAiGatewayApiKey) {
-			return true
-		}
-
 		if (prevWatsonxApiKey !== currentWatsonxApiKey || prevWatsonxProjectId !== currentWatsonxProjectId) {
 			return true
 		}
 
+		if (prevVercelAiGatewayApiKey !== currentVercelAiGatewayApiKey) {
+			return true
+		}
 		// Check for model dimension changes (generic for all providers)
 		if (prevModelDimension !== currentModelDimension) {
 			return true
