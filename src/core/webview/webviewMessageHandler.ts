@@ -59,7 +59,7 @@ const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
 import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
 import { setPendingTodoList } from "../tools/updateTodoListTool"
-import { getWatsonxModels } from "../../api/providers/fetchers/watsonx"
+import { getEmbeddedWatsonxModels, getWatsonxModels } from "../../api/providers/fetchers/watsonx"
 
 export const webviewMessageHandler = async (
 	provider: ClineProvider,
@@ -984,8 +984,6 @@ export const webviewMessageHandler = async (
 
 					const watsonxModels = await getWatsonxModels(
 						apiKey,
-						false,
-						projectId,
 						effectiveBaseUrl,
 						platform,
 						username,
@@ -1042,10 +1040,8 @@ export const webviewMessageHandler = async (
 						effectiveBaseUrl = regionToUrl[region] || "https://us-south.ml.cloud.ibm.com"
 					}
 
-					const watsonxModels = await getWatsonxModels(
+					const watsonxModels = await getEmbeddedWatsonxModels(
 						apiKey,
-						true,
-						projectId,
 						effectiveBaseUrl,
 						platform as "ibmCloud" | "cloudPak",
 						username,

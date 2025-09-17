@@ -152,7 +152,7 @@ export interface ExtensionMessage {
 	lmStudioModels?: ModelRecord
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
 	watsonxModels?: Record<string, ModelInfo>
-	embeddedWatsonxModels?: Record<string, ModelInfo>
+	embeddedWatsonxModels?: Record<string, { dimension: number }>
 	huggingFaceModels?: Array<{
 		id: string
 		object: string

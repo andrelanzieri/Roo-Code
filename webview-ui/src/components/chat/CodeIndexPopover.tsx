@@ -340,7 +340,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 			} else if (event.data.type === "embeddedWatsonxModels" && event.data.embeddedWatsonxModels) {
 				try {
 					console.log("Received IBM Embeded watsonx models:", event.data.embeddedWatsonxModels)
-					const embeddedWatsonxModels: Record<string, { dimension: number }> = {}
+					let embeddedWatsonxModels: Record<string, { dimension: number }> = {}
 					if (
 						!event.data.embeddedWatsonxModels ||
 						Object.keys(event.data.embeddedWatsonxModels).length === 0
@@ -348,11 +348,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 						console.warn("No models received from server, adding default model")
 						embeddedWatsonxModels["ibm/slate-125m-english-rtrvr-v2"] = { dimension: 768 }
 					} else {
-						Object.keys(event.data.embeddedWatsonxModels).forEach((modelId) => {
-							embeddedWatsonxModels[modelId] = {
-								dimension: 768,
-							}
-						})
+						embeddedWatsonxModels = event.data.embeddedWatsonxModels
 					}
 					if (codebaseIndexModels) {
 						codebaseIndexModels.watsonx = { ...embeddedWatsonxModels }
