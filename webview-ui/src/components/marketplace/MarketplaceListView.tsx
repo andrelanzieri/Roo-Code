@@ -47,8 +47,8 @@ export function MarketplaceListView({ stateManager, allTags, filteredTags, filte
 					onClose={() => setShowCustomMcpDialog(false)}
 					onSuccess={() => {
 						setShowCustomMcpDialog(false)
-						// Optionally refresh the marketplace data
-						manager.transition({ type: "REFRESH" })
+						// Refresh the marketplace data to show the new custom MCP
+						manager.transition({ type: "FETCH_ITEMS" })
 					}}
 				/>
 			)}
