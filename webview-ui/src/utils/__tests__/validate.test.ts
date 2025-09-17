@@ -42,7 +42,7 @@ describe("Model Validation Functions", () => {
 		deepinfra: {},
 		"io-intelligence": {},
 		"vercel-ai-gateway": {},
-		watsonx: {},
+		huggingface: {},
 	}
 
 	const allowAllOrganization: OrganizationAllowList = {
