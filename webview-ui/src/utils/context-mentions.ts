@@ -259,28 +259,35 @@ export function getContextMenuOptions(
 		]
 	}
 
+	// Special handling for folder paths - if query ends with /, we're looking inside a folder
+	const isLookingInsideFolder = query.endsWith("/")
+	// const _folderPath = isLookingInsideFolder ? query.slice(0, -1) : ""
+
 	const lowerQuery = query.toLowerCase()
 	const suggestions: ContextMenuQueryItem[] = []
 
-	// Check for top-level option matches
-	if ("git".startsWith(lowerQuery)) {
-		suggestions.push({
-			type: ContextMenuOptionType.Git,
-			label: "Git Commits",
-			description: "Search repository history",
-			icon: "$(git-commit)",
-		})
-	} else if ("git-changes".startsWith(lowerQuery)) {
-		suggestions.push(workingChanges)
-	}
-	if ("problems".startsWith(lowerQuery)) {
-		suggestions.push({ type: ContextMenuOptionType.Problems })
-	}
-	if ("terminal".startsWith(lowerQuery)) {
-		suggestions.push({ type: ContextMenuOptionType.Terminal })
-	}
-	if (query.startsWith("http")) {
-		suggestions.push({ type: ContextMenuOptionType.URL, value: query })
+	// Only show top-level options if we're not looking inside a folder
+	if (!isLookingInsideFolder) {
+		// Check for top-level option matches
+		if ("git".startsWith(lowerQuery)) {
+			suggestions.push({
+				type: ContextMenuOptionType.Git,
+				label: "Git Commits",
+				description: "Search repository history",
+				icon: "$(git-commit)",
+			})
+		} else if ("git-changes".startsWith(lowerQuery)) {
+			suggestions.push(workingChanges)
+		}
+		if ("problems".startsWith(lowerQuery)) {
+			suggestions.push({ type: ContextMenuOptionType.Problems })
+		}
+		if ("terminal".startsWith(lowerQuery)) {
+			suggestions.push({ type: ContextMenuOptionType.Terminal })
+		}
+		if (query.startsWith("http")) {
+			suggestions.push({ type: ContextMenuOptionType.URL, value: query })
+		}
 	}
 
 	// Add exact SHA matches to suggestions

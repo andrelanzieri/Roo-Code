@@ -339,6 +339,48 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					}
 				}
 
+				// Special handling for folder selection - keep menu open and update input
+				if (type === ContextMenuOptionType.Folder && value) {
+					// Update the input to show the folder path with trailing slash
+					const beforeCursor = textAreaRef.current?.value.slice(0, cursorPosition) || ""
+					const _afterCursor = textAreaRef.current?.value.slice(cursorPosition) || ""
+
+					// Find the position of the last '@' symbol before the cursor
+					const lastAtIndex = beforeCursor.lastIndexOf("@")
+
+					if (lastAtIndex !== -1) {
+						// Replace everything after @ with the folder path
+						const beforeMention = textAreaRef.current?.value.slice(0, lastAtIndex) || ""
+						// Add folder path with trailing slash to allow continued typing
+						const folderPath = value.endsWith("/") ? value : value + "/"
+						const newValue = beforeMention + "@" + folderPath
+
+						setInputValue(newValue)
+						const newCursorPosition = newValue.length
+						setCursorPosition(newCursorPosition)
+						setIntendedCursorPosition(newCursorPosition)
+
+						// Update search query to the folder path to show its contents
+						setSearchQuery(folderPath)
+						setSelectedType(ContextMenuOptionType.Folder)
+
+						// Request folder contents from the extension
+						vscode.postMessage({
+							type: "searchFiles",
+							query: folderPath,
+							requestId: Math.random().toString(36).substring(2, 9),
+						})
+
+						// Focus the textarea but keep menu open
+						setTimeout(() => {
+							if (textAreaRef.current) {
+								textAreaRef.current.focus()
+							}
+						}, 0)
+						return
+					}
+				}
+
 				setShowContextMenu(false)
 				setSelectedType(null)
 
@@ -347,7 +389,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 					if (type === ContextMenuOptionType.URL) {
 						insertValue = value || ""
-					} else if (type === ContextMenuOptionType.File || type === ContextMenuOptionType.Folder) {
+					} else if (type === ContextMenuOptionType.File) {
 						insertValue = value || ""
 					} else if (type === ContextMenuOptionType.Problems) {
 						insertValue = "problems"
