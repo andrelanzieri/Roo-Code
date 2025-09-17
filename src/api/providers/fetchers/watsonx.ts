@@ -16,8 +16,6 @@ import { WatsonXAI } from "@ibm-cloud/watsonx-ai"
  */
 export async function getWatsonxModels(
 	apiKey: string,
-	embedded: boolean,
-	projectId?: string,
 	baseUrl?: string,
 	platform: "ibmCloud" | "cloudPak" = "ibmCloud",
 	username?: string,
@@ -63,13 +61,7 @@ export async function getWatsonxModels(
 		let knownModels: Record<string, ModelInfo> = {}
 
 		try {
-			let response
-			if (embedded) {
-				response = await service.listFoundationModelSpecs({ filters: "function_embedding" })
-			} else {
-				response = await service.listFoundationModelSpecs({ filters: "!function_embedding" })
-			}
-
+			const response = await service.listFoundationModelSpecs({ filters: "!function_embedding" })
 			if (response && response.result) {
 				const result = response.result as any
 				const modelsList = result.resources
@@ -110,6 +102,90 @@ export async function getWatsonxModels(
 		return knownModels
 	} catch (apiError) {
 		console.error("Error fetching IBM watsonx models:", apiError)
+		return {}
+	}
+}
+
+/**
+ * Fetches available embedded watsonx models
+ *
+ * @param apiKey - The watsonx API key (for IBM Cloud or Cloud Pak with API key auth)
+ * @param baseUrl - Optional base URL for the watsonx API
+ * @param platform - Optional platform type (ibmCloud or cloudPak)
+ * @param username - Optional username for Cloud Pak for Data
+ * @param password - Optional password for Cloud Pak for Data (when using password auth)
+ * @returns A promise resolving to an object with model IDs as keys and model info as values
+ */
+export async function getEmbeddedWatsonxModels(
+	apiKey: string,
+	baseUrl?: string,
+	platform: "ibmCloud" | "cloudPak" = "ibmCloud",
+	username?: string,
+	password?: string,
+): Promise<Record<string, { dimension: number }>> {
+	try {
+		let options: any = {
+			version: "2024-05-31",
+		}
+
+		if (platform === "ibmCloud" || !platform) {
+			if (apiKey) {
+				options.authenticator = new IamAuthenticator({
+					apikey: apiKey,
+				})
+			} else {
+				return {}
+			}
+		} else if (platform === "cloudPak") {
+			if (!baseUrl) {
+				throw new Error("Base URL is required for IBM Cloud Pak for Data")
+			}
+
+			if (username) {
+				if (password) {
+					options.authenticator = new CloudPakForDataAuthenticator({
+						url: baseUrl,
+						username: username,
+						password: password,
+					})
+				} else if (apiKey) {
+					options.authenticator = new CloudPakForDataAuthenticator({
+						url: baseUrl,
+						username: username,
+						apikey: apiKey,
+					})
+				}
+			}
+		}
+
+		const service = WatsonXAI.newInstance(options)
+
+		let knownModels: Record<string, { dimension: number }> = {}
+
+		try {
+			const response = await service.listFoundationModelSpecs({ filters: "function_embedding" })
+			if (response && response.result) {
+				const result = response.result as any
+
+				const modelsList = result.models || result.resources || result.foundation_models || []
+
+				if (Array.isArray(modelsList)) {
+					for (const model of modelsList) {
+						const modelId = model.id || model.name || model.model_id
+						if (modelId.startsWith("ibm")) {
+							const dimension = model.model_limits.embedding_dimension
+							knownModels[modelId] = { dimension }
+						}
+					}
+				}
+			}
+		} catch (error) {
+			console.warn("Error fetching embedded models from IBM watsonx API:", error)
+			return {}
+		}
+		return knownModels
+	} catch (apiError) {
+		console.error("Error fetching embedded IBM watsonx models:", apiError)
 		return {}
 	}
 }

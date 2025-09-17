@@ -54,7 +54,12 @@ export const EMBEDDING_MODEL_PROFILES: EmbeddingModelProfiles = {
 		"codestral-embed-2505": { dimension: 1536, scoreThreshold: 0.4 },
 	},
 	watsonx: {
+		"ibm/granite-embedding-107m-multilingual": { dimension: 384, scoreThreshold: 0.4 },
+		"ibm/granite-embedding-278M-multilingual": { dimension: 768, scoreThreshold: 0.4 },
 		"ibm/slate-125m-english-rtrvr-v2": { dimension: 768, scoreThreshold: 0.4 },
+		"ibm/slate-125m-english-rtrvr": { dimension: 768, scoreThreshold: 0.4 },
+		"ibm/slate-30m-english-rtrvr-v2": { dimension: 384, scoreThreshold: 0.4 },
+		"ibm/slate-30m-english-rtrvr": { dimension: 384, scoreThreshold: 0.4 },
 	},
 }
 
