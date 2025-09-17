@@ -1,13 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import {
-	type ModelInfo,
-	type WatsonxModelId,
-	watsonxDefaultModelId,
-	watsonxModels,
-	watsonxModelInfoSaneDefaults,
-} from "@roo-code/types"
+import { type ModelInfo, type WatsonxModelId, watsonxDefaultModelId, watsonxModels } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
@@ -157,25 +151,18 @@ export class WatsonxHandler extends BaseProvider implements SingleCompletionHand
 	}
 }
 
-// Helper function to get available watsonx models (if API endpoint is available)
-export async function getWatsonxModels(
-	baseUrl?: string,
-	apiKey?: string,
-	projectId?: string,
-	region?: string,
-): Promise<string[]> {
-	try {
-		if (!apiKey || !projectId) {
-			return Object.keys(watsonxModels)
-		}
-
-		const actualRegion = region || "us-south"
-		const actualBaseUrl = baseUrl || `https://${actualRegion}.ml.cloud.ibm.com/ml/v1`
-
-		// Note: This is a placeholder - IBM watsonx may have a different endpoint for listing models
-		// For now, return the static list
-		return Object.keys(watsonxModels)
-	} catch (error) {
-		return Object.keys(watsonxModels)
-	}
+/**
+ * Helper function to get available watsonx models.
+ *
+ * Currently returns a static list of models defined in watsonxModels.
+ * IBM watsonx doesn't provide a public API endpoint for dynamically listing available models,
+ * so we maintain a curated list of supported models that are known to work with the watsonx platform.
+ *
+ * @returns Array of available model IDs
+ */
+export async function getWatsonxModels(): Promise<string[]> {
+	// Return the static list of supported watsonx models
+	// This list is maintained based on IBM's documentation and includes
+	// both IBM Granite models and third-party models available on watsonx
+	return Object.keys(watsonxModels)
 }
