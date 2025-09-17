@@ -47,6 +47,10 @@ export const globalSettingsSchema = z.object({
 	openRouterImageApiKey: z.string().optional(),
 	openRouterImageGenerationSelectedModel: z.string().optional(),
 
+	// Codex CLI settings
+	codexCliSessionToken: z.string().optional(),
+	codexCliBaseUrl: z.string().optional(),
+
 	condensingApiConfigId: z.string().optional(),
 	customCondensingPrompt: z.string().optional(),
 
@@ -210,6 +214,7 @@ export const SECRET_STATE_KEYS = [
 // Global secrets that are part of GlobalSettings (not ProviderSettings)
 export const GLOBAL_SECRET_KEYS = [
 	"openRouterImageApiKey", // For image generation
+	"codexCliSessionToken", // For Codex CLI authentication
 ] as const
 
 // Type for the actual secret storage keys

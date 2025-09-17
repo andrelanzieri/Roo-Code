@@ -2323,6 +2323,155 @@ export const webviewMessageHandler = async (
 
 			break
 		}
+		case "codexCliSignIn": {
+			try {
+				// Import child_process for spawning the CLI
+				const { spawn } = await import("child_process")
+				const { promisify } = await import("util")
+				const exec = promisify((await import("child_process")).exec)
+
+				// Get the CLI path from configuration or use default
+				const { apiConfiguration } = await provider.getState()
+				const cliPath = apiConfiguration.codexCliPath || "codex"
+
+				// First, check if the CLI is available
+				try {
+					await exec(`${cliPath} --version`)
+				} catch (error) {
+					vscode.window.showErrorMessage(
+						"Codex CLI not found. Please install it or specify the correct path.",
+					)
+					await provider.postMessageToWebview({
+						type: "codexCliAuthResult",
+						success: false,
+						error: "CLI not found",
+					})
+					return
+				}
+
+				// Start the local login flow
+				const loginProcess = spawn(cliPath, ["auth", "login", "--local"])
+
+				let output = ""
+				loginProcess.stdout.on("data", (data) => {
+					output += data.toString()
+					// Parse the output for the device code URL if present
+					const urlMatch = output.match(/https?:\/\/[^\s]+/)
+					if (urlMatch) {
+						// Open the URL in the browser for the user to authenticate
+						vscode.env.openExternal(vscode.Uri.parse(urlMatch[0]))
+					}
+				})
+
+				loginProcess.stderr.on("data", (data) => {
+					provider.log(`Codex CLI login error: ${data}`)
+				})
+
+				loginProcess.on("close", async (code) => {
+					if (code === 0) {
+						// Login successful, extract the token from the output
+						const tokenMatch = output.match(/token:\s*([^\s]+)/)
+						if (tokenMatch && tokenMatch[1]) {
+							const token = tokenMatch[1]
+
+							// Store the token in VS Code Secret Storage
+							await provider.contextProxy.storeSecret("codexCliSessionToken", token)
+
+							// Get the base URL if provided in the output
+							const baseUrlMatch = output.match(/base_url:\s*([^\s]+)/)
+							if (baseUrlMatch && baseUrlMatch[1]) {
+								await updateGlobalState("codexCliBaseUrl", baseUrlMatch[1])
+							}
+
+							await provider.postStateToWebview()
+							await provider.postMessageToWebview({
+								type: "codexCliAuthResult",
+								success: true,
+							})
+							vscode.window.showInformationMessage("Successfully signed in to Codex CLI")
+						} else {
+							vscode.window.showErrorMessage("Codex CLI login failed: Could not extract session token")
+							await provider.postMessageToWebview({
+								type: "codexCliAuthResult",
+								success: false,
+								error: "Failed to extract token",
+							})
+						}
+					} else {
+						vscode.window.showErrorMessage("Codex CLI login failed")
+						await provider.postMessageToWebview({
+							type: "codexCliAuthResult",
+							success: false,
+							error: `Process exited with code ${code}`,
+						})
+					}
+				})
+			} catch (error) {
+				provider.log(`Codex CLI sign in failed: ${error}`)
+				vscode.window.showErrorMessage("Codex CLI login failed")
+				await provider.postMessageToWebview({
+					type: "codexCliAuthResult",
+					success: false,
+					error: error instanceof Error ? error.message : String(error),
+				})
+			}
+			break
+		}
+		case "codexCliSignOut": {
+			try {
+				// Clear the stored session token
+				await provider.contextProxy.storeSecret("codexCliSessionToken", undefined)
+				await updateGlobalState("codexCliBaseUrl", undefined)
+				await provider.postStateToWebview()
+				vscode.window.showInformationMessage("Successfully signed out of Codex CLI")
+			} catch (error) {
+				provider.log(`Codex CLI sign out failed: ${error}`)
+				vscode.window.showErrorMessage("Failed to sign out of Codex CLI")
+			}
+			break
+		}
+		case "codexCliDetect": {
+			try {
+				const { promisify } = await import("util")
+				const exec = promisify((await import("child_process")).exec)
+
+				// Try to detect the CLI in PATH
+				try {
+					const { stdout } = await exec("which codex")
+					const cliPath = stdout.trim()
+
+					if (cliPath) {
+						// CLI found, check version
+						const { stdout: versionOutput } = await exec(`${cliPath} --version`)
+						await provider.postMessageToWebview({
+							type: "codexCliDetectResult",
+							found: true,
+							path: cliPath,
+							version: versionOutput.trim(),
+						})
+					} else {
+						await provider.postMessageToWebview({
+							type: "codexCliDetectResult",
+							found: false,
+						})
+					}
+				} catch (error) {
+					// CLI not found in PATH
+					await provider.postMessageToWebview({
+						type: "codexCliDetectResult",
+						found: false,
+					})
+				}
+			} catch (error) {
+				provider.log(`Codex CLI detection failed: ${error}`)
+				await provider.postMessageToWebview({
+					type: "codexCliDetectResult",
+					found: false,
+					error: error instanceof Error ? error.message : String(error),
+				})
+			}
+			break
+		}
 		case "rooCloudManualUrl": {
 			try {
 				if (!message.text) {

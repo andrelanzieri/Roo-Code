@@ -108,6 +108,8 @@ export interface ExtensionMessage {
 		| "mcpExecutionStatus"
 		| "vsCodeSetting"
 		| "authenticatedUser"
+		| "codexCliAuthResult"
+		| "codexCliDetectResult"
 		| "condenseTaskContextResponse"
 		| "singleRouterModelFetchResponse"
 		| "indexingStatusUpdate"
@@ -201,6 +203,9 @@ export interface ExtensionMessage {
 	commands?: Command[]
 	queuedMessages?: QueuedMessage[]
 	list?: string[] // For dismissedUpsells
+	found?: boolean // For codexCliDetectResult
+	path?: string // For codexCliDetectResult
+	version?: string // For codexCliDetectResult
 }
 
 export type ExtensionState = Pick<

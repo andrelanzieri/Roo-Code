@@ -5,6 +5,7 @@ import {
 	bedrockModels,
 	cerebrasModels,
 	claudeCodeModels,
+	codexCliModels,
 	deepSeekModels,
 	moonshotModels,
 	geminiModels,
@@ -26,6 +27,7 @@ import {
 export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = {
 	anthropic: anthropicModels,
 	"claude-code": claudeCodeModels,
+	"codex-cli": codexCliModels,
 	bedrock: bedrockModels,
 	cerebras: cerebrasModels,
 	deepseek: deepSeekModels,
@@ -51,6 +53,7 @@ export const PROVIDERS = [
 	{ value: "deepinfra", label: "DeepInfra" },
 	{ value: "anthropic", label: "Anthropic" },
 	{ value: "claude-code", label: "Claude Code" },
+	{ value: "codex-cli", label: "Codex CLI" },
 	{ value: "cerebras", label: "Cerebras" },
 	{ value: "gemini", label: "Google Gemini" },
 	{ value: "doubao", label: "Doubao" },

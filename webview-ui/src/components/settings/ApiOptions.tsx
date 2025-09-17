@@ -68,6 +68,7 @@ import {
 	Cerebras,
 	Chutes,
 	ClaudeCode,
+	CodexCli,
 	DeepSeek,
 	Doubao,
 	Gemini,
@@ -678,6 +679,10 @@ const ApiOptions = ({
 
 			{selectedProvider === "featherless" && (
 				<Featherless apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
+			)}
+
+			{selectedProvider === "codex-cli" && (
+				<CodexCli apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
 			)}
 
 			{selectedProviderModels.length > 0 && (

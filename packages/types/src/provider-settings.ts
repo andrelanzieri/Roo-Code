@@ -8,6 +8,7 @@ import {
 	cerebrasModels,
 	chutesModels,
 	claudeCodeModels,
+	codexCliModels,
 	deepSeekModels,
 	doubaoModels,
 	featherlessModels,
@@ -34,6 +35,7 @@ import {
 export const providerNames = [
 	"anthropic",
 	"claude-code",
+	"codex-cli",
 	"glama",
 	"openrouter",
 	"bedrock",
@@ -343,6 +345,11 @@ const vercelAiGatewaySchema = baseProviderSettingsSchema.extend({
 	vercelAiGatewayModelId: z.string().optional(),
 })
 
+const codexCliSchema = apiModelIdProviderModelSchema.extend({
+	codexCliPath: z.string().optional(),
+	codexCliBaseUrl: z.string().optional(),
+})
+
 const defaultSchema = z.object({
 	apiProvider: z.undefined(),
 })
@@ -350,6 +357,7 @@ const defaultSchema = z.object({
 export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProvider", [
 	anthropicSchema.merge(z.object({ apiProvider: z.literal("anthropic") })),
 	claudeCodeSchema.merge(z.object({ apiProvider: z.literal("claude-code") })),
+	codexCliSchema.merge(z.object({ apiProvider: z.literal("codex-cli") })),
 	glamaSchema.merge(z.object({ apiProvider: z.literal("glama") })),
 	openRouterSchema.merge(z.object({ apiProvider: z.literal("openrouter") })),
 	bedrockSchema.merge(z.object({ apiProvider: z.literal("bedrock") })),
@@ -391,6 +399,7 @@ export const providerSettingsSchema = z.object({
 	apiProvider: providerNamesSchema.optional(),
 	...anthropicSchema.shape,
 	...claudeCodeSchema.shape,
+	...codexCliSchema.shape,
 	...glamaSchema.shape,
 	...openRouterSchema.shape,
 	...bedrockSchema.shape,
@@ -483,7 +492,7 @@ export const getApiProtocol = (provider: ProviderName | undefined, modelId?: str
 }
 
 export const MODELS_BY_PROVIDER: Record<
-	Exclude<ProviderName, "fake-ai" | "human-relay" | "gemini-cli" | "lmstudio" | "openai" | "ollama">,
+	Exclude<ProviderName, "fake-ai" | "human-relay" | "gemini-cli" | "lmstudio" | "openai" | "ollama" | "codex-cli">,
 	{ id: ProviderName; label: string; models: string[] }
 > = {
 	anthropic: {
@@ -507,6 +516,7 @@ export const MODELS_BY_PROVIDER: Record<
 		models: Object.keys(chutesModels),
 	},
 	"claude-code": { id: "claude-code", label: "Claude Code", models: Object.keys(claudeCodeModels) },
+	"codex-cli": { id: "codex-cli", label: "Codex CLI", models: Object.keys(codexCliModels) },
 	deepseek: {
 		id: "deepseek",
 		label: "DeepSeek",
