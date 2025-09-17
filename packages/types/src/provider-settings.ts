@@ -68,6 +68,7 @@ export const providerNames = [
 	"io-intelligence",
 	"roo",
 	"vercel-ai-gateway",
+	"watsonx",
 ] as const
 
 export const providerNamesSchema = z.enum(providerNames)
@@ -343,6 +344,13 @@ const vercelAiGatewaySchema = baseProviderSettingsSchema.extend({
 	vercelAiGatewayModelId: z.string().optional(),
 })
 
+const watsonxSchema = baseProviderSettingsSchema.extend({
+	watsonxBaseUrl: z.string().optional(),
+	watsonxApiKey: z.string().optional(),
+	watsonxProjectId: z.string().optional(),
+	watsonxModelId: z.string().optional(),
+})
+
 const defaultSchema = z.object({
 	apiProvider: z.undefined(),
 })
@@ -384,6 +392,7 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 	qwenCodeSchema.merge(z.object({ apiProvider: z.literal("qwen-code") })),
 	rooSchema.merge(z.object({ apiProvider: z.literal("roo") })),
 	vercelAiGatewaySchema.merge(z.object({ apiProvider: z.literal("vercel-ai-gateway") })),
+	watsonxSchema.merge(z.object({ apiProvider: z.literal("watsonx") })),
 	defaultSchema,
 ])
 
@@ -426,6 +435,7 @@ export const providerSettingsSchema = z.object({
 	...rooSchema.shape,
 	...vercelAiGatewaySchema.shape,
 	...codebaseIndexProviderSchema.shape,
+	...watsonxSchema.shape,
 })
 
 export type ProviderSettings = z.infer<typeof providerSettingsSchema>

@@ -2,7 +2,14 @@
  * Defines profiles for different embedding models, including their dimensions.
  */
 
-export type EmbedderProvider = "openai" | "ollama" | "openai-compatible" | "gemini" | "mistral" | "vercel-ai-gateway" // Add other providers as needed
+export type EmbedderProvider =
+	| "openai"
+	| "ollama"
+	| "openai-compatible"
+	| "gemini"
+	| "mistral"
+	| "vercel-ai-gateway"
+	| "watsonx" // Add other providers as needed
 
 export interface EmbeddingModelProfile {
 	dimension: number
@@ -69,6 +76,9 @@ export const EMBEDDING_MODEL_PROFILES: EmbeddingModelProfiles = {
 		// Mistral models
 		"mistral/codestral-embed": { dimension: 1536, scoreThreshold: 0.4 },
 		"mistral/mistral-embed": { dimension: 1024, scoreThreshold: 0.4 },
+	},
+	watsonx: {
+		"ibm/slate-125m-english-rtrvr-v2": { dimension: 768, scoreThreshold: 0.4 },
 	},
 }
 
@@ -162,6 +172,9 @@ export function getDefaultModelId(provider: EmbedderProvider): string {
 
 		case "vercel-ai-gateway":
 			return "openai/text-embedding-3-large"
+
+		case "watsonx":
+			return "ibm/slate-125m-english-rtrvr-v2"
 
 		default:
 			// Fallback for unknown providers

@@ -20,6 +20,10 @@ export class CodeIndexConfigManager {
 	private geminiOptions?: { apiKey: string }
 	private mistralOptions?: { apiKey: string }
 	private vercelAiGatewayOptions?: { apiKey: string }
+	private watsonxOptions?: {
+		codebaseIndexWatsonxApiKey: string
+		codebaseIndexWatsonxProjectId?: string
+	}
 	private qdrantUrl?: string = "http://localhost:6333"
 	private qdrantApiKey?: string
 	private searchMinScore?: number
@@ -71,6 +75,8 @@ export class CodeIndexConfigManager {
 		const geminiApiKey = this.contextProxy?.getSecret("codebaseIndexGeminiApiKey") ?? ""
 		const mistralApiKey = this.contextProxy?.getSecret("codebaseIndexMistralApiKey") ?? ""
 		const vercelAiGatewayApiKey = this.contextProxy?.getSecret("codebaseIndexVercelAiGatewayApiKey") ?? ""
+		const codebaseIndexWatsonxApiKey = this.contextProxy?.getSecret("codebaseIndexWatsonxApiKey") ?? ""
+		const codebaseIndexWatsonxProjectId = this.contextProxy?.getSecret("codebaseIndexWatsonxProjectId") ?? ""
 
 		// Update instance variables with configuration
 		this.codebaseIndexEnabled = codebaseIndexEnabled ?? true
@@ -97,7 +103,6 @@ export class CodeIndexConfigManager {
 
 		this.openAiOptions = { openAiNativeApiKey: openAiKey }
 
-		// Set embedder provider with support for openai-compatible
 		if (codebaseIndexEmbedderProvider === "ollama") {
 			this.embedderProvider = "ollama"
 		} else if (codebaseIndexEmbedderProvider === "openai-compatible") {
@@ -108,6 +113,8 @@ export class CodeIndexConfigManager {
 			this.embedderProvider = "mistral"
 		} else if (codebaseIndexEmbedderProvider === "vercel-ai-gateway") {
 			this.embedderProvider = "vercel-ai-gateway"
+		} else if (codebaseIndexEmbedderProvider === "watsonx") {
+			this.embedderProvider = "watsonx"
 		} else {
 			this.embedderProvider = "openai"
 		}
@@ -129,6 +136,15 @@ export class CodeIndexConfigManager {
 		this.geminiOptions = geminiApiKey ? { apiKey: geminiApiKey } : undefined
 		this.mistralOptions = mistralApiKey ? { apiKey: mistralApiKey } : undefined
 		this.vercelAiGatewayOptions = vercelAiGatewayApiKey ? { apiKey: vercelAiGatewayApiKey } : undefined
+		if (codebaseIndexWatsonxApiKey) {
+			this.watsonxOptions = {
+				codebaseIndexWatsonxApiKey: codebaseIndexWatsonxApiKey,
+				codebaseIndexWatsonxProjectId: codebaseIndexWatsonxProjectId,
+			}
+			this.contextProxy.storeSecret("codebaseIndexWatsonxProjectId", codebaseIndexWatsonxProjectId)
+		} else {
+			this.watsonxOptions = undefined
+		}
 	}
 
 	/**
@@ -147,6 +163,10 @@ export class CodeIndexConfigManager {
 			geminiOptions?: { apiKey: string }
 			mistralOptions?: { apiKey: string }
 			vercelAiGatewayOptions?: { apiKey: string }
+			watsonxOptions?: {
+				codebaseIndexWatsonxApiKey: string
+				codebaseIndexWatsonxProjectId?: string
+			}
 			qdrantUrl?: string
 			qdrantApiKey?: string
 			searchMinScore?: number
@@ -167,6 +187,8 @@ export class CodeIndexConfigManager {
 			geminiApiKey: this.geminiOptions?.apiKey ?? "",
 			mistralApiKey: this.mistralOptions?.apiKey ?? "",
 			vercelAiGatewayApiKey: this.vercelAiGatewayOptions?.apiKey ?? "",
+			codebaseIndexWatsonxApiKey: this.watsonxOptions?.codebaseIndexWatsonxApiKey ?? "",
+			codebaseIndexWatsonxProjectId: this.watsonxOptions?.codebaseIndexWatsonxProjectId ?? "",
 			qdrantUrl: this.qdrantUrl ?? "",
 			qdrantApiKey: this.qdrantApiKey ?? "",
 		}
@@ -192,6 +214,7 @@ export class CodeIndexConfigManager {
 				geminiOptions: this.geminiOptions,
 				mistralOptions: this.mistralOptions,
 				vercelAiGatewayOptions: this.vercelAiGatewayOptions,
+				watsonxOptions: this.watsonxOptions,
 				qdrantUrl: this.qdrantUrl,
 				qdrantApiKey: this.qdrantApiKey,
 				searchMinScore: this.currentSearchMinScore,
@@ -231,6 +254,8 @@ export class CodeIndexConfigManager {
 			return isConfigured
 		} else if (this.embedderProvider === "vercel-ai-gateway") {
 			const apiKey = this.vercelAiGatewayOptions?.apiKey
+		} else if (this.embedderProvider === "watsonx") {
+			const apiKey = this.watsonxOptions?.codebaseIndexWatsonxApiKey
 			const qdrantUrl = this.qdrantUrl
 			const isConfigured = !!(apiKey && qdrantUrl)
 			return isConfigured
@@ -269,6 +294,8 @@ export class CodeIndexConfigManager {
 		const prevGeminiApiKey = prev?.geminiApiKey ?? ""
 		const prevMistralApiKey = prev?.mistralApiKey ?? ""
 		const prevVercelAiGatewayApiKey = prev?.vercelAiGatewayApiKey ?? ""
+		const prevWatsonxApiKey = prev?.codebaseIndexWatsonxApiKey ?? ""
+		const prevWatsonxProjectId = prev?.codebaseIndexWatsonxProjectId ?? ""
 		const prevQdrantUrl = prev?.qdrantUrl ?? ""
 		const prevQdrantApiKey = prev?.qdrantApiKey ?? ""
 
@@ -307,6 +334,8 @@ export class CodeIndexConfigManager {
 		const currentGeminiApiKey = this.geminiOptions?.apiKey ?? ""
 		const currentMistralApiKey = this.mistralOptions?.apiKey ?? ""
 		const currentVercelAiGatewayApiKey = this.vercelAiGatewayOptions?.apiKey ?? ""
+		const currentWatsonxApiKey = this.watsonxOptions?.codebaseIndexWatsonxApiKey ?? ""
+		const currentWatsonxProjectId = this.watsonxOptions?.codebaseIndexWatsonxProjectId ?? ""
 		const currentQdrantUrl = this.qdrantUrl ?? ""
 		const currentQdrantApiKey = this.qdrantApiKey ?? ""
 
@@ -334,6 +363,10 @@ export class CodeIndexConfigManager {
 		}
 
 		if (prevVercelAiGatewayApiKey !== currentVercelAiGatewayApiKey) {
+			return true
+		}
+
+		if (prevWatsonxApiKey !== currentWatsonxApiKey || prevWatsonxProjectId !== currentWatsonxProjectId) {
 			return true
 		}
 
@@ -395,6 +428,7 @@ export class CodeIndexConfigManager {
 			geminiOptions: this.geminiOptions,
 			mistralOptions: this.mistralOptions,
 			vercelAiGatewayOptions: this.vercelAiGatewayOptions,
+			watsonxOptions: this.watsonxOptions,
 			qdrantUrl: this.qdrantUrl,
 			qdrantApiKey: this.qdrantApiKey,
 			searchMinScore: this.currentSearchMinScore,

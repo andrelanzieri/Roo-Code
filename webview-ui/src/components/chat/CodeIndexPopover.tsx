@@ -73,6 +73,8 @@ interface LocalCodeIndexSettings {
 	codebaseIndexGeminiApiKey?: string
 	codebaseIndexMistralApiKey?: string
 	codebaseIndexVercelAiGatewayApiKey?: string
+	codebaseIndexWatsonxApiKey?: string
+	codebaseIndexWatsonxProjectId?: string
 }
 
 // Validation schema for codebase index settings
@@ -149,6 +151,15 @@ const createValidationSchema = (provider: EmbedderProvider, t: any) => {
 					.min(1, t("settings:codeIndex.validation.modelSelectionRequired")),
 			})
 
+		case "watsonx":
+			return baseSchema.extend({
+				codebaseIndexWatsonxApiKey: z.string().min(1, t("settings:codeIndex.validation.watsonxApiKeyRequired")),
+				codebaseIndexWatsonxProjectId: z.string().optional(),
+				codebaseIndexEmbedderModelId: z
+					.string()
+					.min(1, t("settings:codeIndex.validation.modelSelectionRequired")),
+			})
+
 		default:
 			return baseSchema
 	}
@@ -194,6 +205,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		codebaseIndexGeminiApiKey: "",
 		codebaseIndexMistralApiKey: "",
 		codebaseIndexVercelAiGatewayApiKey: "",
+		codebaseIndexWatsonxApiKey: "",
+		codebaseIndexWatsonxProjectId: "",
 	})
 
 	// Initial settings state - stores the settings when popover opens
@@ -229,6 +242,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 				codebaseIndexGeminiApiKey: "",
 				codebaseIndexMistralApiKey: "",
 				codebaseIndexVercelAiGatewayApiKey: "",
+				codebaseIndexWatsonxApiKey: "",
+				codebaseIndexWatsonxProjectId: "",
 			}
 			setInitialSettings(settings)
 			setCurrentSettings(settings)
@@ -258,11 +273,32 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		return () => window.removeEventListener("message", handleMessage)
 	}, [open])
 
+	// Request WatsonX models when provider is selected and API key is available
+	useEffect(() => {
+		if (
+			currentSettings.codebaseIndexEmbedderProvider === "watsonx" &&
+			currentSettings.codebaseIndexWatsonxApiKey &&
+			currentSettings.codebaseIndexWatsonxApiKey !== SECRET_PLACEHOLDER
+		) {
+			vscode.postMessage({
+				type: "requestWatsonxModels",
+				values: {
+					apiKey: currentSettings.codebaseIndexWatsonxApiKey,
+					projectId: currentSettings.codebaseIndexWatsonxProjectId,
+				},
+			})
+		}
+	}, [
+		currentSettings.codebaseIndexEmbedderProvider,
+		currentSettings.codebaseIndexWatsonxApiKey,
+		currentSettings.codebaseIndexWatsonxProjectId,
+	])
+
 	// Use a ref to capture current settings for the save handler
 	const currentSettingsRef = useRef(currentSettings)
 	currentSettingsRef.current = currentSettings
 
-	// Listen for indexing status updates and save responses
+	// Listen for indexing status updates, save responses, and watsonx models
 	useEffect(() => {
 		const handleMessage = (event: MessageEvent<any>) => {
 			if (event.data.type === "indexingStatusUpdate") {
@@ -297,6 +333,10 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					setSaveStatus("idle")
 					setSaveError(null)
 				}
+			} else if (event.data.type === "watsonxModels" && event.data.watsonxModels) {
+				// Update the extension state context with the watsonx models
+				// The models will be automatically available through the codebaseIndexModels context
+				console.log("Received WatsonX models:", event.data.watsonxModels)
 			}
 		}
 
@@ -342,6 +382,16 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 						prev.codebaseIndexVercelAiGatewayApiKey === SECRET_PLACEHOLDER
 					) {
 						updated.codebaseIndexVercelAiGatewayApiKey = secretStatus.hasVercelAiGatewayApiKey
+					}
+
+					if (!prev.codebaseIndexWatsonxApiKey || prev.codebaseIndexWatsonxApiKey === SECRET_PLACEHOLDER) {
+						updated.codebaseIndexWatsonxApiKey = secretStatus.hasWatsonxApiKey ? SECRET_PLACEHOLDER : ""
+					}
+					if (
+						!prev.codebaseIndexWatsonxProjectId ||
+						prev.codebaseIndexWatsonxProjectId === SECRET_PLACEHOLDER
+					) {
+						updated.codebaseIndexWatsonxProjectId = secretStatus.hasWatsonxProjectId
 							? SECRET_PLACEHOLDER
 							: ""
 					}
@@ -418,7 +468,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					key === "codebaseIndexOpenAiCompatibleApiKey" ||
 					key === "codebaseIndexGeminiApiKey" ||
 					key === "codebaseIndexMistralApiKey" ||
-					key === "codebaseIndexVercelAiGatewayApiKey"
+					key === "codebaseIndexVercelAiGatewayApiKey" ||
+					key === "codebaseIndexWatsonxApiKey"
 				) {
 					dataToValidate[key] = "placeholder-valid"
 				}
@@ -527,6 +578,12 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 	)
 
 	const transformStyleString = `translateX(-${100 - progressPercentage}%)`
+
+	// Helper function to safely access models for any provider
+	const getProviderModels = (provider: EmbedderProvider) => {
+		if (!codebaseIndexModels) return {}
+		return (codebaseIndexModels as any)[provider] || {}
+	}
 
 	const getAvailableModels = () => {
 		if (!codebaseIndexModels) return []
@@ -669,6 +726,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 												<SelectItem value="vercel-ai-gateway">
 													{t("settings:codeIndex.vercelAiGatewayProvider")}
 												</SelectItem>
+												<SelectItem value="watsonx">
+													{t("settings:codeIndex.watsonxProvider")}
+												</SelectItem>
 											</SelectContent>
 										</Select>
 									</div>
@@ -714,10 +774,10 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 														{t("settings:codeIndex.selectModel")}
 													</VSCodeOption>
 													{getAvailableModels().map((modelId) => {
-														const model =
-															codebaseIndexModels?.[
-																currentSettings.codebaseIndexEmbedderProvider
-															]?.[modelId]
+														const providerModels = getProviderModels(
+															currentSettings.codebaseIndexEmbedderProvider,
+														)
+														const model = providerModels[modelId]
 														return (
 															<VSCodeOption key={modelId} value={modelId} className="p-2">
 																{modelId}{" "}
@@ -971,10 +1031,10 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 														{t("settings:codeIndex.selectModel")}
 													</VSCodeOption>
 													{getAvailableModels().map((modelId) => {
-														const model =
-															codebaseIndexModels?.[
-																currentSettings.codebaseIndexEmbedderProvider
-															]?.[modelId]
+														const providerModels = getProviderModels(
+															currentSettings.codebaseIndexEmbedderProvider,
+														)
+														const model = providerModels[modelId]
 														return (
 															<VSCodeOption key={modelId} value={modelId} className="p-2">
 																{modelId}{" "}
@@ -1036,10 +1096,99 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 														{t("settings:codeIndex.selectModel")}
 													</VSCodeOption>
 													{getAvailableModels().map((modelId) => {
-														const model =
-															codebaseIndexModels?.[
-																currentSettings.codebaseIndexEmbedderProvider
-															]?.[modelId]
+														const providerModels = getProviderModels(
+															currentSettings.codebaseIndexEmbedderProvider,
+														)
+														const model = providerModels[modelId]
+														return (
+															<VSCodeOption key={modelId} value={modelId} className="p-2">
+																{modelId}{" "}
+																{model
+																	? t("settings:codeIndex.modelDimensions", {
+																			dimension: model.dimension,
+																		})
+																	: ""}
+															</VSCodeOption>
+														)
+													})}
+												</VSCodeDropdown>
+												{formErrors.codebaseIndexEmbedderModelId && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.codebaseIndexEmbedderModelId}
+													</p>
+												)}
+											</div>
+										</>
+									)}
+
+									{currentSettings.codebaseIndexEmbedderProvider === "watsonx" && (
+										<>
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.watsonxApiKeyLabel")}
+												</label>
+												<VSCodeTextField
+													type="password"
+													value={currentSettings.codebaseIndexWatsonxApiKey || ""}
+													onInput={(e: any) =>
+														updateSetting("codebaseIndexWatsonxApiKey", e.target.value)
+													}
+													placeholder={t("settings:codeIndex.watsonxApiKeyPlaceholder")}
+													className={cn("w-full", {
+														"border-red-500": formErrors.watsonxApiKey,
+													})}
+												/>
+												{formErrors.watsonxApiKey && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.watsonxApiKey}
+													</p>
+												)}
+											</div>
+
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.watsonxProjectIdLabel") || "Project ID"}
+												</label>
+												<VSCodeTextField
+													value={currentSettings.codebaseIndexWatsonxProjectId || ""}
+													onInput={(e: any) =>
+														updateSetting("codebaseIndexWatsonxProjectId", e.target.value)
+													}
+													placeholder={
+														t("settings:codeIndex.watsonxProjectIdPlaceholder") ||
+														"Optional IBM Cloud project ID"
+													}
+													className={cn("w-full", {
+														"border-red-500": formErrors.watsonxProjectId,
+													})}
+												/>
+												{formErrors.watsonxProjectId && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.watsonxProjectId}
+													</p>
+												)}
+											</div>
+
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.modelLabel")}
+												</label>
+												<VSCodeDropdown
+													value={currentSettings.codebaseIndexEmbedderModelId}
+													onChange={(e: any) =>
+														updateSetting("codebaseIndexEmbedderModelId", e.target.value)
+													}
+													className={cn("w-full", {
+														"border-red-500": formErrors.codebaseIndexEmbedderModelId,
+													})}>
+													<VSCodeOption value="" className="p-2">
+														{t("settings:codeIndex.selectModel")}
+													</VSCodeOption>
+													{getAvailableModels().map((modelId) => {
+														const providerModels = getProviderModels(
+															currentSettings.codebaseIndexEmbedderProvider,
+														)
+														const model = providerModels[modelId]
 														return (
 															<VSCodeOption key={modelId} value={modelId} className="p-2">
 																{modelId}{" "}

@@ -70,6 +70,7 @@ export interface WebviewMessage {
 		| "requestOllamaModels"
 		| "requestLmStudioModels"
 		| "requestVsCodeLmModels"
+		| "requestWatsonxModels"
 		| "requestHuggingFaceModels"
 		| "openImage"
 		| "saveImage"
@@ -297,6 +298,8 @@ export interface WebviewMessage {
 		codebaseIndexGeminiApiKey?: string
 		codebaseIndexMistralApiKey?: string
 		codebaseIndexVercelAiGatewayApiKey?: string
+		codebaseIndexWatsonxApiKey?: string
+		codebaseIndexWatsonxProjectId?: string
 	}
 }
 

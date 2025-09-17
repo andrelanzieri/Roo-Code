@@ -79,6 +79,7 @@ export interface ExtensionMessage {
 		| "ollamaModels"
 		| "lmStudioModels"
 		| "vsCodeLmModels"
+		| "watsonxModels"
 		| "huggingFaceModels"
 		| "vsCodeLmApiAvailable"
 		| "updatePrompt"
@@ -152,6 +153,7 @@ export interface ExtensionMessage {
 	ollamaModels?: ModelRecord
 	lmStudioModels?: ModelRecord
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
+	watsonxModels?: Record<string, { dimension: number }>
 	huggingFaceModels?: Array<{
 		id: string
 		object: string
