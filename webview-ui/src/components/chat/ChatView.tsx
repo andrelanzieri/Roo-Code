@@ -1594,6 +1594,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			return
 		}
 
+		// Check if there's text in the input box - pause auto-approve if there is
+		const hasInputText = inputValueRef.current.trim().length > 0
+		if (hasInputText) {
+			// User is typing, don't auto-approve
+			return
+		}
+
 		const autoApproveOrReject = async () => {
 			// Check for auto-reject first (commands that should be denied)
 			if (lastMessage?.ask === "command" && isDeniedCommand(lastMessage)) {
@@ -1703,6 +1710,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		isDeniedCommand,
 		getDeniedPrefix,
 		tSettings,
+		inputValue, // Add inputValue dependency to re-run when input changes
 	])
 
 	// Function to handle mode switching
@@ -1898,6 +1906,16 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 										? "opacity-100"
 										: "opacity-50"
 							}`}>
+							{/* Show auto-approve paused indicator when there's input text */}
+							{enableButtons &&
+								autoApprovalEnabled &&
+								hasEnabledOptions &&
+								inputValue.trim().length > 0 &&
+								!showScrollToBottom && (
+									<div className="flex-1 text-xs text-vscode-descriptionForeground opacity-75 text-center">
+										{t("chat:autoApprovePaused")}
+									</div>
+								)}
 							{showScrollToBottom ? (
 								<StandardTooltip content={t("chat:scrollToBottom")}>
 									<VSCodeButton

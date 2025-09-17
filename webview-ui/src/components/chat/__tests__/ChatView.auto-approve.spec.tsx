@@ -671,4 +671,160 @@ describe("ChatView - Auto Approval Tests", () => {
 			askResponse: "yesButtonClicked",
 		})
 	})
+
+	it("does not auto-approve when there is text in the input box", async () => {
+		const { container } = renderChatView()
+
+		// First hydrate state with initial task
+		mockPostMessage({
+			alwaysAllowReadOnly: true,
+			autoApprovalEnabled: true,
+			clineMessages: [
+				{
+					type: "say",
+					say: "task",
+					ts: Date.now() - 2000,
+					text: "Initial task",
+				},
+			],
+		})
+
+		// Simulate typing in the input box
+		const textarea = container.querySelector("textarea")
+		if (textarea) {
+			// Simulate user typing
+			Object.defineProperty(textarea, "value", {
+				writable: true,
+				value: "User is typing something...",
+			})
+			// Trigger input event
+			const inputEvent = new Event("input", { bubbles: true })
+			textarea.dispatchEvent(inputEvent)
+		}
+
+		// Then send the read tool ask message
+		mockPostMessage({
+			alwaysAllowReadOnly: true,
+			autoApprovalEnabled: true,
+			clineMessages: [
+				{
+					type: "say",
+					say: "task",
+					ts: Date.now() - 2000,
+					text: "Initial task",
+				},
+				{
+					type: "ask",
+					ask: "tool",
+					ts: Date.now(),
+					text: JSON.stringify({ tool: "readFile", path: "test.txt" }),
+					partial: false,
+				},
+			],
+		})
+
+		// Wait a short time and verify no auto-approval message was sent
+		await new Promise((resolve) => setTimeout(resolve, 200))
+		expect(vscode.postMessage).not.toHaveBeenCalledWith({
+			type: "askResponse",
+			askResponse: "yesButtonClicked",
+		})
+	})
+
+	it("resumes auto-approve when input text is cleared", async () => {
+		const { container } = renderChatView()
+
+		// First hydrate state with initial task
+		mockPostMessage({
+			alwaysAllowReadOnly: true,
+			autoApprovalEnabled: true,
+			clineMessages: [
+				{
+					type: "say",
+					say: "task",
+					ts: Date.now() - 2000,
+					text: "Initial task",
+				},
+			],
+		})
+
+		// Simulate typing in the input box
+		const textarea = container.querySelector("textarea")
+		if (textarea) {
+			// First add text
+			Object.defineProperty(textarea, "value", {
+				writable: true,
+				value: "User is typing...",
+			})
+			const inputEvent = new Event("input", { bubbles: true })
+			textarea.dispatchEvent(inputEvent)
+		}
+
+		// Send a tool ask message while text is present
+		mockPostMessage({
+			alwaysAllowReadOnly: true,
+			autoApprovalEnabled: true,
+			clineMessages: [
+				{
+					type: "say",
+					say: "task",
+					ts: Date.now() - 2000,
+					text: "Initial task",
+				},
+				{
+					type: "ask",
+					ask: "tool",
+					ts: Date.now() - 100,
+					text: JSON.stringify({ tool: "readFile", path: "test1.txt" }),
+					partial: false,
+				},
+			],
+		})
+
+		// Wait and verify no auto-approval
+		await new Promise((resolve) => setTimeout(resolve, 100))
+		expect(vscode.postMessage).not.toHaveBeenCalledWith({
+			type: "askResponse",
+			askResponse: "yesButtonClicked",
+		})
+
+		// Now clear the input
+		if (textarea) {
+			Object.defineProperty(textarea, "value", {
+				writable: true,
+				value: "",
+			})
+			const clearEvent = new Event("input", { bubbles: true })
+			textarea.dispatchEvent(clearEvent)
+		}
+
+		// Send another tool ask message after clearing text
+		mockPostMessage({
+			alwaysAllowReadOnly: true,
+			autoApprovalEnabled: true,
+			clineMessages: [
+				{
+					type: "say",
+					say: "task",
+					ts: Date.now() - 2000,
+					text: "Initial task",
+				},
+				{
+					type: "ask",
+					ask: "tool",
+					ts: Date.now(),
+					text: JSON.stringify({ tool: "readFile", path: "test2.txt" }),
+					partial: false,
+				},
+			],
+		})
+
+		// Now it should auto-approve since input is cleared
+		await waitFor(() => {
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "askResponse",
+				askResponse: "yesButtonClicked",
+			})
+		})
+	})
 })

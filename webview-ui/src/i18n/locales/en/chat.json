@@ -272,6 +272,7 @@
 	},
 	"autoApprove": {
 		"tooltipManage": "Manage auto-approval settings",
+		"autoApprovePaused": "Auto-approve paused while typing",
 		"tooltipStatus": "Auto-approval enabled for: {{toggles}}",
 		"title": "Auto-approve",
 		"all": "All",
