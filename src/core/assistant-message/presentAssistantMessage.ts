@@ -101,13 +101,19 @@ export async function presentAssistantMessage(cline: Task) {
 				// here for reference.
 				// content = content.replace(/<\/?t(?:h(?:i(?:n(?:k(?:i(?:n(?:g)?)?)?$/, "")
 				//
-				// Remove all instances of <thinking> (with optional line break
-				// after) and </thinking> (with optional line break before).
-				// - Needs to be separate since we dont want to remove the line
-				//   break before the first tag.
-				// - Needs to happen before the xml parsing below.
-				content = content.replace(/<thinking>\s?/g, "")
-				content = content.replace(/\s?<\/thinking>/g, "")
+				// Check if we should preserve thinking sections
+				// Preserve thinking sections during consecutive tool uses (no user messages in between)
+				const shouldPreserveThinking = cline.isConsecutiveToolUse()
+
+				if (!shouldPreserveThinking) {
+					// Remove all instances of <thinking> (with optional line break
+					// after) and </thinking> (with optional line break before).
+					// - Needs to be separate since we dont want to remove the line
+					//   break before the first tag.
+					// - Needs to happen before the xml parsing below.
+					content = content.replace(/<thinking>\s?/g, "")
+					content = content.replace(/\s?<\/thinking>/g, "")
+				}
 
 				// Remove partial XML tag at the very end of the content (for
 				// tool use and thinking tags), Prevents scrollview from

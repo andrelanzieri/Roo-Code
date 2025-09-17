@@ -2932,4 +2932,53 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			console.error(`[Task] Queue processing error:`, e)
 		}
 	}
+
+	/**
+	 * Check if the current message is a consecutive tool use without user intervention.
+	 * This is used to determine whether to preserve thinking sections for reasoning models.
+	 *
+	 * @returns true if the last non-system message was from the assistant (consecutive tool use),
+	 *          false if it was from the user or if there are no previous messages
+	 */
+	public isConsecutiveToolUse(): boolean {
+		// Look at the conversation history to determine if this is consecutive tool use
+		if (this.apiConversationHistory.length === 0) {
+			return false
+		}
+
+		// Find the last message that isn't the current one being processed
+		// We need to check if the previous message was from the assistant (consecutive tool use)
+		// or from the user (new interaction)
+		const lastMessage = this.apiConversationHistory[this.apiConversationHistory.length - 1]
+
+		// If the last message is from the user, this is not a consecutive tool use
+		if (lastMessage.role === "user") {
+			// Check if this is just environment details or actual user content
+			// Environment details are added automatically and shouldn't count as user intervention
+			if (Array.isArray(lastMessage.content)) {
+				// Check if the content only contains environment details
+				const hasUserContent = lastMessage.content.some((block) => {
+					if (block.type === "text") {
+						const text = block.text.trim()
+						// Check if this is just environment details or tool results
+						return (
+							!text.startsWith("environment_details:") &&
+							!text.includes("[Tool Use:") &&
+							!text.includes("Result:") &&
+							text.length > 0
+						)
+					}
+					// Images or other content types indicate user interaction
+					return block.type === "image"
+				})
+
+				// If there's actual user content, this is not consecutive tool use
+				return !hasUserContent
+			}
+			return false
+		}
+
+		// If the last message is from the assistant, this is consecutive tool use
+		return lastMessage.role === "assistant"
+	}
 }
