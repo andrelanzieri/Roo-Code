@@ -112,7 +112,7 @@ describe("webviewMessageHandler delete functionality", () => {
 
 			// When message is not found in API history (index is -1),
 			// API history should be truncated from the first API message at/after the deleted timestamp (fallback)
-			expect(getCurrentTaskMock.overwriteApiConversationHistory).toHaveBeenCalledWith([])
+			expect(getCurrentTaskMock.overwriteApiConversationHistory).toHaveBeenCalledWith([], true)
 		})
 
 		it("should handle deletion when exact apiConversationHistoryIndex is found", async () => {
@@ -142,9 +142,10 @@ describe("webviewMessageHandler delete functionality", () => {
 				{ ts: 900, say: "user", text: "Previous message" },
 			])
 
-			expect(getCurrentTaskMock.overwriteApiConversationHistory).toHaveBeenCalledWith([
-				{ ts: 900, role: "user", content: { type: "text", text: "Previous message" } },
-			])
+			expect(getCurrentTaskMock.overwriteApiConversationHistory).toHaveBeenCalledWith(
+				[{ ts: 900, role: "user", content: { type: "text", text: "Previous message" } }],
+				true,
+			)
 		})
 
 		it("should handle deletion when message not found in clineMessages", async () => {
@@ -204,7 +205,7 @@ describe("webviewMessageHandler delete functionality", () => {
 			expect(getCurrentTaskMock.overwriteClineMessages).toHaveBeenCalledWith([])
 
 			// API history should be truncated from first message at/after deleted timestamp (fallback)
-			expect(getCurrentTaskMock.overwriteApiConversationHistory).toHaveBeenCalledWith([])
+			expect(getCurrentTaskMock.overwriteApiConversationHistory).toHaveBeenCalledWith([], true)
 		})
 
 		it("should preserve messages before the deleted one", async () => {
@@ -236,10 +237,13 @@ describe("webviewMessageHandler delete functionality", () => {
 			])
 
 			// API history should be truncated at the exact index
-			expect(getCurrentTaskMock.overwriteApiConversationHistory).toHaveBeenCalledWith([
-				{ ts: 1000, role: "user", content: { type: "text", text: "First message" } },
-				{ ts: 1500, role: "assistant", content: { type: "text", text: "First response" } },
-			])
+			expect(getCurrentTaskMock.overwriteApiConversationHistory).toHaveBeenCalledWith(
+				[
+					{ ts: 1000, role: "user", content: { type: "text", text: "First message" } },
+					{ ts: 1500, role: "assistant", content: { type: "text", text: "First response" } },
+				],
+				true,
+			)
 		})
 	})
 })

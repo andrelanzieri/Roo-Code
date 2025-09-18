@@ -1239,11 +1239,10 @@ describe("ClineProvider", () => {
 			])
 
 			// Verify only API messages before the deleted message were kept
-			expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith([
-				mockApiHistory[0],
-				mockApiHistory[1],
-				mockApiHistory[2],
-			])
+			expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith(
+				[mockApiHistory[0], mockApiHistory[1], mockApiHistory[2]],
+				true,
+			)
 
 			// createTaskWithHistoryItem is only called when restoring checkpoints or aborting tasks
 			expect((provider as any).createTaskWithHistoryItem).not.toHaveBeenCalled()
@@ -1339,7 +1338,7 @@ describe("ClineProvider", () => {
 			expect(mockCline.overwriteClineMessages).toHaveBeenCalledWith([])
 
 			// Verify correct API messages were kept
-			expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith([])
+			expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith([], true)
 
 			// The new flow calls webviewMessageHandler recursively with askResponse
 			// We need to verify the recursive call happened by checking if the handler was called again
@@ -3049,7 +3048,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 
 			// Verify messages were edited correctly - the ORIGINAL user message and all subsequent messages are removed
 			expect(mockCline.overwriteClineMessages).toHaveBeenCalledWith([mockMessages[0]])
-			expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith([{ ts: 1000 }])
+			expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith([{ ts: 1000 }], true)
 			// Verify submitUserMessage was called with the edited content
 			expect(mockCline.submitUserMessage).toHaveBeenCalledWith("Edited message with preserved images", undefined)
 		})
@@ -3675,7 +3674,10 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 
 				// Should handle large payloads without issues - keeps messages before the deleted one
 				expect(mockCline.overwriteClineMessages).toHaveBeenCalledWith([mockMessages[0], mockMessages[1]])
-				expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith([{ ts: 1000 }, { ts: 2000 }])
+				expect(mockCline.overwriteApiConversationHistory).toHaveBeenCalledWith(
+					[{ ts: 1000 }, { ts: 2000 }],
+					true,
+				)
 			})
 		})
 
