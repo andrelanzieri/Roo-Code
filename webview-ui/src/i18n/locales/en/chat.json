@@ -284,7 +284,8 @@
 		"triggerLabel_zero": "0 auto-approve",
 		"triggerLabel_one": "1 auto-approved",
 		"triggerLabel_other": "{{count}} auto-approved",
-		"triggerLabelAll": "YOLO"
+		"triggerLabelAll": "YOLO",
+		"triggerLabelOffShort": "Off"
 	},
 	"announcement": {
 		"title": "🎉 Roo Code {{version}} Released",
