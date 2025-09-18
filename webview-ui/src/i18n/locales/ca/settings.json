@@ -59,7 +59,7 @@
 		"vercelAiGatewayApiKeyPlaceholder": "Introduïu la vostra clau API de Vercel AI Gateway",
 		"watsonxProvider": "IBM watsonx",
 		"watsonxApiKeyLabel": "API Key",
-		"watsonxApiKeyPlaceholder": "Enter your IBM watsonx API key",
+		"watsonxApiKeyPlaceholder": "Introduïu la vostra clau API d'IBM watsonx",
 		"watsonxProjectIdLabel": "Project ID",
 		"watsonxProjectIdPlaceholder": "Enter your IBM watsonx project ID",
 		"openaiCompatibleProvider": "Compatible amb OpenAI",
