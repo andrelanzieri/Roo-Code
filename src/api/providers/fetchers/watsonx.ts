@@ -68,8 +68,8 @@ export async function getWatsonxModels(
 				if (Array.isArray(modelsList) && modelsList.length > 0) {
 					for (const model of modelsList) {
 						const modelId = model.id || model.name || model.model_id
-						const contextWindow = model.context_length || model.max_input_tokens || 8192
-						const maxTokens = model.max_output_tokens || Math.floor(contextWindow / 2)
+						const contextWindow = model.model_limits.max_sequence_length || 131072
+						const maxTokens = model.model_limits.max_output_tokens || Math.floor(contextWindow / 2)
 
 						let description = ""
 						if (model.long_description) {
@@ -77,19 +77,10 @@ export async function getWatsonxModels(
 						} else if (model.short_description) {
 							description = model.short_description
 						}
-						const supportsImages = model.modality === "multimodal" || model.modality === "vision" || false
-						const inputPrice = model.pricing?.input_price || 0
-						const outputPrice = model.pricing?.output_price || 0
 						knownModels[modelId] = {
 							contextWindow,
 							maxTokens,
 							supportsPromptCache: false,
-							supportsImages,
-							supportsReasoningEffort: false,
-							supportsReasoningBudget: false,
-							requiredReasoningBudget: false,
-							inputPrice,
-							outputPrice,
 							description,
 						}
 					}

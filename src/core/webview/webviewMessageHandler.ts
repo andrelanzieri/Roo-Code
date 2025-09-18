@@ -2530,12 +2530,6 @@ export const webviewMessageHandler = async (
 						settings.codebaseIndexMistralApiKey,
 					)
 				}
-				if (settings.codebaseIndexVercelAiGatewayApiKey !== undefined) {
-					await provider.contextProxy.storeSecret(
-						"codebaseIndexVercelAiGatewayApiKey",
-						settings.codebaseIndexVercelAiGatewayApiKey,
-					)
-				}
 				if (settings.codebaseIndexWatsonxApiKey !== undefined) {
 					await provider.contextProxy.storeSecret(
 						"codebaseIndexWatsonxApiKey",
@@ -2546,6 +2540,12 @@ export const webviewMessageHandler = async (
 					await provider.contextProxy.storeSecret(
 						"codebaseIndexWatsonxProjectId",
 						settings.codebaseIndexWatsonxProjectId,
+					)
+				}
+				if (settings.codebaseIndexVercelAiGatewayApiKey !== undefined) {
+					await provider.contextProxy.storeSecret(
+						"codebaseIndexVercelAiGatewayApiKey",
+						settings.codebaseIndexVercelAiGatewayApiKey,
 					)
 				}
 				// Send success response first - settings are saved regardless of validation

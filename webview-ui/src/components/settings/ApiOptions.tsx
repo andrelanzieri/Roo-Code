@@ -621,15 +621,6 @@ const ApiOptions = ({
 				/>
 			)}
 
-			{selectedProvider === "watsonx" && (
-				<WatsonxAI
-					apiConfiguration={apiConfiguration}
-					setApiConfigurationField={setApiConfigurationField}
-					organizationAllowList={organizationAllowList}
-					modelValidationError={modelValidationError}
-				/>
-			)}
-
 			{selectedProvider === "sambanova" && (
 				<SambaNova apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
 			)}

@@ -618,8 +618,8 @@ importers:
         specifier: ^1.0.0
         version: 1.3.0(@modelcontextprotocol/sdk@1.12.0)
       '@ibm-cloud/watsonx-ai':
-        specifier: ^1.6.8
-        version: 1.6.10
+        specifier: ^1.6.13
+        version: 1.6.13
       '@lmstudio/sdk':
         specifier: ^1.1.1
         version: 1.2.0
@@ -855,6 +855,9 @@ importers:
       '@types/lodash':
         specifier: ^4.14.201
         version: 4.17.17
+      '@types/lodash.debounce':
+        specifier: ^4.0.9
+        version: 4.0.9
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
@@ -1919,8 +1922,8 @@ packages:
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
 
-  '@ibm-cloud/watsonx-ai@1.6.10':
-    resolution: {integrity: sha512-aZV50/s8VZc7w0t/qcaBw3RLT3WDsAeZUJlP8EbG/csZJF3a8F7alihbGOM4lJFM7R4Z81Lucz3nfHi2KR7J4Q==}
+  '@ibm-cloud/watsonx-ai@1.6.13':
+    resolution: {integrity: sha512-INaaD7EKpycwQg/tsLm3QM5uvDF5mWLPQCj6GTk44gEZhgx1depvVG5bxwjfqkx1tbJMFuozz2p6VHOE21S+8g==}
     engines: {node: '>=18.0.0'}
 
   '@iconify/types@2.0.0':
@@ -4027,6 +4030,9 @@ packages:
 
   '@types/katex@0.16.7':
     resolution: {integrity: sha512-HMwFiRujE5PjrgwHQ25+bsLJgowjGjm5Z8FVSf0N6PwgJrwxH0QxzHYDcKsTfV3wva0vzrpqMTJS2jXPr5BMEQ==}
+
+  '@types/lodash.debounce@4.0.9':
+    resolution: {integrity: sha512-Ma5JcgTREwpLRwMM+XwBR7DaWe96nC38uCBDFKZWbNKD+osjVzdpnUSwBcqCptrp16sSOLBAUb50Car5I0TCsQ==}
 
   '@types/lodash@4.17.17':
     resolution: {integrity: sha512-RRVJ+J3J+WmyOTqnz3PiBLA501eKwXl2noseKOrNo/6+XEHjTAxO4xHvxQB6QuNm+s4WRbn6rSiap8+EA+ykFQ==}
@@ -11400,10 +11406,11 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@ibm-cloud/watsonx-ai@1.6.10':
+  '@ibm-cloud/watsonx-ai@1.6.13':
     dependencies:
       '@types/node': 18.19.100
       extend: 3.0.2
+      form-data: 4.0.4
       ibm-cloud-sdk-core: 5.4.3
     transitivePeerDependencies:
       - supports-color
@@ -13638,6 +13645,10 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/katex@0.16.7': {}
+
+  '@types/lodash.debounce@4.0.9':
+    dependencies:
+      '@types/lodash': 4.17.17
 
   '@types/lodash@4.17.17': {}
 

@@ -408,17 +408,14 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					if (!prev.codebaseIndexMistralApiKey || prev.codebaseIndexMistralApiKey === SECRET_PLACEHOLDER) {
 						updated.codebaseIndexMistralApiKey = secretStatus.hasMistralApiKey ? SECRET_PLACEHOLDER : ""
 					}
-					if (!prev.codebaseIndexWatsonxApiKey || prev.codebaseIndexWatsonxApiKey === SECRET_PLACEHOLDER) {
-						updated.codebaseIndexWatsonxApiKey = secretStatus.hasWatsonxApiKey ? SECRET_PLACEHOLDER : ""
-					}
-
 					if (
 						!prev.codebaseIndexVercelAiGatewayApiKey ||
 						prev.codebaseIndexVercelAiGatewayApiKey === SECRET_PLACEHOLDER
 					) {
 						updated.codebaseIndexVercelAiGatewayApiKey = secretStatus.hasVercelAiGatewayApiKey
+							? SECRET_PLACEHOLDER
+							: ""
 					}
-
 					if (!prev.codebaseIndexWatsonxApiKey || prev.codebaseIndexWatsonxApiKey === SECRET_PLACEHOLDER) {
 						updated.codebaseIndexWatsonxApiKey = secretStatus.hasWatsonxApiKey ? SECRET_PLACEHOLDER : ""
 					}
@@ -430,16 +427,6 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 							? SECRET_PLACEHOLDER
 							: ""
 					}
-
-					if (
-						!prev.codebaseIndexWatsonxProjectId ||
-						prev.codebaseIndexWatsonxProjectId === SECRET_PLACEHOLDER
-					) {
-						updated.codebaseIndexWatsonxProjectId = secretStatus.hasWatsonxProjectId
-							? SECRET_PLACEHOLDER
-							: ""
-					}
-
 					return updated
 				}
 

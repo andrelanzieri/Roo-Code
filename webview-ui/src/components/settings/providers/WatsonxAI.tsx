@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from "react"
 import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import { ModelInfo, OrganizationAllowList, watsonxAiDefaultModelId, type ProviderSettings } from "@roo-code/types"
+import { ModelInfo, watsonxAiDefaultModelId, type OrganizationAllowList, type ProviderSettings } from "@roo-code/types"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 
 import { vscode } from "@src/utils/vscode"

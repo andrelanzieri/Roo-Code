@@ -352,11 +352,11 @@ function getSelectedModel({
 			return { id, info }
 		}
 		case "watsonx": {
-			const id = apiConfiguration.apiModelId ?? watsonxAiDefaultModelId
+			const id = apiConfiguration.watsonxModelId ?? watsonxAiDefaultModelId
 			const info = watsonxAiModels[id as keyof typeof watsonxAiModels]
 			return {
 				id,
-				info: info || undefined,
+				info: info,
 			}
 		}
 		// case "anthropic":

@@ -8,7 +8,6 @@ import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { WatsonXAI } from "@ibm-cloud/watsonx-ai"
 import { convertToWatsonxAiMessages } from "../transform/watsonxai-format"
-import { calculateApiCostOpenAI } from "../../shared/cost"
 
 export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
@@ -127,7 +126,6 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 
 			const params = this.createTextChatParams(this.projectId!, modelId, watsonxMessages)
 			let responseText = ""
-			let usageInfo: any = null
 
 			// Call the IBM watsonx API using textChat (non-streaming); can be changed to streaming..
 			const response = await this.service.textChat(params)
@@ -141,20 +139,6 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 			yield {
 				type: "text",
 				text: responseText,
-			}
-
-			usageInfo = response.result.usage || {}
-			const outputTokens = usageInfo.completion_tokens
-
-			const inputTokens = usageInfo?.prompt_tokens || 0
-			const modelInfo = this.getModel().info
-			const totalCost = calculateApiCostOpenAI(modelInfo, inputTokens, outputTokens)
-
-			yield {
-				type: "usage",
-				inputTokens: inputTokens,
-				outputTokens,
-				totalCost: totalCost,
 			}
 		} catch (error) {
 			await vscode.window.showErrorMessage(error.message)

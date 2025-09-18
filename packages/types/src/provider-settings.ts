@@ -139,7 +139,6 @@ export const providerNames = [
 	"vertex",
 	"xai",
 	"zai",
-	"watsonx",
 ] as const
 
 export const providerNamesSchema = z.enum(providerNames)
@@ -457,7 +456,6 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 	huggingFaceSchema.merge(z.object({ apiProvider: z.literal("huggingface") })),
 	chutesSchema.merge(z.object({ apiProvider: z.literal("chutes") })),
 	litellmSchema.merge(z.object({ apiProvider: z.literal("litellm") })),
-	watsonxSchema.merge(z.object({ apiProvider: z.literal("watsonx") })),
 	cerebrasSchema.merge(z.object({ apiProvider: z.literal("cerebras") })),
 	sambaNovaSchema.merge(z.object({ apiProvider: z.literal("sambanova") })),
 	zaiSchema.merge(z.object({ apiProvider: z.literal("zai") })),
