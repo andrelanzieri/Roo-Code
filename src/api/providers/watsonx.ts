@@ -8,6 +8,13 @@ import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { WatsonXAI } from "@ibm-cloud/watsonx-ai"
 import { convertToWatsonxAiMessages } from "../transform/watsonxai-format"
+import OpenAI from "openai"
+
+interface WatsonXServiceOptions {
+	version: string
+	serviceUrl?: string
+	authenticator?: IamAuthenticator | CloudPakForDataAuthenticator
+}
 
 export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
@@ -18,22 +25,37 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 		super()
 		this.options = options
 
-		this.projectId = (this.options as any).watsonxProjectId
+		this.projectId = this.options.watsonxProjectId
 		if (!this.projectId) {
 			throw new Error("You must provide a valid IBM watsonx project ID.")
 		}
 
-		const serviceUrl = (this.options as any).watsonxBaseUrl
-		const platform = (this.options as any).watsonxPlatform
+		const serviceUrl = this.options.watsonxBaseUrl
+		const platform = this.options.watsonxPlatform
 
 		try {
-			const serviceOptions: any = {
+			const serviceOptions: WatsonXServiceOptions = {
 				version: "2024-05-31",
 				serviceUrl: serviceUrl,
 			}
 
 			// Choose authenticator based on platform
 			if (platform === "cloudPak") {
+				// Validate URL format for Cloud Pak
+				if (!serviceUrl) {
+					throw new Error("You must provide a valid base URL for IBM Cloud Pak for Data.")
+				}
+
+				// Basic URL validation
+				try {
+					const url = new URL(serviceUrl)
+					if (!url.protocol || !url.hostname) {
+						throw new Error("Invalid URL format for IBM Cloud Pak for Data.")
+					}
+				} catch (error) {
+					throw new Error(`Invalid base URL for IBM Cloud Pak for Data: ${serviceUrl}`)
+				}
+
 				const username = this.options.watsonxUsername
 				if (!username) {
 					throw new Error("You must provide a valid username for IBM Cloud Pak for Data.")
@@ -93,7 +115,11 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 	 * @param messages - The messages to send
 	 * @returns The parameters object for the API call
 	 */
-	private createTextChatParams(projectId: string, modelId: string, messages: any[]) {
+	private createTextChatParams(
+		projectId: string,
+		modelId: string,
+		messages: OpenAI.Chat.ChatCompletionMessageParam[],
+	) {
 		const maxTokens = this.options.modelMaxTokens || 2048
 		const temperature = this.options.modelTemperature || 0.7
 		return {
@@ -122,7 +148,12 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 
 		try {
 			// Convert messages to WatsonX format with system prompt
-			const watsonxMessages = [{ role: "system", content: systemPrompt }, ...convertToWatsonxAiMessages(messages)]
+			const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
+				role: "system",
+				content: systemPrompt,
+			}
+			const convertedMessages = convertToWatsonxAiMessages(messages)
+			const watsonxMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [systemMessage, ...convertedMessages]
 
 			const params = this.createTextChatParams(this.projectId!, modelId, watsonxMessages)
 			let responseText = ""
@@ -140,12 +171,26 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 				type: "text",
 				text: responseText,
 			}
-		} catch (error) {
-			await vscode.window.showErrorMessage(error.message)
+		} catch (error: any) {
+			// Extract error message and type from the error object
+			const errorMessage = error?.message || String(error)
+			const errorType = error?.type || undefined
+
+			// Provide more specific error messages
+			let detailedMessage = errorMessage
+			if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+				detailedMessage = `Authentication failed: ${errorMessage}. Please check your API key and credentials.`
+			} else if (errorMessage.includes("404")) {
+				detailedMessage = `Model or endpoint not found: ${errorMessage}. Please verify the model ID and base URL.`
+			} else if (errorMessage.includes("timeout") || errorMessage.includes("ECONNREFUSED")) {
+				detailedMessage = `Connection failed: ${errorMessage}. Please check your network connection and base URL.`
+			}
+
+			await vscode.window.showErrorMessage(errorMessage)
 			yield {
 				type: "error",
-				error: error.type,
-				message: error.message,
+				error: errorType,
+				message: errorMessage,
 			}
 		}
 	}
@@ -160,7 +205,7 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 	async completePrompt(prompt: string): Promise<string> {
 		try {
 			const { id: modelId } = this.getModel()
-			const messages = [{ role: "user", content: prompt }]
+			const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [{ role: "user", content: prompt }]
 			const params = this.createTextChatParams(this.projectId!, modelId, messages)
 			const response = await this.service.textChat(params)
 
@@ -169,7 +214,16 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 			}
 			return response.result.choices[0].message.content
 		} catch (error) {
-			throw new Error(`IBM watsonx completion error: ${error.message}`)
+			const errorMessage = error instanceof Error ? error.message : String(error)
+			// Provide more context in error messages
+			if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
+				throw new Error(`IBM watsonx authentication failed: ${errorMessage}`)
+			} else if (errorMessage.includes("404")) {
+				throw new Error(`IBM watsonx model not found: ${errorMessage}`)
+			} else if (errorMessage.includes("timeout") || errorMessage.includes("ECONNREFUSED")) {
+				throw new Error(`IBM watsonx connection failed: ${errorMessage}`)
+			}
+			throw new Error(`IBM watsonx completion error: ${errorMessage}`)
 		}
 	}
 
@@ -179,9 +233,16 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 	 * @returns An object containing the model ID and model information
 	 */
 	override getModel(): { id: string; info: ModelInfo } {
+		const modelId = this.options.watsonxModelId || watsonxAiDefaultModelId
+		const modelInfo = watsonxAiModels[modelId as WatsonxAIModelId]
 		return {
-			id: (this.options as any).watsonxModelId || watsonxAiDefaultModelId,
-			info: watsonxAiModels[(this.options as any).watsonxModelId as WatsonxAIModelId] || "",
+			id: modelId,
+			info: modelInfo || {
+				maxTokens: 8192,
+				contextWindow: 131072,
+				supportsImages: false,
+				supportsPromptCache: false,
+			},
 		}
 	}
 }

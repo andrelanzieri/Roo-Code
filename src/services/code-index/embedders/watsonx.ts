@@ -43,7 +43,13 @@ export class WatsonxEmbedder implements IEmbedder {
 		this.modelId = modelId || WatsonxEmbedder.DEFAULT_MODEL
 		this.projectId = projectId
 
-		let options: any = {
+		interface WatsonXAIOptions {
+			version: string
+			serviceUrl?: string
+			authenticator?: IamAuthenticator | CloudPakForDataAuthenticator
+		}
+
+		const options: WatsonXAIOptions = {
 			version: WatsonxEmbedder.WATSONX_VERSION,
 		}
 
@@ -135,7 +141,14 @@ export class WatsonxEmbedder implements IEmbedder {
 					let lastError
 					for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
 						try {
-							await delay(1000)
+							// Add delay for retries (not for first attempt)
+							if (attempt > 0) {
+								const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt - 1)
+								await delay(delayMs)
+								console.warn(
+									`IBM watsonx API call failed, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
+								)
+							}
 							const response = await this.watsonxClient.embedText({
 								modelId: modelToUse,
 								inputs: [text],
@@ -176,13 +189,7 @@ export class WatsonxEmbedder implements IEmbedder {
 							}
 						} catch (error) {
 							lastError = error
-
-							if (attempt < MAX_RETRIES - 1) {
-								const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt)
-								console.warn(
-									`IBM watsonx API call failed, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
-								)
-							}
+							// Warning is now logged before the retry delay above
 						}
 					}
 
@@ -283,15 +290,31 @@ export class WatsonxEmbedder implements IEmbedder {
 			try {
 				const response = await this.watsonxClient.listFoundationModelSpecs({ filters: "function_embedding" })
 				if (response && response.result) {
-					const result = response.result as any
+					interface ModelSpec {
+						id?: string
+						name?: string
+						model_id?: string
+						model_limits?: {
+							embedding_dimension?: number
+						}
+					}
 
+					interface ModelListResponse {
+						models?: ModelSpec[]
+						resources?: ModelSpec[]
+						foundation_models?: ModelSpec[]
+					}
+
+					const result = response.result as ModelListResponse
 					const modelsList = result.models || result.resources || result.foundation_models || []
 
 					if (Array.isArray(modelsList)) {
 						for (const model of modelsList) {
 							const modelId = model.id || model.name || model.model_id
-							const dimension = model.model_limits.embedding_dimension || 768
-							knownModels[modelId] = { dimension }
+							const dimension = model.model_limits?.embedding_dimension || 768
+							if (modelId) {
+								knownModels[modelId] = { dimension }
+							}
 						}
 					}
 				}
