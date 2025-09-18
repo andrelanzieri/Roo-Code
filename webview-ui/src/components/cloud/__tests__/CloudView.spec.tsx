@@ -2,6 +2,14 @@ import { render, screen } from "@/utils/test-utils"
 
 import { CloudView } from "../CloudView"
 
+// Mock the AccountSwitcher component
+vi.mock("../ClerkProvider", () => ({
+	AccountSwitcher: ({ organizationId, organizationName }: any) => {
+		if (!organizationId || !organizationName) return null
+		return <div data-testid="account-switcher">Organization: {organizationName} (Switch via Roo Code Cloud)</div>
+	},
+}))
+
 // Mock the translation context
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
@@ -359,5 +367,48 @@ describe("CloudView", () => {
 		const taskSyncToggle = screen.getByTestId("task-sync-toggle")
 		expect(taskSyncToggle).toHaveAttribute("aria-checked", "true")
 		expect(taskSyncToggle).toHaveAttribute("tabindex", "-1")
+	})
+
+	it("should display AccountSwitcher when user has organization", () => {
+		const mockUserInfo = {
+			name: "Test User",
+			email: "test@example.com",
+			organizationId: "org-123",
+			organizationName: "Test Organization",
+		}
+
+		render(
+			<CloudView
+				userInfo={mockUserInfo}
+				isAuthenticated={true}
+				cloudApiUrl="https://app.roocode.com"
+				onDone={() => {}}
+			/>,
+		)
+
+		// Check that the AccountSwitcher is displayed
+		const accountSwitcher = screen.getByTestId("account-switcher")
+		expect(accountSwitcher).toBeInTheDocument()
+		expect(accountSwitcher).toHaveTextContent("Organization: Test Organization (Switch via Roo Code Cloud)")
+	})
+
+	it("should not display AccountSwitcher when user has no organization", () => {
+		const mockUserInfo = {
+			name: "Test User",
+			email: "test@example.com",
+			// No organizationId or organizationName
+		}
+
+		render(
+			<CloudView
+				userInfo={mockUserInfo}
+				isAuthenticated={true}
+				cloudApiUrl="https://app.roocode.com"
+				onDone={() => {}}
+			/>,
+		)
+
+		// Check that the AccountSwitcher is NOT displayed
+		expect(screen.queryByTestId("account-switcher")).not.toBeInTheDocument()
 	})
 })

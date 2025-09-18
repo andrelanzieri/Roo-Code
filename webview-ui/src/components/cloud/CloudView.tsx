@@ -13,6 +13,7 @@ import { TriangleAlert } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tab, TabContent, TabHeader } from "../common/Tab"
 import { Button } from "@/components/ui/button"
+import { AccountSwitcher } from "./ClerkProvider"
 
 // Define the production URL constant locally to avoid importing from cloud package in tests
 const PRODUCTION_ROO_CODE_API_URL = "https://app.roocode.com"
@@ -186,15 +187,21 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, onDone }: Cl
 									<p className="text-sm text-vscode-descriptionForeground my-0">{userInfo?.email}</p>
 								)}
 								{userInfo?.organizationName && (
-									<div className="flex items-center gap-2 text-sm text-vscode-descriptionForeground mt-2">
-										{userInfo.organizationImageUrl && (
-											<img
-												src={userInfo.organizationImageUrl}
-												alt={userInfo.organizationName}
-												className="w-4 h-4 rounded object-cover"
-											/>
-										)}
-										<span>{userInfo.organizationName}</span>
+									<div className="flex flex-col gap-2 mt-2">
+										<div className="flex items-center gap-2 text-sm text-vscode-descriptionForeground">
+											{userInfo.organizationImageUrl && (
+												<img
+													src={userInfo.organizationImageUrl}
+													alt={userInfo.organizationName}
+													className="w-4 h-4 rounded object-cover"
+												/>
+											)}
+											<span>{userInfo.organizationName}</span>
+										</div>
+										<AccountSwitcher
+											organizationId={userInfo.organizationId}
+											organizationName={userInfo.organizationName}
+										/>
 									</div>
 								)}
 							</div>
