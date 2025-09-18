@@ -6,7 +6,6 @@ import { WatsonXAI } from "@ibm-cloud/watsonx-ai"
  * Fetches available watsonx models
  *
  * @param apiKey - The watsonx API key (for IBM Cloud or Cloud Pak with API key auth)
- * @param embedded - Whether to fetch embedding models (true) or LLM models (false)
  * @param projectId - Optional project ID for watsonx
  * @param baseUrl - Optional base URL for the watsonx API
  * @param platform - Optional platform type (ibmCloud or cloudPak)
