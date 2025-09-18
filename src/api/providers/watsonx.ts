@@ -69,13 +69,16 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 		const platform = this.options.watsonxPlatform || "ibmCloud"
 
 		try {
-			const serviceOptions: Partial<WatsonxServiceOptions> = {
-				version: "2024-05-31",
-				serviceUrl: serviceUrl,
-			}
+			let finalServiceUrl: string
+			let authenticator: IamAuthenticator | CloudPakForDataAuthenticator
 
 			// Choose authenticator based on platform
 			if (platform === "cloudPak") {
+				if (!serviceUrl) {
+					throw new Error("Base URL is required for IBM Cloud Pak for Data")
+				}
+				finalServiceUrl = serviceUrl
+
 				const username = this.options.watsonxUsername
 				if (!username) {
 					throw new Error("You must provide a valid username for IBM Cloud Pak for Data.")
@@ -89,7 +92,7 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 						throw new Error("You must provide a valid API key for IBM Cloud Pak for Data.")
 					}
 
-					serviceOptions.authenticator = new CloudPakForDataAuthenticator({
+					authenticator = new CloudPakForDataAuthenticator({
 						username: username,
 						apikey: apiKey,
 						url: serviceUrl,
@@ -100,7 +103,7 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 						throw new Error("You must provide a valid password for IBM Cloud Pak for Data.")
 					}
 
-					serviceOptions.authenticator = new CloudPakForDataAuthenticator({
+					authenticator = new CloudPakForDataAuthenticator({
 						username: username,
 						password: password,
 						url: serviceUrl,
@@ -113,9 +116,17 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 					throw new Error("You must provide a valid IBM watsonx API key.")
 				}
 
-				serviceOptions.authenticator = new IamAuthenticator({
+				authenticator = new IamAuthenticator({
 					apikey: apiKey,
 				})
+
+				finalServiceUrl = serviceUrl || `https://${this.options.watsonxRegion || "us-south"}.ml.cloud.ibm.com`
+			}
+
+			const serviceOptions: WatsonxServiceOptions = {
+				version: "2024-05-31",
+				serviceUrl: finalServiceUrl,
+				authenticator: authenticator,
 			}
 
 			this.service = WatsonXAI.newInstance(serviceOptions)
