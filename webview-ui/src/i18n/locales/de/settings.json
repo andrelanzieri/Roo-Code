@@ -60,7 +60,7 @@
 		"vercelAiGatewayApiKeyLabel": "API-Schlüssel",
 		"vercelAiGatewayApiKeyPlaceholder": "Gib deinen Vercel AI Gateway API-Schlüssel ein",
 		"watsonxProvider": "IBM watsonx",
-		"watsonxApiKeyLabel": "API Key",
+		"watsonxApiKeyLabel": "API-Schlüssel",
 		"watsonxApiKeyPlaceholder": "Enter your IBM watsonx API key",
 		"watsonxProjectIdLabel": "Project ID",
 		"watsonxProjectIdPlaceholder": "Enter your IBM watsonx project ID",
