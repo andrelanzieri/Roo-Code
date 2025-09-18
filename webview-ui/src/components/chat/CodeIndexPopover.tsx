@@ -339,7 +339,6 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 				}
 			} else if (event.data.type === "embeddedWatsonxModels" && event.data.embeddedWatsonxModels) {
 				try {
-					console.log("Received IBM Embeded watsonx models:", event.data.embeddedWatsonxModels)
 					let embeddedWatsonxModels: Record<string, { dimension: number }> = {}
 					if (
 						!event.data.embeddedWatsonxModels ||
@@ -352,7 +351,6 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					}
 					if (codebaseIndexModels) {
 						codebaseIndexModels.watsonx = { ...embeddedWatsonxModels }
-						console.log("Updated watsonx models in context:", codebaseIndexModels.watsonx)
 					}
 					setCurrentSettings((prev) => ({ ...prev }))
 				} catch (error) {

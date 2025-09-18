@@ -168,7 +168,6 @@ export class WatsonxEmbedder implements IEmbedder {
 								console.warn(`No embedding results for text at index ${textIndex}`)
 								const expectedDimension = this.getExpectedDimension(modelToUse)
 								if (expectedDimension > 0) {
-									console.log(`Creating fallback embedding with dimension ${expectedDimension}`)
 									const fallbackEmbedding = new Array(expectedDimension).fill(0.0001)
 									return { index: textIndex, embedding: fallbackEmbedding, tokens: 0 }
 								} else {
@@ -278,8 +277,6 @@ export class WatsonxEmbedder implements IEmbedder {
 	 */
 	async getAvailableModels(): Promise<Record<string, { dimension: number }>> {
 		try {
-			console.log("Fetching available IBM watsonx embedding models...")
-
 			const knownModels: Record<string, { dimension: number }> = {
 				"ibm/slate-125m-english-rtrvr-v2": { dimension: 768 },
 			}
