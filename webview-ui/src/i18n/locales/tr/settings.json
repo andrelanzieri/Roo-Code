@@ -129,7 +129,7 @@
 			"ollamaBaseUrlRequired": "Ollama temel URL'si gereklidir",
 			"baseUrlRequired": "Temel URL'si gereklidir",
 			"modelDimensionMinValue": "Model boyutu 0'dan büyük olmalıdır",
-			"watsonxApiKeyRequired": "IBM watsonx API key is required"
+			"watsonxApiKeyRequired": "IBM watsonx API anahtarı gereklidir"
 		},
 		"advancedConfigLabel": "Gelişmiş Yapılandırma",
 		"searchMinScoreLabel": "Arama Skoru Eşiği",
