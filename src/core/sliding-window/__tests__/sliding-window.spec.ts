@@ -11,6 +11,7 @@ import * as condenseModule from "../../condense"
 
 import {
 	TOKEN_BUFFER_PERCENTAGE,
+	MIN_TOKENS_FOR_PERCENTAGE_TRIGGER,
 	estimateTokenCount,
 	truncateConversation,
 	truncateConversationIfNeeded,
@@ -815,6 +816,109 @@ describe("Sliding Window", () => {
 				messages: messagesWithSmallContent,
 				summary: "",
 				cost: 0,
+				prevContextTokens: totalTokens,
+			})
+
+			// Clean up
+			summarizeSpy.mockRestore()
+		})
+
+		it("should not trigger percentage-based condensing when tokens are below MIN_TOKENS_FOR_PERCENTAGE_TRIGGER", async () => {
+			// Reset any previous mock calls
+			vi.clearAllMocks()
+			const summarizeSpy = vi.spyOn(condenseModule, "summarizeConversation")
+
+			const modelInfo = createModelInfo(100000, 30000)
+			const contextWindow = modelInfo.contextWindow
+			// Set tokens to be below MIN_TOKENS_FOR_PERCENTAGE_TRIGGER (1000)
+			// Even though percentage would be high (90%), it shouldn't trigger
+			const totalTokens = 900 // Below MIN_TOKENS_FOR_PERCENTAGE_TRIGGER
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			const result = await truncateConversationIfNeeded({
+				messages: messagesWithSmallContent,
+				totalTokens,
+				contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				apiHandler: mockApiHandler,
+				autoCondenseContext: true,
+				autoCondenseContextPercent: 5, // Very low threshold - would normally trigger at 5%
+				systemPrompt: "System prompt",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+			})
+
+			// Verify summarizeConversation was not called even though percentage (0.9%) would exceed threshold (5%)
+			// This is because totalTokens (900) < MIN_TOKENS_FOR_PERCENTAGE_TRIGGER (1000)
+			expect(summarizeSpy).not.toHaveBeenCalled()
+
+			// Verify no truncation or summarization occurred
+			expect(result).toEqual({
+				messages: messagesWithSmallContent,
+				summary: "",
+				cost: 0,
+				prevContextTokens: totalTokens,
+			})
+
+			// Clean up
+			summarizeSpy.mockRestore()
+		})
+
+		it("should trigger percentage-based condensing when tokens exceed MIN_TOKENS_FOR_PERCENTAGE_TRIGGER and percentage threshold", async () => {
+			// Mock the summarizeConversation function
+			const mockSummary = "Summary after meeting minimum token requirement"
+			const mockCost = 0.02
+			const mockSummarizeResponse: condenseModule.SummarizeResponse = {
+				messages: [
+					{ role: "user", content: "First message" },
+					{ role: "assistant", content: mockSummary, isSummary: true },
+					{ role: "user", content: "Last message" },
+				],
+				summary: mockSummary,
+				cost: mockCost,
+				newContextTokens: 150,
+			}
+
+			const summarizeSpy = vi
+				.spyOn(condenseModule, "summarizeConversation")
+				.mockResolvedValue(mockSummarizeResponse)
+
+			const modelInfo = createModelInfo(100000, 30000)
+			const contextWindow = modelInfo.contextWindow
+			// Set tokens to be just above MIN_TOKENS_FOR_PERCENTAGE_TRIGGER
+			// and above the percentage threshold
+			const totalTokens = MIN_TOKENS_FOR_PERCENTAGE_TRIGGER + 100 // 1100 tokens
+			const messagesWithSmallContent = [
+				...messages.slice(0, -1),
+				{ ...messages[messages.length - 1], content: "" },
+			]
+
+			const result = await truncateConversationIfNeeded({
+				messages: messagesWithSmallContent,
+				totalTokens,
+				contextWindow,
+				maxTokens: modelInfo.maxTokens,
+				apiHandler: mockApiHandler,
+				autoCondenseContext: true,
+				autoCondenseContextPercent: 1, // Very low threshold - 1% of 100000 = 1000 tokens
+				systemPrompt: "System prompt",
+				taskId,
+				profileThresholds: {},
+				currentProfileId: "default",
+			})
+
+			// Should use summarization because:
+			// 1. totalTokens (1100) >= MIN_TOKENS_FOR_PERCENTAGE_TRIGGER (1000)
+			// 2. percentage (1.1%) >= threshold (1%)
+			expect(summarizeSpy).toHaveBeenCalled()
+			expect(result).toMatchObject({
+				messages: mockSummarizeResponse.messages,
+				summary: mockSummary,
+				cost: mockCost,
 				prevContextTokens: totalTokens,
 			})
 

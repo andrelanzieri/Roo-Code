@@ -13,6 +13,12 @@ import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "@roo-code/types"
 export const TOKEN_BUFFER_PERCENTAGE = 0.1
 
 /**
+ * Minimum number of tokens required before percentage-based condensing can trigger.
+ * This prevents condensing from happening too early in new conversations.
+ */
+export const MIN_TOKENS_FOR_PERCENTAGE_TRIGGER = 1000
+
+/**
  * Counts tokens for user content using the provider's token counting implementation.
  *
  * @param {Array<Anthropic.Messages.ContentBlockParam>} content - The content to count tokens for
@@ -144,7 +150,12 @@ export async function truncateConversationIfNeeded({
 
 	if (autoCondenseContext) {
 		const contextPercent = (100 * prevContextTokens) / contextWindow
-		if (contextPercent >= effectiveThreshold || prevContextTokens > allowedTokens) {
+		// Only trigger percentage-based condensing if we have enough context
+		// This prevents condensing from happening on brand new conversations
+		const shouldCondenseByPercentage =
+			contextPercent >= effectiveThreshold && prevContextTokens >= MIN_TOKENS_FOR_PERCENTAGE_TRIGGER
+
+		if (shouldCondenseByPercentage || prevContextTokens > allowedTokens) {
 			// Attempt to intelligently condense the context
 			const result = await summarizeConversation(
 				messages,
