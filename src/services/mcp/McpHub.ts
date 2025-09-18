@@ -3,6 +3,7 @@ import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotoc
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
 import ReconnectingEventSource from "reconnecting-eventsource"
+import { createSSETransportWithOAuth, createStreamableHTTPTransportWithOAuth } from "./oauth/HttpTransportWithOAuth"
 import {
 	CallToolResultSchema,
 	ListResourcesResultSchema,
@@ -734,12 +735,22 @@ export class McpHub {
 					console.error(`No stderr stream for ${name}`)
 				}
 			} else if (configInjected.type === "streamable-http") {
-				// Streamable HTTP connection
-				transport = new StreamableHTTPClientTransport(new URL(configInjected.url), {
-					requestInit: {
-						headers: configInjected.headers,
+				// Streamable HTTP connection with OAuth support
+				const provider = this.providerRef.deref()
+				if (!provider) {
+					throw new Error("Provider not available for OAuth initialization")
+				}
+
+				transport = createStreamableHTTPTransportWithOAuth(
+					new URL(configInjected.url),
+					{
+						requestInit: {
+							headers: configInjected.headers,
+						},
 					},
-				})
+					name,
+					provider.context,
+				)
 
 				// Set up Streamable HTTP specific error handling
 				transport.onerror = async (error) => {
@@ -760,7 +771,12 @@ export class McpHub {
 					await this.notifyWebviewOfServerChanges()
 				}
 			} else if (configInjected.type === "sse") {
-				// SSE connection
+				// SSE connection with OAuth support
+				const provider = this.providerRef.deref()
+				if (!provider) {
+					throw new Error("Provider not available for OAuth initialization")
+				}
+
 				const sseOptions = {
 					requestInit: {
 						headers: configInjected.headers,
@@ -779,10 +795,16 @@ export class McpHub {
 					},
 				}
 				global.EventSource = ReconnectingEventSource
-				transport = new SSEClientTransport(new URL(configInjected.url), {
-					...sseOptions,
-					eventSourceInit: reconnectingEventSourceOptions,
-				})
+
+				transport = createSSETransportWithOAuth(
+					new URL(configInjected.url),
+					{
+						...sseOptions,
+						eventSourceInit: reconnectingEventSourceOptions,
+					},
+					name,
+					provider.context,
+				)
 
 				// Set up SSE specific error handling
 				transport.onerror = async (error) => {
