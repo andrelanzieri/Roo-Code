@@ -250,7 +250,7 @@
 		"vercelAiGatewayApiKey": "Chave API do Vercel AI Gateway",
 		"getVercelAiGatewayApiKey": "Obter chave API do Vercel AI Gateway",
 		"apiKeyStorageNotice": "As chaves de API são armazenadas com segurança no Armazenamento Secreto do VSCode",
-		"passwordStorageNotice": "Passwords are stored securely in VS Code's Secret Storage",
+		"passwordStorageNotice": "As senhas são armazenadas com segurança no Armazenamento Secreto do VS Code",
 		"glamaApiKey": "Chave de API Glama",
 		"getGlamaApiKey": "Obter chave de API Glama",
 		"useCustomBaseUrl": "Usar URL base personalizado",
