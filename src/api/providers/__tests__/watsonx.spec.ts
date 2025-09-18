@@ -265,5 +265,3 @@ describe("WatsonxAIHandler", () => {
 		})
 	})
 })
-
-// Made with Bob
