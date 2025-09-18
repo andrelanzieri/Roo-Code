@@ -128,7 +128,8 @@
 			"vercelAiGatewayApiKeyRequired": "Es requereix la clau API de Vercel AI Gateway",
 			"ollamaBaseUrlRequired": "Cal una URL base d'Ollama",
 			"baseUrlRequired": "Cal una URL base",
-			"modelDimensionMinValue": "La dimensió del model ha de ser superior a 0"
+			"modelDimensionMinValue": "La dimensió del model ha de ser superior a 0",
+			"watsonxApiKeyRequired": "IBM watsonx API key is required"
 		},
 		"advancedConfigLabel": "Configuració avançada",
 		"searchMinScoreLabel": "Llindar de puntuació de cerca",

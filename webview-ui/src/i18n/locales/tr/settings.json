@@ -128,7 +128,8 @@
 			"vercelAiGatewayApiKeyRequired": "Vercel AI Gateway API anahtarı gereklidir",
 			"ollamaBaseUrlRequired": "Ollama temel URL'si gereklidir",
 			"baseUrlRequired": "Temel URL'si gereklidir",
-			"modelDimensionMinValue": "Model boyutu 0'dan büyük olmalıdır"
+			"modelDimensionMinValue": "Model boyutu 0'dan büyük olmalıdır",
+			"watsonxApiKeyRequired": "IBM watsonx API key is required"
 		},
 		"advancedConfigLabel": "Gelişmiş Yapılandırma",
 		"searchMinScoreLabel": "Arama Skoru Eşiği",

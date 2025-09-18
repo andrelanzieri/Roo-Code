@@ -128,7 +128,8 @@
 			"vercelAiGatewayApiKeyRequired": "Kunci API Vercel AI Gateway diperlukan",
 			"ollamaBaseUrlRequired": "URL dasar Ollama diperlukan",
 			"baseUrlRequired": "URL dasar diperlukan",
-			"modelDimensionMinValue": "Dimensi model harus lebih besar dari 0"
+			"modelDimensionMinValue": "Dimensi model harus lebih besar dari 0",
+			"watsonxApiKeyRequired": "IBM watsonx API key is required"
 		},
 		"advancedConfigLabel": "Konfigurasi Lanjutan",
 		"searchMinScoreLabel": "Ambang Batas Skor Pencarian",

@@ -128,7 +128,8 @@
 			"vercelAiGatewayApiKeyRequired": "Klucz API Vercel AI Gateway jest wymagany",
 			"ollamaBaseUrlRequired": "Wymagany jest bazowy adres URL Ollama",
 			"baseUrlRequired": "Wymagany jest bazowy adres URL",
-			"modelDimensionMinValue": "Wymiar modelu musi być większy niż 0"
+			"modelDimensionMinValue": "Wymiar modelu musi być większy niż 0",
+			"watsonxApiKeyRequired": "IBM watsonx API key is required"
 		},
 		"advancedConfigLabel": "Konfiguracja zaawansowana",
 		"searchMinScoreLabel": "Próg wyniku wyszukiwania",

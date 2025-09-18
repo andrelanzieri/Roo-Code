@@ -128,7 +128,8 @@
 			"vercelAiGatewayApiKeyRequired": "Vercel AI Gateway API 키가 필요합니다",
 			"ollamaBaseUrlRequired": "Ollama 기본 URL이 필요합니다",
 			"baseUrlRequired": "기본 URL이 필요합니다",
-			"modelDimensionMinValue": "모델 차원은 0보다 커야 합니다"
+			"modelDimensionMinValue": "모델 차원은 0보다 커야 합니다",
+			"watsonxApiKeyRequired": "IBM watsonx API key is required"
 		},
 		"advancedConfigLabel": "고급 구성",
 		"searchMinScoreLabel": "검색 점수 임계값",

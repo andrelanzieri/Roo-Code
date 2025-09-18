@@ -128,7 +128,8 @@
 			"vercelAiGatewayApiKeyRequired": "Vercel AI Gateway APIキーが必要です",
 			"ollamaBaseUrlRequired": "OllamaのベースURLが必要です",
 			"baseUrlRequired": "ベースURLが必要です",
-			"modelDimensionMinValue": "モデルの次元は0より大きくなければなりません"
+			"modelDimensionMinValue": "モデルの次元は0より大きくなければなりません",
+			"watsonxApiKeyRequired": "IBM watsonx API key is required"
 		},
 		"advancedConfigLabel": "詳細設定",
 		"searchMinScoreLabel": "検索スコアのしきい値",
