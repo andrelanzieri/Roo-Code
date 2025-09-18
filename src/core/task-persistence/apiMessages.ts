@@ -79,5 +79,31 @@ export async function saveApiMessages({
 }) {
 	const taskDir = await getTaskDirectoryPath(globalStoragePath, taskId)
 	const filePath = path.join(taskDir, GlobalFileNames.apiConversationHistory)
+
+	// Safety check: prevent saving an empty array if a non-empty conversation previously existed
+	if (Array.isArray(messages) && messages.length === 0) {
+		// Check if there's an existing non-empty conversation history
+		if (await fileExistsAtPath(filePath)) {
+			try {
+				const existingContent = await fs.readFile(filePath, "utf8")
+				const existingData = JSON.parse(existingContent)
+				if (Array.isArray(existingData) && existingData.length > 0) {
+					console.error(
+						`[Roo-Debug] saveApiMessages: Attempted to save empty array over existing non-empty conversation. ` +
+							`TaskId: ${taskId}, Existing messages count: ${existingData.length}. ` +
+							`Skipping save to prevent data loss.`,
+					)
+					return // Don't save empty array over non-empty conversation
+				}
+			} catch (error) {
+				// If we can't read/parse the existing file, proceed with save
+				console.error(
+					`[Roo-Debug] saveApiMessages: Error checking existing conversation history. ` +
+						`TaskId: ${taskId}, Error: ${error}. Proceeding with save.`,
+				)
+			}
+		}
+	}
+
 	await safeWriteJson(filePath, messages)
 }

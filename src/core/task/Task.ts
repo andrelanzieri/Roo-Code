@@ -1904,6 +1904,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						],
 					})
 
+					// Explicitly save the API conversation history after adding the interrupted message
+					await this.saveApiConversationHistory()
+
 					// Update `api_req_started` to have cancelled and cost, so that
 					// we can display the cost of the partial stream.
 					updateApiReqMsg(cancelReason, streamingFailedMessage)
@@ -2196,9 +2199,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							? undefined
 							: (error.message ?? JSON.stringify(serializeError(error), null, 2))
 
-						// Now call abortTask after determining the cancel reason.
-						await this.abortTask()
+						// Reverse the order: call abortStream first to properly save the interrupted message
+						// before abortTask cleans up resources
 						await abortStream(cancelReason, streamingFailedMessage)
+						await this.abortTask()
 
 						const history = await provider?.getTaskWithId(this.taskId)
 
