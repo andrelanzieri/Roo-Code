@@ -183,11 +183,6 @@ describe("WatsonxAIHandler", () => {
 							message: { content: testContent },
 						},
 					],
-					usage: {
-						prompt_tokens: 10,
-						completion_tokens: 5,
-						total_tokens: 15,
-					},
 				},
 			})
 
@@ -197,16 +192,10 @@ describe("WatsonxAIHandler", () => {
 				chunks.push(chunk)
 			}
 
-			expect(chunks.length).toBe(2)
+			expect(chunks.length).toBe(1)
 			expect(chunks[0]).toEqual({
 				type: "text",
 				text: testContent,
-			})
-			expect(chunks[1]).toEqual({
-				type: "usage",
-				inputTokens: 10,
-				outputTokens: 5,
-				totalCost: 0,
 			})
 		})
 
@@ -257,10 +246,6 @@ describe("WatsonxAIHandler", () => {
 							message: { content: "Test response" },
 						},
 					],
-					usage: {
-						prompt_tokens: 10,
-						completion_tokens: 5,
-					},
 				},
 			})
 

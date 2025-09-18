@@ -293,7 +293,7 @@ export class WatsonxEmbedder implements IEmbedder {
 					if (Array.isArray(modelsList)) {
 						for (const model of modelsList) {
 							const modelId = model.id || model.name || model.model_id
-							const dimension = model.model_limits.embedding_dimension
+							const dimension = model.model_limits.embedding_dimension || 768
 							knownModels[modelId] = { dimension }
 						}
 					}

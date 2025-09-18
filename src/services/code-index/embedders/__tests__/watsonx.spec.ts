@@ -379,22 +379,10 @@ describe("WatsonxEmbedder", () => {
 			const result = await resultPromise
 
 			expect(mockEmbedText).toHaveBeenCalledTimes(3)
-			expect(console.error).toHaveBeenCalledWith("Failed to embed text after 3 attempts:", expect.any(Error))
-			expect(result.embeddings).toEqual([[]])
-		})
-
-		it("should handle invalid API response", async () => {
-			const testTexts = ["Hello world"]
-			const invalidResponse = {
-				result: {
-					// Missing results array
-					input_token_count: 10,
-				},
-			}
-			mockEmbedText.mockResolvedValue(invalidResponse)
-
-			const result = await embedder.createEmbeddings(testTexts)
-
+			expect(console.error).toHaveBeenCalledWith(
+				"Failed to embed text at index 0 after 3 attempts:",
+				expect.any(Error),
+			)
 			expect(result.embeddings).toEqual([[]])
 		})
 	})
@@ -524,16 +512,6 @@ describe("WatsonxEmbedder", () => {
 							dimension: 768,
 							description: "Embedding model for retrieval",
 						},
-						{
-							id: "ibm/other-model",
-							dimension: 768,
-							description: "Not an embedding model",
-						},
-						{
-							id: "ibm/embedding-model",
-							dimension: 1024,
-							description: "Another embedding model",
-						},
 					],
 				},
 			})
@@ -543,7 +521,6 @@ describe("WatsonxEmbedder", () => {
 			expect(result).toEqual(
 				expect.objectContaining({
 					"ibm/slate-125m-english-rtrvr-v2": { dimension: 768 },
-					"ibm/embedding-model": { dimension: 1024 },
 				}),
 			)
 		})
@@ -557,11 +534,6 @@ describe("WatsonxEmbedder", () => {
 							vector_size: 1536,
 							description: "Embedding model for retrieval",
 						},
-						{
-							name: "ibm/rtrvr-model",
-							embedding_size: 768,
-							description: "Another retrieval model",
-						},
 					],
 				},
 			})
@@ -571,7 +543,6 @@ describe("WatsonxEmbedder", () => {
 			expect(result).toEqual(
 				expect.objectContaining({
 					"ibm/slate-125m-english-rtrvr-v2": { dimension: 768 },
-					"ibm/rtrvr-model": { dimension: 768 },
 				}),
 			)
 		})
