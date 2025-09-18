@@ -108,8 +108,10 @@ export const webviewMessageHandler = async (
 		await currentCline.overwriteClineMessages(currentCline.clineMessages.slice(0, messageIndex))
 
 		if (apiConversationHistoryIndex !== -1) {
+			// Allow empty writes for edit/delete operations
 			await currentCline.overwriteApiConversationHistory(
 				currentCline.apiConversationHistory.slice(0, apiConversationHistoryIndex),
+				true, // allowEmpty: true for edit/delete operations
 			)
 		}
 	}

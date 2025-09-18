@@ -582,7 +582,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		await this.saveApiConversationHistory()
 	}
 
-	async overwriteApiConversationHistory(newHistory: ApiMessage[]) {
+	async overwriteApiConversationHistory(newHistory: ApiMessage[], allowEmpty: boolean = false) {
+		// Guard against unintentional empty writes
+		if (newHistory.length === 0 && this.apiConversationHistory.length > 0 && !allowEmpty) {
+			console.warn(
+				`[Task#overwriteApiConversationHistory] Preventing empty write for taskId: ${this.taskId}. ` +
+					`Current has ${this.apiConversationHistory.length} messages. Use allowEmpty: true to force.`,
+			)
+			return // Don't overwrite with empty array unless explicitly allowed
+		}
+
 		this.apiConversationHistory = newHistory
 		await this.saveApiConversationHistory()
 	}
@@ -1436,7 +1445,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				throw new Error("Unexpected: Last message is not a user or assistant message")
 			}
 		} else {
-			throw new Error("Unexpected: No existing API conversation history")
+			// Handle empty API conversation history gracefully instead of throwing
+			// This prevents the "chat locks until reopen" failure mode
+			this.say(
+				"text",
+				"[TASK RESUMPTION] Previous conversation history was empty. Starting with a fresh baseline.",
+			)
+			// Initialize with empty arrays to allow the task to continue
+			modifiedApiConversationHistory = []
+			modifiedOldUserContent = []
 		}
 
 		let newUserContent: Anthropic.Messages.ContentBlockParam[] = [...modifiedOldUserContent]

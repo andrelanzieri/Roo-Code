@@ -918,8 +918,10 @@ export class ClineProvider
 						await task.overwriteClineMessages(task.clineMessages.slice(0, messageIndex))
 
 						if (apiConversationHistoryIndex !== -1) {
+							// Allow empty writes for edit operations after checkpoint restoration
 							await task.overwriteApiConversationHistory(
 								task.apiConversationHistory.slice(0, apiConversationHistoryIndex),
+								true, // allowEmpty: true for edit operations
 							)
 						}
 
@@ -1453,6 +1455,7 @@ export class ClineProvider
 
 		if (historyItem) {
 			const { getTaskDirectoryPath } = await import("../../utils/storage")
+			const { readApiMessages } = await import("../task-persistence/apiMessages")
 			const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
 			const taskDirPath = await getTaskDirectoryPath(globalStoragePath, id)
 			const apiConversationHistoryFilePath = path.join(taskDirPath, GlobalFileNames.apiConversationHistory)
@@ -1460,7 +1463,8 @@ export class ClineProvider
 			const fileExists = await fileExistsAtPath(apiConversationHistoryFilePath)
 
 			if (fileExists) {
-				const apiConversationHistory = JSON.parse(await fs.readFile(apiConversationHistoryFilePath, "utf8"))
+				// Use the helper reader for unified behavior/logging instead of direct JSON.parse
+				const apiConversationHistory = await readApiMessages({ taskId: id, globalStoragePath })
 
 				return {
 					historyItem,

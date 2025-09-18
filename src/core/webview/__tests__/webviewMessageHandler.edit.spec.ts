@@ -135,7 +135,7 @@ describe("webviewMessageHandler - Edit Message with Timestamp Fallback", () => {
 		)
 
 		// API history should be truncated from first message at/after edited timestamp (fallback)
-		expect(mockCurrentTask.overwriteApiConversationHistory).toHaveBeenCalledWith([])
+		expect(mockCurrentTask.overwriteApiConversationHistory).toHaveBeenCalledWith([], true)
 	})
 
 	it("should preserve messages before the edited message when message not in API history", async () => {
@@ -197,13 +197,16 @@ describe("webviewMessageHandler - Edit Message with Timestamp Fallback", () => {
 		])
 
 		// API history should be truncated from the first API message at/after the edited timestamp (fallback)
-		expect(mockCurrentTask.overwriteApiConversationHistory).toHaveBeenCalledWith([
-			{
-				ts: earlierMessageTs,
-				role: "user",
-				content: [{ type: "text", text: "Earlier message" }],
-			},
-		])
+		expect(mockCurrentTask.overwriteApiConversationHistory).toHaveBeenCalledWith(
+			[
+				{
+					ts: earlierMessageTs,
+					role: "user",
+					content: [{ type: "text", text: "Earlier message" }],
+				},
+			],
+			true,
+		)
 	})
 
 	it("should not use fallback when exact apiConversationHistoryIndex is found", async () => {
@@ -248,7 +251,7 @@ describe("webviewMessageHandler - Edit Message with Timestamp Fallback", () => {
 
 		// Both should be truncated at index 0
 		expect(mockCurrentTask.overwriteClineMessages).toHaveBeenCalledWith([])
-		expect(mockCurrentTask.overwriteApiConversationHistory).toHaveBeenCalledWith([])
+		expect(mockCurrentTask.overwriteApiConversationHistory).toHaveBeenCalledWith([], true)
 	})
 
 	it("should handle case where no API messages match timestamp criteria", async () => {
@@ -385,6 +388,6 @@ describe("webviewMessageHandler - Edit Message with Timestamp Fallback", () => {
 		expect(mockCurrentTask.overwriteClineMessages).toHaveBeenCalledWith([])
 
 		// API history should be truncated from first message at/after edited timestamp (fallback)
-		expect(mockCurrentTask.overwriteApiConversationHistory).toHaveBeenCalledWith([])
+		expect(mockCurrentTask.overwriteApiConversationHistory).toHaveBeenCalledWith([], true)
 	})
 })

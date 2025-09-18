@@ -81,3 +81,46 @@ export async function saveApiMessages({
 	const filePath = path.join(taskDir, GlobalFileNames.apiConversationHistory)
 	await safeWriteJson(filePath, messages)
 }
+
+/**
+ * Transaction helper for safe read-modify-write operations on API messages.
+ * Ensures atomic updates by reading, modifying, and writing under a conceptual lock.
+ *
+ * @param taskId - The task ID
+ * @param globalStoragePath - The global storage path
+ * @param updater - A pure function that takes the current messages and returns the updated messages
+ * @param options - Optional configuration
+ * @returns The updated messages
+ */
+export async function transactApiMessages({
+	taskId,
+	globalStoragePath,
+	updater,
+	options = {},
+}: {
+	taskId: string
+	globalStoragePath: string
+	updater: (messages: ApiMessage[]) => ApiMessage[]
+	options?: {
+		allowEmpty?: boolean
+	}
+}): Promise<ApiMessage[]> {
+	// Read current state
+	const currentMessages = await readApiMessages({ taskId, globalStoragePath })
+
+	// Apply the pure updater function
+	const updatedMessages = updater(currentMessages)
+
+	// Guard against unintentional empty writes
+	if (updatedMessages.length === 0 && currentMessages.length > 0 && !options.allowEmpty) {
+		console.warn(
+			`[transactApiMessages] Preventing empty write for taskId: ${taskId}. Current has ${currentMessages.length} messages. Use allowEmpty: true to force.`,
+		)
+		return currentMessages // Return unchanged
+	}
+
+	// Commit the changes
+	await saveApiMessages({ messages: updatedMessages, taskId, globalStoragePath })
+
+	return updatedMessages
+}
