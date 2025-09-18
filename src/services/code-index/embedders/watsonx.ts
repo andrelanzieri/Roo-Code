@@ -5,6 +5,20 @@ import { WatsonXAI } from "@ibm-cloud/watsonx-ai"
 import { IamAuthenticator, CloudPakForDataAuthenticator } from "ibm-cloud-sdk-core"
 
 /**
+ * Configuration for rate limiting
+ */
+interface RateLimitConfig {
+	/** Base delay between requests in milliseconds */
+	baseDelay: number
+	/** Maximum delay between requests in milliseconds */
+	maxDelay: number
+	/** Whether to use adaptive rate limiting based on API responses */
+	adaptive: boolean
+	/** Maximum concurrent requests */
+	maxConcurrent: number
+}
+
+/**
  * IBM watsonx embedder implementation using the native IBM Cloud watsonx.ai package.
  *
  */
@@ -15,6 +29,10 @@ export class WatsonxEmbedder implements IEmbedder {
 	private static readonly DEFAULT_MODEL = "ibm/slate-125m-english-rtrvr-v2"
 	private readonly modelId: string
 	private readonly projectId?: string
+	private readonly rateLimitConfig: RateLimitConfig
+	private currentDelay: number
+	private lastRequestTime: number = 0
+	private rateLimitHits: number = 0
 
 	/**
 	 * Creates a new watsonx embedder
@@ -36,12 +54,22 @@ export class WatsonxEmbedder implements IEmbedder {
 		region: string = "us-south",
 		username?: string,
 		password?: string,
+		rateLimitConfig?: Partial<RateLimitConfig>,
 	) {
 		if (!apiKey && !(username && password)) {
 			throw new Error(t("embeddings:validation.apiKeyRequired"))
 		}
 		this.modelId = modelId || WatsonxEmbedder.DEFAULT_MODEL
 		this.projectId = projectId
+
+		// Initialize rate limit configuration with defaults
+		this.rateLimitConfig = {
+			baseDelay: rateLimitConfig?.baseDelay ?? 500,
+			maxDelay: rateLimitConfig?.maxDelay ?? 5000,
+			adaptive: rateLimitConfig?.adaptive ?? true,
+			maxConcurrent: rateLimitConfig?.maxConcurrent ?? 1,
+		}
+		this.currentDelay = this.rateLimitConfig.baseDelay
 
 		let options: any = {
 			version: WatsonxEmbedder.WATSONX_VERSION,
@@ -55,6 +83,11 @@ export class WatsonxEmbedder implements IEmbedder {
 		} else if (platform === "cloudPak") {
 			if (!baseUrl) {
 				throw new Error("Base URL is required for IBM Cloud Pak for Data")
+			}
+
+			// Validate URL format for Cloud Pak
+			if (!this.isValidUrl(baseUrl)) {
+				throw new Error("Invalid URL format for IBM Cloud Pak for Data base URL")
 			}
 
 			if (username) {
@@ -104,17 +137,66 @@ export class WatsonxEmbedder implements IEmbedder {
 		return knownDimensions[modelId] || 768
 	}
 
+	/**
+	 * Validates if a string is a valid URL
+	 * @param url The URL string to validate
+	 * @returns True if the URL is valid, false otherwise
+	 */
+	private isValidUrl(url: string): boolean {
+		try {
+			const parsedUrl = new URL(url)
+			return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:"
+		} catch {
+			return false
+		}
+	}
+
+	/**
+	 * Implements adaptive rate limiting based on API responses
+	 * @param isRateLimited Whether the last request hit a rate limit
+	 */
+	private adjustRateLimit(isRateLimited: boolean) {
+		if (!this.rateLimitConfig.adaptive) {
+			return
+		}
+
+		if (isRateLimited) {
+			this.rateLimitHits++
+			// Exponential backoff when rate limited
+			this.currentDelay = Math.min(this.currentDelay * 2, this.rateLimitConfig.maxDelay)
+		} else if (this.rateLimitHits > 0) {
+			// Gradually reduce delay after successful requests
+			this.rateLimitHits = Math.max(0, this.rateLimitHits - 1)
+			if (this.rateLimitHits === 0) {
+				this.currentDelay = Math.max(this.rateLimitConfig.baseDelay, this.currentDelay * 0.9)
+			}
+		}
+	}
+
+	/**
+	 * Waits for the appropriate delay before making the next request
+	 */
+	private async waitForRateLimit() {
+		const now = Date.now()
+		const timeSinceLastRequest = now - this.lastRequestTime
+		const requiredDelay = this.currentDelay
+
+		if (timeSinceLastRequest < requiredDelay) {
+			await delay(requiredDelay - timeSinceLastRequest)
+		}
+
+		this.lastRequestTime = Date.now()
+	}
+
 	async createEmbeddings(texts: string[], model?: string): Promise<EmbeddingResponse> {
 		const MAX_RETRIES = 3
-		const INITIAL_DELAY_MS = 1000
-		const MAX_CONCURRENT_REQUESTS = 1
-		const REQUEST_DELAY_MS = 500
 		const modelToUse = model || this.modelId
 		const embeddings: number[][] = []
 		let promptTokens = 0
 		let totalTokens = 0
-		for (let i = 0; i < texts.length; i += MAX_CONCURRENT_REQUESTS) {
-			const batch = texts.slice(i, i + MAX_CONCURRENT_REQUESTS)
+
+		for (let i = 0; i < texts.length; i += this.rateLimitConfig.maxConcurrent) {
+			const batch = texts.slice(i, i + this.rateLimitConfig.maxConcurrent)
 			const batchResults = await Promise.all(
 				batch.map(async (text, batchIndex) => {
 					const textIndex = i + batchIndex
@@ -135,7 +217,9 @@ export class WatsonxEmbedder implements IEmbedder {
 					let lastError
 					for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
 						try {
-							await delay(1000)
+							// Apply rate limiting
+							await this.waitForRateLimit()
+
 							const response = await this.watsonxClient.embedText({
 								modelId: modelToUse,
 								inputs: [text],
@@ -163,6 +247,8 @@ export class WatsonxEmbedder implements IEmbedder {
 								}
 
 								const tokens = response.result.input_token_count || 0
+								// Successful request, adjust rate limit if adaptive
+								this.adjustRateLimit(false)
 								return { index: textIndex, embedding, tokens }
 							} else {
 								console.warn(`No embedding results for text at index ${textIndex}`)
@@ -177,11 +263,22 @@ export class WatsonxEmbedder implements IEmbedder {
 						} catch (error) {
 							lastError = error
 
+							// Check if this is a rate limit error
+							const isRateLimitError = this.isRateLimitError(error)
+							if (isRateLimitError) {
+								this.adjustRateLimit(true)
+							}
+
 							if (attempt < MAX_RETRIES - 1) {
-								const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempt)
+								// Use adaptive delay if rate limited, otherwise exponential backoff
+								const delayMs = isRateLimitError
+									? this.currentDelay
+									: this.rateLimitConfig.baseDelay * Math.pow(2, attempt)
+
 								console.warn(
-									`IBM watsonx API call failed, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
+									`IBM watsonx API call failed${isRateLimitError ? " (rate limited)" : ""}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`,
 								)
+								await delay(delayMs)
 							}
 						}
 					}
@@ -194,8 +291,9 @@ export class WatsonxEmbedder implements IEmbedder {
 				}),
 			)
 
-			if (i + MAX_CONCURRENT_REQUESTS < texts.length) {
-				await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY_MS * 2))
+			// Add delay between batches if not the last batch
+			if (i + this.rateLimitConfig.maxConcurrent < texts.length) {
+				await delay(this.currentDelay)
 			}
 
 			// Process batch results
@@ -216,6 +314,25 @@ export class WatsonxEmbedder implements IEmbedder {
 				totalTokens,
 			},
 		}
+	}
+
+	/**
+	 * Checks if an error is a rate limit error
+	 * @param error The error to check
+	 * @returns True if the error is a rate limit error
+	 */
+	private isRateLimitError(error: any): boolean {
+		if (!error) return false
+
+		const errorMessage = error.message?.toLowerCase() || ""
+		const errorCode = error.code || error.status || error.statusCode
+
+		return (
+			errorCode === 429 ||
+			errorMessage.includes("rate limit") ||
+			errorMessage.includes("too many requests") ||
+			errorMessage.includes("quota exceeded")
+		)
 	}
 
 	/**

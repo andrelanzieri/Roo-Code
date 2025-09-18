@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 import { Anthropic } from "@anthropic-ai/sdk"
-import { ModelInfo, watsonxAiDefaultModelId, watsonxAiModels, WatsonxAIModelId } from "@roo-code/types"
+import { ModelInfo, watsonxAiDefaultModelId, watsonxAiModels, WatsonxAIModelId, baseModelInfo } from "@roo-code/types"
 import type { ApiHandlerOptions } from "../../shared/api"
 import { IamAuthenticator, CloudPakForDataAuthenticator } from "ibm-cloud-sdk-core"
 import { ApiStream } from "../transform/stream"
@@ -9,25 +9,67 @@ import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from ".
 import { WatsonXAI } from "@ibm-cloud/watsonx-ai"
 import { convertToWatsonxAiMessages } from "../transform/watsonxai-format"
 
+/**
+ * Extended API handler options for Watson X AI
+ */
+interface WatsonxApiHandlerOptions extends ApiHandlerOptions {
+	watsonxProjectId?: string
+	watsonxBaseUrl?: string
+	watsonxPlatform?: "ibmCloud" | "cloudPak"
+	watsonxUsername?: string
+	watsonxPassword?: string
+	watsonxAuthType?: "apiKey" | "password"
+	watsonxApiKey?: string
+	watsonxModelId?: string
+}
+
+/**
+ * Watson X service configuration options
+ */
+interface WatsonxServiceOptions {
+	version: string
+	serviceUrl: string
+	authenticator: IamAuthenticator | CloudPakForDataAuthenticator
+}
+
+/**
+ * Watson X message format
+ */
+interface WatsonxMessage {
+	role: string
+	content: string
+}
+
+/**
+ * Watson X text chat parameters
+ */
+interface WatsonxTextChatParams {
+	projectId: string
+	modelId: string
+	messages: WatsonxMessage[]
+	maxTokens: number
+	temperature: number
+}
+
 export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHandler {
-	private options: ApiHandlerOptions
-	private projectId?: string
+	private options: WatsonxApiHandlerOptions
+	private projectId: string
 	private service: WatsonXAI
 
 	constructor(options: ApiHandlerOptions) {
 		super()
-		this.options = options
+		this.options = options as WatsonxApiHandlerOptions
 
-		this.projectId = (this.options as any).watsonxProjectId
-		if (!this.projectId) {
+		if (!this.options.watsonxProjectId) {
 			throw new Error("You must provide a valid IBM watsonx project ID.")
 		}
+		this.projectId = this.options.watsonxProjectId
 
-		const serviceUrl = (this.options as any).watsonxBaseUrl
-		const platform = (this.options as any).watsonxPlatform
+		const serviceUrl = this.options.watsonxBaseUrl
+		const platform = this.options.watsonxPlatform || "ibmCloud"
 
 		try {
-			const serviceOptions: any = {
+			const serviceOptions: Partial<WatsonxServiceOptions> = {
 				version: "2024-05-31",
 				serviceUrl: serviceUrl,
 			}
@@ -93,7 +135,11 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 	 * @param messages - The messages to send
 	 * @returns The parameters object for the API call
 	 */
-	private createTextChatParams(projectId: string, modelId: string, messages: any[]) {
+	private createTextChatParams(
+		projectId: string,
+		modelId: string,
+		messages: WatsonxMessage[],
+	): WatsonxTextChatParams {
 		const maxTokens = this.options.modelMaxTokens || 2048
 		const temperature = this.options.modelTemperature || 0.7
 		return {
@@ -122,9 +168,33 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 
 		try {
 			// Convert messages to WatsonX format with system prompt
-			const watsonxMessages = [{ role: "system", content: systemPrompt }, ...convertToWatsonxAiMessages(messages)]
+			const convertedMessages = convertToWatsonxAiMessages(messages)
+			// Ensure all messages have string content
+			const watsonxMessages: WatsonxMessage[] = [{ role: "system", content: systemPrompt }]
 
-			const params = this.createTextChatParams(this.projectId!, modelId, watsonxMessages)
+			for (const msg of convertedMessages) {
+				let content = ""
+				if (typeof msg.content === "string") {
+					content = msg.content
+				} else if (Array.isArray(msg.content)) {
+					content = msg.content
+						.map((part) => {
+							if (typeof part === "string") {
+								return part
+							} else if ("text" in part) {
+								return part.text
+							}
+							return ""
+						})
+						.join("")
+				}
+				watsonxMessages.push({
+					role: msg.role,
+					content: content,
+				})
+			}
+
+			const params = this.createTextChatParams(this.projectId, modelId, watsonxMessages)
 			let responseText = ""
 
 			// Call the IBM watsonx API using textChat (non-streaming); can be changed to streaming..
@@ -160,8 +230,8 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 	async completePrompt(prompt: string): Promise<string> {
 		try {
 			const { id: modelId } = this.getModel()
-			const messages = [{ role: "user", content: prompt }]
-			const params = this.createTextChatParams(this.projectId!, modelId, messages)
+			const messages: WatsonxMessage[] = [{ role: "user", content: prompt }]
+			const params = this.createTextChatParams(this.projectId, modelId, messages)
 			const response = await this.service.textChat(params)
 
 			if (!response?.result?.choices?.[0]?.message?.content) {
@@ -179,9 +249,12 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 	 * @returns An object containing the model ID and model information
 	 */
 	override getModel(): { id: string; info: ModelInfo } {
+		const modelId = this.options.watsonxModelId || watsonxAiDefaultModelId
+		const modelInfo =
+			modelId && modelId in watsonxAiModels ? watsonxAiModels[modelId as WatsonxAIModelId] : baseModelInfo
 		return {
-			id: (this.options as any).watsonxModelId || watsonxAiDefaultModelId,
-			info: watsonxAiModels[(this.options as any).watsonxModelId as WatsonxAIModelId] || "",
+			id: modelId,
+			info: modelInfo,
 		}
 	}
 }
