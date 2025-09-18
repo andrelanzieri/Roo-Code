@@ -38,9 +38,10 @@ export const ZAi = ({ apiConfiguration, setApiConfigurationField }: ZAiProps) =>
 					className={cn("w-full")}>
 					{zaiApiLineSchema.options.map((zaiApiLine) => {
 						const config = zaiApiLineConfigs[zaiApiLine]
+						const label = t(`settings:providers.zaiEntrypointOptions.${zaiApiLine}`)
 						return (
 							<VSCodeOption key={zaiApiLine} value={zaiApiLine} className="p-2">
-								{config.name} ({config.baseUrl})
+								{label} ({config.baseUrl})
 							</VSCodeOption>
 						)
 					})}
