@@ -53,7 +53,7 @@
 		"vectorDimensionNotDetermined": "Не удалось определить размерность вектора для модели '{{modelId}}' с провайдером '{{provider}}'. Проверьте профили модели или конфигурацию.",
 		"qdrantUrlMissing": "Отсутствует URL Qdrant для создания векторного хранилища",
 		"codeIndexingNotConfigured": "Невозможно создать сервисы: Индексация кода не настроена должным образом",
-		"watsonxConfigMissing": "IBM watsonx configuration missing for embedder creation"
+		"watsonxConfigMissing": "Отсутствует конфигурация IBM watsonx для создания эмбеддера"
 	},
 	"orchestrator": {
 		"indexingFailedNoBlocks": "Индексация не удалась: Ни один блок кода не был успешно проиндексирован. Это обычно указывает на проблему конфигурации эмбеддера.",
