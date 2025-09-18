@@ -129,7 +129,7 @@
 			"ollamaBaseUrlRequired": "Ollama basis-URL is vereist",
 			"baseUrlRequired": "Basis-URL is vereist",
 			"modelDimensionMinValue": "Modelafmeting moet groter zijn dan 0",
-			"watsonxApiKeyRequired": "IBM watsonx API key is required"
+			"watsonxApiKeyRequired": "IBM watsonx API-sleutel is vereist"
 		},
 		"advancedConfigLabel": "Geavanceerde configuratie",
 		"searchMinScoreLabel": "Zoekscore drempel",
