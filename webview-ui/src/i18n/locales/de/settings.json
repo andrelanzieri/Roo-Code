@@ -129,7 +129,7 @@
 			"ollamaBaseUrlRequired": "Ollama-Basis-URL ist erforderlich",
 			"baseUrlRequired": "Basis-URL ist erforderlich",
 			"modelDimensionMinValue": "Modellabmessung muss größer als 0 sein",
-			"watsonxApiKeyRequired": "IBM watsonx API key is required"
+			"watsonxApiKeyRequired": "IBM watsonx API-Schlüssel ist erforderlich"
 		},
 		"advancedConfigLabel": "Erweiterte Konfiguration",
 		"searchMinScoreLabel": "Suchergebnis-Schwellenwert",
