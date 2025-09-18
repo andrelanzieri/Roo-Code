@@ -167,13 +167,8 @@ export class WatsonxAIHandler extends BaseProvider implements SingleCompletionHa
 			if (!response?.result?.choices?.[0]?.message?.content) {
 				throw new Error("Invalid or empty response from IBM watsonx API")
 			}
-
-			// Extract the message content directly
 			return response.result.choices[0].message.content
 		} catch (error) {
-			if (error instanceof Error) {
-				throw new Error(`IBM watsonx completion error: ${error.message}`)
-			}
 			throw new Error(`IBM watsonx completion error: ${error.message}`)
 		}
 	}
