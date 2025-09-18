@@ -589,6 +589,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	private async saveApiConversationHistory() {
 		try {
+			// Validate that we have messages before saving to prevent corruption
+			if (!this.apiConversationHistory || this.apiConversationHistory.length === 0) {
+				console.warn(
+					`[Task#saveApiConversationHistory] Skipping save of empty API conversation history for task ${this.taskId}`,
+				)
+				return
+			}
+
 			await saveApiMessages({
 				messages: this.apiConversationHistory,
 				taskId: this.taskId,
@@ -658,6 +666,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	private async saveClineMessages() {
 		try {
+			// Validate that we have messages before saving to prevent corruption
+			if (!this.clineMessages || this.clineMessages.length === 0) {
+				console.warn(`[Task#saveClineMessages] Skipping save of empty Cline messages for task ${this.taskId}`)
+				return
+			}
+
 			await saveTaskMessages({
 				messages: this.clineMessages,
 				taskId: this.taskId,
@@ -1504,10 +1518,24 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			console.error(`Error during task ${this.taskId}.${this.instanceId} disposal:`, error)
 			// Don't rethrow - we want abort to always succeed
 		}
-		// Save the countdown message in the automatic retry or other content.
+
+		// Only save messages if they are not empty to prevent corruption
+		// This prevents the race condition where cancelling during streaming
+		// could save an empty array and wipe the conversation history
 		try {
-			// Save the countdown message in the automatic retry or other content.
-			await this.saveClineMessages()
+			// Check if we have valid messages before saving
+			// Don't save if messages are empty or if we're in the middle of streaming
+			if (this.clineMessages && this.clineMessages.length > 0 && !this.isStreaming) {
+				await this.saveClineMessages()
+			} else if (this.isStreaming) {
+				console.log(
+					`[Task#abortTask] Skipping message save during active streaming for task ${this.taskId}.${this.instanceId}`,
+				)
+			} else {
+				console.log(
+					`[Task#abortTask] Skipping message save due to empty messages for task ${this.taskId}.${this.instanceId}`,
+				)
+			}
 		} catch (error) {
 			console.error(`Error saving messages during abort for task ${this.taskId}.${this.instanceId}:`, error)
 		}
