@@ -6,9 +6,11 @@
 
 /**
  * Check if a model should use single file read format
- * @param modelId The model ID to check
+ * @param _modelId The model ID to check (unused - all models now use full format)
  * @returns true if the model should use single file reads
  */
-export function shouldUseSingleFileRead(modelId: string): boolean {
-	return modelId.includes("grok-code-fast-1")
+export function shouldUseSingleFileRead(_modelId: string): boolean {
+	// Currently no models require the simplified format
+	// Grok models now support the full args format with line ranges
+	return false
 }
