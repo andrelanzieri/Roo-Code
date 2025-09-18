@@ -365,7 +365,7 @@ export const WatsonxAI = ({
 				</>
 			)}
 
-			<div className="w-full mb-">
+			<div className="w-full mb-1">
 				<Button
 					variant="outline"
 					onClick={() => {
