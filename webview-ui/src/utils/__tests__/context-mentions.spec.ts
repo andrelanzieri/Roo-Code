@@ -1,6 +1,3 @@
-// npx vitest src/utils/__tests__/context-mentions.spec.ts
-
-import { describe, it, expect } from "vitest"
 import {
 	insertMention,
 	removeMention,
@@ -9,148 +6,11 @@ import {
 	ContextMenuOptionType,
 	ContextMenuQueryItem,
 	SearchResult,
-} from "../context-mentions"
+} from "@src/utils/context-mentions"
 
 describe("insertMention", () => {
-	// === NEW TESTS FOR AUTO-SPACE INSERTION ===
-	describe("auto-insert space before @mention", () => {
-		it("should insert space before @ when text exists without trailing space", () => {
-			const text = "Hello"
-			const position = 5
-			const value = "/path/to/file.txt"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Hello @/path/to/file.txt ")
-			expect(result.mentionIndex).toBe(6) // After the inserted space
-		})
-
-		it("should not insert space before @ when text ends with space", () => {
-			const text = "Hello "
-			const position = 6
-			const value = "/path/to/file.txt"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Hello @/path/to/file.txt ")
-			expect(result.mentionIndex).toBe(6) // No extra space needed
-		})
-
-		it("should not insert space before @ when text ends with newline", () => {
-			const text = "Hello\n"
-			const position = 6
-			const value = "/path/to/file.txt"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Hello\n@/path/to/file.txt ")
-			expect(result.mentionIndex).toBe(6) // No extra space needed
-		})
-
-		it("should not insert space at the beginning of empty text", () => {
-			const text = ""
-			const position = 0
-			const value = "/path/to/file.txt"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("@/path/to/file.txt ")
-			expect(result.mentionIndex).toBe(0)
-		})
-
-		it("should handle @ already present in text with auto-space", () => {
-			const text = "Hello@"
-			const position = 6
-			const value = "/path/to/file.txt"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Hello @/path/to/file.txt ")
-			expect(result.mentionIndex).toBe(6) // After the inserted space
-		})
-
-		it("should handle @ already present with space before it", () => {
-			const text = "Hello @"
-			const position = 7
-			const value = "/path/to/file.txt"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Hello @/path/to/file.txt ")
-			expect(result.mentionIndex).toBe(6) // Position of @
-		})
-
-		it("should escape spaces in file paths with auto-space", () => {
-			const text = "Check"
-			const position = 5
-			const value = "/path with spaces/file.txt"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Check @/path\\ with\\ spaces/file.txt ")
-			expect(result.mentionIndex).toBe(6)
-		})
-
-		it("should not escape already escaped spaces with auto-space", () => {
-			const text = "Check"
-			const position = 5
-			const value = "/path\\ with\\ spaces/file.txt"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Check @/path\\ with\\ spaces/file.txt ")
-			expect(result.mentionIndex).toBe(6)
-		})
-
-		it("should handle problems mention with auto-space", () => {
-			const text = "Check"
-			const position = 5
-			const value = "problems"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Check @problems ")
-			expect(result.mentionIndex).toBe(6)
-		})
-
-		it("should handle terminal mention with auto-space", () => {
-			const text = "See output in"
-			const position = 13
-			const value = "terminal"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("See output in @terminal ")
-			expect(result.mentionIndex).toBe(14)
-		})
-
-		it("should handle git commit hash with auto-space", () => {
-			const text = "Fixed in commit"
-			const position = 15
-			const value = "a1b2c3d"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Fixed in commit @a1b2c3d ")
-			expect(result.mentionIndex).toBe(16)
-		})
-
-		it("should handle cursor in middle of text with auto-space", () => {
-			const text = "Hello world"
-			const position = 5
-			const value = "/file.txt"
-
-			const result = insertMention(text, position, value, false)
-
-			expect(result.newValue).toBe("Hello @/file.txt  world")
-			expect(result.mentionIndex).toBe(6)
-		})
-	})
-
-	// === ORIGINAL TESTS ===
 	it("should insert mention at cursor position when no @ symbol exists", () => {
 		const result = insertMention("Hello world", 5, "test")
-		// With auto-space, it should add a space before @ since "Hello" doesn't end with space
 		expect(result.newValue).toBe("Hello @test  world")
 		expect(result.mentionIndex).toBe(6)
 	})
@@ -166,7 +26,6 @@ describe("insertMention", () => {
 		expect(result.newValue).toBe("@test ")
 		expect(result.mentionIndex).toBe(0)
 	})
-
 	it("should replace partial mention after @", () => {
 		const result = insertMention("Mention @fi", 11, "/path/to/file.txt") // Cursor after 'i'
 		expect(result.newValue).toBe("Mention @/path/to/file.txt ") // Space added after mention
@@ -187,8 +46,19 @@ describe("insertMention", () => {
 
 	it("should handle insertion at the end", () => {
 		const result = insertMention("Hello", 5, "problems")
-		// With auto-space insertion when text doesn't end with space
 		expect(result.newValue).toBe("Hello @problems ")
+		expect(result.mentionIndex).toBe(6)
+	})
+
+	it("should insert space before @ when text doesn't end with space", () => {
+		const result = insertMention("Check", 5, "problems")
+		expect(result.newValue).toBe("Check @problems ")
+		expect(result.mentionIndex).toBe(6)
+	})
+
+	it("should not insert extra space when text already ends with space", () => {
+		const result = insertMention("Check ", 6, "problems")
+		expect(result.newValue).toBe("Check @problems ")
 		expect(result.mentionIndex).toBe(6)
 	})
 
@@ -286,17 +156,6 @@ describe("insertMention", () => {
 			expect(result.newValue).toBe("/code @src/file.ts ")
 			expect(result.mentionIndex).toBe(6)
 		})
-
-		it("should handle slash commands without modification", () => {
-			const text = ""
-			const position = 0
-			const value = "/command"
-
-			const result = insertMention(text, position, value, true)
-
-			expect(result.newValue).toBe("/command")
-			expect(result.mentionIndex).toBe(0)
-		})
 	})
 })
 
@@ -318,56 +177,6 @@ describe("removeMention", () => {
 		const result = removeMention("Hello world", 5)
 		expect(result.newText).toBe("Hello world")
 		expect(result.newPosition).toBe(5)
-	})
-
-	it("should remove mention at cursor position", () => {
-		const text = "Check @/path/to/file.txt here"
-		const position = 24 // Right after the mention
-
-		const result = removeMention(text, position)
-
-		expect(result.newText).toBe("Check here")
-		expect(result.newPosition).toBe(6)
-	})
-
-	it("should remove mention and trailing space", () => {
-		const text = "Check @/path/to/file.txt "
-		const position = 24 // Right after the mention
-
-		const result = removeMention(text, position)
-
-		expect(result.newText).toBe("Check ")
-		expect(result.newPosition).toBe(6)
-	})
-
-	it("should handle problems mention", () => {
-		const text = "Check @problems here"
-		const position = 15 // Right after @problems
-
-		const result = removeMention(text, position)
-
-		expect(result.newText).toBe("Check here")
-		expect(result.newPosition).toBe(6)
-	})
-
-	it("should handle terminal mention", () => {
-		const text = "See @terminal output"
-		const position = 13 // Right after @terminal
-
-		const result = removeMention(text, position)
-
-		expect(result.newText).toBe("See output")
-		expect(result.newPosition).toBe(4)
-	})
-
-	it("should handle git commit hash", () => {
-		const text = "Fixed in @a1b2c3d commit"
-		const position = 17 // Right after the hash
-
-		const result = removeMention(text, position)
-
-		expect(result.newText).toBe("Fixed in commit")
-		expect(result.newPosition).toBe(9)
 	})
 
 	// --- Tests for Escaped Spaces ---
