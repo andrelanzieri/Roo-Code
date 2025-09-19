@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState, useMemo, memo } from "react"
 import { useTranslation } from "react-i18next"
+import debounce from "debounce"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 import { Clock, Lightbulb } from "lucide-react"
@@ -12,29 +13,86 @@ interface ReasoningBlockProps {
 	metadata?: any
 }
 
+interface ElapsedTimeProps {
+	isActive: boolean
+	startTime: number
+}
+
+/**
+ * Memoized timer component that only re-renders itself
+ * This prevents the entire ReasoningBlock from re-rendering every second
+ */
+const ElapsedTime = memo(({ isActive, startTime }: ElapsedTimeProps) => {
+	const { t } = useTranslation()
+	const [elapsed, setElapsed] = useState<number>(0)
+
+	useEffect(() => {
+		if (isActive) {
+			const tick = () => setElapsed(Date.now() - startTime)
+			tick() // Initial tick
+			const id = setInterval(tick, 1000)
+			return () => clearInterval(id)
+		} else {
+			setElapsed(0)
+		}
+	}, [isActive, startTime])
+
+	if (elapsed === 0) return null
+
+	const seconds = Math.floor(elapsed / 1000)
+	const secondsLabel = t("chat:reasoning.seconds", { count: seconds })
+
+	return (
+		<span className="text-vscode-foreground tabular-nums flex items-center gap-1">
+			<Clock className="w-4" />
+			{secondsLabel}
+		</span>
+	)
+})
+
+ElapsedTime.displayName = "ElapsedTime"
+
 /**
  * Render reasoning with a heading and a simple timer.
  * - Heading uses i18n key chat:reasoning.thinking
  * - Timer runs while reasoning is active (no persistence)
+ * - Timer is isolated in a memoized component to prevent full re-renders
+ * - Content updates are debounced to prevent excessive re-renders during streaming
  */
 export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockProps) => {
 	const { t } = useTranslation()
-
 	const startTimeRef = useRef<number>(Date.now())
-	const [elapsed, setElapsed] = useState<number>(0)
+	const [debouncedContent, setDebouncedContent] = useState<string>(content || "")
 
-	// Simple timer that runs while streaming
+	// Create a debounced function to update content
+	// This limits content updates to a maximum of ~10 per second (100ms debounce)
+	const updateDebouncedContent = useMemo(
+		() =>
+			debounce((newContent: string) => {
+				setDebouncedContent(newContent)
+			}, 100),
+		[],
+	)
+
+	// Update debounced content when content changes
 	useEffect(() => {
-		if (isLast && isStreaming) {
-			const tick = () => setElapsed(Date.now() - startTimeRef.current)
-			tick()
-			const id = setInterval(tick, 1000)
-			return () => clearInterval(id)
+		if (isStreaming) {
+			// During streaming, use debounced updates
+			updateDebouncedContent(content || "")
+		} else {
+			// When not streaming, update immediately for final content
+			setDebouncedContent(content || "")
+			// Cancel any pending debounced updates
+			updateDebouncedContent.clear()
 		}
-	}, [isLast, isStreaming])
+	}, [content, isStreaming, updateDebouncedContent])
 
-	const seconds = Math.floor(elapsed / 1000)
-	const secondsLabel = t("chat:reasoning.seconds", { count: seconds })
+	// Cleanup debounce on unmount
+	useEffect(() => {
+		return () => {
+			updateDebouncedContent.clear()
+		}
+	}, [updateDebouncedContent])
 
 	return (
 		<div className="py-1">
@@ -43,16 +101,11 @@ export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockP
 					<Lightbulb className="w-4" />
 					<span className="font-bold text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
 				</div>
-				{elapsed > 0 && (
-					<span className="text-vscode-foreground tabular-nums flex items-center gap-1">
-						<Clock className="w-4" />
-						{secondsLabel}
-					</span>
-				)}
+				<ElapsedTime isActive={isLast && isStreaming} startTime={startTimeRef.current} />
 			</div>
-			{(content?.trim()?.length ?? 0) > 0 && (
+			{(debouncedContent?.trim()?.length ?? 0) > 0 && (
 				<div className="px-3 italic text-vscode-descriptionForeground">
-					<MarkdownBlock markdown={content} />
+					<MarkdownBlock markdown={debouncedContent} />
 				</div>
 			)}
 		</div>
