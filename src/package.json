@@ -96,6 +96,11 @@
 				"icon": "$(extensions)"
 			},
 			{
+				"command": "roo-cline.githubActionsButtonClicked",
+				"title": "%command.githubActions.title%",
+				"icon": "$(github-action)"
+			},
+			{
 				"command": "roo-cline.popoutButtonClicked",
 				"title": "%command.openInEditor.title%",
 				"icon": "$(link-external)"
@@ -254,8 +259,13 @@
 					"when": "view == roo-cline.SidebarProvider"
 				},
 				{
-					"command": "roo-cline.popoutButtonClicked",
+					"command": "roo-cline.githubActionsButtonClicked",
 					"group": "overflow@4",
+					"when": "view == roo-cline.SidebarProvider"
+				},
+				{
+					"command": "roo-cline.popoutButtonClicked",
+					"group": "overflow@5",
 					"when": "view == roo-cline.SidebarProvider"
 				}
 			],
@@ -296,8 +306,13 @@
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				},
 				{
-					"command": "roo-cline.popoutButtonClicked",
+					"command": "roo-cline.githubActionsButtonClicked",
 					"group": "overflow@4",
+					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
+				},
+				{
+					"command": "roo-cline.popoutButtonClicked",
+					"group": "overflow@5",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				}
 			]
@@ -417,6 +432,31 @@
 					"minimum": 1,
 					"maximum": 200,
 					"description": "%settings.codeIndex.embeddingBatchSize.description%"
+				},
+				"rooCode.githubActions.enabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "%settings.githubActions.enabled.description%"
+				},
+				"rooCode.githubActions.workflowsPath": {
+					"type": "string",
+					"default": ".github/workflows",
+					"description": "%settings.githubActions.workflowsPath.description%"
+				},
+				"rooCode.githubActions.autoInstall": {
+					"type": "boolean",
+					"default": false,
+					"description": "%settings.githubActions.autoInstall.description%"
+				},
+				"rooCode.githubActions.defaultBranch": {
+					"type": "string",
+					"default": "main",
+					"description": "%settings.githubActions.defaultBranch.description%"
+				},
+				"rooCode.githubActions.botToken": {
+					"type": "string",
+					"default": "",
+					"description": "%settings.githubActions.botToken.description%"
 				}
 			}
 		}
