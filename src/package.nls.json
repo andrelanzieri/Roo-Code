@@ -10,6 +10,7 @@
 	"command.prompts.title": "Modes",
 	"command.history.title": "History",
 	"command.marketplace.title": "Marketplace",
+	"command.githubActions.title": "GitHub Actions",
 	"command.openInEditor.title": "Open in Editor",
 	"command.cloud.title": "Cloud",
 	"command.settings.title": "Settings",
@@ -41,5 +42,11 @@
 	"settings.useAgentRules.description": "Enable loading of AGENTS.md files for agent-specific rules (see https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "Maximum time in seconds to wait for API responses (0 = no timeout, 1-3600s, default: 600s). Higher values are recommended for local providers like LM Studio and Ollama that may need more processing time.",
 	"settings.newTaskRequireTodos.description": "Require todos parameter when creating new tasks with the new_task tool",
-	"settings.codeIndex.embeddingBatchSize.description": "The batch size for embedding operations during code indexing. Adjust this based on your API provider's limits. Default is 60."
+	"settings.codeIndex.embeddingBatchSize.description": "The batch size for embedding operations during code indexing. Adjust this based on your API provider's limits. Default is 60.",
+	"settings.githubActions.enabled.description": "Enable GitHub Actions bot integration",
+	"settings.githubActions.workflowsPath.description": "Path to GitHub Actions workflows directory",
+	"settings.githubActions.autoInstall.description": "Automatically install recommended workflows",
+	"settings.githubActions.defaultBranch.description": "Default branch for GitHub Actions operations",
+	"settings.githubActions.modelProvider.description": "AI model provider for GitHub Actions bot",
+	"settings.githubActions.modelName.description": "AI model name for GitHub Actions bot"
 }

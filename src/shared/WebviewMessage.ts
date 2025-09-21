@@ -226,6 +226,14 @@ export interface WebviewMessage {
 		| "editQueuedMessage"
 		| "dismissUpsell"
 		| "getDismissedUpsells"
+		| "getGitHubActionsConfig"
+		| "getInstalledWorkflows"
+		| "updateGitHubActionsConfig"
+		| "installGitHubActionsWorkflow"
+		| "uninstallGitHubActionsWorkflow"
+		| "setupGitHubRepository"
+		| "testGitHubActionsConnection"
+		| "githubActionsButtonClicked"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
@@ -267,12 +275,14 @@ export interface WebviewMessage {
 	url?: string // For openExternal
 	mpItem?: MarketplaceItem
 	mpInstallOptions?: InstallMarketplaceItemOptions
-	config?: Record<string, any> // Add config to the payload
+	config?: Record<string, any> // Add config to the payload (also used for GitHub Actions config)
 	visibility?: ShareVisibility // For share visibility
 	hasContent?: boolean // For checkRulesDirectoryResult
 	checkOnly?: boolean // For deleteCustomMode check
 	upsellId?: string // For dismissUpsell
 	list?: string[] // For dismissedUpsells response
+	workflow?: any // For GitHub Actions workflow operations
+	filename?: string // For GitHub Actions workflow uninstall
 	codeIndexSettings?: {
 		// Global state settings
 		codebaseIndexEnabled: boolean

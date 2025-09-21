@@ -26,8 +26,9 @@ import { CloudView } from "./components/cloud/CloudView"
 import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useNonInteractiveClick"
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
+import GitHubActionsView from "./components/githubActions/GitHubActionsView"
 
-type Tab = "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
+type Tab = "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud" | "githubActions"
 
 interface HumanRelayDialogState {
 	isOpen: boolean
@@ -63,6 +64,7 @@ const tabsByMessageAction: Partial<Record<NonNullable<ExtensionMessage["action"]
 	historyButtonClicked: "history",
 	marketplaceButtonClicked: "marketplace",
 	cloudButtonClicked: "cloud",
+	githubActionsButtonClicked: "githubActions",
 }
 
 const App = () => {
@@ -270,6 +272,7 @@ const App = () => {
 					onDone={() => switchTab("chat")}
 				/>
 			)}
+			{tab === "githubActions" && <GitHubActionsView onDone={() => switchTab("chat")} />}
 			<ChatView
 				ref={chatViewRef}
 				isHidden={tab !== "chat"}

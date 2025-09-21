@@ -124,6 +124,10 @@ export interface ExtensionMessage {
 		| "commands"
 		| "insertTextIntoTextarea"
 		| "dismissedUpsells"
+		| "gitHubActionsConfig"
+		| "installedWorkflows"
+		| "workflowInstalled"
+		| "workflowUninstalled"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -137,6 +141,7 @@ export interface ExtensionMessage {
 		| "didBecomeVisible"
 		| "focusInput"
 		| "switchTab"
+		| "githubActionsButtonClicked"
 	invoke?: "newChat" | "sendMessage" | "primaryButtonClick" | "secondaryButtonClick" | "setChatBoxMessage"
 	state?: ExtensionState
 	images?: string[]
@@ -201,6 +206,7 @@ export interface ExtensionMessage {
 	commands?: Command[]
 	queuedMessages?: QueuedMessage[]
 	list?: string[] // For dismissedUpsells
+	workflows?: string[] // For installedWorkflows
 }
 
 export type ExtensionState = Pick<
