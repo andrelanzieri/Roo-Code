@@ -192,7 +192,7 @@ const GitHubActionsView: React.FC<GitHubActionsViewProps> = ({ onDone }) => {
 									<p className="font-medium mb-2">To complete the setup:</p>
 									<ol className="list-decimal list-inside space-y-1 text-vscode-descriptionForeground">
 										<li>Go to your repository settings on GitHub</li>
-										<li>Navigate to "Secrets and variables" → "Actions"</li>
+										<li>Navigate to &quot;Secrets and variables&quot; → &quot;Actions&quot;</li>
 										<li>
 											Add a new secret named{" "}
 											<code className="px-1 py-0.5 bg-vscode-editor-background rounded">

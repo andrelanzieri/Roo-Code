@@ -226,6 +226,11 @@ export interface WebviewMessage {
 		| "editQueuedMessage"
 		| "dismissUpsell"
 		| "getDismissedUpsells"
+		| "githubActionsStatus"
+		| "githubActionsEnable"
+		| "githubActionsDisable"
+		| "githubActionsInstallWorkflows"
+		| "githubActionsSetupBot"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
@@ -273,6 +278,7 @@ export interface WebviewMessage {
 	checkOnly?: boolean // For deleteCustomMode check
 	upsellId?: string // For dismissUpsell
 	list?: string[] // For dismissedUpsells response
+	templates?: string[] // For githubActionsInstallWorkflows
 	codeIndexSettings?: {
 		// Global state settings
 		codebaseIndexEnabled: boolean
