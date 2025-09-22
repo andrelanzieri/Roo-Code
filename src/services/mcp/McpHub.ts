@@ -151,6 +151,7 @@ export class McpHub {
 	isConnecting: boolean = false
 	private refCount: number = 0 // Reference counter for active clients
 	private configChangeDebounceTimers: Map<string, NodeJS.Timeout> = new Map()
+	private isProgrammaticUpdate: boolean = false // Flag to track programmatic config updates
 
 	constructor(provider: ClineProvider) {
 		this.providerRef = new WeakRef(provider)
@@ -278,6 +279,11 @@ export class McpHub {
 	 * Debounced wrapper for handling config file changes
 	 */
 	private debounceConfigChange(filePath: string, source: "global" | "project"): void {
+		// Skip if this is a programmatic update
+		if (this.isProgrammaticUpdate) {
+			return
+		}
+
 		const key = `${source}-${filePath}`
 
 		// Clear existing timer if any
@@ -1463,7 +1469,28 @@ export class McpHub {
 			mcpServers: config.mcpServers,
 		}
 
-		await fs.writeFile(configPath, JSON.stringify(updatedConfig, null, 2))
+		// Check if this is a minor update that shouldn't trigger a restart
+		const isMinorUpdate = Object.keys(configUpdate).every(
+			(key) => key === "alwaysAllow" || key === "disabledTools" || key === "timeout",
+		)
+
+		if (isMinorUpdate) {
+			// Set flag to indicate programmatic update
+			this.isProgrammaticUpdate = true
+
+			try {
+				await fs.writeFile(configPath, JSON.stringify(updatedConfig, null, 2))
+
+				// Give file system watchers a moment to process
+				await new Promise((resolve) => setTimeout(resolve, 100))
+			} finally {
+				// Always reset the flag
+				this.isProgrammaticUpdate = false
+			}
+		} else {
+			// For major updates, allow normal file watcher behavior
+			await fs.writeFile(configPath, JSON.stringify(updatedConfig, null, 2))
+		}
 	}
 
 	public async updateServerTimeout(
@@ -1686,7 +1713,18 @@ export class McpHub {
 			targetList.splice(toolIndex, 1)
 		}
 
-		await fs.writeFile(normalizedPath, JSON.stringify(config, null, 2))
+		// Set flag to indicate programmatic update
+		this.isProgrammaticUpdate = true
+
+		try {
+			await fs.writeFile(normalizedPath, JSON.stringify(config, null, 2))
+
+			// Give file system watchers a moment to process
+			await new Promise((resolve) => setTimeout(resolve, 100))
+		} finally {
+			// Always reset the flag
+			this.isProgrammaticUpdate = false
+		}
 
 		if (connection) {
 			connection.server.tools = await this.fetchToolsList(serverName, source)
