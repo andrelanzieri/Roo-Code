@@ -382,5 +382,34 @@ describe("OpenRouter API", () => {
 			expect(textResult.maxTokens).toBe(64000)
 			expect(imageResult.maxTokens).toBe(64000)
 		})
+
+		it("sets xai/grok-4-fast model to free pricing", () => {
+			const mockModel = {
+				name: "Grok 4 Fast",
+				description: "xAI's Grok-4 Fast model",
+				context_length: 256000,
+				max_completion_tokens: 8192,
+				pricing: {
+					prompt: "0.003",
+					completion: "0.015",
+				},
+			}
+
+			const result = parseOpenRouterModel({
+				id: "xai/grok-4-fast",
+				model: mockModel,
+				inputModality: ["text"],
+				outputModality: ["text"],
+				maxTokens: 8192,
+			})
+
+			// Should override pricing to free
+			expect(result.inputPrice).toBe(0.0)
+			expect(result.outputPrice).toBe(0.0)
+			expect(result.cacheWritesPrice).toBe(0.0)
+			expect(result.cacheReadsPrice).toBe(0.0)
+			expect(result.contextWindow).toBe(256000)
+			expect(result.maxTokens).toBe(8192)
+		})
 	})
 })

@@ -263,5 +263,14 @@ export const parseOpenRouterModel = ({
 		modelInfo.maxTokens = 32768
 	}
 
+	// Set xai/grok-4-fast model configuration (currently free on OpenRouter)
+	if (id === "xai/grok-4-fast") {
+		// Override pricing to reflect current free promotion
+		modelInfo.inputPrice = 0.0
+		modelInfo.outputPrice = 0.0
+		modelInfo.cacheWritesPrice = 0.0
+		modelInfo.cacheReadsPrice = 0.0
+	}
+
 	return modelInfo
 }

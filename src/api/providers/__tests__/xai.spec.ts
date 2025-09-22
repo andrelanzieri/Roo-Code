@@ -69,6 +69,18 @@ describe("XAIHandler", () => {
 		expect(model.info).toEqual(xaiModels[testModelId])
 	})
 
+	test("should return grok-4-fast model when specified", () => {
+		const testModelId = "grok-4-fast"
+		const handlerWithModel = new XAIHandler({ apiModelId: testModelId })
+		const model = handlerWithModel.getModel()
+
+		expect(model.id).toBe(testModelId)
+		expect(model.info).toEqual(xaiModels[testModelId])
+		// Verify it's currently free
+		expect(model.info.inputPrice).toBe(0.0)
+		expect(model.info.outputPrice).toBe(0.0)
+	})
+
 	it("should include reasoning_effort parameter for mini models", async () => {
 		const miniModelHandler = new XAIHandler({
 			apiModelId: "grok-3-mini",

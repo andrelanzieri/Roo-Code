@@ -17,6 +17,17 @@ export const xaiModels = {
 		cacheReadsPrice: 0.02,
 		description: "xAI's Grok Code Fast model with 256K context window",
 	},
+	"grok-4-fast": {
+		maxTokens: 8192,
+		contextWindow: 256000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.0, // Currently free on OpenRouter
+		outputPrice: 0.0, // Currently free on OpenRouter
+		cacheWritesPrice: 0.0,
+		cacheReadsPrice: 0.0,
+		description: "xAI's Grok-4 Fast model with 256K context window - currently free on OpenRouter",
+	},
 	"grok-4": {
 		maxTokens: 8192,
 		contextWindow: 256000,
