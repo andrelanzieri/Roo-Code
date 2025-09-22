@@ -195,6 +195,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
 
+	// Track if this is the initial mount to avoid marking as dirty on first sync
+	const isInitialMount = useRef(true)
+
 	useEffect(() => {
 		// Update only when currentApiConfigName is changed.
 		// Expected to be triggered by loadApiConfiguration/upsertApiConfiguration.
@@ -215,6 +218,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		}
 	}, [settingsImportedAt, extensionState])
 
+	// Sync with extension state on mount without marking as dirty
+	useEffect(() => {
+		if (isInitialMount.current) {
+			setCachedState(extensionState)
+			setChangeDetected(false)
+			isInitialMount.current = false
+		}
+	}, [extensionState])
+
 	const setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType> = useCallback((field, value) => {
 		setCachedState((prevState) => {
 			if (prevState[field] === value) {
@@ -233,13 +245,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					return prevState
 				}
 
-				const previousValue = prevState.apiConfiguration?.[field]
-
-				// Only skip change detection for automatic initialization (not user actions)
-				// This prevents the dirty state when the component initializes and auto-syncs values
-				const isInitialSync = !isUserAction && previousValue === undefined && value !== undefined
-
-				if (!isInitialSync) {
+				// Only mark as changed if this is a user action
+				// Don't mark as changed for programmatic updates (like initial sync)
+				if (isUserAction) {
 					setChangeDetected(true)
 				}
 				return { ...prevState, apiConfiguration: { ...prevState.apiConfiguration, [field]: value } }
