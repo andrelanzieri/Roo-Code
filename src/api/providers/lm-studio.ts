@@ -80,6 +80,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 		}
 
 		let assistantText = ""
+		let hasContent = false
 
 		try {
 			const params: OpenAI.Chat.ChatCompletionCreateParamsStreaming & { draft_model?: string } = {
@@ -113,6 +114,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				const delta = chunk.choices[0]?.delta
 
 				if (delta?.content) {
+					hasContent = true
 					assistantText += delta.content
 					for (const processedChunk of matcher.update(delta.content)) {
 						yield processedChunk
@@ -121,7 +123,20 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			}
 
 			for (const processedChunk of matcher.final()) {
+				if (processedChunk.text) {
+					hasContent = true
+				}
 				yield processedChunk
+			}
+
+			// If no content was received, yield an empty text chunk to prevent
+			// "The language model did not provide any assistant messages" error
+			// This can happen with some model configurations
+			if (!hasContent) {
+				yield {
+					type: "text",
+					text: "",
+				}
 			}
 
 			let outputTokens = 0

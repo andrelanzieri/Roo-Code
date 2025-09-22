@@ -98,11 +98,13 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
 		const stream = await this.createStream(systemPrompt, messages, metadata)
+		let hasContent = false
 
 		for await (const chunk of stream) {
 			const delta = chunk.choices[0]?.delta
 
 			if (delta?.content) {
+				hasContent = true
 				yield {
 					type: "text",
 					text: delta.content,
@@ -115,6 +117,16 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 					inputTokens: chunk.usage.prompt_tokens || 0,
 					outputTokens: chunk.usage.completion_tokens || 0,
 				}
+			}
+		}
+
+		// If no content was received, yield an empty text chunk to prevent
+		// "The language model did not provide any assistant messages" error
+		// This can happen with some Docker Model Runner configurations
+		if (!hasContent) {
+			yield {
+				type: "text",
+				text: "",
 			}
 		}
 	}
