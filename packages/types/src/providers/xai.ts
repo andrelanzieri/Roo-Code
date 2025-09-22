@@ -27,6 +27,8 @@ export const xaiModels = {
 		cacheWritesPrice: 0.0,
 		cacheReadsPrice: 0.0,
 		description: "xAI's Grok-4 Fast model with 256K context window - currently free on OpenRouter",
+		// TODO: Update pricing when OpenRouter promotion ends
+		// TODO: Add direct xAI API support for this model (lower priority)
 	},
 	"grok-4": {
 		maxTokens: 8192,
