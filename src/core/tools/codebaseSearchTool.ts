@@ -17,7 +17,7 @@ export async function codebaseSearchTool(
 	removeClosingTag: RemoveClosingTag,
 ) {
 	const toolName = "codebase_search"
-	const workspacePath = (cline.cwd && cline.cwd.trim() !== '') ? cline.cwd : getWorkspacePath()
+	const workspacePath = cline.cwd && cline.cwd.trim() !== "" ? cline.cwd : getWorkspacePath()
 
 	if (!workspacePath) {
 		// This case should ideally not happen if Cline is initialized correctly
@@ -80,6 +80,26 @@ export async function codebaseSearchTool(
 		}
 		if (!manager.isFeatureConfigured) {
 			throw new Error("Code Indexing is not configured (Missing OpenAI Key or Qdrant URL).")
+		}
+
+		// Check if indexing is in progress
+		const status = manager.getCurrentStatus()
+		if (status.systemStatus === "Indexing") {
+			const progressPercentage =
+				status.totalItems > 0 ? Math.round((status.processedItems / status.totalItems) * 100) : 0
+			throw new Error(
+				`Code indexing is currently in progress (${progressPercentage}% complete). ` +
+					`Please wait for indexing to complete before using semantic search, or use file-based search tools instead.`,
+			)
+		}
+
+		// Check if index is ready
+		if (status.systemStatus === "Standby" || status.systemStatus === "Error") {
+			throw new Error(
+				`Code index is not ready (status: ${status.systemStatus}). ` +
+					`The index needs to be built before semantic search can be used. ` +
+					`Please ensure indexing is enabled and configured, then wait for the initial index to build.`,
+			)
 		}
 
 		const searchResults: VectorStoreSearchResult[] = await manager.searchIndex(query, directoryPrefix)

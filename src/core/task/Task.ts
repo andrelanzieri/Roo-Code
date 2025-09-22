@@ -63,6 +63,7 @@ import { BrowserSession } from "../../services/browser/BrowserSession"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { RepoPerTaskCheckpointService } from "../../services/checkpoints"
+import { CodeIndexManager } from "../../services/code-index/manager"
 
 // integrations
 import { DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
@@ -1683,6 +1684,78 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async initiateTaskLoop(userContent: Anthropic.Messages.ContentBlockParam[]): Promise<void> {
 		// Kicks off the checkpoints initialization process in the background.
 		getCheckpointService(this)
+
+		// Check if code indexing is in progress and gate semantic search if needed
+		const context = this.providerRef.deref()?.context
+		if (context) {
+			const codeIndexManager = CodeIndexManager.getInstance(context)
+			if (codeIndexManager && codeIndexManager.isFeatureEnabled && codeIndexManager.isFeatureConfigured) {
+				const status = codeIndexManager.getCurrentStatus()
+
+				// If indexing is in progress, offer to pause or skip
+				if (status.systemStatus === "Indexing") {
+					const progressPercentage =
+						status.totalItems > 0 ? Math.round((status.processedItems / status.totalItems) * 100) : 0
+
+					const { response } = await this.ask(
+						"followup",
+						`🔄 Code indexing is currently ${progressPercentage}% complete (${status.processedItems}/${status.totalItems} ${status.currentItemUnit || "items"}). ` +
+							`\n\nSemantic search will provide better results once indexing completes. ` +
+							`\n\nWould you like to wait for indexing to finish, or continue without semantic search?` +
+							`\n\n• **Wait**: Pause until indexing completes for best search results` +
+							`\n• **Skip**: Continue now using file-based search tools`,
+					)
+
+					if (response === "messageResponse" && this.askResponseText?.toLowerCase().includes("wait")) {
+						// User chose to wait - show progress updates
+						await this.say("text", "⏳ Waiting for code indexing to complete...")
+
+						// Poll for indexing completion
+						while (!this.abort) {
+							const currentStatus = codeIndexManager.getCurrentStatus()
+							if (currentStatus.systemStatus === "Indexed") {
+								await this.say("text", "✅ Code indexing complete! Semantic search is now available.")
+								break
+							} else if (currentStatus.systemStatus === "Error") {
+								await this.say(
+									"error",
+									"Code indexing encountered an error. Proceeding without semantic search.",
+								)
+								break
+							} else if (currentStatus.systemStatus === "Indexing") {
+								const currentProgress =
+									currentStatus.totalItems > 0
+										? Math.round((currentStatus.processedItems / currentStatus.totalItems) * 100)
+										: 0
+								await this.say(
+									"text",
+									`📊 Indexing progress: ${currentProgress}% (${currentStatus.processedItems}/${currentStatus.totalItems} ${currentStatus.currentItemUnit || "items"})`,
+									undefined,
+									true, // partial update
+								)
+								await delay(2000) // Check every 2 seconds
+							} else {
+								// Standby or other state - stop waiting
+								break
+							}
+						}
+					} else {
+						// User chose to skip - continue without semantic search
+						await this.say(
+							"text",
+							"⏭️ Continuing without semantic search. File-based search tools will be used instead.",
+						)
+					}
+				} else if (status.systemStatus === "Standby" && !codeIndexManager.isInitialized) {
+					// Index hasn't started yet
+					await this.say(
+						"text",
+						"ℹ️ Code index has not been built yet. Semantic search will not be available for this task. " +
+							"File-based search tools will be used instead.",
+					)
+				}
+			}
+		}
 
 		let nextUserContent = userContent
 		let includeFileDetails = true
