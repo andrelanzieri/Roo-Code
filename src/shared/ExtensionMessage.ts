@@ -124,6 +124,7 @@ export interface ExtensionMessage {
 		| "commands"
 		| "insertTextIntoTextarea"
 		| "dismissedUpsells"
+		| "pastedImageSaved"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -201,6 +202,8 @@ export interface ExtensionMessage {
 	commands?: Command[]
 	queuedMessages?: QueuedMessage[]
 	list?: string[] // For dismissedUpsells
+	imagePath?: string // For pastedImageSaved
+	imageUri?: string // For pastedImageSaved
 }
 
 export type ExtensionState = Pick<

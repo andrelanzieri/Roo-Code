@@ -1,6 +1,7 @@
 import * as path from "path"
 import * as os from "os"
 import * as vscode from "vscode"
+import * as fs from "fs/promises"
 import { getWorkspacePath } from "../../utils/path"
 import { t } from "../../i18n"
 
@@ -42,7 +43,6 @@ export async function openImage(dataUriOrPath: string, options?: { values?: { ac
 		return
 	}
 
-	// Handle data URI (existing logic)
 	const matches = dataUriOrPath.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/)
 	if (!matches) {
 		vscode.window.showErrorMessage(t("common:errors.invalid_data_uri"))
@@ -87,6 +87,108 @@ export async function openImage(dataUriOrPath: string, options?: { values?: { ac
 		await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(tempFilePath))
 	} catch (error) {
 		vscode.window.showErrorMessage(t("common:errors.error_opening_image", { error }))
+	}
+}
+
+/**
+ * Save a pasted/dropped image to global storage and return its path and webview URI
+ * This uses VSCode's global storage for persistence across sessions
+ */
+export async function importImageToGlobalStorage(
+	imagePath: string,
+	provider?: any,
+): Promise<{ imagePath: string; imageUri: string } | null> {
+	try {
+		// Determine storage directory (global storage preferred, fallback to temp)
+		let imagesDir: string
+		if (provider?.contextProxy?.globalStorageUri) {
+			const globalStoragePath = provider.contextProxy.globalStorageUri.fsPath
+			const taskId = provider.getCurrentTask?.()?.taskId
+			imagesDir = taskId
+				? path.join(globalStoragePath, "user-images", `task-${taskId}`)
+				: path.join(globalStoragePath, "user-images", "general")
+		} else {
+			console.warn("Provider context not available, falling back to temp directory")
+			imagesDir = path.join(os.tmpdir(), "roo-user-images")
+		}
+
+		await fs.mkdir(imagesDir, { recursive: true })
+
+		// Preserve original extension if possible
+		const ext = path.extname(imagePath) || ".png"
+		const timestamp = Date.now()
+		const randomId = Math.random().toString(36).substring(2, 8)
+		const destFileName = `imported_image_${timestamp}_${randomId}${ext}`
+		const destPath = path.join(imagesDir, destFileName)
+
+		// Copy the original image into global storage
+		await fs.copyFile(imagePath, destPath)
+
+		// Convert to webview URI
+		let webviewUri = provider?.convertToWebviewUri?.(destPath) ?? vscode.Uri.file(destPath).toString()
+
+		return { imagePath: destPath, imageUri: webviewUri }
+	} catch (error) {
+		console.error("Failed to import image into global storage:", error)
+		return null
+	}
+}
+
+export async function savePastedImageToTemp(
+	dataUri: string,
+	provider?: any,
+): Promise<{ imagePath: string; imageUri: string } | null> {
+	const matches = dataUri.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/)
+	if (!matches) {
+		return null
+	}
+
+	const [, format, base64Data] = matches
+	const imageBuffer = Buffer.from(base64Data, "base64")
+
+	// Determine storage directory
+	let imagesDir: string
+
+	// Use global storage if provider context is available
+	if (provider?.contextProxy?.globalStorageUri) {
+		const globalStoragePath = provider.contextProxy.globalStorageUri.fsPath
+
+		// Organize by task ID if available
+		const taskId = provider.getCurrentTask?.()?.taskId
+		if (taskId) {
+			imagesDir = path.join(globalStoragePath, "pasted-images", `task-${taskId}`)
+		} else {
+			// Fallback to general pasted-images directory
+			imagesDir = path.join(globalStoragePath, "pasted-images", "general")
+		}
+	} else {
+		// Fallback to temp directory if provider context is not available
+		console.warn("Provider context not available, falling back to temp directory")
+		imagesDir = path.join(os.tmpdir(), "roo-pasted-images")
+	}
+
+	// Create directory if it doesn't exist
+	await fs.mkdir(imagesDir, { recursive: true })
+
+	// Generate a unique filename
+	const timestamp = Date.now()
+	const randomId = Math.random().toString(36).substring(2, 8)
+	const fileName = `pasted_image_${timestamp}_${randomId}.${format}`
+	const imagePath = path.join(imagesDir, fileName)
+
+	try {
+		// Write the image to the file
+		await fs.writeFile(imagePath, imageBuffer)
+
+		// Convert to webview URI if provider is available
+		let imageUri = provider?.convertToWebviewUri?.(imagePath) ?? vscode.Uri.file(imagePath).toString()
+
+		// Do not append custom query params to VS Code webview URIs (can break auth token and cause 401)
+
+		return { imagePath, imageUri }
+	} catch (error) {
+		console.error("Failed to save pasted image:", error)
+		return null
 	}
 }
 
