@@ -3058,5 +3058,27 @@ export const webviewMessageHandler = async (
 			})
 			break
 		}
+		case "persistDraft": {
+			// Save the draft to global state
+			await updateGlobalState("chatDraft", { text: message.text || "", images: message.images || [] })
+			break
+		}
+		case "clearPersistedDraft": {
+			// Clear the persisted draft
+			await updateGlobalState("chatDraft", undefined)
+			break
+		}
+		case "requestPersistedDraft": {
+			// Send the persisted draft to the webview
+			const draft = getGlobalState("chatDraft")
+			if (draft) {
+				await provider.postMessageToWebview({
+					type: "persistedDraft",
+					text: draft.text,
+					images: draft.images,
+				})
+			}
+			break
+		}
 	}
 }

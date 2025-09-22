@@ -43,6 +43,14 @@ export const globalSettingsSchema = z.object({
 	taskHistory: z.array(historyItemSchema).optional(),
 	dismissedUpsells: z.array(z.string()).optional(),
 
+	// Chat draft persistence
+	chatDraft: z
+		.object({
+			text: z.string(),
+			images: z.array(z.string()),
+		})
+		.optional(),
+
 	// Image generation settings (experimental) - flattened for simplicity
 	openRouterImageApiKey: z.string().optional(),
 	openRouterImageGenerationSelectedModel: z.string().optional(),

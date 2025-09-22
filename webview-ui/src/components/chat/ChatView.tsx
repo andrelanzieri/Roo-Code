@@ -171,6 +171,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// Has to be after api_req_finished are all reduced into api_req_started messages.
 	const apiMetrics = useMemo(() => getApiMetrics(modifiedMessages), [modifiedMessages])
 
+	// Initialize input value from persisted draft if available
 	const [inputValue, setInputValue] = useState("")
 	const inputValueRef = useRef(inputValue)
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
@@ -223,6 +224,28 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useEffect(() => {
 		inputValueRef.current = inputValue
 	}, [inputValue])
+
+	// Load persisted draft on mount
+	useEffect(() => {
+		// Request the persisted draft from the extension
+		vscode.postMessage({ type: "requestPersistedDraft" })
+	}, [])
+
+	// Save draft when input changes (debounced)
+	useEffect(() => {
+		// Don't save empty drafts or when there's an active task
+		if (!task && (inputValue.trim() || selectedImages.length > 0)) {
+			const timer = setTimeout(() => {
+				vscode.postMessage({
+					type: "persistDraft",
+					text: inputValue,
+					images: selectedImages,
+				})
+			}, 500) // Debounce for 500ms
+
+			return () => clearTimeout(timer)
+		}
+	}, [inputValue, selectedImages, task])
 
 	useEffect(() => {
 		isMountedRef.current = true
@@ -582,6 +605,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		// setPrimaryButtonText(undefined)
 		// setSecondaryButtonText(undefined)
 		disableAutoScrollRef.current = false
+
+		// Clear the persisted draft when chat is reset (task started)
+		vscode.postMessage({ type: "clearPersistedDraft" })
 	}, [])
 
 	/**
@@ -793,6 +819,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							break
 					}
 					break
+				case "persistedDraft":
+					// Restore the persisted draft if we don't have an active task
+					if (!task && message.text !== undefined) {
+						setInputValue(message.text)
+						if (message.images && message.images.length > 0) {
+							setSelectedImages(message.images)
+						}
+					}
+					break
 				case "selectedImages":
 					// Only handle selectedImages if it's not for editing context
 					// When context is "edit", ChatRow will handle the images
@@ -845,6 +880,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			handleSetChatBoxMessage,
 			handlePrimaryButtonClick,
 			handleSecondaryButtonClick,
+			task,
 		],
 	)
 
