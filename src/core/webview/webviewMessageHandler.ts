@@ -12,6 +12,7 @@ import {
 	type TelemetrySetting,
 	TelemetryEventName,
 	UserSettingsConfig,
+	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 } from "@roo-code/types"
 import { CloudService } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -1260,7 +1261,7 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			break
 		case "checkpointTimeout":
-			const checkpointTimeout = message.value ?? 15
+			const checkpointTimeout = message.value ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS
 			await updateGlobalState("checkpointTimeout", checkpointTimeout)
 			await provider.postStateToWebview()
 			break

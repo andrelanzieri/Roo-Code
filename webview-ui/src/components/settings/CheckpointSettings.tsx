@@ -9,6 +9,11 @@ import { Slider } from "@/components/ui"
 import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
+import {
+	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+	MAX_CHECKPOINT_TIMEOUT_SECONDS,
+	MIN_CHECKPOINT_TIMEOUT_SECONDS,
+} from "@roo-code/types"
 
 type CheckpointSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	enableCheckpoints?: boolean
@@ -59,19 +64,19 @@ export const CheckpointSettings = ({
 						</label>
 						<div className="flex items-center gap-2">
 							<Slider
-								min={10}
-								max={60}
+								min={MIN_CHECKPOINT_TIMEOUT_SECONDS}
+								max={MAX_CHECKPOINT_TIMEOUT_SECONDS}
 								step={1}
-								defaultValue={[checkpointTimeout ?? 15]}
+								defaultValue={[checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS]}
 								onValueChange={([value]) => {
-									if (value >= 10 && value <= 60) {
-										setCachedStateField("checkpointTimeout", value)
-									}
+									setCachedStateField("checkpointTimeout", value)
 								}}
 								className="flex-1"
 								data-testid="checkpoint-timeout-slider"
 							/>
-							<span className="w-12 text-center">{checkpointTimeout ?? 15}</span>
+							<span className="w-12 text-center">
+								{checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS}
+							</span>
 						</div>
 						<div className="text-vscode-descriptionForeground text-sm mt-1">
 							{t("settings:checkpoints.timeout.description")}
