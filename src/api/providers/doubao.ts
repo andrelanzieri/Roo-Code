@@ -1,4 +1,4 @@
-import { OpenAiHandler } from "./openai"
+import { OpenAIChatCompletionsHandler } from "./openai-chat-completions"
 import type { ApiHandlerOptions } from "../../shared/api"
 import { DOUBAO_API_BASE_URL, doubaoDefaultModelId, doubaoModels } from "@roo-code/types"
 import { getModelParams } from "../transform/model-params"
@@ -49,7 +49,9 @@ interface ChatCompletionChunk {
 	}
 }
 
-export class DoubaoHandler extends OpenAiHandler {
+export class DoubaoHandler extends OpenAIChatCompletionsHandler {
+	private doubaoOptions: ApiHandlerOptions
+
 	constructor(options: ApiHandlerOptions) {
 		super({
 			...options,
@@ -59,12 +61,13 @@ export class DoubaoHandler extends OpenAiHandler {
 			openAiStreamingEnabled: true,
 			includeMaxTokens: true,
 		})
+		this.doubaoOptions = options
 	}
 
 	override getModel() {
-		const id = this.options.apiModelId ?? doubaoDefaultModelId
+		const id = this.doubaoOptions.apiModelId ?? doubaoDefaultModelId
 		const info = doubaoModels[id as keyof typeof doubaoModels] || doubaoModels[doubaoDefaultModelId]
-		const params = getModelParams({ format: "openai", modelId: id, model: info, settings: this.options })
+		const params = getModelParams({ format: "openai", modelId: id, model: info, settings: this.doubaoOptions })
 		return { id, info, ...params }
 	}
 

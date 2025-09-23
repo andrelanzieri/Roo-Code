@@ -5,9 +5,11 @@ import type { ApiHandlerOptions } from "../../shared/api"
 import type { ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
-import { OpenAiHandler } from "./openai"
+import { OpenAIChatCompletionsHandler } from "./openai-chat-completions"
 
-export class DeepSeekHandler extends OpenAiHandler {
+export class DeepSeekHandler extends OpenAIChatCompletionsHandler {
+	private deepSeekOptions: ApiHandlerOptions
+
 	constructor(options: ApiHandlerOptions) {
 		super({
 			...options,
@@ -17,12 +19,13 @@ export class DeepSeekHandler extends OpenAiHandler {
 			openAiStreamingEnabled: true,
 			includeMaxTokens: true,
 		})
+		this.deepSeekOptions = options
 	}
 
 	override getModel() {
-		const id = this.options.apiModelId ?? deepSeekDefaultModelId
+		const id = this.deepSeekOptions.apiModelId ?? deepSeekDefaultModelId
 		const info = deepSeekModels[id as keyof typeof deepSeekModels] || deepSeekModels[deepSeekDefaultModelId]
-		const params = getModelParams({ format: "openai", modelId: id, model: info, settings: this.options })
+		const params = getModelParams({ format: "openai", modelId: id, model: info, settings: this.deepSeekOptions })
 		return { id, info, ...params }
 	}
 

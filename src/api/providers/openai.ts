@@ -76,6 +76,13 @@ export class OpenAiHandler implements SingleCompletionHandler {
 	}
 
 	/**
+	 * Count tokens for the given content
+	 */
+	async countTokens(content: any[]): Promise<number> {
+		return this.handler.countTokens(content)
+	}
+
+	/**
 	 * Get information about which API is being used
 	 */
 	getApiType(): "chat-completions" | "responses" {

@@ -6,9 +6,11 @@ import type { ApiHandlerOptions } from "../../shared/api"
 import type { ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
-import { OpenAiHandler } from "./openai"
+import { OpenAIChatCompletionsHandler } from "./openai-chat-completions"
 
-export class MoonshotHandler extends OpenAiHandler {
+export class MoonshotHandler extends OpenAIChatCompletionsHandler {
+	private moonshotOptions: ApiHandlerOptions
+
 	constructor(options: ApiHandlerOptions) {
 		super({
 			...options,
@@ -18,12 +20,13 @@ export class MoonshotHandler extends OpenAiHandler {
 			openAiStreamingEnabled: true,
 			includeMaxTokens: true,
 		})
+		this.moonshotOptions = options
 	}
 
 	override getModel() {
-		const id = this.options.apiModelId ?? moonshotDefaultModelId
+		const id = this.moonshotOptions.apiModelId ?? moonshotDefaultModelId
 		const info = moonshotModels[id as keyof typeof moonshotModels] || moonshotModels[moonshotDefaultModelId]
-		const params = getModelParams({ format: "openai", modelId: id, model: info, settings: this.options })
+		const params = getModelParams({ format: "openai", modelId: id, model: info, settings: this.moonshotOptions })
 		return { id, info, ...params }
 	}
 
@@ -46,6 +49,6 @@ export class MoonshotHandler extends OpenAiHandler {
 		modelInfo: ModelInfo,
 	): void {
 		// Moonshot uses max_tokens instead of max_completion_tokens
-		requestOptions.max_tokens = this.options.modelMaxTokens || modelInfo.maxTokens
+		requestOptions.max_tokens = this.moonshotOptions.modelMaxTokens || modelInfo.maxTokens
 	}
 }
