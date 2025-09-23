@@ -118,6 +118,16 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			reasoning = { exclude: true }
 		}
 
+		// DeepSeek V3.1 Terminus also has reasoning enabled by default on OpenRouter
+		// We need to explicitly disable it when the user hasn't enabled reasoning
+		if (
+			modelId === "deepseek/deepseek-v3.1-terminus" &&
+			typeof reasoning === "undefined" &&
+			!this.options.enableReasoningEffort
+		) {
+			reasoning = { exclude: true }
+		}
+
 		// Convert Anthropic messages to OpenAI format.
 		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
@@ -247,6 +257,15 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 
 	async completePrompt(prompt: string) {
 		let { id: modelId, maxTokens, temperature, reasoning } = await this.fetchModel()
+
+		// Apply the same reasoning exclusion logic for DeepSeek V3.1 Terminus
+		if (
+			modelId === "deepseek/deepseek-v3.1-terminus" &&
+			typeof reasoning === "undefined" &&
+			!this.options.enableReasoningEffort
+		) {
+			reasoning = { exclude: true }
+		}
 
 		const completionParams: OpenRouterChatCompletionParams = {
 			model: modelId,
