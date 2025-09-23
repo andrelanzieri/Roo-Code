@@ -8,6 +8,7 @@
 		"add": "हेडर जोड़ें",
 		"remove": "हटाएं"
 	},
+	"tabTitle": "Roo Code Settings",
 	"header": {
 		"title": "सेटिंग्स",
 		"saveButtonTooltip": "परिवर्तन सहेजें",

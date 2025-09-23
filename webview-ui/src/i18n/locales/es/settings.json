@@ -8,6 +8,7 @@
 		"add": "Añadir encabezado",
 		"remove": "Eliminar"
 	},
+	"tabTitle": "Roo Code Settings",
 	"header": {
 		"title": "Configuración",
 		"saveButtonTooltip": "Guardar cambios",

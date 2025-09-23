@@ -8,6 +8,7 @@
 		"add": "Aggiungi intestazione",
 		"remove": "Rimuovi"
 	},
+	"tabTitle": "Roo Code Settings",
 	"header": {
 		"title": "Impostazioni",
 		"saveButtonTooltip": "Salva modifiche",

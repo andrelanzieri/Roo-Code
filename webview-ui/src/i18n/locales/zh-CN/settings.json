@@ -8,6 +8,7 @@
 		"add": "添加标头",
 		"remove": "移除"
 	},
+	"tabTitle": "Roo Code Settings",
 	"header": {
 		"title": "设置",
 		"saveButtonTooltip": "保存更改",

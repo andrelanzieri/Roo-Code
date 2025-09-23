@@ -8,6 +8,7 @@
 		"add": "Başlık Ekle",
 		"remove": "Kaldır"
 	},
+	"tabTitle": "Roo Code Settings",
 	"header": {
 		"title": "Ayarlar",
 		"saveButtonTooltip": "Değişiklikleri kaydet",

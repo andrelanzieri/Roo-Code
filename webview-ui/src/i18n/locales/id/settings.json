@@ -8,6 +8,7 @@
 		"add": "Tambah Header",
 		"remove": "Hapus"
 	},
+	"tabTitle": "Roo Code Settings",
 	"header": {
 		"title": "Pengaturan",
 		"saveButtonTooltip": "Simpan perubahan",

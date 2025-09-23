@@ -130,17 +130,10 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 	},
 	openInNewTab: () => openClineInNewTab({ context, outputChannel }),
 	settingsButtonClicked: () => {
-		const visibleProvider = getVisibleProviderOrLog(outputChannel)
-
-		if (!visibleProvider) {
-			return
-		}
-
 		TelemetryService.instance.captureTitleButtonClicked("settings")
 
-		visibleProvider.postMessageToWebview({ type: "action", action: "settingsButtonClicked" })
-		// Also explicitly post the visibility message to trigger scroll reliably
-		visibleProvider.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
+		// Open settings in a new tab instead of within the extension
+		return openSettingsInNewTab({ context, outputChannel })
 	},
 	historyButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
@@ -302,6 +295,87 @@ export const openClineInNewTab = async ({ context, outputChannel }: Omit<Registe
 		},
 		null,
 		context.subscriptions, // Also register dispose listener
+	)
+
+	// Lock the editor group so clicking on files doesn't open them over the panel.
+	await delay(100)
+	await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
+
+	return tabProvider
+}
+
+export const openSettingsInNewTab = async ({ context, outputChannel }: Omit<RegisterCommandOptions, "provider">) => {
+	const contextProxy = await ContextProxy.getInstance(context)
+
+	// Get the existing MDM service instance to ensure consistent policy enforcement
+	let mdmService: MdmService | undefined
+	try {
+		mdmService = MdmService.getInstance()
+	} catch (error) {
+		// MDM service not initialized, which is fine - extension can work without it
+		mdmService = undefined
+	}
+
+	const tabProvider = new ClineProvider(context, outputChannel, "editor", contextProxy, mdmService)
+	const lastCol = Math.max(...vscode.window.visibleTextEditors.map((editor) => editor.viewColumn || 0))
+
+	// Check if there are any visible text editors, otherwise open a new group
+	// to the right.
+	const hasVisibleEditors = vscode.window.visibleTextEditors.length > 0
+
+	if (!hasVisibleEditors) {
+		await vscode.commands.executeCommand("workbench.action.newGroupRight")
+	}
+
+	const targetCol = hasVisibleEditors ? Math.max(lastCol + 1, 1) : vscode.ViewColumn.Two
+
+	// Get the localized title for the settings tab
+	const settingsTitle = t("settings:tabTitle") || "Roo Code Settings"
+
+	const newPanel = vscode.window.createWebviewPanel(
+		"rooCodeSettings", // Unique ID for settings panel
+		settingsTitle,
+		targetCol,
+		{
+			enableScripts: true,
+			retainContextWhenHidden: true,
+			localResourceRoots: [context.extensionUri],
+		},
+	)
+
+	// Save as tab type panel.
+	setPanel(newPanel, "tab")
+
+	// Use the same icon as the main panel
+	newPanel.iconPath = {
+		light: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_light.png"),
+		dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "panel_dark.png"),
+	}
+
+	await tabProvider.resolveWebviewView(newPanel)
+
+	// Immediately send a message to open the settings view
+	newPanel.webview.postMessage({ type: "action", action: "settingsButtonClicked" })
+
+	// Add listener for visibility changes to notify webview
+	newPanel.onDidChangeViewState(
+		(e) => {
+			const panel = e.webviewPanel
+			if (panel.visible) {
+				panel.webview.postMessage({ type: "action", action: "didBecomeVisible" })
+			}
+		},
+		null,
+		context.subscriptions,
+	)
+
+	// Handle panel closing events.
+	newPanel.onDidDispose(
+		() => {
+			setPanel(undefined, "tab")
+		},
+		null,
+		context.subscriptions,
 	)
 
 	// Lock the editor group so clicking on files doesn't open them over the panel.

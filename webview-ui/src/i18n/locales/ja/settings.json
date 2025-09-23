@@ -8,6 +8,7 @@
 		"add": "ヘッダーを追加",
 		"remove": "削除"
 	},
+	"tabTitle": "Roo Code Settings",
 	"header": {
 		"title": "設定",
 		"saveButtonTooltip": "変更を保存",
