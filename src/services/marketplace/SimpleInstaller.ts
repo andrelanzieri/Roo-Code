@@ -226,6 +226,20 @@ export class SimpleInstaller {
 		const filePath = await this.getMcpFilePath(target)
 		const mcpData = JSON.parse(contentToUse)
 
+		// Fix for Playwright MCP server: filter out empty string arguments and arguments with empty values
+		// Issue #8251: Empty string arguments and arguments ending with '=' cause the Playwright MCP server to fail
+		if (item.id === "playwright" && mcpData.args && Array.isArray(mcpData.args)) {
+			// Filter out empty string arguments and arguments that end with '=' (empty value arguments)
+			mcpData.args = mcpData.args.filter((arg: any) => {
+				if (typeof arg !== "string") return true
+				// Remove empty strings
+				if (arg === "") return false
+				// Remove arguments that end with '=' (like --browser=, --headless=, --viewport-size=)
+				if (arg.endsWith("=")) return false
+				return true
+			})
+		}
+
 		// Read existing file or create new structure
 		let existingData: any = { mcpServers: {} }
 		try {
