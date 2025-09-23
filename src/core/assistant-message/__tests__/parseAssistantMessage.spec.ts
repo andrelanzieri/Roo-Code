@@ -336,5 +336,154 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 				expect((result[5] as ToolUse).name).toBe("execute_command")
 			})
 		})
+
+		describe("code block handling", () => {
+			it("should not parse tool tags within code blocks", () => {
+				const message = `Here's an example of the ask_followup_question tool:
+
+\`\`\`xml
+<ask_followup_question>
+<question>What is the path to the frontend-config.json file?</question>
+<follow_up>
+<suggest>./src/frontend-config.json</suggest>
+<suggest>./config/frontend-config.json</suggest>
+<suggest>./frontend-config.json</suggest>
+</follow_up>
+</ask_followup_question>
+\`\`\`
+
+This is how you use it.`
+
+				const result = parser(message)
+
+				// Should only have text content, no tool use
+				expect(result).toHaveLength(1)
+				expect(result[0].type).toBe("text")
+				const textContent = result[0] as TextContent
+				expect(textContent.content).toContain("Here's an example")
+				expect(textContent.content).toContain("<ask_followup_question>")
+				expect(textContent.content).toContain("This is how you use it")
+				expect(textContent.partial).toBe(true)
+			})
+
+			it("should not parse tool tags within inline code", () => {
+				const message = "Use the \`<read_file><path>file.ts</path></read_file>\` tool to read files."
+				const result = parser(message)
+
+				// Should only have text content, no tool use
+				expect(result).toHaveLength(1)
+				expect(result[0].type).toBe("text")
+				const textContent = result[0] as TextContent
+				expect(textContent.content).toBe(message)
+				expect(textContent.partial).toBe(true)
+			})
+
+			it("should parse tool tags outside of code blocks", () => {
+				const message = `Here's an example:
+
+\`\`\`
+<example>code</example>
+\`\`\`
+
+Now let me read a file:
+
+<read_file><path>test.ts</path></read_file>`
+
+				const result = parser(message)
+
+				// Should have text content and a tool use
+				expect(result).toHaveLength(2)
+
+				// First should be text containing the code block
+				expect(result[0].type).toBe("text")
+				const textContent = result[0] as TextContent
+				expect(textContent.content).toContain("Here's an example")
+				expect(textContent.content).toContain("<example>code</example>")
+				expect(textContent.content).toContain("Now let me read a file:")
+				expect(textContent.partial).toBe(false)
+
+				// Second should be the actual tool use
+				expect(result[1].type).toBe("tool_use")
+				const toolUse = result[1] as ToolUse
+				expect(toolUse.name).toBe("read_file")
+				expect(toolUse.params.path).toBe("test.ts")
+				expect(toolUse.partial).toBe(false)
+			})
+
+			it("should handle mixed inline code and actual tool uses", () => {
+				const message =
+					"The tool \`<read_file>\` is used like this: <read_file><path>actual.ts</path></read_file>"
+				const result = parser(message)
+
+				// Should have text and tool use
+				expect(result).toHaveLength(2)
+
+				expect(result[0].type).toBe("text")
+				const textContent = result[0] as TextContent
+				expect(textContent.content).toContain("The tool \`<read_file>\` is used like this:")
+
+				expect(result[1].type).toBe("tool_use")
+				const toolUse = result[1] as ToolUse
+				expect(toolUse.name).toBe("read_file")
+				expect(toolUse.params.path).toBe("actual.ts")
+			})
+
+			it("should handle code blocks with triple backticks inside", () => {
+				const message = `Here's a markdown example:
+
+\`\`\`markdown
+# Example
+\`\`\`python
+print("hello")
+\`\`\`
+<read_file><path>not_a_tool.ts</path></read_file>
+\`\`\`
+
+That was the example.`
+
+				const result = parser(message)
+
+				// Should only have text content
+				expect(result).toHaveLength(1)
+				expect(result[0].type).toBe("text")
+				const textContent = result[0] as TextContent
+				expect(textContent.content).toContain("Here's a markdown example")
+				expect(textContent.content).toContain("<read_file><path>not_a_tool.ts</path></read_file>")
+				expect(textContent.content).toContain("That was the example")
+			})
+
+			it("should correctly handle the exact issue scenario", () => {
+				const message = `## ask_followup_question
+Description: Ask the user a question to gather additional information needed to complete the task.
+
+Usage:
+\`\`\`
+<ask_followup_question>
+<question>Your question here</question>
+<follow_up>
+<suggest>First suggestion</suggest>
+<suggest mode="code">Action with mode switch</suggest>
+</follow_up>
+</ask_followup_question>
+\`\`\`
+
+This tool helps gather information.`
+
+				const result = parser(message)
+
+				// Should only have text content, no tool invocation
+				expect(result).toHaveLength(1)
+				expect(result[0].type).toBe("text")
+				const textContent = result[0] as TextContent
+				expect(textContent.content).toContain("ask_followup_question")
+				expect(textContent.content).toContain("Description:")
+				expect(textContent.content).toContain("<ask_followup_question>")
+				expect(textContent.content).toContain("This tool helps gather information")
+
+				// Ensure no tool_use blocks were created
+				const toolUses = result.filter((block) => block.type === "tool_use")
+				expect(toolUses).toHaveLength(0)
+			})
+		})
 	})
 })

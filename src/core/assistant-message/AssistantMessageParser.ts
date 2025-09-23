@@ -17,6 +17,9 @@ export class AssistantMessageParser {
 	private readonly MAX_ACCUMULATOR_SIZE = 1024 * 1024 // 1MB limit
 	private readonly MAX_PARAM_LENGTH = 1024 * 100 // 100KB per parameter limit
 	private accumulator = ""
+	private inCodeBlock = false
+	private inInlineCode = false
+	private codeBlockDelimiterCount = 0
 
 	/**
 	 * Initialize a new AssistantMessageParser instance.
@@ -37,6 +40,9 @@ export class AssistantMessageParser {
 		this.currentParamName = undefined
 		this.currentParamValueStartIndex = 0
 		this.accumulator = ""
+		this.inCodeBlock = false
+		this.inInlineCode = false
+		this.codeBlockDelimiterCount = 0
 	}
 
 	/**
@@ -62,6 +68,41 @@ export class AssistantMessageParser {
 			const char = chunk[i]
 			this.accumulator += char
 			const currentPosition = accumulatorStartLength + i
+
+			// Track code blocks and inline code
+			if (char === "`") {
+				this.codeBlockDelimiterCount++
+				if (this.codeBlockDelimiterCount === 3) {
+					this.inCodeBlock = !this.inCodeBlock
+					this.codeBlockDelimiterCount = 0
+					this.inInlineCode = false // Code blocks take precedence
+				}
+			} else {
+				// If we had one backtick and now a different char, toggle inline code
+				if (this.codeBlockDelimiterCount === 1 && !this.inCodeBlock) {
+					this.inInlineCode = !this.inInlineCode
+				}
+				this.codeBlockDelimiterCount = 0
+			}
+
+			// Skip tool parsing if we're inside code blocks or inline code
+			if (this.inCodeBlock || this.inInlineCode) {
+				// Continue accumulating text content
+				if (this.currentTextContent === undefined && !this.currentToolUse) {
+					this.currentTextContentStartIndex = currentPosition
+					this.currentTextContent = {
+						type: "text",
+						content: this.accumulator.slice(this.currentTextContentStartIndex).trim(),
+						partial: true,
+					}
+					// Add the new text content to contentBlocks immediately
+					this.contentBlocks.push(this.currentTextContent)
+				} else if (this.currentTextContent) {
+					// Update the existing text content
+					this.currentTextContent.content = this.accumulator.slice(this.currentTextContentStartIndex).trim()
+				}
+				continue
+			}
 
 			// There should not be a param without a tool use.
 			if (this.currentToolUse && this.currentParamName) {
@@ -159,47 +200,50 @@ export class AssistantMessageParser {
 
 			for (const toolUseOpeningTag of possibleToolUseOpeningTags) {
 				if (this.accumulator.endsWith(toolUseOpeningTag)) {
-					// Extract and validate the tool name
-					const extractedToolName = toolUseOpeningTag.slice(1, -1)
+					// Only process tool tags if we're not in code blocks
+					if (!this.inCodeBlock && !this.inInlineCode) {
+						// Extract and validate the tool name
+						const extractedToolName = toolUseOpeningTag.slice(1, -1)
 
-					// Check if the extracted tool name is valid
-					if (!toolNames.includes(extractedToolName as ToolName)) {
-						// Invalid tool name, treat as plain text and continue
-						continue
+						// Check if the extracted tool name is valid
+						if (!toolNames.includes(extractedToolName as ToolName)) {
+							// Invalid tool name, treat as plain text and continue
+							continue
+						}
+
+						// Start of a new tool use.
+						this.currentToolUse = {
+							type: "tool_use",
+							name: extractedToolName as ToolName,
+							params: {},
+							partial: true,
+						}
+
+						this.currentToolUseStartIndex = this.accumulator.length
+
+						// This also indicates the end of the current text content.
+						if (this.currentTextContent) {
+							this.currentTextContent.partial = false
+
+							// Remove the partially accumulated tool use tag from the
+							// end of text (<tool).
+							this.currentTextContent.content = this.currentTextContent.content
+								.slice(0, -toolUseOpeningTag.slice(0, -1).length)
+								.trim()
+
+							// No need to push, currentTextContent is already in contentBlocks
+							this.currentTextContent = undefined
+						}
+
+						// Immediately push new tool_use block as partial
+						let idx = this.contentBlocks.findIndex((block) => block === this.currentToolUse)
+						if (idx === -1) {
+							this.contentBlocks.push(this.currentToolUse)
+						}
+
+						didStartToolUse = true
+						break
 					}
-
-					// Start of a new tool use.
-					this.currentToolUse = {
-						type: "tool_use",
-						name: extractedToolName as ToolName,
-						params: {},
-						partial: true,
-					}
-
-					this.currentToolUseStartIndex = this.accumulator.length
-
-					// This also indicates the end of the current text content.
-					if (this.currentTextContent) {
-						this.currentTextContent.partial = false
-
-						// Remove the partially accumulated tool use tag from the
-						// end of text (<tool).
-						this.currentTextContent.content = this.currentTextContent.content
-							.slice(0, -toolUseOpeningTag.slice(0, -1).length)
-							.trim()
-
-						// No need to push, currentTextContent is already in contentBlocks
-						this.currentTextContent = undefined
-					}
-
-					// Immediately push new tool_use block as partial
-					let idx = this.contentBlocks.findIndex((block) => block === this.currentToolUse)
-					if (idx === -1) {
-						this.contentBlocks.push(this.currentToolUse)
-					}
-
-					didStartToolUse = true
-					break
 				}
 			}
 

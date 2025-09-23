@@ -13,10 +13,48 @@ export function parseAssistantMessage(assistantMessage: string): AssistantMessag
 	let currentParamName: ToolParamName | undefined = undefined
 	let currentParamValueStartIndex = 0
 	let accumulator = ""
+	let inCodeBlock = false
+	let inInlineCode = false
+	let codeBlockDelimiterCount = 0
+	let lastTwoChars = ""
 
 	for (let i = 0; i < assistantMessage.length; i++) {
 		const char = assistantMessage[i]
 		accumulator += char
+
+		// Track last two characters for inline code detection
+		lastTwoChars = (lastTwoChars + char).slice(-2)
+
+		// Check for code block delimiters (```)
+		if (char === "`") {
+			codeBlockDelimiterCount++
+			if (codeBlockDelimiterCount === 3) {
+				inCodeBlock = !inCodeBlock
+				codeBlockDelimiterCount = 0
+			}
+		} else {
+			// Check for inline code (single backtick)
+			if (codeBlockDelimiterCount === 1 && !inCodeBlock) {
+				inInlineCode = !inInlineCode
+			}
+			codeBlockDelimiterCount = 0
+		}
+
+		// Skip tool parsing if we're inside a code block or inline code
+		if (inCodeBlock || inInlineCode) {
+			// If we're in text content, keep accumulating
+			if (currentTextContent === undefined && !currentToolUse) {
+				currentTextContentStartIndex = i
+				currentTextContent = {
+					type: "text",
+					content: accumulator.slice(currentTextContentStartIndex).trim(),
+					partial: true,
+				}
+			} else if (currentTextContent) {
+				currentTextContent.content = accumulator.slice(currentTextContentStartIndex).trim()
+			}
+			continue
+		}
 
 		// There should not be a param without a tool use.
 		if (currentToolUse && currentParamName) {
@@ -97,32 +135,35 @@ export function parseAssistantMessage(assistantMessage: string): AssistantMessag
 
 		for (const toolUseOpeningTag of possibleToolUseOpeningTags) {
 			if (accumulator.endsWith(toolUseOpeningTag)) {
-				// Start of a new tool use.
-				currentToolUse = {
-					type: "tool_use",
-					name: toolUseOpeningTag.slice(1, -1) as ToolName,
-					params: {},
-					partial: true,
+				// Only start a new tool use if we're not in a code block
+				if (!inCodeBlock && !inInlineCode) {
+					// Start of a new tool use.
+					currentToolUse = {
+						type: "tool_use",
+						name: toolUseOpeningTag.slice(1, -1) as ToolName,
+						params: {},
+						partial: true,
+					}
+
+					currentToolUseStartIndex = accumulator.length
+
+					// This also indicates the end of the current text content.
+					if (currentTextContent) {
+						currentTextContent.partial = false
+
+						// Remove the partially accumulated tool use tag from the
+						// end of text (<tool).
+						currentTextContent.content = currentTextContent.content
+							.slice(0, -toolUseOpeningTag.slice(0, -1).length)
+							.trim()
+
+						contentBlocks.push(currentTextContent)
+						currentTextContent = undefined
+					}
+
+					didStartToolUse = true
+					break
 				}
-
-				currentToolUseStartIndex = accumulator.length
-
-				// This also indicates the end of the current text content.
-				if (currentTextContent) {
-					currentTextContent.partial = false
-
-					// Remove the partially accumulated tool use tag from the
-					// end of text (<tool).
-					currentTextContent.content = currentTextContent.content
-						.slice(0, -toolUseOpeningTag.slice(0, -1).length)
-						.trim()
-
-					contentBlocks.push(currentTextContent)
-					currentTextContent = undefined
-				}
-
-				didStartToolUse = true
-				break
 			}
 		}
 
