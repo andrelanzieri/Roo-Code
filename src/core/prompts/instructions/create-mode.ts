@@ -2,13 +2,14 @@ import * as path from "path"
 import * as vscode from "vscode"
 
 import { GlobalFileNames } from "../../../shared/globalFileNames"
-import { getSettingsDirectoryPath } from "../../../utils/storage"
+import { getStorageBasePath } from "../../../utils/storage"
 
 export async function createModeInstructions(context: vscode.ExtensionContext | undefined): Promise<string> {
 	if (!context) throw new Error("Missing VSCode Extension Context")
 
-	// Use getSettingsDirectoryPath to respect custom storage path setting
-	const settingsDir = await getSettingsDirectoryPath(context.globalStorageUri.fsPath)
+	// Resolve settings directory without creating it (avoid side effects for help text)
+	const basePath = await getStorageBasePath(context.globalStorageUri.fsPath, false)
+	const settingsDir = path.join(basePath, "settings")
 	const customModesPath = path.join(settingsDir, GlobalFileNames.customModes)
 
 	return `

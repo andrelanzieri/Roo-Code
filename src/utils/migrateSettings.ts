@@ -3,7 +3,7 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import { fileExistsAtPath } from "./fs"
 import { GlobalFileNames } from "../shared/globalFileNames"
-import { getSettingsDirectoryPath } from "./storage"
+import { getStorageBasePath } from "./storage"
 import * as yaml from "yaml"
 
 const deprecatedCustomModesJSONFilename = "custom_modes.json"
@@ -27,8 +27,9 @@ export async function migrateSettings(
 	]
 
 	try {
-		// Use getSettingsDirectoryPath to respect custom storage path
-		const settingsDir = await getSettingsDirectoryPath(context.globalStorageUri.fsPath)
+		// Resolve settings directory without creating it to preserve early-return behavior
+		const basePath = await getStorageBasePath(context.globalStorageUri.fsPath, false)
+		const settingsDir = path.join(basePath, "settings")
 
 		// Check if settings directory exists first
 		if (!(await fileExistsAtPath(settingsDir))) {

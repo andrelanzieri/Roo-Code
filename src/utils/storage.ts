@@ -11,7 +11,13 @@ import { t } from "../i18n"
  * If a custom path is configured, uses that path
  * Otherwise uses the default VSCode extension global storage path
  */
-export async function getStorageBasePath(defaultPath: string): Promise<string> {
+/**
+ * Gets the base storage path for conversations
+ * If a custom path is configured, uses that path
+ * Otherwise uses the default VSCode extension global storage path
+ * Optionally avoid creating the directory (create = false) for pure path resolution.
+ */
+export async function getStorageBasePath(defaultPath: string, create = true): Promise<string> {
 	// Get user-configured custom storage path
 	let customStoragePath = ""
 
@@ -30,11 +36,12 @@ export async function getStorageBasePath(defaultPath: string): Promise<string> {
 	}
 
 	try {
-		// Ensure custom path exists
-		await fs.mkdir(customStoragePath, { recursive: true })
-
-		// Check directory write permission without creating temp files
-		await fs.access(customStoragePath, fsConstants.R_OK | fsConstants.W_OK | fsConstants.X_OK)
+		// When create is requested, ensure the custom path exists and is accessible
+		if (create) {
+			await fs.mkdir(customStoragePath, { recursive: true })
+			// Check directory write permission without creating temp files
+			await fs.access(customStoragePath, fsConstants.R_OK | fsConstants.W_OK | fsConstants.X_OK)
+		}
 
 		return customStoragePath
 	} catch (error) {
