@@ -39,6 +39,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	private responseIdResolver: ((value: string | undefined) => void) | undefined
 	// Resolved service tier from Responses API (actual tier used by OpenAI)
 	private lastServiceTier: ServiceTier | undefined
+	// Store web search results for citation formatting
+	private lastWebSearchResults: any[] | undefined
 
 	// Event types handled by the shared event processor to avoid duplication
 	private readonly coreHandledEventTypes = new Set<string>([
@@ -245,6 +247,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			store?: boolean
 			instructions?: string
 			service_tier?: ServiceTier
+			tools?: Array<{ type: string }>
 		}
 
 		// Validate requested tier against model support; if not supported, omit.
@@ -283,6 +286,10 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				(requestedTier === "default" || allowedTierNames.has(requestedTier)) && {
 					service_tier: requestedTier,
 				}),
+			// Enable web search if configured
+			...(this.options.openAiNativeWebSearchEnabled && {
+				tools: [{ type: "web_search" }],
+			}),
 		}
 
 		// Include text.verbosity only when the model explicitly supports it
@@ -887,11 +894,26 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 							}
 							// Handle web search events
 							else if (parsed.type === "response.web_search_call.searching") {
-								// Web search in progress
+								// Web search in progress - could yield status update
+								if (parsed.query) {
+									yield {
+										type: "text",
+										text: `\n[Searching web for: "${parsed.query}"]\n`,
+									}
+								}
 							} else if (parsed.type === "response.web_search_call.in_progress") {
 								// Processing web search results
 							} else if (parsed.type === "response.web_search_call.completed") {
-								// Web search completed
+								// Web search completed - results will be included in the response
+								if (parsed.results && Array.isArray(parsed.results)) {
+									// Store search results for citation formatting
+									this.lastWebSearchResults = parsed.results
+								}
+							} else if (parsed.type === "response.web_search_call.results") {
+								// Alternative event for web search results
+								if (parsed.results && Array.isArray(parsed.results)) {
+									this.lastWebSearchResults = parsed.results
+								}
 							}
 							// Handle code interpreter events
 							else if (parsed.type === "response.code_interpreter_call_code.delta") {
@@ -1014,6 +1036,13 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 											}
 										}
 									}
+								}
+
+								// After content is complete, append citations if we have web search results
+								if (this.lastWebSearchResults && this.lastWebSearchResults.length > 0) {
+									yield* this.formatWebSearchCitations(this.lastWebSearchResults)
+									// Clear results after using them
+									this.lastWebSearchResults = undefined
 								}
 
 								// Usage for done/completed is already handled by processGpt5Event in SDK path.
@@ -1304,6 +1333,11 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				}
 			}
 
+			// Enable web search if configured
+			if (this.options.openAiNativeWebSearchEnabled) {
+				requestBody.tools = [{ type: "web_search" }]
+			}
+
 			// Only include temperature if the model supports it
 			if (model.info.supportsTemperature !== false) {
 				requestBody.temperature =
@@ -1350,6 +1384,34 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				throw new Error(`OpenAI Native completion error: ${error.message}`)
 			}
 			throw error
+		}
+	}
+
+	/**
+	 * Formats web search results as citations with clickable links
+	 */
+	private async *formatWebSearchCitations(results: any[]): ApiStream {
+		// Format citations with inline links
+		const citations: string[] = []
+		const sources: string[] = []
+
+		for (let i = 0; i < results.length; i++) {
+			const result = results[i]
+			if (result.url && result.title) {
+				const citationNum = i + 1
+				// Create inline citation reference
+				citations.push(`[${citationNum}]`)
+				// Create source entry with clickable link
+				sources.push(`[${citationNum}] [${result.title}](${result.url})`)
+			}
+		}
+
+		// Only output if we have citations
+		if (sources.length > 0) {
+			yield {
+				type: "text",
+				text: "\n\n**Sources:**\n" + sources.join("\n"),
+			}
 		}
 	}
 }
