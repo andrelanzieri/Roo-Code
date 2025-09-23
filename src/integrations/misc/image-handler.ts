@@ -6,18 +6,51 @@ import { getWorkspacePath } from "../../utils/path"
 import { t } from "../../i18n"
 
 export async function openImage(dataUriOrPath: string, options?: { values?: { action?: string } }) {
-	// Check if it's a file path (absolute or relative)
+	// Minimal handling for VS Code webview CDN URLs:
+	// Example: https://file+.vscode-resource.vscode-cdn.net/file/<absolute_path_to_image>
+	try {
+		const u = vscode.Uri.parse(dataUriOrPath)
+		if (u.scheme === "https" && u.authority.includes("vscode-cdn.net")) {
+			let fsPath = decodeURIComponent(u.path || "")
+			// Strip the leading "/file/" prefix if present
+			if (fsPath.startsWith("/file/")) {
+				fsPath = fsPath.slice("/file/".length)
+			}
+
+			fsPath = path.normalize(fsPath)
+			if (fsPath) {
+				const fileUri = vscode.Uri.file(fsPath)
+				await vscode.commands.executeCommand("vscode.open", fileUri)
+				return
+			}
+		}
+	} catch {
+		// fall through
+	}
+
+	// Handle file:// URIs directly
+	if (dataUriOrPath.startsWith("file://")) {
+		try {
+			const fileUri = vscode.Uri.parse(dataUriOrPath)
+
+			await vscode.commands.executeCommand("vscode.open", fileUri)
+		} catch (error) {
+			vscode.window.showErrorMessage(t("common:errors.error_opening_image", { error }))
+		}
+		return
+	}
+
+	// Fallback: treat plain strings (absolute or relative) as file paths
 	const isFilePath =
 		!dataUriOrPath.startsWith("data:") &&
 		!dataUriOrPath.startsWith("http:") &&
 		!dataUriOrPath.startsWith("https:") &&
 		!dataUriOrPath.startsWith("vscode-resource:") &&
-		!dataUriOrPath.startsWith("file+.vscode-resource")
+		!dataUriOrPath.startsWith("file+.vscode-resource") &&
+		!dataUriOrPath.startsWith("vscode-webview-resource:")
 
 	if (isFilePath) {
-		// Handle file path - open directly in VSCode
 		try {
-			// Resolve the path relative to workspace if needed
 			let filePath = dataUriOrPath
 			if (!path.isAbsolute(filePath)) {
 				const workspacePath = getWorkspacePath()
@@ -28,14 +61,12 @@ export async function openImage(dataUriOrPath: string, options?: { values?: { ac
 
 			const fileUri = vscode.Uri.file(filePath)
 
-			// Check if this is a copy action
 			if (options?.values?.action === "copy") {
 				await vscode.env.clipboard.writeText(filePath)
 				vscode.window.showInformationMessage(t("common:info.path_copied_to_clipboard"))
 				return
 			}
 
-			// Open the image file directly
 			await vscode.commands.executeCommand("vscode.open", fileUri)
 		} catch (error) {
 			vscode.window.showErrorMessage(t("common:errors.error_opening_image", { error }))
@@ -43,47 +74,44 @@ export async function openImage(dataUriOrPath: string, options?: { values?: { ac
 		return
 	}
 
+	// Finally, handle base64 data URIs explicitly
 	const matches = dataUriOrPath.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/)
 	if (!matches) {
-		vscode.window.showErrorMessage(t("common:errors.invalid_data_uri"))
+		// Do not show an "invalid data URI" error for non-data URIs; try opening as a generic URI
+		try {
+			const generic = vscode.Uri.parse(dataUriOrPath)
+			await vscode.commands.executeCommand("vscode.open", generic)
+		} catch {
+			vscode.window.showErrorMessage(t("common:errors.invalid_data_uri"))
+		}
 		return
 	}
+
 	const [, format, base64Data] = matches
 	const imageBuffer = Buffer.from(base64Data, "base64")
 
-	// Default behavior: open the image
 	const tempFilePath = path.join(os.tmpdir(), `temp_image_${Date.now()}.${format}`)
 	try {
 		await vscode.workspace.fs.writeFile(vscode.Uri.file(tempFilePath), imageBuffer)
-		// Check if this is a copy action
+
 		if (options?.values?.action === "copy") {
 			try {
-				// Read the image file
 				const imageData = await vscode.workspace.fs.readFile(vscode.Uri.file(tempFilePath))
-
-				// Convert to base64 for clipboard
 				const base64Image = Buffer.from(imageData).toString("base64")
 				const dataUri = `data:image/${format};base64,${base64Image}`
-
-				// Use vscode.env.clipboard to copy the data URI
-				// Note: VSCode doesn't support copying binary image data directly to clipboard
-				// So we copy the data URI which can be pasted in many applications
 				await vscode.env.clipboard.writeText(dataUri)
-
 				vscode.window.showInformationMessage(t("common:info.image_copied_to_clipboard"))
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				vscode.window.showErrorMessage(t("common:errors.error_copying_image", { errorMessage }))
 			} finally {
-				// Clean up temp file
 				try {
 					await vscode.workspace.fs.delete(vscode.Uri.file(tempFilePath))
-				} catch {
-					// Ignore cleanup errors
-				}
+				} catch {}
 			}
 			return
 		}
+
 		await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(tempFilePath))
 	} catch (error) {
 		vscode.window.showErrorMessage(t("common:errors.error_opening_image", { error }))
