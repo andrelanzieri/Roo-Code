@@ -6,6 +6,8 @@ export type ChutesModelId =
 	| "deepseek-ai/DeepSeek-R1"
 	| "deepseek-ai/DeepSeek-V3"
 	| "deepseek-ai/DeepSeek-V3.1"
+	| "deepseek-ai/DeepSeek-V3.1-Terminus"
+	| "deepseek-ai/DeepSeek-V3.1-Turbo"
 	| "unsloth/Llama-3.3-70B-Instruct"
 	| "chutesai/Llama-4-Scout-17B-16E-Instruct"
 	| "unsloth/Mistral-Nemo-Instruct-2407"
@@ -73,6 +75,24 @@ export const chutesModels = {
 		inputPrice: 0,
 		outputPrice: 0,
 		description: "DeepSeek V3.1 model.",
+	},
+	"deepseek-ai/DeepSeek-V3.1-Terminus": {
+		maxTokens: 32768,
+		contextWindow: 163840,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		description: "DeepSeek V3.1 Terminus variant - optimized for complex reasoning and extended context.",
+	},
+	"deepseek-ai/DeepSeek-V3.1-Turbo": {
+		maxTokens: 32768,
+		contextWindow: 163840,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		description: "DeepSeek V3.1 Turbo variant - faster inference with maintained quality.",
 	},
 	"unsloth/Llama-3.3-70B-Instruct": {
 		maxTokens: 32768, // From Groq

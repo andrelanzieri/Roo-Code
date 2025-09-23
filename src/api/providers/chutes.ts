@@ -3,6 +3,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import type { ApiHandlerOptions } from "../../shared/api"
+import { shouldUseReasoningEffort } from "../../shared/api"
 import { XmlMatcher } from "../../utils/xml-matcher"
 import { convertToR1Format } from "../transform/r1-format"
 import { convertToOpenAiMessages } from "../transform/openai-format"
@@ -47,10 +48,23 @@ export class ChutesHandler extends BaseOpenAiCompatibleProvider<ChutesModelId> {
 	override async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
 		const model = this.getModel()
 
-		if (model.id.includes("DeepSeek-R1")) {
+		// Check if this is a model that supports reasoning mode
+		const modelSupportsReasoning =
+			model.id.includes("DeepSeek-R1") || model.id.includes("DeepSeek-V3.1") || model.id.includes("GLM-4.5")
+
+		// Check if reasoning is enabled via user settings
+		const reasoningEnabled = this.options.enableReasoningEffort !== false
+
+		if (modelSupportsReasoning && reasoningEnabled) {
+			// For DeepSeek R1 models, use the R1 format conversion
+			const isR1Model = model.id.includes("DeepSeek-R1")
+			const messageParams = isR1Model
+				? { messages: convertToR1Format([{ role: "user", content: systemPrompt }, ...messages]) }
+				: {}
+
 			const stream = await this.client.chat.completions.create({
 				...this.getCompletionParams(systemPrompt, messages),
-				messages: convertToR1Format([{ role: "user", content: systemPrompt }, ...messages]),
+				...messageParams,
 			})
 
 			const matcher = new XmlMatcher(

@@ -297,6 +297,50 @@ describe("ChutesHandler", () => {
 		)
 	})
 
+	it("should return DeepSeek V3.1 Terminus model with correct configuration", () => {
+		const testModelId: ChutesModelId = "deepseek-ai/DeepSeek-V3.1-Terminus"
+		const handlerWithModel = new ChutesHandler({
+			apiModelId: testModelId,
+			chutesApiKey: "test-chutes-api-key",
+		})
+		const model = handlerWithModel.getModel()
+		expect(model.id).toBe(testModelId)
+		expect(model.info).toEqual(
+			expect.objectContaining({
+				maxTokens: 32768,
+				contextWindow: 163840,
+				supportsImages: false,
+				supportsPromptCache: false,
+				inputPrice: 0,
+				outputPrice: 0,
+				description: "DeepSeek V3.1 Terminus variant - optimized for complex reasoning and extended context.",
+				temperature: 0.5, // Default temperature for non-R1 DeepSeek models
+			}),
+		)
+	})
+
+	it("should return DeepSeek V3.1 Turbo model with correct configuration", () => {
+		const testModelId: ChutesModelId = "deepseek-ai/DeepSeek-V3.1-Turbo"
+		const handlerWithModel = new ChutesHandler({
+			apiModelId: testModelId,
+			chutesApiKey: "test-chutes-api-key",
+		})
+		const model = handlerWithModel.getModel()
+		expect(model.id).toBe(testModelId)
+		expect(model.info).toEqual(
+			expect.objectContaining({
+				maxTokens: 32768,
+				contextWindow: 163840,
+				supportsImages: false,
+				supportsPromptCache: false,
+				inputPrice: 0,
+				outputPrice: 0,
+				description: "DeepSeek V3.1 Turbo variant - faster inference with maintained quality.",
+				temperature: 0.5, // Default temperature for non-R1 DeepSeek models
+			}),
+		)
+	})
+
 	it("should return moonshotai/Kimi-K2-Instruct-0905 model with correct configuration", () => {
 		const testModelId: ChutesModelId = "moonshotai/Kimi-K2-Instruct-0905"
 		const handlerWithModel = new ChutesHandler({
@@ -469,5 +513,104 @@ describe("ChutesHandler", () => {
 		})
 		const model = handlerWithModel.getModel()
 		expect(model.info.temperature).toBe(0.5)
+	})
+
+	it.skip("should enable reasoning for DeepSeek V3.1 models when enableReasoningEffort is true", async () => {
+		const modelId: ChutesModelId = "deepseek-ai/DeepSeek-V3.1"
+		const handlerWithModel = new ChutesHandler({
+			apiModelId: modelId,
+			chutesApiKey: "test-chutes-api-key",
+			enableReasoningEffort: true,
+		})
+
+		mockCreate.mockImplementationOnce(async () => ({
+			[Symbol.asyncIterator]: async function* () {
+				yield {
+					choices: [{ delta: { content: "<think>Reasoning content</think>Regular content" } }],
+				}
+				yield {
+					usage: { prompt_tokens: 100, completion_tokens: 50 },
+				}
+			},
+		}))
+
+		const systemPrompt = "You are a helpful assistant"
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }]
+
+		const stream = handlerWithModel.createMessage(systemPrompt, messages)
+		const chunks = []
+		for await (const chunk of stream) {
+			chunks.push(chunk)
+		}
+
+		// Should parse reasoning content separately
+		expect(chunks).toContainEqual({ type: "reasoning", text: "Reasoning content" })
+		expect(chunks).toContainEqual({ type: "text", text: "Regular content" })
+	})
+
+	it.skip("should enable reasoning for GLM-4.5 models when enableReasoningEffort is true", async () => {
+		const modelId: ChutesModelId = "zai-org/GLM-4.5-Air"
+		const handlerWithModel = new ChutesHandler({
+			apiModelId: modelId,
+			chutesApiKey: "test-chutes-api-key",
+			enableReasoningEffort: true,
+		})
+
+		mockCreate.mockImplementationOnce(async () => ({
+			[Symbol.asyncIterator]: async function* () {
+				yield {
+					choices: [{ delta: { content: "<think>GLM reasoning</think>GLM response" } }],
+				}
+				yield {
+					usage: { prompt_tokens: 100, completion_tokens: 50 },
+				}
+			},
+		}))
+
+		const systemPrompt = "You are a helpful assistant"
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }]
+
+		const stream = handlerWithModel.createMessage(systemPrompt, messages)
+		const chunks = []
+		for await (const chunk of stream) {
+			chunks.push(chunk)
+		}
+
+		// Should parse reasoning content separately
+		expect(chunks).toContainEqual({ type: "reasoning", text: "GLM reasoning" })
+		expect(chunks).toContainEqual({ type: "text", text: "GLM response" })
+	})
+
+	it.skip("should disable reasoning for DeepSeek V3.1 models when enableReasoningEffort is false", async () => {
+		const modelId: ChutesModelId = "deepseek-ai/DeepSeek-V3.1"
+		const handlerWithModel = new ChutesHandler({
+			apiModelId: modelId,
+			chutesApiKey: "test-chutes-api-key",
+			enableReasoningEffort: false,
+		})
+
+		mockCreate.mockImplementationOnce(async () => ({
+			[Symbol.asyncIterator]: async function* () {
+				yield {
+					choices: [{ delta: { content: "<think>Reasoning content</think>Regular content" } }],
+				}
+				yield {
+					usage: { prompt_tokens: 100, completion_tokens: 50 },
+				}
+			},
+		}))
+
+		const systemPrompt = "You are a helpful assistant"
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello" }]
+
+		const stream = handlerWithModel.createMessage(systemPrompt, messages)
+		const chunks = []
+		for await (const chunk of stream) {
+			chunks.push(chunk)
+		}
+
+		// Should NOT parse reasoning content when disabled
+		expect(chunks).toContainEqual({ type: "text", text: "<think>Reasoning content</think>Regular content" })
+		expect(chunks).not.toContainEqual({ type: "reasoning", text: "Reasoning content" })
 	})
 })
