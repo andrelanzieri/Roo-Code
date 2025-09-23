@@ -39,6 +39,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	private responseIdResolver: ((value: string | undefined) => void) | undefined
 	// Resolved service tier from Responses API (actual tier used by OpenAI)
 	private lastServiceTier: ServiceTier | undefined
+	private isAzureResponsesApi: boolean = false
 
 	// Event types handled by the shared event processor to avoid duplication
 	private readonly coreHandledEventTypes = new Set<string>([
@@ -62,7 +63,12 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			this.options.enableGpt5ReasoningSummary = true
 		}
 		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
-		this.client = new OpenAI({ baseURL: this.options.openAiNativeBaseUrl, apiKey })
+		const baseUrl = this.options.openAiNativeBaseUrl || "https://api.openai.com"
+
+		// Check if this is an Azure Responses API URL
+		this.isAzureResponsesApi = this.isAzureResponsesApiUrl(baseUrl)
+
+		this.client = new OpenAI({ baseURL: baseUrl, apiKey })
 	}
 
 	private normalizeUsage(usage: any, model: OpenAiNativeModel): ApiStreamUsageChunk | undefined {
@@ -248,11 +254,14 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		}
 
 		// Validate requested tier against model support; if not supported, omit.
-		const requestedTier = (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
+		// For Azure Responses API, service tier is not supported
+		const requestedTier = !this.isAzureResponsesApi
+			? (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
+			: undefined
 		const allowedTierNames = new Set(model.info.tiers?.map((t) => t.name).filter(Boolean) || [])
 
 		const body: Gpt5RequestBody = {
-			model: model.id,
+			model: this.options.openAiNativeCustomModelName || model.id,
 			input: formattedInput,
 			stream: true,
 			store: metadata?.store !== false, // Default to true unless explicitly set to false
@@ -279,6 +288,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			...(model.maxTokens ? { max_output_tokens: model.maxTokens } : {}),
 			...(requestPreviousResponseId && { previous_response_id: requestPreviousResponseId }),
 			// Include tier when selected and supported by the model, or when explicitly "default"
+			// (but not for Azure Responses API)
 			...(requestedTier &&
 				(requestedTier === "default" || allowedTierNames.has(requestedTier)) && {
 					service_tier: requestedTier,
@@ -464,7 +474,11 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	): ApiStream {
 		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
 		const baseUrl = this.options.openAiNativeBaseUrl || "https://api.openai.com"
-		const url = `${baseUrl}/v1/responses`
+
+		// For Azure Responses API, the URL is already complete
+		const url = this.isAzureResponsesApi
+			? `${baseUrl}${this.options.azureApiVersion ? `${baseUrl.includes("?") ? "&" : "?"}api-version=${this.options.azureApiVersion}` : ""}`
+			: `${baseUrl}/v1/responses`
 
 		try {
 			const response = await fetch(url, {
@@ -1216,13 +1230,26 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		}
 	}
 
+	// Helper method to check if URL is Azure Responses API
+	private isAzureResponsesApiUrl(url: string): boolean {
+		if (!url) return false
+		// Azure Responses API URLs typically follow this pattern:
+		// https://<resource>.azureai<number>.cognitiveservices.azure.com/openai/v1
+		// or https://<resource>.openai.azure.com/openai/deployments/<deployment>/responses
+		return url.includes(".azure.com") || url.includes(".cognitiveservices.azure.com")
+	}
+
 	// Removed isResponsesApiModel method as ALL models now use the Responses API
 
 	override getModel() {
 		const modelId = this.options.apiModelId
 
-		let id =
-			modelId && modelId in openAiNativeModels ? (modelId as OpenAiNativeModelId) : openAiNativeDefaultModelId
+		// Allow custom model names for Azure deployments
+		let id = this.options.openAiNativeCustomModelName
+			? openAiNativeDefaultModelId // Use default model info for custom models
+			: modelId && modelId in openAiNativeModels
+				? (modelId as OpenAiNativeModelId)
+				: openAiNativeDefaultModelId
 
 		const info: ModelInfo = openAiNativeModels[id]
 
@@ -1278,7 +1305,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 			// Build request body for Responses API
 			const requestBody: any = {
-				model: model.id,
+				model: this.options.openAiNativeCustomModelName || model.id,
 				input: [
 					{
 						role: "user",
@@ -1289,11 +1316,13 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				store: false, // Don't store prompt completions
 			}
 
-			// Include service tier if selected and supported
-			const requestedTier = (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
-			const allowedTierNames = new Set(model.info.tiers?.map((t) => t.name).filter(Boolean) || [])
-			if (requestedTier && (requestedTier === "default" || allowedTierNames.has(requestedTier))) {
-				requestBody.service_tier = requestedTier
+			// Include service tier if selected and supported (not for Azure)
+			if (!this.isAzureResponsesApi) {
+				const requestedTier = (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
+				const allowedTierNames = new Set(model.info.tiers?.map((t) => t.name).filter(Boolean) || [])
+				if (requestedTier && (requestedTier === "default" || allowedTierNames.has(requestedTier))) {
+					requestBody.service_tier = requestedTier
+				}
 			}
 
 			// Add reasoning if supported

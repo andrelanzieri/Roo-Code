@@ -22,6 +22,16 @@ export const OpenAI = ({ apiConfiguration, setApiConfigurationField, selectedMod
 	const [openAiNativeBaseUrlSelected, setOpenAiNativeBaseUrlSelected] = useState(
 		!!apiConfiguration?.openAiNativeBaseUrl,
 	)
+	const [customModelNameSelected, setCustomModelNameSelected] = useState(
+		!!apiConfiguration?.openAiNativeCustomModelName,
+	)
+	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
+
+	// Check if this is an Azure URL
+	const isAzureUrl =
+		apiConfiguration?.openAiNativeBaseUrl &&
+		(apiConfiguration.openAiNativeBaseUrl.includes(".azure.com") ||
+			apiConfiguration.openAiNativeBaseUrl.includes(".cognitiveservices.azure.com"))
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -75,7 +85,60 @@ export const OpenAI = ({ apiConfiguration, setApiConfigurationField, selectedMod
 				</VSCodeButtonLink>
 			)}
 
+			{/* Custom Model Name for Azure deployments */}
+			<div>
+				<Checkbox
+					checked={customModelNameSelected}
+					onChange={(checked: boolean) => {
+						setCustomModelNameSelected(checked)
+						if (!checked) {
+							setApiConfigurationField("openAiNativeCustomModelName", "")
+						}
+					}}>
+					{t("settings:providers.useCustomModelName")}
+				</Checkbox>
+				{customModelNameSelected && (
+					<VSCodeTextField
+						value={apiConfiguration?.openAiNativeCustomModelName || ""}
+						onInput={handleInputChange("openAiNativeCustomModelName")}
+						placeholder="e.g., my-gpt-4o-deployment"
+						className="w-full mt-1"
+					/>
+				)}
+				{customModelNameSelected && (
+					<div className="text-sm text-vscode-descriptionForeground mt-1">
+						{t("settings:providers.customModelNameDescription")}
+					</div>
+				)}
+			</div>
+
+			{/* Azure API Version */}
+			<div>
+				<Checkbox
+					checked={azureApiVersionSelected}
+					onChange={(checked: boolean) => {
+						setAzureApiVersionSelected(checked)
+						if (!checked) {
+							setApiConfigurationField("azureApiVersion", "")
+						}
+					}}>
+					{t("settings:providers.azureApiVersion")}
+				</Checkbox>
+				{azureApiVersionSelected && (
+					<VSCodeTextField
+						value={apiConfiguration?.azureApiVersion || ""}
+						onInput={handleInputChange("azureApiVersion")}
+						placeholder="e.g., 2024-02-01"
+						className="w-full mt-1"
+					/>
+				)}
+			</div>
+
+			{/* Service Tier - only show if not Azure URL */}
 			{(() => {
+				// Don't show service tier for Azure URLs
+				if (isAzureUrl) return null
+
 				const allowedTiers = (selectedModelInfo?.tiers?.map((t) => t.name).filter(Boolean) || []).filter(
 					(t) => t === "flex" || t === "priority",
 				)
@@ -84,8 +147,8 @@ export const OpenAI = ({ apiConfiguration, setApiConfigurationField, selectedMod
 				return (
 					<div className="flex flex-col gap-1 mt-2" data-testid="openai-service-tier">
 						<div className="flex items-center gap-1">
-							<label className="block font-medium mb-1">Service tier</label>
-							<StandardTooltip content="For faster processing of API requests, try the priority processing service tier. For lower prices with higher latency, try the flex processing tier.">
+							<label className="block font-medium mb-1">{t("settings:providers.serviceTier")}</label>
+							<StandardTooltip content={t("settings:providers.serviceTierTooltip")}>
 								<i className="codicon codicon-info text-vscode-descriptionForeground text-xs" />
 							</StandardTooltip>
 						</div>
