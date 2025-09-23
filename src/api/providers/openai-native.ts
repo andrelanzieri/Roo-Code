@@ -475,10 +475,17 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
 		const baseUrl = this.options.openAiNativeBaseUrl || "https://api.openai.com"
 
-		// For Azure Responses API, the URL is already complete
-		const url = this.isAzureResponsesApi
-			? `${baseUrl}${this.options.azureApiVersion ? `${baseUrl.includes("?") ? "&" : "?"}api-version=${this.options.azureApiVersion}` : ""}`
-			: `${baseUrl}/v1/responses`
+		// For Azure Responses API, the URL is already complete, just add API version if provided
+		let url: string
+		if (this.isAzureResponsesApi) {
+			url = baseUrl
+			if (this.options.azureApiVersion) {
+				const separator = baseUrl.includes("?") ? "&" : "?"
+				url = `${baseUrl}${separator}api-version=${this.options.azureApiVersion}`
+			}
+		} else {
+			url = `${baseUrl}/v1/responses`
+		}
 
 		try {
 			const response = await fetch(url, {
