@@ -1039,6 +1039,7 @@ export const ChatRowContent = ({
 							ts={message.ts}
 							isStreaming={isStreaming}
 							isLast={isLast}
+							isExpanded={isExpanded}
 							metadata={message.metadata as any}
 						/>
 					)

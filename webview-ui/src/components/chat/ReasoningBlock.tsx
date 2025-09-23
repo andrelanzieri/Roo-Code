@@ -1,40 +1,46 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { memo, useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 import { Lightbulb } from "lucide-react"
+import { ElapsedTime } from "./ElapsedTime"
 
 interface ReasoningBlockProps {
 	content: string
 	ts: number
 	isStreaming: boolean
 	isLast: boolean
+	isExpanded?: boolean
 	metadata?: any
 }
 
 /**
  * Render reasoning with a heading and a simple timer.
  * - Heading uses i18n key chat:reasoning.thinking
- * - Timer runs while reasoning is active (no persistence)
+ * - Timer is isolated in ElapsedTime component to prevent parent re-renders
+ * - Content is debounced during streaming to reduce re-render frequency
  */
-export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockProps) => {
+export const ReasoningBlock = memo(({ content, isStreaming, isLast, isExpanded = false }: ReasoningBlockProps) => {
 	const { t } = useTranslation()
 
-	const startTimeRef = useRef<number>(Date.now())
-	const [elapsed, setElapsed] = useState<number>(0)
+	// Debounce content updates during streaming
+	const [debouncedContent, setDebouncedContent] = useState(content)
 
-	// Simple timer that runs while streaming
 	useEffect(() => {
-		if (isLast && isStreaming) {
-			const tick = () => setElapsed(Date.now() - startTimeRef.current)
-			tick()
-			const id = setInterval(tick, 1000)
-			return () => clearInterval(id)
+		if (isStreaming) {
+			// Debounce content updates to ~10 updates per second max
+			const timer = setTimeout(() => {
+				setDebouncedContent(content)
+			}, 100)
+			return () => clearTimeout(timer)
+		} else {
+			// Immediately update when streaming ends
+			setDebouncedContent(content)
 		}
-	}, [isLast, isStreaming])
+	}, [content, isStreaming])
 
-	const seconds = Math.floor(elapsed / 1000)
-	const secondsLabel = t("chat:reasoning.seconds", { count: seconds })
+	// Only render markdown if expanded and content exists
+	const shouldRenderMarkdown = isExpanded && (debouncedContent?.trim()?.length ?? 0) > 0
 
 	return (
 		<div>
@@ -43,17 +49,15 @@ export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockP
 					<Lightbulb className="w-4" />
 					<span className="font-bold text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
 				</div>
-				{elapsed > 0 && (
-					<span className="text-sm text-vscode-descriptionForeground tabular-nums flex items-center gap-1">
-						{secondsLabel}
-					</span>
-				)}
+				<ElapsedTime isStreaming={isStreaming} isLast={isLast} />
 			</div>
-			{(content?.trim()?.length ?? 0) > 0 && (
+			{shouldRenderMarkdown && (
 				<div className="border-l border-vscode-descriptionForeground/20 ml-2 pl-4 pb-1 text-vscode-descriptionForeground">
-					<MarkdownBlock markdown={content} />
+					<MarkdownBlock markdown={debouncedContent} />
 				</div>
 			)}
 		</div>
 	)
-}
+})
+
+ReasoningBlock.displayName = "ReasoningBlock"
