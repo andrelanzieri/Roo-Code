@@ -16,10 +16,14 @@ export async function openImage(dataUriOrPath: string, options?: { values?: { ac
 			if (fsPath.startsWith("/file/")) {
 				fsPath = fsPath.slice("/file/".length)
 			}
-
 			fsPath = path.normalize(fsPath)
 			if (fsPath) {
 				const fileUri = vscode.Uri.file(fsPath)
+				if (options?.values?.action === "copy") {
+					await vscode.env.clipboard.writeText(fsPath)
+					vscode.window.showInformationMessage(t("common:info.path_copied_to_clipboard"))
+					return
+				}
 				await vscode.commands.executeCommand("vscode.open", fileUri)
 				return
 			}
@@ -32,6 +36,13 @@ export async function openImage(dataUriOrPath: string, options?: { values?: { ac
 	if (dataUriOrPath.startsWith("file://")) {
 		try {
 			const fileUri = vscode.Uri.parse(dataUriOrPath)
+			const filePath = fileUri.fsPath
+
+			if (options?.values?.action === "copy") {
+				await vscode.env.clipboard.writeText(filePath)
+				vscode.window.showInformationMessage(t("common:info.path_copied_to_clipboard"))
+				return
+			}
 
 			await vscode.commands.executeCommand("vscode.open", fileUri)
 		} catch (error) {
