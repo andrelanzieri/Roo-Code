@@ -5,14 +5,17 @@ vi.mock("vscode", () => {
 	const showErrorMessage = vi.fn()
 	const file = vi.fn((p: string) => ({ fsPath: p, path: p, scheme: "file" }))
 	const parse = (input: string) => {
-		if (input.startsWith("https://") && input.includes("vscode-cdn.net")) {
+		if (input.startsWith("https://")) {
 			const url = new URL(input)
-			return {
-				scheme: "https",
-				authority: url.host,
-				path: url.pathname,
-				fsPath: url.pathname,
-				with: vi.fn(),
+			// More secure check: ensure vscode-cdn.net is the actual domain, not just a substring
+			if (url.host === "vscode-cdn.net" || url.host.endsWith(".vscode-cdn.net")) {
+				return {
+					scheme: "https",
+					authority: url.host,
+					path: url.pathname,
+					fsPath: url.pathname,
+					with: vi.fn(),
+				}
 			}
 		}
 		if (input.startsWith("file://")) {

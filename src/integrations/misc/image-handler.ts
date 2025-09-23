@@ -10,7 +10,11 @@ export async function openImage(dataUriOrPath: string, options?: { values?: { ac
 	// Example: https://file+.vscode-resource.vscode-cdn.net/file/<absolute_path_to_image>
 	try {
 		const u = vscode.Uri.parse(dataUriOrPath)
-		if (u.scheme === "https" && u.authority.includes("vscode-cdn.net")) {
+		if (
+			u.scheme === "https" &&
+			u.authority &&
+			(u.authority === "vscode-cdn.net" || u.authority.endsWith(".vscode-cdn.net"))
+		) {
 			let fsPath = decodeURIComponent(u.path || "")
 			// Strip the leading "/file/" prefix if present
 			if (fsPath.startsWith("/file/")) {
@@ -18,12 +22,12 @@ export async function openImage(dataUriOrPath: string, options?: { values?: { ac
 			}
 			fsPath = path.normalize(fsPath)
 			if (fsPath) {
-				const fileUri = vscode.Uri.file(fsPath)
 				if (options?.values?.action === "copy") {
 					await vscode.env.clipboard.writeText(fsPath)
 					vscode.window.showInformationMessage(t("common:info.path_copied_to_clipboard"))
 					return
 				}
+				const fileUri = vscode.Uri.file(fsPath)
 				await vscode.commands.executeCommand("vscode.open", fileUri)
 				return
 			}
