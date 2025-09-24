@@ -22,6 +22,7 @@ import {
 import { cn } from "@src/lib/utils"
 import { convertToMentionPath } from "@src/utils/path-mentions"
 import { StandardTooltip } from "@src/components/ui"
+import { useSpellCheck, SpellCheckResult } from "@src/hooks/useSpellCheck"
 
 import Thumbnails from "../common/Thumbnails"
 import { ModeSelector } from "./ModeSelector"
@@ -32,6 +33,7 @@ import ContextMenu from "./ContextMenu"
 import { IndexingStatusBadge } from "./IndexingStatusBadge"
 import { usePromptHistory } from "./hooks/usePromptHistory"
 import { CloudAccountSwitcher } from "../cloud/CloudAccountSwitcher"
+import { SpellCheckSuggestions } from "./SpellCheckSuggestions"
 
 interface ChatTextAreaProps {
 	inputValue: string
@@ -214,6 +216,18 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const contextMenuContainerRef = useRef<HTMLDivElement>(null)
 		const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false)
 		const [isFocused, setIsFocused] = useState(false)
+
+		// Spell check state
+		const {
+			misspelledWords,
+			checkSpelling,
+			isSupported: isSpellCheckSupported,
+		} = useSpellCheck({
+			enabled: true,
+			debounceMs: 500,
+		})
+		const [selectedMisspelling, setSelectedMisspelling] = useState<SpellCheckResult | null>(null)
+		const [spellCheckMenuPosition, setSpellCheckMenuPosition] = useState<{ x: number; y: number } | null>(null)
 
 		// Use custom hook for prompt history navigation
 		const { handleHistoryNavigation, resetHistoryNavigation, resetOnInputChange } = usePromptHistory({
@@ -558,6 +572,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				// Reset history navigation when user types
 				resetOnInputChange()
 
+				// Check spelling when text changes
+				if (isSpellCheckSupported) {
+					checkSpelling(newValue)
+				}
+
 				const newCursorPosition = e.target.selectionStart
 				setCursorPosition(newCursorPosition)
 
@@ -615,7 +634,15 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					setFileSearchResults([]) // Clear file search results.
 				}
 			},
-			[setInputValue, setSearchRequestId, setFileSearchResults, setSearchLoading, resetOnInputChange],
+			[
+				setInputValue,
+				setSearchRequestId,
+				setFileSearchResults,
+				setSearchLoading,
+				resetOnInputChange,
+				isSpellCheckSupported,
+				checkSpelling,
+			],
 		)
 
 		useEffect(() => {
@@ -750,15 +777,35 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				return match // Return unhighlighted if command is not valid
 			})
 
+			// Add spell check highlights
+			if (isSpellCheckSupported && misspelledWords.length > 0) {
+				// Sort misspellings by position (reverse order to maintain positions)
+				const sortedMisspellings = [...misspelledWords].sort((a, b) => b.start - a.start)
+
+				sortedMisspellings.forEach((misspelling) => {
+					const before = processedText.slice(0, misspelling.start)
+					const word = processedText.slice(misspelling.start, misspelling.end)
+					const after = processedText.slice(misspelling.end)
+
+					// Only add spell check highlight if the word isn't already highlighted
+					if (!word.includes("<mark")) {
+						processedText =
+							before +
+							`<span class="spell-check-underline" data-word="${misspelling.word}" data-start="${misspelling.start}" data-end="${misspelling.end}">${word}</span>` +
+							after
+					}
+				})
+			}
+
 			highlightLayerRef.current.innerHTML = processedText
 
 			highlightLayerRef.current.scrollTop = textAreaRef.current.scrollTop
 			highlightLayerRef.current.scrollLeft = textAreaRef.current.scrollLeft
-		}, [commands])
+		}, [commands, isSpellCheckSupported, misspelledWords])
 
 		useLayoutEffect(() => {
 			updateHighlights()
-		}, [inputValue, updateHighlights])
+		}, [inputValue, updateHighlights, misspelledWords])
 
 		const updateCursorPosition = useCallback(() => {
 			if (textAreaRef.current) {
@@ -903,6 +950,63 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			[setMode],
 		)
 
+		// Handle spell check word click
+		const handleSpellCheckClick = useCallback(
+			(event: React.MouseEvent) => {
+				const target = event.target as HTMLElement
+				if (target.classList.contains("spell-check-underline")) {
+					const word = target.getAttribute("data-word")
+					const start = parseInt(target.getAttribute("data-start") || "0", 10)
+					const end = parseInt(target.getAttribute("data-end") || "0", 10)
+
+					const misspelling = misspelledWords.find(
+						(m) => m.word === word && m.start === start && m.end === end,
+					)
+
+					if (misspelling) {
+						const rect = target.getBoundingClientRect()
+						setSelectedMisspelling(misspelling)
+						setSpellCheckMenuPosition({
+							x: rect.left,
+							y: rect.bottom + 5,
+						})
+					}
+				}
+			},
+			[misspelledWords],
+		)
+
+		// Handle spell check suggestion selection
+		const handleSpellCheckSuggestionSelect = useCallback(
+			(suggestion: string) => {
+				if (selectedMisspelling && textAreaRef.current) {
+					const currentValue = inputValue
+					const before = currentValue.slice(0, selectedMisspelling.start)
+					const after = currentValue.slice(selectedMisspelling.end)
+					const newValue = before + suggestion + after
+
+					setInputValue(newValue)
+					setSelectedMisspelling(null)
+					setSpellCheckMenuPosition(null)
+
+					// Update cursor position
+					const newCursorPos = selectedMisspelling.start + suggestion.length
+					setTimeout(() => {
+						if (textAreaRef.current) {
+							textAreaRef.current.focus()
+							textAreaRef.current.setSelectionRange(newCursorPos, newCursorPos)
+						}
+					}, 0)
+
+					// Re-check spelling with the corrected text
+					if (isSpellCheckSupported) {
+						checkSpelling(newValue)
+					}
+				}
+			},
+			[selectedMisspelling, inputValue, setInputValue, isSpellCheckSupported, checkSpelling],
+		)
+
 		// Helper function to handle API config change
 		const handleApiConfigChange = useCallback((value: string) => {
 			vscode.postMessage({ type: "loadApiConfigurationById", text: value })
@@ -1011,6 +1115,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								style={{
 									color: "transparent",
 								}}
+								onClick={handleSpellCheckClick}
 							/>
 							<DynamicTextArea
 								ref={(el) => {
@@ -1268,6 +1373,17 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						)}
 					</div>
 				</div>
+
+				{/* Spell check suggestions menu */}
+				<SpellCheckSuggestions
+					misspelling={selectedMisspelling}
+					position={spellCheckMenuPosition}
+					onSelect={handleSpellCheckSuggestionSelect}
+					onDismiss={() => {
+						setSelectedMisspelling(null)
+						setSpellCheckMenuPosition(null)
+					}}
+				/>
 			</div>
 		)
 	},
