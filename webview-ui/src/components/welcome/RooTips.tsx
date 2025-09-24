@@ -1,55 +1,67 @@
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
-import { useTranslation } from "react-i18next"
-import { Trans } from "react-i18next"
 
 import { buildDocLink } from "@src/utils/docLinks"
+import { Keyboard, ReplaceAll, LucideIcon, CheckCheck, Users2 } from "lucide-react"
+import { Button } from "../ui"
 
-const tips = [
+interface TipItem {
+	icon: LucideIcon
+	title: string
+	description: string
+}
+
+const tipItems: TipItem[] = [
 	{
-		icon: "codicon-account",
-		href: buildDocLink("basic-usage/using-modes", "tips"),
-		titleKey: "rooTips.customizableModes.title",
-		descriptionKey: "rooTips.customizableModes.description",
+		icon: Users2,
+		title: "Powerful role-specific modes",
+		description:
+			"Personas like Architect, Code and Ask which stay on task and deliver results. Create your own or get more in the marketplace.",
 	},
 	{
-		icon: "codicon-list-tree",
-		href: buildDocLink("features/boomerang-tasks", "tips"),
-		titleKey: "rooTips.boomerangTasks.title",
-		descriptionKey: "rooTips.boomerangTasks.description",
+		icon: CheckCheck,
+		title: "Granular auto-approval",
+		description: "Make Roo as autonomous as you want as you build confidence. Or go YOLO.",
+	},
+	{
+		icon: Keyboard,
+		title: "Highly customizable",
+		description:
+			"Fine-tune settings for Roo to work for you, like inference context, model properties, slash commands and more.",
+	},
+	{
+		icon: ReplaceAll,
+		title: "Model-agnostic",
+		description: "Bring your own key, no markup or lock-in.",
 	},
 ]
 
 const RooTips = () => {
-	const { t } = useTranslation("chat")
-
 	return (
-		<div>
-			<p className="text-vscode-editor-foreground leading-tight font-vscode-font-family text-center text-balance max-w-[380px] mx-auto my-0">
-				<Trans
-					i18nKey="chat:about"
-					components={{
-						DocsLink: (
-							<a href={buildDocLink("", "welcome")} target="_blank" rel="noopener noreferrer">
-								the docs
-							</a>
-						),
-					}}
-				/>
+		<div className="text-left text-base font-light pl-7 pr-2">
+			<h1 className="text-vscode-editor-foreground text-xl">Welcome to Roo Code!</h1>
+
+			<p className="font-bold">Get a whole dev team in your editor:</p>
+			<ul className="space-y-3 -ml-7">
+				{tipItems.map((item, index) => {
+					const Icon = item.icon
+					return (
+						<li key={index} className="flex items-start gap-3">
+							<Icon className="size-3.5 mt-0.75 shrink-0" />
+							<div>
+								<strong className="block font-semibold mr-1">{item.title}</strong>
+								<span className="text-vscode-descriptionForeground">{item.description}</span>
+							</div>
+						</li>
+					)
+				})}
+			</ul>
+			<p className="text-vscode-descriptionForeground">
+				Learn more in the <VSCodeLink href={buildDocLink("", "onboarding-home")}>docs</VSCodeLink>
 			</p>
-			<div className="flex flex-col items-center justify-center px-5 py-2.5 gap-4">
-				{tips.map((tip) => (
-					<div
-						key={tip.titleKey}
-						className="flex items-center gap-2 text-vscode-editor-foreground font-vscode max-w-[250px]">
-						<span className={`codicon ${tip.icon}`}></span>
-						<span>
-							<VSCodeLink className="forced-color-adjust-none" href={tip.href}>
-								{t(tip.titleKey)}
-							</VSCodeLink>
-							: {t(tip.descriptionKey)}
-						</span>
-					</div>
-				))}
+
+			<div className="mt-12 border-t border-vscode-panel-border">
+				<p>To get started:</p>
+				<Button>Configure API Provider</Button>
 			</div>
 		</div>
 	)

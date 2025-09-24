@@ -1,6 +1,7 @@
 import { memo, useState } from "react"
 import { Trans } from "react-i18next"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { ChartColumnIncreasing } from "lucide-react"
 
 import type { TelemetrySetting } from "@roo-code/types"
 
@@ -29,7 +30,7 @@ const TelemetryBanner = () => {
 	}
 
 	return (
-		<div className="relative px-4 py-2.5 pr-10 bg-vscode-banner-background border-b border-vscode-panel-border text-sm leading-normal text-vscode-foreground">
+		<div className="relative p-4 mb-4 flex gap-2 bg-vscode-button-secondaryBackground/50 border-b border-vscode-panel-border text-sm text-vscode-foreground">
 			{/* Close button (X) */}
 			<button
 				onClick={handleClose}
@@ -38,14 +39,17 @@ const TelemetryBanner = () => {
 				×
 			</button>
 
-			<div className="mb-0.5 font-bold">{t("welcome:telemetry.helpImprove")}</div>
-			<div>
-				<Trans
-					i18nKey="welcome:telemetry.helpImproveMessage"
-					components={{
-						settingsLink: <VSCodeLink href="#" onClick={handleOpenSettings} />,
-					}}
-				/>
+			<ChartColumnIncreasing className="inline size-4 mt-0.5 shrink-0" />
+			<div className="pr-6 cursor-default">
+				<div className="mb-0.5 font-bold">{t("welcome:telemetry.helpImprove")}</div>
+				<div>
+					<Trans
+						i18nKey="welcome:telemetry.helpImproveMessage"
+						components={{
+							settingsLink: <VSCodeLink href="#" onClick={handleOpenSettings} />,
+						}}
+					/>
+				</div>
 			</div>
 		</div>
 	)
