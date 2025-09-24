@@ -496,14 +496,14 @@ input[cmdk-input]:focus {
 	position: relative;
 	text-decoration: underline;
 	text-decoration-style: wavy;
-	text-decoration-color: var(--vscode-editorError-foreground, #f48771);
+	text-decoration-color: var(--vscode-editorInfo-foreground, #3794ff);
 	text-decoration-thickness: 1.5px;
 	text-underline-offset: 2px;
 	cursor: pointer;
 }
 
 .spell-check-error:hover {
-	text-decoration-color: var(--vscode-editorError-foreground, #f48771);
+	text-decoration-color: var(--vscode-editorInfo-foreground, #3794ff);
 	opacity: 0.8;
 }
 
@@ -524,8 +524,8 @@ input[cmdk-input]:focus {
 		45deg,
 		transparent,
 		transparent 2px,
-		var(--vscode-editorError-foreground, #f48771) 2px,
-		var(--vscode-editorError-foreground, #f48771) 4px
+		var(--vscode-editorInfo-foreground, #3794ff) 2px,
+		var(--vscode-editorInfo-foreground, #3794ff) 4px
 	);
 	opacity: 0.7;
 }
@@ -537,6 +537,6 @@ input[cmdk-input]:focus {
 /* Spell check highlight in textarea overlay */
 .spell-check-highlight {
 	background: transparent;
-	border-bottom: 2px wavy var(--vscode-editorError-foreground, #f48771);
+	border-bottom: 2px wavy var(--vscode-editorInfo-foreground, #3794ff);
 	position: relative;
 }
