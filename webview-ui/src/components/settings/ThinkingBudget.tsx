@@ -34,9 +34,16 @@ const shouldShowMinimalOption = (
 	modelId: string | undefined,
 	supportsEffort: boolean | undefined,
 ): boolean => {
-	const isGpt5Model = provider === "openai-native" && modelId?.startsWith("gpt-5")
+	// Keep existing behavior for native OpenAI provider
+	const isGpt5Native = provider === "openai-native" && modelId?.startsWith("gpt-5")
+
+	// For ChatGPT Codex provider, only expose "minimal" for the regular gpt-5 model,
+	// not for the "gpt-5-codex" variant
+	const isGpt5CodexRegular = provider === "openai-native-codex" && modelId === "gpt-5"
+
 	const isOpenRouterWithEffort = provider === "openrouter" && supportsEffort === true
-	return !!(isGpt5Model || isOpenRouterWithEffort)
+
+	return !!(isGpt5Native || isGpt5CodexRegular || isOpenRouterWithEffort)
 }
 
 export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, modelInfo }: ThinkingBudgetProps) => {
@@ -66,9 +73,14 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 		: baseEfforts
 
 	// Default reasoning effort - use model's default if available
-	// GPT-5 models have "medium" as their default in the model configuration
+	// Special-case for ChatGPT Codex "gpt-5": default to "minimal" unless user overrides
 	const modelDefaultReasoningEffort = modelInfo?.reasoningEffort as ReasoningEffortWithMinimal | undefined
-	const defaultReasoningEffort: ReasoningEffortWithMinimal = modelDefaultReasoningEffort || "medium"
+	const defaultReasoningEffort: ReasoningEffortWithMinimal =
+		apiConfiguration.apiProvider === "openai-native-codex" &&
+		selectedModelId === "gpt-5" &&
+		isReasoningEffortSupported
+			? "minimal"
+			: modelDefaultReasoningEffort || "medium"
 	const currentReasoningEffort: ReasoningEffortWithMinimal =
 		(apiConfiguration.reasoningEffort as ReasoningEffortWithMinimal | undefined) || defaultReasoningEffort
 
