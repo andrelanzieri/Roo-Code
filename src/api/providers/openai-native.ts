@@ -1247,7 +1247,16 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 		// The o3 models are named like "o3-mini-[reasoning-effort]", which are
 		// not valid model ids, so we need to strip the suffix.
-		return { id: id.startsWith("o3-mini") ? "o3-mini" : id, info, ...params, verbosity: params.verbosity }
+		// Similarly, gpt-5-codex needs to be mapped to the base gpt-5 model
+		let mappedModelId = id
+		if (id.startsWith("o3-mini")) {
+			mappedModelId = "o3-mini"
+		} else if (id === "gpt-5-codex") {
+			// Map gpt-5-codex to the base GPT-5 model for API compatibility
+			mappedModelId = "gpt-5-2025-08-07"
+		}
+
+		return { id: mappedModelId, info, ...params, verbosity: params.verbosity }
 	}
 
 	/**

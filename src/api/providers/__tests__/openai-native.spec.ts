@@ -208,6 +208,72 @@ describe("OpenAiNativeHandler", () => {
 	})
 
 	describe("GPT-5 models", () => {
+		it("should map gpt-5-codex to gpt-5-2025-08-07", () => {
+			const handler = new OpenAiNativeHandler({
+				...mockOptions,
+				apiModelId: "gpt-5-codex",
+			})
+
+			const model = handler.getModel()
+			// Verify that gpt-5-codex is mapped to gpt-5-2025-08-07
+			expect(model.id).toBe("gpt-5-2025-08-07")
+			// Verify it has the correct model info from gpt-5-codex
+			expect(model.info.description).toBe("GPT-5-Codex: A version of GPT-5 optimized for agentic coding in Codex")
+			expect(model.info.supportsVerbosity).toBe(true)
+			expect(model.info.supportsTemperature).toBe(false)
+		})
+
+		it("should handle gpt-5-codex streaming with Responses API", async () => {
+			// Mock fetch for Responses API
+			const mockFetch = vitest.fn().mockResolvedValue({
+				ok: true,
+				body: new ReadableStream({
+					start(controller) {
+						controller.enqueue(
+							new TextEncoder().encode(
+								'data: {"type":"response.output_item.added","item":{"type":"text","text":"Codex response"}}\n\n',
+							),
+						)
+						controller.enqueue(
+							new TextEncoder().encode(
+								'data: {"type":"response.done","response":{"usage":{"prompt_tokens":10,"completion_tokens":2}}}\n\n',
+							),
+						)
+						controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+						controller.close()
+					},
+				}),
+			})
+			global.fetch = mockFetch as any
+
+			// Mock SDK to fail so it uses fetch
+			mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+			handler = new OpenAiNativeHandler({
+				...mockOptions,
+				apiModelId: "gpt-5-codex",
+			})
+
+			const stream = handler.createMessage(systemPrompt, messages)
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Verify the request uses the mapped model ID
+			expect(mockFetch).toHaveBeenCalledWith(
+				"https://api.openai.com/v1/responses",
+				expect.objectContaining({
+					body: expect.stringContaining('"model":"gpt-5-2025-08-07"'),
+				}),
+			)
+
+			// Verify the response content
+			const textChunks = chunks.filter((c) => c.type === "text")
+			expect(textChunks).toHaveLength(1)
+			expect(textChunks[0].text).toBe("Codex response")
+		})
+
 		it("should handle GPT-5 model with Responses API", async () => {
 			// Mock fetch for Responses API
 			const mockFetch = vitest.fn().mockResolvedValue({
