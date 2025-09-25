@@ -134,6 +134,8 @@ describe("OpenRouter API", () => {
 				"google/gemini-2.5-flash-lite-preview-06-17",
 				"google/gemini-2.5-pro",
 				"anthropic/claude-opus-4.1", // Not yet available in OpenRouter API
+				"z-ai/glm-4.5-air", // Not yet in test fixture
+				"z-ai/glm-4.5-air:free", // Not yet in test fixture
 			])
 
 			const expectedReasoningBudgetModels = Array.from(OPEN_ROUTER_REASONING_BUDGET_MODELS)
