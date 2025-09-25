@@ -156,10 +156,20 @@ export const webviewMessageHandler = async (
 		}
 
 		const { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
-		// Determine API truncation index with timestamp fallback if exact match not found
+
+		// Check if there's a condense_context message in the preserved messages
+		const hasCondenseInPreservedMessages =
+			messageIndex > 0 &&
+			currentCline.clineMessages.slice(0, messageIndex).some((msg) => msg.say === "condense_context")
+
+		// Determine API truncation index with special handling for post-condense scenarios
 		let apiIndexToUse = apiConversationHistoryIndex
 		const tsThreshold = currentCline.clineMessages[messageIndex]?.ts
-		if (apiIndexToUse === -1 && typeof tsThreshold === "number") {
+
+		// After condensing, the API conversation history is already condensed
+		// We should not use findFirstApiIndexAtOrAfter when there's a condense in preserved messages
+		// as it would incorrectly truncate the condensed context
+		if (apiIndexToUse === -1 && typeof tsThreshold === "number" && !hasCondenseInPreservedMessages) {
 			apiIndexToUse = findFirstApiIndexAtOrAfter(tsThreshold, currentCline)
 		}
 
@@ -206,6 +216,7 @@ export const webviewMessageHandler = async (
 				}
 
 				// Delete this message and all subsequent messages
+				// The overwriteClineMessages method in Task will handle setting skipPrevResponseIdOnce if needed
 				await removeMessagesThisAndSubsequent(currentCline, messageIndex, apiIndexToUse)
 
 				// Restore checkpoint associations for preserved messages
