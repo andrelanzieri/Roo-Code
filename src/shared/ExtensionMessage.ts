@@ -10,6 +10,7 @@ import type {
 	MarketplaceItem,
 	TodoItem,
 	CloudUserInfo,
+	CloudOrganizationMembership,
 	OrganizationAllowList,
 	ShareVisibility,
 	QueuedMessage,
@@ -125,6 +126,7 @@ export interface ExtensionMessage {
 		| "insertTextIntoTextarea"
 		| "dismissedUpsells"
 		| "pastedImageSaved"
+		| "organizationSwitchResult"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	action?:
@@ -138,6 +140,7 @@ export interface ExtensionMessage {
 		| "didBecomeVisible"
 		| "focusInput"
 		| "switchTab"
+		| "toggleAutoApprove"
 	invoke?: "newChat" | "sendMessage" | "primaryButtonClick" | "secondaryButtonClick" | "setChatBoxMessage"
 	state?: ExtensionState
 	images?: string[]
@@ -204,6 +207,7 @@ export interface ExtensionMessage {
 	list?: string[] // For dismissedUpsells
 	imagePath?: string // For pastedImageSaved
 	imageUri?: string // For pastedImageSaved
+	organizationId?: string | null // For organizationSwitchResult
 }
 
 export type ExtensionState = Pick<
@@ -286,6 +290,7 @@ export type ExtensionState = Pick<
 	| "maxDiagnosticMessages"
 	| "openRouterImageGenerationSelectedModel"
 	| "includeTaskHistoryInEnhance"
+	| "reasoningBlockCollapsed"
 > & {
 	version: string
 	clineMessages: ClineMessage[]
@@ -329,6 +334,7 @@ export type ExtensionState = Pick<
 	cloudUserInfo: CloudUserInfo | null
 	cloudIsAuthenticated: boolean
 	cloudApiUrl?: string
+	cloudOrganizations?: CloudOrganizationMembership[]
 	sharingEnabled: boolean
 	organizationAllowList: OrganizationAllowList
 	organizationSettingsVersion?: number
