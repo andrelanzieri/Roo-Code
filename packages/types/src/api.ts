@@ -6,7 +6,8 @@ import type { RooCodeSettings } from "./global-settings.js"
 import type { ProviderSettingsEntry, ProviderSettings } from "./provider-settings.js"
 import type { IpcMessage, IpcServerEvents } from "./ipc.js"
 
-export type RooCodeAPIEvents = RooCodeEvents
+// Ensure all properties are required for EventEmitter compatibility
+export type RooCodeAPIEvents = Required<RooCodeEvents>
 
 export interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
 	/**
