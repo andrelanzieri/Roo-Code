@@ -194,8 +194,46 @@ export const SYSTEM_PROMPT = async (
 			},
 		)
 
-		// For file-based prompts, don't include the tool sections
+		// Get the full mode config to ensure we have the role definition (used for groups, etc.)
+		const modeConfig = getModeBySlug(mode, customModes) || modes.find((m) => m.slug === mode) || modes[0]
+
+		// Check if MCP functionality should be included
+		const hasMcpGroup = modeConfig.groups.some((groupEntry) => getGroupName(groupEntry) === "mcp")
+		const hasMcpServers = mcpHub && mcpHub.getServers().length > 0
+		const shouldIncludeMcp = hasMcpGroup && hasMcpServers
+
+		// If diff is disabled, don't pass the diffStrategy
+		const effectiveDiffStrategy = diffEnabled ? diffStrategy : undefined
+
+		const codeIndexManager = CodeIndexManager.getInstance(context, cwd)
+
+		// Always include tool descriptions for file-based custom prompts
+		// This ensures models like code-supernova get the proper tool format
+		const toolDescriptions = getToolDescriptionsForMode(
+			mode,
+			cwd,
+			supportsComputerUse,
+			codeIndexManager,
+			effectiveDiffStrategy,
+			browserViewportSize,
+			shouldIncludeMcp ? mcpHub : undefined,
+			customModes,
+			experiments,
+			partialReadsEnabled,
+			settings,
+			enableMcpServerCreation,
+			modelId,
+		)
+
 		return `${roleDefinition}
+
+${markdownFormattingSection()}
+
+${getSharedToolUseSection()}
+
+${toolDescriptions}
+
+${getToolUseGuidelinesSection(codeIndexManager)}
 
 ${fileCustomSystemPrompt}
 

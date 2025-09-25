@@ -154,9 +154,9 @@ describe("File-Based Custom System Prompt", () => {
 		expect(prompt).toContain(modes[0].roleDefinition)
 		expect(prompt).toContain(fileCustomSystemPrompt)
 
-		// Should not contain any of the default sections
-		expect(prompt).not.toContain("CAPABILITIES")
-		expect(prompt).not.toContain("MODES")
+		// After the fix, should now contain tool sections for proper tool usage
+		expect(prompt).toContain("TOOL USE")
+		expect(prompt).toContain("# Tools")
 	})
 
 	it("should combine file-based system prompt with role definition and custom instructions", async () => {
@@ -200,8 +200,57 @@ describe("File-Based Custom System Prompt", () => {
 		expect(prompt).toContain(customRoleDefinition)
 		expect(prompt).toContain(fileCustomSystemPrompt)
 
-		// Should not contain any of the default sections
-		expect(prompt).not.toContain("CAPABILITIES")
-		expect(prompt).not.toContain("MODES")
+		// After the fix, should now contain tool sections for proper tool usage
+		expect(prompt).toContain("TOOL USE")
+		expect(prompt).toContain("# Tools")
+	})
+
+	it("should include simplified read_file tool for code-supernova model with custom prompt", async () => {
+		// Mock the readFile to return content from a file
+		const fileCustomSystemPrompt = "Custom system prompt for code-supernova"
+		mockedFs.readFile.mockImplementation((filePath, options) => {
+			if (toPosix(filePath).includes(`.roo/system-prompt-${defaultModeSlug}`) && options === "utf-8") {
+				return Promise.resolve(fileCustomSystemPrompt)
+			}
+			return Promise.reject({ code: "ENOENT" })
+		})
+
+		const prompt = await SYSTEM_PROMPT(
+			mockContext,
+			"test/path",
+			false, // supportsComputerUse
+			undefined, // mcpHub
+			undefined, // diffStrategy
+			undefined, // browserViewportSize
+			defaultModeSlug, // mode
+			undefined, // customModePrompts
+			undefined, // customModes
+			undefined, // globalCustomInstructions
+			undefined, // diffEnabled
+			undefined, // experiments
+			true, // enableMcpServerCreation
+			undefined, // language
+			undefined, // rooIgnoreInstructions
+			undefined, // partialReadsEnabled
+			undefined, // settings
+			undefined, // todoList
+			"roo/code-supernova", // modelId - this is the key for this test
+		)
+
+		// Should contain the custom system prompt
+		expect(prompt).toContain(fileCustomSystemPrompt)
+
+		// Should contain tool descriptions
+		expect(prompt).toContain("# Tools")
+		expect(prompt).toContain("## read_file")
+
+		// Should contain the simplified read_file format for code-supernova
+		expect(prompt).toContain("<read_file>")
+		expect(prompt).toContain("<path>path/to/file</path>")
+		expect(prompt).toContain("</read_file>")
+
+		// Should NOT contain the complex multi-file read format
+		expect(prompt).not.toContain("<args>")
+		expect(prompt).not.toContain("You can read a maximum of 5 files")
 	})
 })
