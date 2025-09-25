@@ -3,6 +3,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import type { ModelInfo } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
+import { vi } from "vitest"
 
 import { BaseProvider } from "../../../api/providers/base-provider"
 import { ApiMessage } from "../../task-persistence/apiMessages"
@@ -10,7 +11,7 @@ import { summarizeConversation, getMessagesSinceLastSummary, N_MESSAGES_TO_KEEP 
 
 // Create a mock ApiHandler for testing
 class MockApiHandler extends BaseProvider {
-	createMessage(): any {
+	createMessage(systemPrompt?: string, messages?: any[]): any {
 		// Mock implementation for testing - returns an async iterable stream
 		const mockStream = {
 			async *[Symbol.asyncIterator]() {
@@ -176,7 +177,7 @@ describe("Condense", () => {
 		it("should handle empty summary from API gracefully", async () => {
 			// Mock handler that returns empty summary
 			class EmptyMockApiHandler extends MockApiHandler {
-				override createMessage(): any {
+				override createMessage(systemPrompt?: string, messages?: any[]): any {
 					const mockStream = {
 						async *[Symbol.asyncIterator]() {
 							yield { type: "text", text: "" }
@@ -203,6 +204,87 @@ describe("Condense", () => {
 			expect(result.error).toBeDefined()
 			expect(result.messages).toEqual(messages)
 			expect(result.cost).toBeGreaterThan(0)
+		})
+
+		it("should include the initial ask in the summarization input", async () => {
+			const initialAsk = "Please help me implement a new authentication system"
+			const messages: ApiMessage[] = [
+				{ role: "user", content: initialAsk },
+				{ role: "assistant", content: "I'll help you implement an authentication system" },
+				{ role: "user", content: "Let's start with JWT tokens" },
+				{ role: "assistant", content: "Setting up JWT authentication" },
+				{ role: "user", content: "Add refresh token support" },
+				{ role: "assistant", content: "Adding refresh token logic" },
+				{ role: "user", content: "Include rate limiting" },
+				{ role: "assistant", content: "Implementing rate limiting" },
+				{ role: "user", content: "Add tests" },
+			]
+
+			// Create a spy to capture what's sent to createMessage
+			let capturedMessages: any[] = []
+			class SpyApiHandler extends MockApiHandler {
+				override createMessage(systemPrompt?: string, messages?: any[]): any {
+					capturedMessages = messages || []
+					return super.createMessage(systemPrompt, messages)
+				}
+			}
+
+			const spyHandler = new SpyApiHandler()
+			await summarizeConversation(messages, spyHandler, "System prompt", taskId, 5000, false)
+
+			// Verify the initial ask is included in the messages sent for summarization
+			expect(capturedMessages.length).toBeGreaterThan(0)
+
+			// The first user message in the captured messages should be the initial ask
+			const firstUserMessage = capturedMessages.find((msg) => msg.role === "user")
+			expect(firstUserMessage).toBeDefined()
+			expect(firstUserMessage.content).toBe(initialAsk)
+
+			// Verify all messages except the last N are included
+			const expectedMessagesToSummarize = messages.slice(0, -N_MESSAGES_TO_KEEP)
+			// The last message in capturedMessages is the summarization request, so we exclude it
+			const actualSummarizedMessages = capturedMessages.slice(0, -1)
+
+			// Check that we have the right number of messages
+			expect(actualSummarizedMessages.length).toBe(expectedMessagesToSummarize.length)
+
+			// Verify the content matches
+			for (let i = 0; i < expectedMessagesToSummarize.length; i++) {
+				expect(actualSummarizedMessages[i].role).toBe(expectedMessagesToSummarize[i].role)
+				expect(actualSummarizedMessages[i].content).toBe(expectedMessagesToSummarize[i].content)
+			}
+		})
+
+		it("should include initial ask with slash command in summarization", async () => {
+			const slashCommand = "/prr #456 - Implement feature X"
+			const messages: ApiMessage[] = [
+				{ role: "user", content: slashCommand },
+				{ role: "assistant", content: "Working on PR #456" },
+				{ role: "user", content: "Add error handling" },
+				{ role: "assistant", content: "Adding error handling" },
+				{ role: "user", content: "Include logging" },
+				{ role: "assistant", content: "Adding logging" },
+				{ role: "user", content: "Write documentation" },
+				{ role: "assistant", content: "Writing docs" },
+				{ role: "user", content: "Final review" },
+			]
+
+			// Spy on the API handler to verify what's being sent
+			let capturedMessages: any[] = []
+			class SpyApiHandler extends MockApiHandler {
+				override createMessage(systemPrompt?: string, messages?: any[]): any {
+					capturedMessages = messages || []
+					return super.createMessage(systemPrompt, messages)
+				}
+			}
+
+			const spyHandler = new SpyApiHandler()
+			await summarizeConversation(messages, spyHandler, "System prompt", taskId, 5000, false)
+
+			// Verify the slash command is in the summarization input
+			const firstMessage = capturedMessages[0]
+			expect(firstMessage.role).toBe("user")
+			expect(firstMessage.content).toBe(slashCommand)
 		})
 	})
 
