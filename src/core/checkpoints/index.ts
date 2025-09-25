@@ -15,10 +15,11 @@ import { getApiMetrics } from "../../shared/getApiMetrics"
 import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider"
 
 import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../../services/checkpoints"
+import { time } from "node:console"
 
 const WARNING_THRESHOLD_MS = 5000
-const waitWarn = t("common:errors.wait_checkpoint_long_time")
-const failWarn = t("common:errors.init_checkpoint_fail_long_time")
+const WAIT_LONG_TIME_I18_KEY = "common:errors.wait_checkpoint_long_time"
+const INIT_FAIL_LONG_TIME_I18_KEY = "common:errors.init_checkpoint_fail_long_time"
 
 function sendCheckpointInitWarn(task: Task, checkpointWarning: string) {
 	task.providerRef.deref()?.postMessageToWebview({
@@ -88,7 +89,10 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 					// Show warning if we're past the threshold and haven't shown it yet
 					if (!warningShown && elapsed >= WARNING_THRESHOLD_MS) {
 						warningShown = true
-						sendCheckpointInitWarn(task, waitWarn)
+						sendCheckpointInitWarn(
+							task,
+							t(WAIT_LONG_TIME_I18_KEY, { timeout: WARNING_THRESHOLD_MS / 1000 }),
+						)
 					}
 
 					console.log(
@@ -99,7 +103,7 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 				{ interval, timeout: checkpointTimeoutMs },
 			)
 			if (!task?.checkpointService) {
-				sendCheckpointInitWarn(task, failWarn)
+				sendCheckpointInitWarn(task, t(INIT_FAIL_LONG_TIME_I18_KEY, { timeout: task.checkpointTimeout }))
 				task.enableCheckpoints = false
 				return undefined
 			} else {
@@ -122,7 +126,7 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 		return service
 	} catch (err) {
 		if (err.name === "TimeoutError" && task.enableCheckpoints) {
-			sendCheckpointInitWarn(task, failWarn)
+			sendCheckpointInitWarn(task, t(INIT_FAIL_LONG_TIME_I18_KEY, { timeout: task.checkpointTimeout }))
 		}
 		log(`[Task#getCheckpointService] ${err.message}`)
 		task.enableCheckpoints = false
@@ -166,6 +170,7 @@ async function checkGitInstallation(
 
 		service.on("checkpoint", ({ fromHash: from, toHash: to, suppressMessage }) => {
 			try {
+				sendCheckpointInitWarn(task, "")
 				// Always update the current checkpoint hash in the webview, including the suppress flag
 				provider?.postMessageToWebview({
 					type: "currentCheckpointUpdated",
