@@ -10,7 +10,7 @@ import { summarizeConversation, getMessagesSinceLastSummary, N_MESSAGES_TO_KEEP 
 
 // Create a mock ApiHandler for testing
 class MockApiHandler extends BaseProvider {
-	createMessage(): any {
+	createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[], metadata?: any): any {
 		// Mock implementation for testing - returns an async iterable stream
 		const mockStream = {
 			async *[Symbol.asyncIterator]() {
@@ -203,6 +203,48 @@ describe("Condense", () => {
 			expect(result.error).toBeDefined()
 			expect(result.messages).toEqual(messages)
 			expect(result.cost).toBeGreaterThan(0)
+		})
+
+		it("should include the first message in the summarization content", async () => {
+			// Create a mock handler that captures what messages are sent for summarization
+			let capturedMessages: any[] = []
+			class CapturingMockApiHandler extends MockApiHandler {
+				override createMessage(
+					systemPrompt: string,
+					messages: Anthropic.Messages.MessageParam[],
+					metadata?: any,
+				): any {
+					// Capture the messages sent for summarization (excluding the final request message)
+					capturedMessages = messages.slice(0, -1)
+					return super.createMessage(systemPrompt, messages, metadata)
+				}
+			}
+
+			const capturingHandler = new CapturingMockApiHandler()
+			const messages: ApiMessage[] = [
+				{ role: "user", content: "Initial task: Create a TODO app" },
+				{ role: "assistant", content: "I'll help you create a TODO app" },
+				{ role: "user", content: "Add user authentication" },
+				{ role: "assistant", content: "Adding authentication" },
+				{ role: "user", content: "Add database support" },
+				{ role: "assistant", content: "Setting up database" },
+				{ role: "user", content: "Add API endpoints" },
+				{ role: "assistant", content: "Creating API endpoints" },
+				{ role: "user", content: "Deploy it" },
+			]
+
+			await summarizeConversation(messages, capturingHandler, "System prompt", taskId, 5000, false)
+
+			// Verify that the first message was included in what gets summarized
+			expect(capturedMessages.length).toBeGreaterThan(0)
+			expect(capturedMessages[0]).toEqual({
+				role: "user",
+				content: "Initial task: Create a TODO app",
+			})
+
+			// Verify all messages except the last N_MESSAGES_TO_KEEP were included
+			const expectedMessagesToSummarize = messages.slice(0, -N_MESSAGES_TO_KEEP)
+			expect(capturedMessages).toEqual(expectedMessagesToSummarize)
 		})
 	})
 
