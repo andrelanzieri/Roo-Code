@@ -1616,6 +1616,175 @@ describe("Cline", () => {
 	})
 
 	describe("Conversation continuity after condense and deletion", () => {
+		it("should preserve messages up to rewind target after manual condense", async () => {
+			// This test reproduces the bug scenario: messages 1-10 → manual condense → 11 → rewind to 8 → send 12
+			// Expected: Keep messages through 8, drop only 9-11
+			// Bug behavior: Only initial message and 12+ remain
+
+			// Arrange: create task
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "initial task",
+				startTask: false,
+			})
+
+			// Simulate messages 1-10
+			const messages = []
+			const apiHistory = []
+			const baseTime = Date.now() - 10000
+
+			for (let i = 1; i <= 10; i++) {
+				const ts = baseTime + i * 100
+				messages.push({
+					ts,
+					type: "say" as const,
+					say: "user_feedback" as const,
+					text: `tell me a joke ${i}`,
+				})
+				apiHistory.push({
+					role: "user" as const,
+					content: [{ type: "text" as const, text: `tell me a joke ${i}` }],
+					ts,
+				})
+
+				messages.push({
+					ts: ts + 50,
+					type: "say" as const,
+					say: "text" as const,
+					text: `Here's joke ${i}...`,
+				})
+				apiHistory.push({
+					role: "assistant" as const,
+					content: [{ type: "text" as const, text: `Here's joke ${i}...` }],
+					ts: ts + 50,
+				})
+			}
+
+			await task.overwriteClineMessages(messages)
+			await task.overwriteApiConversationHistory(apiHistory)
+
+			// Simulate manual condense - this creates a summary with timestamp collision
+			const keepMessages = messages.slice(-6) // Keep last 3 user-assistant pairs
+			const keepApiHistory = apiHistory.slice(-6)
+
+			// Bug: summary gets the same timestamp as first kept message
+			const summaryTs = keepMessages[0].ts // This causes the collision
+
+			const condensedMessages = [
+				messages[0], // First message
+				{
+					ts: summaryTs,
+					type: "say" as const,
+					say: "text" as const,
+					text: "Summary of jokes 1-7...",
+					isSummary: true,
+				},
+				...keepMessages,
+			]
+
+			const condensedApiHistory = [
+				apiHistory[0], // First message
+				{
+					role: "assistant" as const,
+					content: [{ type: "text" as const, text: "Summary of jokes 1-7..." }],
+					ts: summaryTs,
+					isSummary: true,
+				},
+				...keepApiHistory,
+			]
+
+			await task.overwriteClineMessages(condensedMessages)
+			await task.overwriteApiConversationHistory(condensedApiHistory)
+
+			// Add message 11
+			const msg11Ts = baseTime + 1100
+			await task.overwriteClineMessages([
+				...condensedMessages,
+				{
+					ts: msg11Ts,
+					type: "say" as const,
+					say: "user_feedback" as const,
+					text: "tell me a joke 11",
+				},
+				{
+					ts: msg11Ts + 50,
+					type: "say" as const,
+					say: "text" as const,
+					text: "Here's joke 11...",
+				},
+			])
+
+			await task.overwriteApiConversationHistory([
+				...condensedApiHistory,
+				{
+					role: "user" as const,
+					content: [{ type: "text" as const, text: "tell me a joke 11" }],
+					ts: msg11Ts,
+				},
+				{
+					role: "assistant" as const,
+					content: [{ type: "text" as const, text: "Here's joke 11..." }],
+					ts: msg11Ts + 50,
+				},
+			])
+
+			// Simulate rewind to message 8 (delete this and after)
+			const msg8Ts = baseTime + 800 // Timestamp of message 8
+
+			// Find the message index for message 8
+			const messageIndex = task.clineMessages.findIndex(
+				(m) => m.say === "user_feedback" && m.text === "tell me a joke 8",
+			)
+
+			// With the fix, checkpoint restore should use <= instead of <
+			// This ensures message 8 is kept
+			const filteredApiHistory = task.apiConversationHistory.filter((m) => !m.ts || m.ts <= msg8Ts)
+
+			// Verify the fix: message 8 should be included
+			const hasMessage8 = filteredApiHistory.some((m) => {
+				if (
+					Array.isArray(m.content) &&
+					m.content[0] &&
+					typeof m.content[0] === "object" &&
+					"text" in m.content[0]
+				) {
+					return m.content[0].text === "tell me a joke 8"
+				}
+				return false
+			})
+
+			expect(hasMessage8).toBe(true)
+			expect(filteredApiHistory.length).toBeGreaterThan(2) // Should have more than just initial + summary
+
+			// Verify that messages 9-11 are excluded
+			const hasMessage9 = filteredApiHistory.some((m) => {
+				if (
+					Array.isArray(m.content) &&
+					m.content[0] &&
+					typeof m.content[0] === "object" &&
+					"text" in m.content[0]
+				) {
+					return m.content[0].text.includes("joke 9")
+				}
+				return false
+			})
+			const hasMessage11 = filteredApiHistory.some((m) => {
+				if (
+					Array.isArray(m.content) &&
+					m.content[0] &&
+					typeof m.content[0] === "object" &&
+					"text" in m.content[0]
+				) {
+					return m.content[0].text.includes("joke 11")
+				}
+				return false
+			})
+
+			expect(hasMessage9).toBe(false)
+			expect(hasMessage11).toBe(false)
+		})
+
 		it("should set suppressPreviousResponseId when last message is condense_context", async () => {
 			// Arrange: create task
 			const task = new Task({

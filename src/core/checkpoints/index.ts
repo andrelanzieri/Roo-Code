@@ -226,7 +226,8 @@ export async function checkpointRestore(
 		await provider?.postMessageToWebview({ type: "currentCheckpointUpdated", text: commitHash })
 
 		if (mode === "restore") {
-			await task.overwriteApiConversationHistory(task.apiConversationHistory.filter((m) => !m.ts || m.ts < ts))
+			// Include the target turn during checkpoint restore (use <= instead of <)
+			await task.overwriteApiConversationHistory(task.apiConversationHistory.filter((m) => !m.ts || m.ts <= ts))
 
 			const deletedMessages = task.clineMessages.slice(index + 1)
 

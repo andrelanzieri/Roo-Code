@@ -181,10 +181,16 @@ export async function summarizeConversation(
 		return { ...response, cost, error }
 	}
 
+	// Make the summary timestamp unique to avoid collision with the first kept message
+	// Use keepMessages[0].ts - 1, but ensure we don't go before the first message
+	const firstMessageTs = firstMessage.ts || Date.now()
+	const firstKeptTs = keepMessages[0].ts || Date.now()
+	const summaryTs = Math.max(firstMessageTs + 1, firstKeptTs - 1)
+
 	const summaryMessage: ApiMessage = {
 		role: "assistant",
 		content: summary,
-		ts: keepMessages[0].ts,
+		ts: summaryTs,
 		isSummary: true,
 	}
 
