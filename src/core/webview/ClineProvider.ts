@@ -2661,6 +2661,9 @@ export class ClineProvider
 		// Set the task as paused
 		task.isPaused = true
 
+		// Emit pause event for tracking
+		task.emit(RooCodeEventName.TaskPaused, task.taskId)
+
 		// Update the UI to reflect the paused state
 		await this.postStateToWebview()
 	}
@@ -2675,6 +2678,9 @@ export class ClineProvider
 
 		// Set the task as not paused
 		task.isPaused = false
+
+		// Emit resume event for tracking
+		task.emit(RooCodeEventName.TaskUnpaused, task.taskId)
 
 		// Update the UI to reflect the resumed state
 		await this.postStateToWebview()
