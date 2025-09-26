@@ -191,6 +191,10 @@ function runProcess({
 				process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS ||
 				CLAUDE_CODE_DEFAULT_MAX_OUTPUT_TOKENS.toString(),
 		},
+		// Inherit the shell environment to ensure authentication tokens are available
+		extendEnv: true,
+		// Use shell to ensure proper environment variable expansion
+		shell: true,
 		cwd,
 		maxBuffer: 1024 * 1024 * 1000,
 		timeout: CLAUDE_CODE_TIMEOUT,
