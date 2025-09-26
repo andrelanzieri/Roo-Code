@@ -14,7 +14,9 @@
 	},
 	"apiConfiguration": {
 		"title": "API Configuration",
-		"select": "Select which API configuration to use for this mode"
+		"select": "Select which API configuration to use for this mode",
+		"selectToSchedule": "Select a model to schedule for the next request",
+		"selectToCancel": "Select the same model again to cancel the scheduled switch"
 	},
 	"tools": {
 		"title": "Available Tools",

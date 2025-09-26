@@ -20,6 +20,8 @@ interface ApiConfigSelectorProps {
 	listApiConfigMeta: Array<{ id: string; name: string; modelId?: string }>
 	pinnedApiConfigs?: Record<string, boolean>
 	togglePinnedApiConfig: (id: string) => void
+	scheduledConfigId?: string
+	onScheduleChange?: (configId: string | undefined) => void
 }
 
 export const ApiConfigSelector = ({
@@ -32,6 +34,8 @@ export const ApiConfigSelector = ({
 	listApiConfigMeta,
 	pinnedApiConfigs,
 	togglePinnedApiConfig,
+	scheduledConfigId,
+	onScheduleChange,
 }: ApiConfigSelectorProps) => {
 	const { t } = useAppTranslation()
 	const [open, setOpen] = useState(false)
@@ -73,11 +77,23 @@ export const ApiConfigSelector = ({
 
 	const handleSelect = useCallback(
 		(configId: string) => {
-			onChange(configId)
+			if (disabled && onScheduleChange) {
+				// When disabled, schedule the change instead of applying immediately
+				if (scheduledConfigId === configId) {
+					// If clicking the same config, cancel the scheduled change
+					onScheduleChange(undefined)
+				} else {
+					// Schedule the new config
+					onScheduleChange(configId)
+				}
+			} else {
+				// Apply immediately when not disabled
+				onChange(configId)
+			}
 			setOpen(false)
 			setSearchValue("")
 		},
-		[onChange],
+		[disabled, onChange, onScheduleChange, scheduledConfigId],
 	)
 
 	const handleEditClick = useCallback(() => {
@@ -88,6 +104,7 @@ export const ApiConfigSelector = ({
 	const renderConfigItem = useCallback(
 		(config: { id: string; name: string; modelId?: string }, isPinned: boolean) => {
 			const isCurrentConfig = config.id === value
+			const isScheduledConfig = config.id === scheduledConfigId
 
 			return (
 				<div
@@ -98,6 +115,7 @@ export const ApiConfigSelector = ({
 						"hover:bg-vscode-list-hoverBackground",
 						isCurrentConfig &&
 							"bg-vscode-list-activeSelectionBackground text-vscode-list-activeSelectionForeground",
+						isScheduledConfig && !isCurrentConfig && "border-l-2 border-vscode-focusBorder",
 					)}>
 					<div className="flex-1 min-w-0 flex items-center gap-1 overflow-hidden">
 						<span className="flex-shrink-0">{config.name}</span>
@@ -112,10 +130,17 @@ export const ApiConfigSelector = ({
 						)}
 					</div>
 					<div className="flex items-center gap-1">
-						{isCurrentConfig && (
+						{isCurrentConfig && !isScheduledConfig && (
 							<div className="size-5 p-1 flex items-center justify-center">
 								<span className="codicon codicon-check text-xs" />
 							</div>
+						)}
+						{isScheduledConfig && (
+							<StandardTooltip content={disabled ? t("chat:scheduledSwitch") : t("chat:nextModel")}>
+								<div className="size-5 p-1 flex items-center justify-center">
+									<span className="codicon codicon-clock text-xs text-vscode-focusBorder" />
+								</div>
+							</StandardTooltip>
 						)}
 						<StandardTooltip content={isPinned ? t("chat:unpin") : t("chat:pin")}>
 							<Button
@@ -138,25 +163,40 @@ export const ApiConfigSelector = ({
 				</div>
 			)
 		},
-		[value, handleSelect, t, togglePinnedApiConfig],
+		[value, scheduledConfigId, handleSelect, t, togglePinnedApiConfig, disabled],
 	)
+
+	// Get the scheduled config's display name
+	const scheduledConfigName = useMemo(() => {
+		if (!scheduledConfigId) return null
+		const config = listApiConfigMeta.find((c) => c.id === scheduledConfigId)
+		return config?.name || null
+	}, [scheduledConfigId, listApiConfigMeta])
 
 	return (
 		<Popover open={open} onOpenChange={setOpen} data-testid="api-config-selector-root">
-			<StandardTooltip content={title}>
+			<StandardTooltip
+				content={scheduledConfigName && disabled ? `${title} (Scheduled: ${scheduledConfigName})` : title}>
 				<PopoverTrigger
-					disabled={disabled}
+					disabled={false} // Always allow opening the dropdown
 					data-testid="dropdown-trigger"
 					className={cn(
 						"min-w-0 inline-flex items-center relative whitespace-nowrap px-1.5 py-1 text-xs",
-						"bg-transparent border border-[rgba(255,255,255,0.08)] rounded-md text-vscode-foreground",
+						"bg-transparent border rounded-md text-vscode-foreground",
 						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
 						disabled
-							? "opacity-50 cursor-not-allowed"
-							: "opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)] cursor-pointer",
+							? scheduledConfigId
+								? "border-vscode-focusBorder opacity-70 cursor-pointer hover:opacity-90"
+								: "border-[rgba(255,255,255,0.08)] opacity-50 cursor-pointer hover:opacity-70"
+							: "border-[rgba(255,255,255,0.08)] opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)] cursor-pointer",
 						triggerClassName,
 					)}>
-					<span className="truncate">{displayName}</span>
+					<span className="truncate flex items-center gap-1">
+						{displayName}
+						{scheduledConfigId && disabled && (
+							<span className="codicon codicon-clock text-xs text-vscode-focusBorder" />
+						)}
+					</span>
 				</PopoverTrigger>
 			</StandardTooltip>
 			<PopoverContent
@@ -188,7 +228,11 @@ export const ApiConfigSelector = ({
 					) : (
 						<div className="p-3 border-b border-vscode-dropdown-border">
 							<p className="text-xs text-vscode-descriptionForeground m-0">
-								{t("prompts:apiConfiguration.select")}
+								{disabled && scheduledConfigId
+									? t("prompts:apiConfiguration.selectToCancel")
+									: disabled
+										? t("prompts:apiConfiguration.selectToSchedule")
+										: t("prompts:apiConfiguration.select")}
 							</p>
 						</div>
 					)}

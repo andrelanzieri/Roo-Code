@@ -118,6 +118,8 @@
 	},
 	"selectMode": "Select mode for interaction",
 	"selectApiConfig": "Select API configuration",
+	"scheduledSwitch": "Scheduled for next request",
+	"nextModel": "Next model",
 	"enhancePrompt": "Enhance prompt with additional context",
 	"modeSelector": {
 		"title": "Modes",

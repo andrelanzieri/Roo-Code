@@ -58,6 +58,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		{
 			inputValue,
 			setInputValue,
+			sendingDisabled,
 			selectApiConfigDisabled,
 			placeholderText,
 			selectedImages,
@@ -90,6 +91,9 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			commands,
 			cloudUserInfo,
 		} = useExtensionState()
+
+		// State for scheduled model switch
+		const [scheduledConfigId, setScheduledConfigId] = useState<string | undefined>(undefined)
 
 		// Find the ID and display text for the currently selected API configuration.
 		const { currentConfigId, displayName } = useMemo(() => {
@@ -907,6 +911,21 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			vscode.postMessage({ type: "loadApiConfigurationById", text: value })
 		}, [])
 
+		// Handle scheduled config change
+		const handleScheduledConfigChange = useCallback((configId: string | undefined) => {
+			setScheduledConfigId(configId)
+			// We'll apply the change when sendingDisabled becomes false
+		}, [])
+
+		// Effect to apply scheduled config change when sending is re-enabled
+		useEffect(() => {
+			if (!sendingDisabled && scheduledConfigId) {
+				// Apply the scheduled change
+				handleApiConfigChange(scheduledConfigId)
+				setScheduledConfigId(undefined)
+			}
+		}, [sendingDisabled, scheduledConfigId, handleApiConfigChange])
+
 		return (
 			<div
 				className={cn(
@@ -1231,6 +1250,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							listApiConfigMeta={listApiConfigMeta || []}
 							pinnedApiConfigs={pinnedApiConfigs}
 							togglePinnedApiConfig={togglePinnedApiConfig}
+							scheduledConfigId={scheduledConfigId}
+							onScheduleChange={handleScheduledConfigChange}
 						/>
 						<AutoApproveDropdown triggerClassName="min-w-[28px] text-ellipsis overflow-hidden flex-shrink" />
 					</div>
