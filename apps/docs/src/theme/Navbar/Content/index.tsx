@@ -8,8 +8,8 @@ import SearchBar from "@theme/SearchBar"
 import NavbarMobileSidebarToggle from "@theme/Navbar/MobileSidebar/Toggle"
 import NavbarLogo from "@theme/Navbar/Logo"
 import NavbarSearch from "@theme/Navbar/Search"
-import GitHubInstallButtons from "../../../components/GitHubInstallButtons"
-import NavbarSocialIcons from "../../../components/NavbarSocialIcons"
+import GitHubInstallButtons from "@site/src/components/GitHubInstallButtons"
+import NavbarSocialIcons from "@site/src/components/NavbarSocialIcons"
 
 import styles from "./styles.module.css"
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { RxGithubLogo } from "react-icons/rx"
 import { VscVscode } from "react-icons/vsc"
-import { GITHUB_MAIN_REPO_URL, VSCODE_MARKETPLACE_URL } from "../../constants"
+import { GITHUB_MAIN_REPO_URL, VSCODE_MARKETPLACE_URL } from "@site/src/constants"
 import styles from "./styles.module.css"
 
 // VS Code API types

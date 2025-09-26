@@ -7,7 +7,7 @@ import Link from "@docusaurus/Link"
 import { translate } from "@docusaurus/Translate"
 import HomeBreadcrumbItem from "@theme/DocBreadcrumbs/Items/Home"
 import DocBreadcrumbsStructuredData from "@theme/DocBreadcrumbs/StructuredData"
-import CopyPageContent from "../../components/CopyPageURL"
+import CopyPageContent from "@site/src/components/CopyPageURL"
 
 import styles from "./styles.module.css"
 

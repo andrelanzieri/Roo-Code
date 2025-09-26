@@ -6,10 +6,9 @@ import type { RooCodeSettings } from "./global-settings.js"
 import type { ProviderSettingsEntry, ProviderSettings } from "./provider-settings.js"
 import type { IpcMessage, IpcServerEvents } from "./ipc.js"
 
-// Ensure all properties are required for EventEmitter compatibility
-export type RooCodeAPIEvents = Required<RooCodeEvents>
+export type RooCodeAPIEvents = RooCodeEvents
 
-export interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
+export interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents & Record<string, unknown[]>> {
 	/**
 	 * Starts a new task with an optional initial message and images.
 	 * @param task Optional initial task message.

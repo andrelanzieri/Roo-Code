@@ -1,7 +1,7 @@
 import React, { type ReactNode } from "react"
 import clsx from "clsx"
 import { ThemeClassNames } from "@docusaurus/theme-common"
-import SocialIcons from "../../../components/SocialIcons"
+import SocialIcons from "@site/src/components/SocialIcons"
 import type { Props } from "@theme/Footer/Layout"
 
 export default function FooterLayout({ style, links, logo, copyright }: Props): ReactNode {

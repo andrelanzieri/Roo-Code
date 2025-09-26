@@ -1,5 +1,5 @@
 import MDXComponents from "@theme-original/MDXComponents"
-import Codicon from "../components/Codicon"
+import Codicon from "@site/src/components/Codicon"
 
 export default {
 	...MDXComponents,

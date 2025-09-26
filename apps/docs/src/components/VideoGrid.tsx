@@ -1,5 +1,5 @@
 import React from "react"
-import videos from "../../docs/tutorial-videos.json"
+import videos from "@site/docs/tutorial-videos.json"
 
 interface Video {
 	id: string
