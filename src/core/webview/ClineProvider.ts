@@ -2650,12 +2650,34 @@ export class ClineProvider
 		}
 	}
 
-	public resumeTask(taskId: string): void {
-		// Use the existing showTaskWithId method which handles both current and
-		// historical tasks.
-		this.showTaskWithId(taskId).catch((error) => {
-			this.log(`Failed to resume task ${taskId}: ${error.message}`)
-		})
+	public async pauseTask(): Promise<void> {
+		const task = this.getCurrentTask()
+		if (!task) {
+			return
+		}
+
+		this.log(`[pauseTask] pausing task ${task.taskId}`)
+
+		// Set the task as paused
+		task.isPaused = true
+
+		// Update the UI to reflect the paused state
+		await this.postStateToWebview()
+	}
+
+	public async resumeTask(): Promise<void> {
+		const task = this.getCurrentTask()
+		if (!task) {
+			return
+		}
+
+		this.log(`[resumeTask] resuming task ${task.taskId}`)
+
+		// Set the task as not paused
+		task.isPaused = false
+
+		// Update the UI to reflect the resumed state
+		await this.postStateToWebview()
 	}
 
 	// Modes
