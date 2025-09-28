@@ -6,18 +6,19 @@ import * as os from "os"
 import * as vscode from "vscode"
 
 import {
-	type RooCodeAPI,
 	type RooCodeSettings,
 	type RooCodeEvents,
 	type ProviderSettings,
 	type ProviderSettingsEntry,
 	type TaskEvent,
 	type CreateTaskOptions,
+	type McpApi,
 	RooCodeEventName,
 	TaskCommandName,
 	isSecretStateKey,
 	IpcOrigin,
 	IpcMessageType,
+	setMcpApi,
 } from "@roo-code/types"
 import { IpcServer } from "@roo-code/ipc"
 
@@ -25,7 +26,7 @@ import { Package } from "../shared/package"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { openClineInNewTab } from "../activate/registerCommands"
 
-export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
+export class API extends EventEmitter<RooCodeEvents> implements McpApi {
 	private readonly outputChannel: vscode.OutputChannel
 	private readonly sidebarProvider: ClineProvider
 	private readonly context: vscode.ExtensionContext
@@ -93,6 +94,19 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 						break
 				}
 			})
+		}
+
+		// Initialize the global MCP API
+		setMcpApi(this)
+	}
+
+	// McpApi implementation
+	public async refreshMcpServers(): Promise<void> {
+		const mcpHub = this.sidebarProvider.getMcpHub()
+		if (mcpHub) {
+			await mcpHub.refreshAllConnections()
+		} else {
+			throw new Error("MCP hub is not available")
 		}
 	}
 
