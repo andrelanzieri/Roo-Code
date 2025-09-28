@@ -8,6 +8,7 @@ import * as vscode from "vscode"
 import {
 	type RooCodeSettings,
 	type RooCodeEvents,
+	type RooCodeAPI,
 	type ProviderSettings,
 	type ProviderSettingsEntry,
 	type TaskEvent,
@@ -26,7 +27,7 @@ import { Package } from "../shared/package"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { openClineInNewTab } from "../activate/registerCommands"
 
-export class API extends EventEmitter<RooCodeEvents> implements McpApi {
+export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	private readonly outputChannel: vscode.OutputChannel
 	private readonly sidebarProvider: ClineProvider
 	private readonly context: vscode.ExtensionContext
