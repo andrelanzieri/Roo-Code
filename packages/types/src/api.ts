@@ -23,7 +23,7 @@ export interface McpApi {
 export interface RooCodeAPI extends EventEmitter<RooCodeEvents>, McpApi {
 	// Task Management
 	startNewTask(options: {
-		configuration: RooCodeSettings
+		configuration?: RooCodeSettings
 		text?: string
 		images?: string[]
 		newTab?: boolean
