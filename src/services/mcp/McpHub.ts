@@ -859,10 +859,11 @@ export class McpHub {
 						// Custom fetch function that includes the HTTPS agent
 						reconnectingEventSourceOptions.fetch = (url: string | URL, init: RequestInit) => {
 							const headers = new Headers({ ...(init?.headers || {}), ...(configInjected.headers || {}) })
+							// Use type assertion for Node.js-specific agent property
 							return fetch(url, {
 								...init,
 								headers,
-								agent: agent as any,
+								...({ agent } as any),
 							})
 						}
 					}
