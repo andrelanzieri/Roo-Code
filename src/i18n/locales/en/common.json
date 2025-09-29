@@ -97,6 +97,8 @@
 			"error_deleting_message": "Error deleting message: {{error}}",
 			"error_editing_message": "Error editing message: {{error}}"
 		},
+		"task_not_found": "Task not found",
+		"update_task_title": "Failed to update task title",
 		"gemini": {
 			"generate_stream": "Gemini generate context stream error: {{error}}",
 			"generate_complete_prompt": "Gemini completion error: {{error}}",

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { CloudUpsellDialog } from "@src/components/cloud/CloudUpsellDialog"
 import DismissibleUpsell from "@src/components/common/DismissibleUpsell"
-import { FoldVertical, ChevronUp, ChevronDown } from "lucide-react"
+import { FoldVertical, ChevronUp, ChevronDown, Edit2, Check, X } from "lucide-react"
 import prettyBytes from "pretty-bytes"
 
 import type { ClineMessage } from "@roo-code/types"
@@ -16,6 +16,7 @@ import { cn } from "@src/lib/utils"
 import { StandardTooltip } from "@src/components/ui"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
+import { vscode } from "@src/utils/vscode"
 
 import Thumbnails from "../common/Thumbnails"
 
@@ -54,6 +55,9 @@ const TaskHeader = ({
 	const { id: modelId, info: model } = useSelectedModel(apiConfiguration)
 	const [isTaskExpanded, setIsTaskExpanded] = useState(false)
 	const [showLongRunningTaskMessage, setShowLongRunningTaskMessage] = useState(false)
+	const [isEditingTitle, setIsEditingTitle] = useState(false)
+	const [editedTitle, setEditedTitle] = useState(currentTaskItem?.title || "")
+	const titleInputRef = useRef<HTMLInputElement>(null)
 	const { isOpen, openUpsell, closeUpsell, handleConnect } = useCloudUpsell({
 		autoOpenOnAuth: false,
 	})
@@ -81,6 +85,36 @@ const TaskHeader = ({
 
 		return () => clearTimeout(timer)
 	}, [currentTaskItem, isTaskComplete])
+
+	// Update edited title when currentTaskItem changes
+	useEffect(() => {
+		setEditedTitle(currentTaskItem?.title || "")
+	}, [currentTaskItem?.title])
+
+	// Focus input when editing starts
+	useEffect(() => {
+		if (isEditingTitle && titleInputRef.current) {
+			titleInputRef.current.focus()
+			titleInputRef.current.select()
+		}
+	}, [isEditingTitle])
+
+	const handleSaveTitle = () => {
+		if (currentTaskItem) {
+			// Send message to update the task title
+			vscode.postMessage({
+				type: "updateTaskTitle",
+				taskId: currentTaskItem.id,
+				title: editedTitle.trim(),
+			})
+		}
+		setIsEditingTitle(false)
+	}
+
+	const handleCancelEdit = () => {
+		setEditedTitle(currentTaskItem?.title || "")
+		setIsEditingTitle(false)
+	}
 
 	const textContainerRef = useRef<HTMLDivElement>(null)
 	const textRef = useRef<HTMLDivElement>(null)
@@ -143,11 +177,65 @@ const TaskHeader = ({
 				<div className="flex justify-between items-center gap-0">
 					<div className="flex items-center select-none grow min-w-0">
 						<div className="whitespace-nowrap overflow-hidden text-ellipsis grow min-w-0">
-							{isTaskExpanded && <span className="font-bold">{t("chat:task.title")}</span>}
+							{isTaskExpanded && (
+								<div className="flex items-center gap-2">
+									{isEditingTitle ? (
+										<div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+											<input
+												ref={titleInputRef}
+												type="text"
+												value={editedTitle}
+												onChange={(e) => setEditedTitle(e.target.value)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") {
+														handleSaveTitle()
+													} else if (e.key === "Escape") {
+														handleCancelEdit()
+													}
+												}}
+												className="px-2 py-0.5 bg-vscode-input-background border border-vscode-input-border rounded text-vscode-input-foreground"
+												placeholder={t("chat:task.titlePlaceholder")}
+											/>
+											<StandardTooltip content={t("chat:task.saveTitle")}>
+												<button
+													onClick={handleSaveTitle}
+													className="p-1 hover:bg-vscode-button-hoverBackground rounded">
+													<Check size={14} />
+												</button>
+											</StandardTooltip>
+											<StandardTooltip content={t("chat:task.cancelEdit")}>
+												<button
+													onClick={handleCancelEdit}
+													className="p-1 hover:bg-vscode-button-hoverBackground rounded">
+													<X size={14} />
+												</button>
+											</StandardTooltip>
+										</div>
+									) : (
+										<>
+											<span className="font-bold">
+												{currentTaskItem?.title || t("chat:task.title")}
+											</span>
+											<StandardTooltip content={t("chat:task.editTitle")}>
+												<button
+													onClick={(e) => {
+														e.stopPropagation()
+														setIsEditingTitle(true)
+													}}
+													className="p-1 opacity-60 hover:opacity-100 hover:bg-vscode-button-hoverBackground rounded">
+													<Edit2 size={14} />
+												</button>
+											</StandardTooltip>
+										</>
+									)}
+								</div>
+							)}
 							{!isTaskExpanded && (
-								<div>
-									<span className="font-bold mr-1">{t("chat:task.title")}</span>
-									<Mention text={task.text} />
+								<div className="flex items-center gap-1">
+									<span className="font-bold mr-1">
+										{currentTaskItem?.title || t("chat:task.title")}
+									</span>
+									{!currentTaskItem?.title && <Mention text={task.text} />}
 								</div>
 							)}
 						</div>

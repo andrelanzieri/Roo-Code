@@ -2,6 +2,10 @@
 	"greeting": "Welcome to Roo Code!",
 	"task": {
 		"title": "Task",
+		"titlePlaceholder": "Enter a title for this task...",
+		"editTitle": "Edit task title",
+		"saveTitle": "Save title",
+		"cancelEdit": "Cancel editing",
 		"expand": "Expand task",
 		"collapse": "Collapse task",
 		"seeMore": "See more",

@@ -35,7 +35,7 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 // Create a variable to hold the mock state
 let mockExtensionState: {
 	apiConfiguration: ProviderSettings
-	currentTaskItem: { id: string } | null
+	currentTaskItem: { id: string; title?: string } | null
 	clineMessages: any[]
 } = {
 	apiConfiguration: {
@@ -355,6 +355,225 @@ describe("TaskHeader", () => {
 
 			// The upsell should appear because the last relevant message (skipping resume messages) is not completion_result
 			expect(screen.getByTestId("dismissible-upsell")).toBeInTheDocument()
+		})
+	})
+
+	describe("Title editing functionality", () => {
+		beforeEach(() => {
+			// Reset the mock state before each test
+			mockExtensionState = {
+				apiConfiguration: {
+					apiProvider: "anthropic",
+					apiKey: "test-api-key",
+					apiModelId: "claude-3-opus-20240229",
+				} as ProviderSettings,
+				currentTaskItem: { id: "test-task-id", title: "Existing Title" },
+				clineMessages: [],
+			}
+			// Clear mock calls
+			vi.clearAllMocks()
+		})
+
+		it("should display the title if it exists", () => {
+			renderTaskHeader()
+			expect(screen.getByText("Existing Title")).toBeInTheDocument()
+		})
+
+		it("should display task text when no title exists", () => {
+			mockExtensionState.currentTaskItem = { id: "test-task-id" }
+			renderTaskHeader()
+			expect(screen.getByText("Test task")).toBeInTheDocument()
+		})
+
+		it("should show edit button when hovering over title", () => {
+			renderTaskHeader()
+			const titleElement = screen.getByText("Existing Title")
+
+			// Initially, edit button should not be visible
+			expect(screen.queryByLabelText("chat:editTitle")).not.toBeInTheDocument()
+
+			// Hover over the title
+			fireEvent.mouseEnter(titleElement.parentElement!)
+
+			// Edit button should now be visible
+			expect(screen.getByLabelText("chat:editTitle")).toBeInTheDocument()
+		})
+
+		it("should enter edit mode when edit button is clicked", () => {
+			renderTaskHeader()
+			const titleElement = screen.getByText("Existing Title")
+
+			// Hover and click edit button
+			fireEvent.mouseEnter(titleElement.parentElement!)
+			const editButton = screen.getByLabelText("chat:editTitle")
+			fireEvent.click(editButton)
+
+			// Should show input field with current title
+			const input = screen.getByDisplayValue("Existing Title") as HTMLInputElement
+			expect(input).toBeInTheDocument()
+			expect(input.tagName).toBe("INPUT")
+
+			// Should show save and cancel buttons
+			expect(screen.getByLabelText("chat:saveTitle")).toBeInTheDocument()
+			expect(screen.getByLabelText("chat:cancelEdit")).toBeInTheDocument()
+		})
+
+		it("should save title when save button is clicked", () => {
+			const { vscode } = require("@/utils/vscode")
+			renderTaskHeader()
+
+			// Enter edit mode
+			const titleElement = screen.getByText("Existing Title")
+			fireEvent.mouseEnter(titleElement.parentElement!)
+			fireEvent.click(screen.getByLabelText("chat:editTitle"))
+
+			// Change the title
+			const input = screen.getByDisplayValue("Existing Title") as HTMLInputElement
+			fireEvent.change(input, { target: { value: "New Title" } })
+
+			// Click save
+			fireEvent.click(screen.getByLabelText("chat:saveTitle"))
+
+			// Should post message to update title
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "updateTaskTitle",
+				taskId: "test-task-id",
+				title: "New Title",
+			})
+		})
+
+		it("should cancel editing when cancel button is clicked", () => {
+			renderTaskHeader()
+
+			// Enter edit mode
+			const titleElement = screen.getByText("Existing Title")
+			fireEvent.mouseEnter(titleElement.parentElement!)
+			fireEvent.click(screen.getByLabelText("chat:editTitle"))
+
+			// Change the title
+			const input = screen.getByDisplayValue("Existing Title") as HTMLInputElement
+			fireEvent.change(input, { target: { value: "Changed Title" } })
+
+			// Click cancel
+			fireEvent.click(screen.getByLabelText("chat:cancelEdit"))
+
+			// Should exit edit mode and show original title
+			expect(screen.getByText("Existing Title")).toBeInTheDocument()
+			expect(screen.queryByDisplayValue("Changed Title")).not.toBeInTheDocument()
+		})
+
+		it("should save title when Enter key is pressed", () => {
+			const { vscode } = require("@/utils/vscode")
+			renderTaskHeader()
+
+			// Enter edit mode
+			const titleElement = screen.getByText("Existing Title")
+			fireEvent.mouseEnter(titleElement.parentElement!)
+			fireEvent.click(screen.getByLabelText("chat:editTitle"))
+
+			// Change the title and press Enter
+			const input = screen.getByDisplayValue("Existing Title") as HTMLInputElement
+			fireEvent.change(input, { target: { value: "Enter Key Title" } })
+			fireEvent.keyDown(input, { key: "Enter" })
+
+			// Should post message to update title
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "updateTaskTitle",
+				taskId: "test-task-id",
+				title: "Enter Key Title",
+			})
+		})
+
+		it("should cancel editing when Escape key is pressed", () => {
+			renderTaskHeader()
+
+			// Enter edit mode
+			const titleElement = screen.getByText("Existing Title")
+			fireEvent.mouseEnter(titleElement.parentElement!)
+			fireEvent.click(screen.getByLabelText("chat:editTitle"))
+
+			// Change the title and press Escape
+			const input = screen.getByDisplayValue("Existing Title") as HTMLInputElement
+			fireEvent.change(input, { target: { value: "Escape Test" } })
+			fireEvent.keyDown(input, { key: "Escape" })
+
+			// Should exit edit mode and show original title
+			expect(screen.getByText("Existing Title")).toBeInTheDocument()
+			expect(screen.queryByDisplayValue("Escape Test")).not.toBeInTheDocument()
+		})
+
+		it("should clear title when empty string is saved", () => {
+			const { vscode } = require("@/utils/vscode")
+			renderTaskHeader()
+
+			// Enter edit mode
+			const titleElement = screen.getByText("Existing Title")
+			fireEvent.mouseEnter(titleElement.parentElement!)
+			fireEvent.click(screen.getByLabelText("chat:editTitle"))
+
+			// Clear the title
+			const input = screen.getByDisplayValue("Existing Title") as HTMLInputElement
+			fireEvent.change(input, { target: { value: "" } })
+
+			// Click save
+			fireEvent.click(screen.getByLabelText("chat:saveTitle"))
+
+			// Should post message with empty title
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "updateTaskTitle",
+				taskId: "test-task-id",
+				title: "",
+			})
+		})
+
+		it("should show placeholder when no title exists and in edit mode", () => {
+			mockExtensionState.currentTaskItem = { id: "test-task-id" }
+			renderTaskHeader()
+
+			// Enter edit mode
+			const taskElement = screen.getByText("Test task")
+			fireEvent.mouseEnter(taskElement.parentElement!)
+			fireEvent.click(screen.getByLabelText("chat:editTitle"))
+
+			// Should show input with placeholder
+			const input = screen.getByPlaceholderText("chat:titlePlaceholder") as HTMLInputElement
+			expect(input).toBeInTheDocument()
+			expect(input.value).toBe("")
+		})
+
+		it("should not show edit button when task is null", () => {
+			mockExtensionState.currentTaskItem = null
+			renderTaskHeader()
+
+			const taskElement = screen.getByText("Test task")
+			fireEvent.mouseEnter(taskElement.parentElement!)
+
+			// Edit button should not be present
+			expect(screen.queryByLabelText("chat:editTitle")).not.toBeInTheDocument()
+		})
+
+		it("should trim whitespace from saved title", () => {
+			const { vscode } = require("@/utils/vscode")
+			renderTaskHeader()
+
+			// Enter edit mode
+			const titleElement = screen.getByText("Existing Title")
+			fireEvent.mouseEnter(titleElement.parentElement!)
+			fireEvent.click(screen.getByLabelText("chat:editTitle"))
+
+			// Add title with whitespace
+			const input = screen.getByDisplayValue("Existing Title") as HTMLInputElement
+			fireEvent.change(input, { target: { value: "  Trimmed Title  " } })
+
+			// Click save
+			fireEvent.click(screen.getByLabelText("chat:saveTitle"))
+
+			// Should post message with trimmed title
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "updateTaskTitle",
+				taskId: "test-task-id",
+				title: "Trimmed Title",
+			})
 		})
 	})
 })

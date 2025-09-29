@@ -126,8 +126,11 @@ export interface ExtensionMessage {
 		| "insertTextIntoTextarea"
 		| "dismissedUpsells"
 		| "organizationSwitchResult"
+		| "taskTitleUpdated"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
+	taskId?: string // For task title updates
+	title?: string // For task title updates
 	action?:
 		| "chatButtonClicked"
 		| "mcpButtonClicked"

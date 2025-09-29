@@ -3110,5 +3110,34 @@ export const webviewMessageHandler = async (
 			})
 			break
 		}
+		case "updateTaskTitle": {
+			// Handle task title update
+			if (message.taskId && message.title !== undefined) {
+				try {
+					// Get the current task history
+					const history = getGlobalState("taskHistory") ?? []
+					const taskItem = history.find((item) => item.id === message.taskId)
+
+					if (taskItem) {
+						// Update the title field - trim whitespace and set to undefined if empty
+						const trimmedTitle = message.title?.trim()
+						taskItem.title = trimmedTitle || undefined // Set to undefined if empty string
+
+						// Save the updated task item
+						await provider.updateTaskHistory(taskItem)
+
+						// Post updated state back to webview
+						await provider.postStateToWebview()
+					} else {
+						provider.log(`Task not found for title update: ${message.taskId}`)
+						vscode.window.showErrorMessage(t("common:errors.task_not_found"))
+					}
+				} catch (error) {
+					provider.log(`Error updating task title: ${error instanceof Error ? error.message : String(error)}`)
+					vscode.window.showErrorMessage(t("common:errors.update_task_title"))
+				}
+			}
+			break
+		}
 	}
 }

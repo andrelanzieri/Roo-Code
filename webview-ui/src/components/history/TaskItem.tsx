@@ -68,11 +68,22 @@ const TaskItem = ({
 				)}
 
 				<div className="flex-1 min-w-0">
+					{/* Display title if it exists */}
+					{item.title && (
+						<div
+							className={cn("font-semibold text-vscode-foreground mb-1", {
+								"text-base": !isCompact,
+							})}>
+							{item.title}
+						</div>
+					)}
 					<div
 						className={cn(
-							"overflow-hidden whitespace-pre-wrap text-vscode-foreground text-ellipsis line-clamp-2",
+							"overflow-hidden whitespace-pre-wrap text-ellipsis line-clamp-2",
 							{
 								"text-base": !isCompact,
+								"text-vscode-descriptionForeground": item.title, // Make task text secondary if title exists
+								"text-vscode-foreground": !item.title, // Primary color if no title
 							},
 							!isCompact && isSelectionMode ? "mb-1" : "",
 						)}

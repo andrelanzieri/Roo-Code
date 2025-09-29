@@ -37,6 +37,7 @@ const mockClineProvider = {
 	getCurrentTask: vi.fn(),
 	getTaskWithId: vi.fn(),
 	createTaskWithHistoryItem: vi.fn(),
+	updateTaskHistory: vi.fn(),
 } as unknown as ClineProvider
 
 import { t } from "../../../i18n"
@@ -706,5 +707,190 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 
 		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
 		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+	})
+})
+
+describe("webviewMessageHandler - updateTaskTitle", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+		// Mock getGlobalState to return a task history
+		vi.mocked(mockClineProvider.contextProxy.getValue).mockReturnValue([
+			{
+				id: "task-1",
+				ts: 123456789,
+				task: "Original task text",
+				title: "Original title",
+			},
+			{
+				id: "task-2",
+				ts: 987654321,
+				task: "Another task",
+				// No title
+			},
+		])
+	})
+
+	it("should update task title when task exists", async () => {
+		// Mock updateTaskHistory to succeed
+		vi.mocked(mockClineProvider.updateTaskHistory).mockResolvedValue([])
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTaskTitle",
+			taskId: "task-1",
+			title: "New updated title",
+		})
+
+		// Verify updateTaskHistory was called with the updated task
+		expect(mockClineProvider.updateTaskHistory).toHaveBeenCalledWith({
+			id: "task-1",
+			ts: 123456789,
+			task: "Original task text",
+			title: "New updated title",
+		})
+
+		// Verify state was posted to webview
+		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+	})
+
+	it("should clear task title when empty string is provided", async () => {
+		vi.mocked(mockClineProvider.updateTaskHistory).mockResolvedValue([])
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTaskTitle",
+			taskId: "task-1",
+			title: "",
+		})
+
+		// Verify updateTaskHistory was called with undefined title
+		expect(mockClineProvider.updateTaskHistory).toHaveBeenCalledWith({
+			id: "task-1",
+			ts: 123456789,
+			task: "Original task text",
+			title: undefined,
+		})
+
+		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+	})
+
+	it("should add title to task that didn't have one", async () => {
+		vi.mocked(mockClineProvider.updateTaskHistory).mockResolvedValue([])
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTaskTitle",
+			taskId: "task-2",
+			title: "Brand new title",
+		})
+
+		// Verify updateTaskHistory was called with the new title
+		expect(mockClineProvider.updateTaskHistory).toHaveBeenCalledWith({
+			id: "task-2",
+			ts: 987654321,
+			task: "Another task",
+			title: "Brand new title",
+		})
+
+		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+	})
+
+	it("should not update when task is not found", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTaskTitle",
+			taskId: "non-existent-task",
+			title: "Some title",
+		})
+
+		// Verify updateTaskHistory was NOT called
+		expect(mockClineProvider.updateTaskHistory).not.toHaveBeenCalled()
+
+		// State should not be posted either
+		expect(mockClineProvider.postStateToWebview).not.toHaveBeenCalled()
+	})
+
+	it("should not update when taskId is missing", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTaskTitle",
+			// No taskId provided
+			title: "Some title",
+		})
+
+		// Verify updateTaskHistory was NOT called
+		expect(mockClineProvider.updateTaskHistory).not.toHaveBeenCalled()
+
+		// State should not be posted either
+		expect(mockClineProvider.postStateToWebview).not.toHaveBeenCalled()
+	})
+
+	it("should handle empty task history gracefully", async () => {
+		// Mock empty task history
+		vi.mocked(mockClineProvider.contextProxy.getValue).mockReturnValue(undefined)
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTaskTitle",
+			taskId: "task-1",
+			title: "New title",
+		})
+
+		// Verify updateTaskHistory was NOT called
+		expect(mockClineProvider.updateTaskHistory).not.toHaveBeenCalled()
+
+		// State should not be posted either
+		expect(mockClineProvider.postStateToWebview).not.toHaveBeenCalled()
+	})
+
+	it("should handle null task history gracefully", async () => {
+		// Mock null task history
+		vi.mocked(mockClineProvider.contextProxy.getValue).mockReturnValue(null)
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTaskTitle",
+			taskId: "task-1",
+			title: "New title",
+		})
+
+		// Verify updateTaskHistory was NOT called
+		expect(mockClineProvider.updateTaskHistory).not.toHaveBeenCalled()
+
+		// State should not be posted either
+		expect(mockClineProvider.postStateToWebview).not.toHaveBeenCalled()
+	})
+
+	it("should trim whitespace from title", async () => {
+		vi.mocked(mockClineProvider.updateTaskHistory).mockResolvedValue([])
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTaskTitle",
+			taskId: "task-1",
+			title: "  Trimmed Title  ",
+		})
+
+		// Verify updateTaskHistory was called with trimmed title
+		expect(mockClineProvider.updateTaskHistory).toHaveBeenCalledWith({
+			id: "task-1",
+			ts: 123456789,
+			task: "Original task text",
+			title: "Trimmed Title",
+		})
+
+		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
+	})
+
+	it("should handle whitespace-only title as empty", async () => {
+		vi.mocked(mockClineProvider.updateTaskHistory).mockResolvedValue([])
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTaskTitle",
+			taskId: "task-1",
+			title: "   ",
+		})
+
+		// Verify updateTaskHistory was called with undefined (cleared title)
+		expect(mockClineProvider.updateTaskHistory).toHaveBeenCalledWith({
+			id: "task-1",
+			ts: 123456789,
+			task: "Original task text",
+			title: undefined,
+		})
+
+		expect(mockClineProvider.postStateToWebview).toHaveBeenCalled()
 	})
 })

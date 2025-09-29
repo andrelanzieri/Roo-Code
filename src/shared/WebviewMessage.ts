@@ -61,6 +61,7 @@ export interface WebviewMessage {
 		| "showTaskWithId"
 		| "deleteTaskWithId"
 		| "exportTaskWithId"
+		| "updateTaskTitle"
 		| "importSettings"
 		| "exportSettings"
 		| "resetState"
@@ -235,6 +236,8 @@ export interface WebviewMessage {
 	disabled?: boolean
 	context?: string
 	dataUri?: string
+	taskId?: string // For task title updates
+	title?: string // For task title updates
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ProviderSettings
 	images?: string[]
