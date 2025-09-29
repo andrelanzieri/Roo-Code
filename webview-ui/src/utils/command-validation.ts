@@ -214,6 +214,8 @@ function parseCommandLine(command: string): string[] {
 	const arithmeticExpressions: string[] = []
 	const variables: string[] = []
 	const parameterExpansions: string[] = []
+	// Commands extracted from within arithmetic expressions (e.g., $(whoami) inside $((...)))
+	const embeddedSubshellCommands: string[] = []
 
 	// First handle PowerShell redirections by temporarily replacing them
 	let processedCommand = command.replace(/\d*>&\d*/g, (match) => {
@@ -221,15 +223,104 @@ function parseCommandLine(command: string): string[] {
 		return `__REDIR_${redirections.length - 1}__`
 	})
 
-	// Handle arithmetic expressions: $((...)) pattern
-	// Match the entire arithmetic expression including nested parentheses
-	processedCommand = processedCommand.replace(/\$\(\([^)]*(?:\)[^)]*)*\)\)/g, (match) => {
-		arithmeticExpressions.push(match)
-		return `__ARITH_${arithmeticExpressions.length - 1}__`
+	// Protect bash array empty initializer in assignments: name=()
+	// Without this, shell-quote may split it into "name=", "(" and ")"
+	processedCommand = processedCommand.replace(/=\s*\(\s*\)/g, (_match) => {
+		arrayIndexing.push("()")
+		return `=__ARRAY_${arrayIndexing.length - 1}__`
 	})
+
+	// Handle arithmetic expressions: $((...)) pattern with balanced parsing.
+	// We must protect the whole arithmetic region from shell-quote tokenization
+	// while still discovering any $(...) or backticks inside it.
+	{
+		let out = ""
+		for (let i = 0; i < processedCommand.length; i++) {
+			// Detect start of $(( ... ))
+			if (processedCommand[i] === "$" && processedCommand[i + 1] === "(" && processedCommand[i + 2] === "(") {
+				const start = i
+				// Track balanced parentheses depth. We saw "(("
+				let depth = 2
+				i += 3
+				while (i < processedCommand.length && depth > 0) {
+					const ch = processedCommand[i]
+					if (ch === "(") depth++
+					else if (ch === ")") depth--
+					i++
+				}
+				// i currently points to the char AFTER the one that closed depth to 0
+				const match = processedCommand.slice(start, i)
+				// Extract subshells $(...) inside arithmetic, but skip arithmetic "$((" by requiring next char != "("
+				match.replace(/\$\((?!\()(.*?)\)/g, (_m, inner) => {
+					const trimmed = String(inner).trim()
+					if (trimmed) {
+						subshells.push(trimmed)
+						const expanded = parseCommand(trimmed)
+						if (expanded.length > 0) {
+							embeddedSubshellCommands.push(...expanded)
+						} else {
+							embeddedSubshellCommands.push(trimmed)
+						}
+					}
+					return _m
+				})
+				// Extract backtick subshells inside arithmetic
+				match.replace(/`((?:\\`|[^`])*)`/g, (_m, inner) => {
+					const unescaped = String(inner).replace(/\\`/g, "`").trim()
+					if (unescaped) {
+						subshells.push(unescaped)
+						const expanded = parseCommand(unescaped)
+						if (expanded.length > 0) {
+							embeddedSubshellCommands.push(...expanded)
+						} else {
+							embeddedSubshellCommands.push(unescaped)
+						}
+					}
+					return _m
+				})
+
+				arithmeticExpressions.push(match)
+				out += `__ARITH_${arithmeticExpressions.length - 1}__`
+				// Compensate for loop's i++ after slice end
+				i -= 1
+			} else {
+				out += processedCommand[i]
+			}
+		}
+		processedCommand = out
+	}
 
 	// Handle $[...] arithmetic expressions (alternative syntax)
 	processedCommand = processedCommand.replace(/\$\[[^\]]*\]/g, (match) => {
+		// Extract subshells inside $[ ... ] arithmetic expressions as well
+		// Skip arithmetic "$((" by ensuring char after "$(" is not "("
+		match.replace(/\$\((?!\()(.*?)\)/g, (_m, inner) => {
+			const trimmed = String(inner).trim()
+			if (trimmed) {
+				subshells.push(trimmed)
+				const expanded = parseCommand(trimmed)
+				if (expanded.length > 0) {
+					embeddedSubshellCommands.push(...expanded)
+				} else {
+					embeddedSubshellCommands.push(trimmed)
+				}
+			}
+			return _m
+		})
+		match.replace(/`((?:\\`|[^`])*)`/g, (_m, inner) => {
+			const unescaped = String(inner).replace(/\\`/g, "`").trim()
+			if (unescaped) {
+				subshells.push(unescaped)
+				const expanded = parseCommand(unescaped)
+				if (expanded.length > 0) {
+					embeddedSubshellCommands.push(...expanded)
+				} else {
+					embeddedSubshellCommands.push(unescaped)
+				}
+			}
+			return _m
+		})
+
 		arithmeticExpressions.push(match)
 		return `__ARITH_${arithmeticExpressions.length - 1}__`
 	})
@@ -262,7 +353,8 @@ function parseCommandLine(command: string): string[] {
 
 	// Then handle subshell commands $() and back-ticks
 	processedCommand = processedCommand
-		.replace(/\$\((.*?)\)/g, (_, inner) => {
+		// Handle command substitution, but avoid arithmetic "$((" by requiring next char != "("
+		.replace(/\$\((?!\()(.*?)\)/g, (_, inner) => {
 			subshells.push(inner.trim())
 			return `__SUBSH_${subshells.length - 1}__`
 		})
@@ -364,6 +456,10 @@ function parseCommandLine(command: string): string[] {
 		commands.push(currentCommand.join(" "))
 	}
 
+	// Include any subshell commands discovered inside arithmetic expressions
+	if (embeddedSubshellCommands.length > 0) {
+		commands.push(...embeddedSubshellCommands)
+	}
 	// Restore quotes and redirections
 	return commands.map((cmd) =>
 		restorePlaceholders(

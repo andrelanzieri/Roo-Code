@@ -578,6 +578,11 @@ echo "Successfully converted $count .jsx files to .tsx"`
 			expect(result).toEqual(["total=$((price * quantity + tax))"])
 		})
 
+		it("extracts subshells inside arithmetic expressions", () => {
+			const cmd = "arr=(); echo $((arr[$(whoami)]))"
+			expect(parseCommand(cmd)).toEqual(["arr=()", "echo $((arr[$(whoami)]))", "whoami"])
+		})
+
 		it("should handle complex parameter expansions without errors", () => {
 			const commands = [
 				"echo ${var:-default}",
@@ -1108,6 +1113,15 @@ describe("Unified Command Decision Functions", () => {
 			// Ensure hidden subshell commands are validated even if outer command is allowed
 			expect(getCommandDecision("echo (whoami)", ["echo", "ls"], [])).toBe("ask_user")
 			expect(getCommandDecision("echo (whoami)", ["echo", "ls"], ["whoami"])).toBe("auto_deny")
+		})
+
+		it("flags subshell commands inside arithmetic expressions", () => {
+			// When whoami appears inside $(( ... )) via $(whoami), it must be validated
+			expect(getCommandDecision("arr=(); echo $((arr[$(whoami)]))", ["echo", "arr="], [])).toBe("ask_user")
+			// If whoami is explicitly denied, the whole chain must be auto-denied
+			expect(getCommandDecision("arr=(); echo $((arr[$(whoami)]))", ["echo", "arr="], ["whoami"])).toBe(
+				"auto_deny",
+			)
 		})
 
 		it("properly validates subshell commands when no denylist is present", () => {
