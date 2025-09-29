@@ -301,6 +301,8 @@ ls -la || echo "Failed"`
 		it("detects zsh glob qualifiers with code execution (e:...:)", () => {
 			// Basic glob qualifier with command execution
 			expect(containsDangerousSubstitution("ls *(e:whoami:)")).toBe(true)
+			// Zsh extended glob with qualifier list and brace-arg: e{'whoami'} as reported
+			expect(containsDangerousSubstitution("ls *(.e{'whoami'})")).toBe(true)
 
 			// Various glob patterns with code execution
 			expect(containsDangerousSubstitution("cat ?(e:rm -rf /:)")).toBe(true)
@@ -1043,6 +1045,8 @@ describe("Unified Command Decision Functions", () => {
 				const globExploit = "ls *(e:whoami:)"
 				// Even though 'ls' might be allowed, the dangerous pattern prevents auto-approval
 				expect(getCommandDecision(globExploit, ["ls", "echo"], [])).toBe("ask_user")
+				// Zsh extended glob with qualifier list and brace-arg form
+				expect(getCommandDecision("ls *(.e{'whoami'})", ["ls", "echo"], [])).toBe("ask_user")
 
 				// Various forms should all be blocked
 				expect(getCommandDecision("cat ?(e:rm -rf /:)", ["cat"], [])).toBe("ask_user")

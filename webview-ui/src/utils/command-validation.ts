@@ -107,10 +107,13 @@ export function containsDangerousSubstitution(source: string): boolean {
 	// =(...) creates a temporary file containing the output of the command, but executes it
 	const zshProcessSubstitution = /=\([^)]+\)/.test(source)
 
-	// Check for zsh glob qualifiers with code execution (e:...:)
-	// Patterns like *(e:whoami:) or ?(e:rm -rf /:) execute commands during glob expansion
-	// This regex matches patterns like *(e:...:), ?(e:...:), +(e:...:), @(e:...:), !(e:...:)
-	const zshGlobQualifier = /[*?+@!]\(e:[^:]+:\)/.test(source)
+	// Check for zsh glob qualifiers with code execution via the "e" qualifier
+	// This must detect multiple zsh forms that execute code during glob expansion:
+	// - Classic: *(e:whoami:) or ?(e:rm -rf /:) etc.
+	// - With other qualifiers: *(.e:whoami:) (dot means "plain files" plus e:...)
+	// - Brace/quoted argument forms: *(e{'whoami'}), *(.e{'whoami'}), *(e{"whoami"}), *(.e{"whoami"})
+	// Any appearance of an "e" qualifier with an argument inside a glob qualifier list is dangerous.
+	const zshGlobQualifier = /\([^)]*e\s*(?::[^:]*:|\{[^}]*\}|'[^']*'|"[^"]*")[^)]*\)/.test(source)
 
 	// Check for $"..." string interpolation with command substitution
 	// $"..." is a bash feature for translated strings that allows command substitution inside
