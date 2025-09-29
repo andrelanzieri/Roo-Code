@@ -115,6 +115,12 @@ export function containsDangerousSubstitution(source: string): boolean {
 	// Any appearance of an "e" qualifier with an argument inside a glob qualifier list is dangerous.
 	const zshGlobQualifier = /\([^)]*e\s*(?::[^:]*:|\{[^}]*\}|'[^']*'|"[^"]*")[^)]*\)/.test(source)
 
+	// Check for zsh glob qualifier shorthand that executes code using +command during glob expansion
+	// Examples: *(+whoami), *(.+{'whoami'}), *(+"whoami")
+	// Treat + followed by a non-digit token inside a qualifier list as executable (exclude numeric-only like (+1))
+	const zshGlobQualifierPlusShorthand =
+		/[?*@+!]\([^)]*\+\s*(?:\{[^}]*\}|'[^']*'|"[^"]*"|[a-zA-Z_][^)\s]*)[^)]*\)/.test(source)
+
 	// Check for $"..." string interpolation with command substitution
 	// $"..." is a bash feature for translated strings that allows command substitution inside
 	// e.g., echo $"test$(whoami)" or echo $"test`pwd`"
@@ -128,6 +134,7 @@ export function containsDangerousSubstitution(source: string): boolean {
 		hereStringWithSubstitution ||
 		zshProcessSubstitution ||
 		zshGlobQualifier ||
+		zshGlobQualifierPlusShorthand ||
 		bashTranslatedStringWithSubstitution
 	)
 }

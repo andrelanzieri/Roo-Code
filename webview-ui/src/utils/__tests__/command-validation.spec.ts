@@ -319,6 +319,11 @@ ls -la || echo "Failed"`
 			// Glob qualifiers with complex commands
 			expect(containsDangerousSubstitution("ls *(e:open -a Calculator:)")).toBe(true)
 			expect(containsDangerousSubstitution("rm *(e:sudo apt install malware:)")).toBe(true)
+
+			// Plus-shorthand qualifier that executes a command
+			expect(containsDangerousSubstitution("ls *(+whoami)")).toBe(true)
+			expect(containsDangerousSubstitution("ls *(.+{'whoami'})")).toBe(true)
+			expect(containsDangerousSubstitution('ls *(+"whoami")')).toBe(true)
 		})
 
 		it('detects bash $"..." string interpolation with command substitution', () => {
@@ -1045,6 +1050,8 @@ describe("Unified Command Decision Functions", () => {
 				const globExploit = "ls *(e:whoami:)"
 				// Even though 'ls' might be allowed, the dangerous pattern prevents auto-approval
 				expect(getCommandDecision(globExploit, ["ls", "echo"], [])).toBe("ask_user")
+				// Plus-shorthand form should also prevent auto-approval
+				expect(getCommandDecision("ls *(+whoami)", ["ls", "echo"], [])).toBe("ask_user")
 				// Zsh extended glob with qualifier list and brace-arg form
 				expect(getCommandDecision("ls *(.e{'whoami'})", ["ls", "echo"], [])).toBe("ask_user")
 
