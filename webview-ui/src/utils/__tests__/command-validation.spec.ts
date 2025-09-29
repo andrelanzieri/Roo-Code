@@ -43,6 +43,12 @@ describe("Command Validation", () => {
 			expect(parseCommand("diff <(sort f1) <(sort f2)")).toEqual(["diff", "sort f1", "sort f2"])
 		})
 
+		it("handles nested backticks with escaped inner backticks", () => {
+			const cmd = "echo `echo \\`whoami\\``"
+			// Should surface both the outer echo and the inner whoami as separate sub-commands
+			expect(parseCommand(cmd)).toEqual(["echo", "echo", "whoami"])
+		})
+
 		it("handles empty and whitespace input", () => {
 			expect(parseCommand("")).toEqual([])
 			expect(parseCommand("	")).toEqual([])
@@ -1075,6 +1081,11 @@ describe("Unified Command Decision Functions", () => {
 
 			// Main command with denied prefix should also be auto-denied
 			expect(getCommandDecision("npm test $(echo hello)", allowedCommands, deniedCommands)).toBe("auto_deny")
+
+			// Nested backticks with escaped inner backticks should not be auto-approved when inner command isn't allowed
+			expect(getCommandDecision("echo `echo \\`whoami\\``", ["echo"], [])).toBe("ask_user")
+			// And should be auto-denied when inner command is on the denylist
+			expect(getCommandDecision("echo `echo \\`whoami\\``", ["echo"], ["whoami"])).toBe("auto_deny")
 		})
 
 		it("properly validates subshell commands when no denylist is present", () => {

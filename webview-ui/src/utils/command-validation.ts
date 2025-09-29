@@ -256,8 +256,10 @@ function parseCommandLine(command: string): string[] {
 			subshells.push(inner.trim())
 			return `__SUBSH_${subshells.length - 1}__`
 		})
-		.replace(/`(.*?)`/g, (_, inner) => {
-			subshells.push(inner.trim())
+		// Handle backticks with support for escaped backticks (e.g., \`)
+		.replace(/`((?:\\`|[^`])*)`/g, (_, inner) => {
+			const unescaped = inner.replace(/\\`/g, "`").trim()
+			subshells.push(unescaped)
 			return `__SUBSH_${subshells.length - 1}__`
 		})
 
@@ -318,7 +320,14 @@ function parseCommandLine(command: string): string[] {
 					commands.push(currentCommand.join(" "))
 					currentCommand = []
 				}
-				commands.push(subshells[parseInt(subshellMatch[1])])
+				// Expand subshell into its constituent commands to catch nested substitutions
+				const subshellContent = subshells[parseInt(subshellMatch[1])]
+				const expanded = parseCommand(subshellContent)
+				if (expanded.length > 0) {
+					commands.push(...expanded)
+				} else if (subshellContent.trim()) {
+					commands.push(subshellContent.trim())
+				}
 			} else {
 				currentCommand.push(token)
 			}
