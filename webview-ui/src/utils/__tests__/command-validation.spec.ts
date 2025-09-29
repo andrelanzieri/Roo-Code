@@ -313,6 +313,30 @@ ls -la || echo "Failed"`
 			expect(containsDangerousSubstitution("rm *(e:sudo apt install malware:)")).toBe(true)
 		})
 
+		it('detects bash $"..." string interpolation with command substitution', () => {
+			// The exact example from the issue
+			expect(containsDangerousSubstitution('echo $"test$(whoami)"')).toBe(true)
+
+			// Various forms of command substitution inside $"..."
+			expect(containsDangerousSubstitution('echo $"Hello $(date)"')).toBe(true)
+			expect(containsDangerousSubstitution('echo $"User: `whoami`"')).toBe(true)
+			expect(containsDangerousSubstitution('echo $"test`pwd`"')).toBe(true)
+
+			// Multiple command substitutions
+			expect(containsDangerousSubstitution('echo $"$(date) - $(whoami)"')).toBe(true)
+			expect(containsDangerousSubstitution('echo $"User: `whoami` in `pwd`"')).toBe(true)
+
+			// Command substitution at different positions
+			expect(containsDangerousSubstitution('echo $"$(whoami) is the user"')).toBe(true)
+			expect(containsDangerousSubstitution('echo $"The user is $(whoami)"')).toBe(true)
+			expect(containsDangerousSubstitution('echo $"Current $(date) time"')).toBe(true)
+
+			// Complex command substitutions
+			expect(containsDangerousSubstitution('echo $"Files: $(ls -la)"')).toBe(true)
+			expect(containsDangerousSubstitution('echo $"Process: $(ps aux | grep node)"')).toBe(true)
+			expect(containsDangerousSubstitution('echo $"Result: `rm -rf /`"')).toBe(true)
+		})
+
 		it("does NOT flag safe parameter expansions", () => {
 			// Regular parameter expansions without dangerous operators
 			expect(containsDangerousSubstitution("echo ${var}")).toBe(false)
@@ -351,6 +375,15 @@ ls -la || echo "Failed"`
 			expect(containsDangerousSubstitution("rm *.txt")).toBe(false)
 			expect(containsDangerousSubstitution("cat ?(foo|bar)")).toBe(false)
 			expect(containsDangerousSubstitution("echo *(^/)")).toBe(false) // Safe glob qualifier (not e:)
+
+			// Safe $"..." strings without command substitution
+			expect(containsDangerousSubstitution('echo $"Hello World"')).toBe(false)
+			expect(containsDangerousSubstitution('echo $"This is a test"')).toBe(false)
+			expect(containsDangerousSubstitution('echo $"User: $USER"')).toBe(false) // Variable expansion is safe
+			expect(containsDangerousSubstitution('echo $"Path: ${PATH}"')).toBe(false) // Variable expansion is safe
+			expect(containsDangerousSubstitution('echo $"Count: $count"')).toBe(false)
+			expect(containsDangerousSubstitution('echo $"Translated string with no substitution"')).toBe(false)
+			expect(containsDangerousSubstitution('echo $""')).toBe(false) // Empty translated string
 		})
 
 		it("handles complex combinations of dangerous patterns", () => {
@@ -379,6 +412,9 @@ ls -la || echo "Failed"`
 
 			// The zsh glob qualifier exploit
 			expect(containsDangerousSubstitution("ls *(e:whoami:)")).toBe(true)
+
+			// The bash $"..." string interpolation exploit
+			expect(containsDangerousSubstitution('echo $"test$(whoami)"')).toBe(true)
 		})
 	})
 })

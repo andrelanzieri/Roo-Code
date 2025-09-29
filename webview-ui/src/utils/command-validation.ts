@@ -73,6 +73,7 @@ type ShellToken = string | { op: string } | { command: string }
  * - <<<$(...) or <<<`...` - Here-strings with command substitution
  * - =(...) - Zsh process substitution that executes commands
  * - *(e:...:) or similar - Zsh glob qualifiers with code execution
+ * - $"..." with command substitution - Bash translated strings with embedded command execution
  *
  * @param source - The command string to analyze
  * @returns true if dangerous substitution patterns are detected, false otherwise
@@ -111,6 +112,11 @@ export function containsDangerousSubstitution(source: string): boolean {
 	// This regex matches patterns like *(e:...:), ?(e:...:), +(e:...:), @(e:...:), !(e:...:)
 	const zshGlobQualifier = /[*?+@!]\(e:[^:]+:\)/.test(source)
 
+	// Check for $"..." string interpolation with command substitution
+	// $"..." is a bash feature for translated strings that allows command substitution inside
+	// e.g., echo $"test$(whoami)" or echo $"test`pwd`"
+	const bashTranslatedStringWithSubstitution = /\$"[^"]*(\$\(|`)[^"]*"/.test(source)
+
 	// Return true if any dangerous pattern is detected
 	return (
 		dangerousParameterExpansion ||
@@ -118,7 +124,8 @@ export function containsDangerousSubstitution(source: string): boolean {
 		indirectExpansion ||
 		hereStringWithSubstitution ||
 		zshProcessSubstitution ||
-		zshGlobQualifier
+		zshGlobQualifier ||
+		bashTranslatedStringWithSubstitution
 	)
 }
 
