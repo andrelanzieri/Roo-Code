@@ -372,11 +372,17 @@ function parseCommandLine(command: string): string[] {
 		// If this was actually a pattern preceded by $, < or > it would have been handled earlier.
 		// Guard anyway: if the preceding character indicates a different construct, keep original.
 		const prevChar = offset > 0 ? str[offset - 1] : ""
-		if (prevChar === "$" || prevChar === "<" || prevChar === ">") {
+		// Also skip array initializers like name=(...) which follow '='
+		if (prevChar === "$" || prevChar === "<" || prevChar === ">" || prevChar === "=") {
 			return full
 		}
 		const content = (inner || "").trim()
 		if (!content) return full
+		// Avoid creating nested placeholders like (__SUBSH_0__) -> __SUBSH_1__
+		// Keep original when content is already a subshell placeholder
+		if (/^__SUBSH_\d+__$/.test(content)) {
+			return full
+		}
 		subshells.push(content)
 		return `__SUBSH_${subshells.length - 1}__`
 	})
@@ -433,17 +439,27 @@ function parseCommandLine(command: string): string[] {
 			// Check if it's a subshell placeholder
 			const subshellMatch = token.match(/__SUBSH_(\d+)__/)
 			if (subshellMatch) {
+				// Split current accumulated command before expanding subshell content
 				if (currentCommand.length > 0) {
 					commands.push(currentCommand.join(" "))
 					currentCommand = []
 				}
 				// Expand subshell into its constituent commands to catch nested substitutions
-				const subshellContent = subshells[parseInt(subshellMatch[1])]
-				const expanded = parseCommand(subshellContent)
-				if (expanded.length > 0) {
-					commands.push(...expanded)
-				} else if (subshellContent.trim()) {
-					commands.push(subshellContent.trim())
+				const idx = parseInt(subshellMatch[1], 10)
+				const subshellContent = subshells[idx]
+				if (typeof subshellContent === "string") {
+					const expanded = parseCommand(subshellContent)
+					if (expanded.length > 0) {
+						commands.push(...expanded)
+					} else {
+						const trimmed = subshellContent.trim()
+						if (trimmed) {
+							commands.push(trimmed)
+						}
+					}
+				} else {
+					// No mapping found for this placeholder in current context; keep token as part of command
+					currentCommand.push(token)
 				}
 			} else {
 				currentCommand.push(token)
