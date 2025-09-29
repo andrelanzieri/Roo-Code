@@ -6,7 +6,7 @@ export type VertexModelId = keyof typeof vertexModels
 export const vertexDefaultModelId: VertexModelId = "claude-sonnet-4@20250514"
 
 export const vertexModels = {
-	"claude-4.5-sonnet": {
+	"claude-sonnet-4-5": {
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
