@@ -40,8 +40,8 @@ export function getClaudeCodeModelId(baseModelId: ClaudeCodeModelId, useVertex =
 }
 
 export const claudeCodeModels = {
-	"claude-sonnet-4-5-20250514": {
-		...anthropicModels["claude-sonnet-4-5-20250514"],
+	"claude-4.5-sonnet": {
+		...anthropicModels["claude-4.5-sonnet"],
 		supportsImages: false,
 		supportsPromptCache: true, // Claude Code does report cache tokens
 		supportsReasoningEffort: false,

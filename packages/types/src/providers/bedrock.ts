@@ -67,7 +67,7 @@ export const bedrockModels = {
 		maxCachePoints: 1,
 		cachableFields: ["system"],
 	},
-	"anthropic.claude-sonnet-4-5-20250514-v1:0": {
+	"anthropic.claude-4.5-sonnet-v1:0": {
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,

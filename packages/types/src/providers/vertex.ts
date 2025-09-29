@@ -163,7 +163,7 @@ export const vertexModels = {
 		inputPrice: 1.25,
 		outputPrice: 5,
 	},
-	"claude-sonnet-4-5@20250514": {
+	"claude-4.5-sonnet": {
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
