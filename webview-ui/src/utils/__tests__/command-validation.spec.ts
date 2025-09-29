@@ -41,6 +41,9 @@ describe("Command Validation", () => {
 			expect(parseCommand("npm test $(echo test)")).toEqual(["npm test", "echo test"])
 			expect(parseCommand("npm test `echo test`")).toEqual(["npm test", "echo test"])
 			expect(parseCommand("diff <(sort f1) <(sort f2)")).toEqual(["diff", "sort f1", "sort f2"])
+			// fish-style command substitution using parentheses
+			expect(parseCommand("echo (whoami)")).toEqual(["echo", "whoami"])
+			expect(parseCommand("echo (echo test)")).toEqual(["echo", "echo test"])
 		})
 
 		it("handles nested backticks with escaped inner backticks", () => {
@@ -1097,6 +1100,14 @@ describe("Unified Command Decision Functions", () => {
 			expect(getCommandDecision("echo `echo \\`whoami\\``", ["echo"], [])).toBe("ask_user")
 			// And should be auto-denied when inner command is on the denylist
 			expect(getCommandDecision("echo `echo \\`whoami\\``", ["echo"], ["whoami"])).toBe("auto_deny")
+
+			// Fish-style substitutions behave like subshells
+			expect(getCommandDecision("npm install (echo test)", allowedCommands, deniedCommands)).toBe("auto_approve")
+			expect(getCommandDecision("npm install (npm test)", allowedCommands, deniedCommands)).toBe("auto_deny")
+
+			// Ensure hidden subshell commands are validated even if outer command is allowed
+			expect(getCommandDecision("echo (whoami)", ["echo", "ls"], [])).toBe("ask_user")
+			expect(getCommandDecision("echo (whoami)", ["echo", "ls"], ["whoami"])).toBe("auto_deny")
 		})
 
 		it("properly validates subshell commands when no denylist is present", () => {

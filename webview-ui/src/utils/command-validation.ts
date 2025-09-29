@@ -273,6 +273,21 @@ function parseCommandLine(command: string): string[] {
 			return `__SUBSH_${subshells.length - 1}__`
 		})
 
+	// Handle fish-style command substitutions and POSIX subshell grouping: ( ... )
+	// At this point we've already replaced $(), <() and >() earlier, so any remaining (...) are either
+	// fish command substitutions or subshell groupings. We treat them as subshells to validate inner commands.
+	processedCommand = processedCommand.replace(/\(([^()]*)\)/g, (full, inner: string, offset: number, str: string) => {
+		// If this was actually a pattern preceded by $, < or > it would have been handled earlier.
+		// Guard anyway: if the preceding character indicates a different construct, keep original.
+		const prevChar = offset > 0 ? str[offset - 1] : ""
+		if (prevChar === "$" || prevChar === "<" || prevChar === ">") {
+			return full
+		}
+		const content = (inner || "").trim()
+		if (!content) return full
+		subshells.push(content)
+		return `__SUBSH_${subshells.length - 1}__`
+	})
 	// Then handle quoted strings
 	processedCommand = processedCommand.replace(/"[^"]*"/g, (match) => {
 		quotes.push(match)
