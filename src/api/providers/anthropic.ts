@@ -56,7 +56,6 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 		switch (modelId) {
 			case "claude-sonnet-4-5-20250514":
 			case "claude-sonnet-4-20250514":
-			case "claude-opus-4-5-20250514":
 			case "claude-opus-4-1-20250805":
 			case "claude-opus-4-20250514":
 			case "claude-3-7-sonnet-20250219":
@@ -117,7 +116,6 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 						switch (modelId) {
 							case "claude-sonnet-4-5-20250514":
 							case "claude-sonnet-4-20250514":
-							case "claude-opus-4-5-20250514":
 							case "claude-opus-4-1-20250805":
 							case "claude-opus-4-20250514":
 							case "claude-3-7-sonnet-20250219":

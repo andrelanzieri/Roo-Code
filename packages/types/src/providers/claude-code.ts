@@ -56,14 +56,6 @@ export const claudeCodeModels = {
 		supportsReasoningBudget: false,
 		requiredReasoningBudget: false,
 	},
-	"claude-opus-4-5-20250514": {
-		...anthropicModels["claude-opus-4-5-20250514"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-	},
 	"claude-opus-4-1-20250805": {
 		...anthropicModels["claude-opus-4-1-20250805"],
 		supportsImages: false,
