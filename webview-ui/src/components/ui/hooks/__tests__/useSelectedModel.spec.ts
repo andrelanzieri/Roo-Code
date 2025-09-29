@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook } from "@testing-library/react"
 import type { Mock } from "vitest"
 
-import { ProviderSettings, ModelInfo, BEDROCK_CLAUDE_SONNET_4_MODEL_ID } from "@roo-code/types"
+import { ProviderSettings, ModelInfo, BEDROCK_1M_CONTEXT_MODEL_IDS } from "@roo-code/types"
+
+const BEDROCK_CLAUDE_SONNET_4_MODEL_ID = BEDROCK_1M_CONTEXT_MODEL_IDS[0]
 
 import { useSelectedModel } from "../useSelectedModel"
 import { useRouterModels } from "../useRouterModels"
