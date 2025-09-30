@@ -105,26 +105,29 @@ export function containsDangerousSubstitution(source: string): boolean {
 
 	// Check for zsh process substitution =(...) which executes commands
 	// =(...) creates a temporary file containing the output of the command, but executes it
-	const zshProcessSubstitution = /=\([^)]+\)/.test(source)
+	// Tightened regex avoids matching bash array assignments like arr=(a b) or arr=() by ensuring
+	// '=' is not immediately preceded by an identifier, ']' or '}'.
+	const zshProcessSubstitution = /(?<![A-Za-z0-9_\]}])=\([^)]+\)/.test(source)
 
 	// Check for zsh glob qualifiers with code execution via the "e" qualifier
-	// This must detect multiple zsh forms that execute code during glob expansion:
+	// This detects multiple zsh forms that execute code during glob expansion:
 	// - Classic: *(e:whoami:) or ?(e:rm -rf /:) etc.
 	// - With other qualifiers: *(.e:whoami:) (dot means "plain files" plus e:...)
 	// - Brace/quoted argument forms: *(e{'whoami'}), *(.e{'whoami'}), *(e{"whoami"}), *(.e{"whoami"})
-	// Any appearance of an "e" qualifier with an argument inside a glob qualifier list is dangerous.
-	const zshGlobQualifier = /\([^)]*e\s*(?::[^:]*:|\{[^}]*\}|'[^']*'|"[^"]*")[^)]*\)/.test(source)
+	// To reduce false positives, require a glob meta right before the qualifier list and ensure it's not escaped.
+	const zshGlobQualifier = /(?<!\\)[*?+@!]\([^)]*\be\s*(?::[^:]*:|\{[^}]*\}|'[^']*'|"[^"]*")[^)]*\)/.test(source)
 
 	// Check for zsh glob qualifier shorthand that executes code using +command during glob expansion
 	// Examples: *(+whoami), *(.+{'whoami'}), *(+"whoami")
 	// Treat + followed by a non-digit token inside a qualifier list as executable (exclude numeric-only like (+1))
+	// Anchor to a preceding glob meta to reduce false positives.
 	const zshGlobQualifierPlusShorthand =
-		/[?*@+!]\([^)]*\+\s*(?:\{[^}]*\}|'[^']*'|"[^"]*"|[a-zA-Z_][^)\s]*)[^)]*\)/.test(source)
+		/(?<!\\)[*?+@!]\([^)]*\+\s*(?:\{[^}]*\}|'[^']*'|"[^"]*"|[a-zA-Z_][^)\s]*)[^)]*\)/.test(source)
 
 	// Check for $"..." string interpolation with command substitution
 	// $"..." is a bash feature for translated strings that allows command substitution inside
-	// e.g., echo $"test$(whoami)" or echo $"test`pwd`"
-	const bashTranslatedStringWithSubstitution = /\$"[^"]*(\$\(|`)[^"]*"/.test(source)
+	// Handle escaped quotes within $"...": use (?:\\.|[^"])* to avoid premature termination on \"
+	const bashTranslatedStringWithSubstitution = /\$"(?:\\.|[^"])*(?:\$\(|`)(?:\\.|[^"])*"/.test(source)
 
 	// Return true if any dangerous pattern is detected
 	return (
@@ -146,6 +149,7 @@ export function containsDangerousSubstitution(source: string): boolean {
  * Uses shell-quote to properly handle:
  * - Quoted strings (preserves quotes)
  * - Subshell commands ($(cmd), `cmd`, <(cmd), >(cmd))
+ * - POSIX grouping subshells ((...)) and fish-style (cmd) substitutions as separate sub-commands
  * - PowerShell redirections (2>&1)
  * - Chain operators (&&, ||, ;, |, &)
  * - Newlines as command separators
@@ -224,10 +228,10 @@ function parseCommandLine(command: string): string[] {
 	})
 
 	// Protect bash array empty initializer in assignments: name=()
-	// Without this, shell-quote may split it into "name=", "(" and ")"
-	processedCommand = processedCommand.replace(/=\s*\(\s*\)/g, (_match) => {
+	// Require an identifier immediately before '=' to avoid matching unrelated patterns like "x = ()"
+	processedCommand = processedCommand.replace(/([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\(\s*\)/g, (_match, name: string) => {
 		arrayIndexing.push("()")
-		return `=__ARRAY_${arrayIndexing.length - 1}__`
+		return `${name}=__ARRAY_${arrayIndexing.length - 1}__`
 	})
 
 	// Handle arithmetic expressions: $((...)) pattern with balanced parsing.
@@ -239,13 +243,21 @@ function parseCommandLine(command: string): string[] {
 			// Detect start of $(( ... ))
 			if (processedCommand[i] === "$" && processedCommand[i + 1] === "(" && processedCommand[i + 2] === "(") {
 				const start = i
-				// Track balanced parentheses depth. We saw "(("
+				// Track balanced parentheses depth with basic quote awareness. We saw "(("
 				let depth = 2
+				let inSingle = false
+				let inDouble = false
 				i += 3
 				while (i < processedCommand.length && depth > 0) {
 					const ch = processedCommand[i]
-					if (ch === "(") depth++
-					else if (ch === ")") depth--
+					if (ch === "'" && !inDouble) {
+						inSingle = !inSingle
+					} else if (ch === '"' && !inSingle) {
+						inDouble = !inDouble
+					} else if (!inSingle && !inDouble) {
+						if (ch === "(") depth++
+						else if (ch === ")") depth--
+					}
 					i++
 				}
 				// i currently points to the char AFTER the one that closed depth to 0
@@ -290,40 +302,64 @@ function parseCommandLine(command: string): string[] {
 		processedCommand = out
 	}
 
-	// Handle $[...] arithmetic expressions (alternative syntax)
-	processedCommand = processedCommand.replace(/\$\[[^\]]*\]/g, (match) => {
-		// Extract subshells inside $[ ... ] arithmetic expressions as well
-		// Skip arithmetic "$((" by ensuring char after "$(" is not "("
-		match.replace(/\$\((?!\()(.*?)\)/g, (_m, inner) => {
-			const trimmed = String(inner).trim()
-			if (trimmed) {
-				subshells.push(trimmed)
-				const expanded = parseCommand(trimmed)
-				if (expanded.length > 0) {
-					embeddedSubshellCommands.push(...expanded)
-				} else {
-					embeddedSubshellCommands.push(trimmed)
+	// Handle $[...] arithmetic expressions (alternative syntax) with balanced scanning
+	{
+		let out = ""
+		for (let i = 0; i < processedCommand.length; i++) {
+			if (processedCommand[i] === "$" && processedCommand[i + 1] === "[") {
+				const start = i
+				i += 2
+				let depth = 1
+				let inSingle = false
+				let inDouble = false
+				while (i < processedCommand.length && depth > 0) {
+					const ch = processedCommand[i]
+					if (ch === "'" && !inDouble) inSingle = !inSingle
+					else if (ch === '"' && !inSingle) inDouble = !inDouble
+					else if (!inSingle && !inDouble) {
+						if (ch === "[") depth++
+						else if (ch === "]") depth--
+					}
+					i++
 				}
-			}
-			return _m
-		})
-		match.replace(/`((?:\\`|[^`])*)`/g, (_m, inner) => {
-			const unescaped = String(inner).replace(/\\`/g, "`").trim()
-			if (unescaped) {
-				subshells.push(unescaped)
-				const expanded = parseCommand(unescaped)
-				if (expanded.length > 0) {
-					embeddedSubshellCommands.push(...expanded)
-				} else {
-					embeddedSubshellCommands.push(unescaped)
-				}
-			}
-			return _m
-		})
+				const match = processedCommand.slice(start, i)
+				// Extract subshells inside $[ ... ] arithmetic expressions as well
+				match.replace(/\$\((?!\()(.*?)\)/g, (_m, inner) => {
+					const trimmed = String(inner).trim()
+					if (trimmed) {
+						subshells.push(trimmed)
+						const expanded = parseCommand(trimmed)
+						if (expanded.length > 0) {
+							embeddedSubshellCommands.push(...expanded)
+						} else {
+							embeddedSubshellCommands.push(trimmed)
+						}
+					}
+					return _m
+				})
+				match.replace(/`((?:\\`|[^`])*)`/g, (_m, inner) => {
+					const unescaped = String(inner).replace(/\\`/g, "`").trim()
+					if (unescaped) {
+						subshells.push(unescaped)
+						const expanded = parseCommand(unescaped)
+						if (expanded.length > 0) {
+							embeddedSubshellCommands.push(...expanded)
+						} else {
+							embeddedSubshellCommands.push(unescaped)
+						}
+					}
+					return _m
+				})
 
-		arithmeticExpressions.push(match)
-		return `__ARITH_${arithmeticExpressions.length - 1}__`
-	})
+				arithmeticExpressions.push(match)
+				out += `__ARITH_${arithmeticExpressions.length - 1}__`
+				i -= 1
+			} else {
+				out += processedCommand[i]
+			}
+		}
+		processedCommand = out
+	}
 
 	// Handle parameter expansions: ${...} patterns (including array indexing)
 	// This covers ${var}, ${var:-default}, ${var:+alt}, ${#var}, ${var%pattern}, etc.
@@ -332,11 +368,40 @@ function parseCommandLine(command: string): string[] {
 		return `__PARAM_${parameterExpansions.length - 1}__`
 	})
 
-	// Handle process substitutions: <(...) and >(...)
-	processedCommand = processedCommand.replace(/[<>]\(([^)]+)\)/g, (_, inner) => {
-		subshells.push(inner.trim())
-		return `__SUBSH_${subshells.length - 1}__`
-	})
+	// Handle process substitutions: <(...) and >(...) with balanced scanning
+	{
+		let out = ""
+		for (let i = 0; i < processedCommand.length; i++) {
+			if ((processedCommand[i] === "<" || processedCommand[i] === ">") && processedCommand[i + 1] === "(") {
+				const start = i
+				i += 2
+				let depth = 1
+				let inSingle = false
+				let inDouble = false
+				while (i < processedCommand.length && depth > 0) {
+					const ch = processedCommand[i]
+					if (ch === "'" && !inDouble) inSingle = !inSingle
+					else if (ch === '"' && !inSingle) inDouble = !inDouble
+					else if (!inSingle && !inDouble) {
+						if (ch === "(") depth++
+						else if (ch === ")") depth--
+					}
+					i++
+				}
+				const inner = processedCommand.slice(start + 2, i - 1).trim()
+				if (inner) {
+					subshells.push(inner)
+					out += `__SUBSH_${subshells.length - 1}__`
+				} else {
+					out += processedCommand.slice(start, i)
+				}
+				i -= 1
+			} else {
+				out += processedCommand[i]
+			}
+		}
+		processedCommand = out
+	}
 
 	// Handle simple variable references: $varname pattern
 	// This prevents shell-quote from splitting $count into separate tokens
@@ -365,39 +430,79 @@ function parseCommandLine(command: string): string[] {
 			return `__SUBSH_${subshells.length - 1}__`
 		})
 
-	// Handle fish-style command substitutions and POSIX subshell grouping: ( ... )
-	// At this point we've already replaced $(), <() and >() earlier, so any remaining (...) are either
-	// fish command substitutions or subshell groupings. We treat them as subshells to validate inner commands.
-	processedCommand = processedCommand.replace(/\(([^()]*)\)/g, (full, inner: string, offset: number, str: string) => {
-		// If this was actually a pattern preceded by $, < or > it would have been handled earlier.
-		// Guard anyway: if the preceding character indicates a different construct, keep original.
-		const prevChar = offset > 0 ? str[offset - 1] : ""
-		// Also skip array initializers like name=(...) which follow '='
-		if (prevChar === "$" || prevChar === "<" || prevChar === ">" || prevChar === "=") {
-			return full
-		}
-		const content = (inner || "").trim()
-		if (!content) return full
-		// Avoid creating nested placeholders like (__SUBSH_0__) -> __SUBSH_1__
-		// Keep original when content is already a subshell placeholder
-		if (/^__SUBSH_\d+__$/.test(content)) {
-			return full
-		}
-		subshells.push(content)
-		return `__SUBSH_${subshells.length - 1}__`
-	})
-	// Then handle quoted strings
-	processedCommand = processedCommand.replace(/"[^"]*"/g, (match) => {
+	// Mask quoted strings BEFORE handling fish-style parentheses to avoid false subshells inside quotes
+	processedCommand = processedCommand.replace(/"((?:\\.|[^"\\])*)"/g, (match) => {
 		quotes.push(match)
 		return `__QUOTE_${quotes.length - 1}__`
 	})
+	// Also mask single-quoted strings before handling parentheses
+	processedCommand = processedCommand.replace(/'[^']*'/g, (match) => {
+		quotes.push(match)
+		return `__QUOTE_${quotes.length - 1}__`
+	})
+
+	// Handle fish-style command substitutions and POSIX subshell grouping: ( ... )
+	// Use balanced scanning to support nested parentheses while respecting quotes.
+	// We already handled $(), <() and >() earlier, so remaining (...) are either fish substitutions or groupings.
+	{
+		let out = ""
+		for (let i = 0; i < processedCommand.length; i++) {
+			const ch = processedCommand[i]
+			if (ch === "(") {
+				const prevChar = i > 0 ? processedCommand[i - 1] : ""
+				// Skip constructs that were or will be handled elsewhere
+				if (prevChar === "$" || prevChar === "<" || prevChar === ">" || prevChar === "=") {
+					out += ch
+					continue
+				}
+				let j = i + 1
+				let depth = 1
+				let inSingle = false
+				let inDouble = false
+				while (j < processedCommand.length && depth > 0) {
+					const cj = processedCommand[j]
+					if (cj === "'" && !inDouble) inSingle = !inSingle
+					else if (cj === '"' && !inSingle) inDouble = !inDouble
+					else if (!inSingle && !inDouble) {
+						if (cj === "(") depth++
+						else if (cj === ")") depth--
+					}
+					j++
+				}
+				if (depth === 0) {
+					const inner = processedCommand.slice(i + 1, j - 1).trim()
+					if (inner) {
+						// Avoid generating placeholder around an existing subshell placeholder
+						if (/^__SUBSH_\d+__$/.test(inner)) {
+							out += processedCommand.slice(i, j)
+						} else {
+							subshells.push(inner)
+							out += `__SUBSH_${subshells.length - 1}__`
+						}
+					} else {
+						// Empty grouping, keep as-is
+						out += processedCommand.slice(i, j)
+					}
+					i = j - 1
+				} else {
+					// Unbalanced; keep the '(' and continue
+					out += ch
+				}
+			} else {
+				out += ch
+			}
+		}
+		processedCommand = out
+	}
 
 	let tokens: ShellToken[]
 	try {
 		tokens = parse(processedCommand) as ShellToken[]
 	} catch (error: any) {
 		// If shell-quote fails to parse, fall back to simple splitting
-		console.warn("shell-quote parse error:", error.message, "for command:", processedCommand)
+		if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
+			console.warn("shell-quote parse error:", error.message, "for command:", processedCommand)
+		}
 
 		// Simple fallback: split by common operators
 		const fallbackCommands = processedCommand
@@ -661,6 +766,10 @@ export type CommandDecision = "auto_approve" | "auto_deny" | "ask_user"
  * getCommandDecision("unknown command", ["git"], ["rm"])
  * // Returns "ask_user"
  * ```
+ *
+ * Ordering note: parseCommand appends subshell commands discovered inside arithmetic expressions
+ * to the end of the subCommands list. Since any denial results in an auto_deny decision, this
+ * ordering does not affect outcomes, but is documented here for clarity.
  *
  * @param command - The full command string to validate
  * @param allowedCommands - List of allowed command prefixes

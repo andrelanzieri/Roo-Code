@@ -52,6 +52,19 @@ describe("Command Validation", () => {
 			expect(parseCommand(cmd)).toEqual(["echo", "echo", "whoami"])
 		})
 
+		it("does not treat parentheses inside quotes as subshells", () => {
+			expect(parseCommand('echo "(whoami)"')).toEqual(['echo "(whoami)"'])
+			expect(parseCommand("echo '(date)'")).toEqual(["echo '(date)'"])
+			expect(parseCommand('printf "(x)"')).toEqual(['printf "(x)"'])
+		})
+
+		it("parses POSIX grouping subshell: (cd dir && ls)", () => {
+			expect(parseCommand("(cd dir && ls)")).toEqual(["cd dir", "ls"])
+		})
+
+		it("parses multiple groupings separated by a pipe: (echo a) | (echo b)", () => {
+			expect(parseCommand("(echo a) | (echo b)")).toEqual(["echo a", "echo b"])
+		})
 		it("handles empty and whitespace input", () => {
 			expect(parseCommand("")).toEqual([])
 			expect(parseCommand("	")).toEqual([])
@@ -329,6 +342,11 @@ ls -la || echo "Failed"`
 			expect(containsDangerousSubstitution('ls *(+"whoami")')).toBe(true)
 		})
 
+		it("does not flag non-glob e:...: parenthetical as dangerous", () => {
+			expect(containsDangerousSubstitution("(e:whoami:)")).toBe(false)
+			expect(containsDangerousSubstitution('echo "(e:whoami:)"')).toBe(false)
+		})
+
 		it('detects bash $"..." string interpolation with command substitution', () => {
 			// The exact example from the issue
 			expect(containsDangerousSubstitution('echo $"test$(whoami)"')).toBe(true)
@@ -351,6 +369,10 @@ ls -la || echo "Failed"`
 			expect(containsDangerousSubstitution('echo $"Files: $(ls -la)"')).toBe(true)
 			expect(containsDangerousSubstitution('echo $"Process: $(ps aux | grep node)"')).toBe(true)
 			expect(containsDangerousSubstitution('echo $"Result: `rm -rf /`"')).toBe(true)
+		})
+
+		it('detects $"..." with escaped quotes and command substitution', () => {
+			expect(containsDangerousSubstitution('echo $"val=\\"$(whoami)\\""')).toBe(true)
 		})
 
 		it("does NOT flag safe parameter expansions", () => {
@@ -615,6 +637,11 @@ echo "Successfully converted $count .jsx files to .tsx"`
 					parseCommand(cmd)
 				}).not.toThrow()
 			})
+		})
+
+		it("should handle process substitutions with nested/quoted parentheses", () => {
+			expect(() => parseCommand('cmd >(grep "(")')).not.toThrow()
+			expect(() => parseCommand('cmd >(grep "\\(foo\\)")')).not.toThrow()
 		})
 
 		it("should handle special bash variables without errors", () => {
@@ -1512,5 +1539,22 @@ describe("Unified Command Decision Functions", () => {
 				})
 			})
 		})
+	})
+})
+
+// Additional regression tests from jr/more-subshells review
+describe("Regression: escaped quotes and process substitution", () => {
+	it("parses double-quoted strings with escaped quotes without splitting", () => {
+		expect(parseCommand('echo "val=\\"x\\""')).toEqual(['echo "val=\\"x\\""'])
+	})
+
+	it("does not flag bash array assignments as zsh process substitution", () => {
+		expect(containsDangerousSubstitution("arr=(a b)")).toBe(false)
+		expect(containsDangerousSubstitution("arr=()")).toBe(false)
+	})
+
+	it("handles escaped quotes inside backticks", () => {
+		const cmd = 'echo `printf \\"%s\\"`'
+		expect(parseCommand(cmd)).toEqual(["echo", 'printf "%s"'])
 	})
 })
