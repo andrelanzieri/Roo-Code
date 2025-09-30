@@ -4,7 +4,7 @@ import { VscVscode } from "react-icons/vsc"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Copy, Check } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 
 interface InstallSectionProps {
 	downloads: string | null
@@ -14,11 +14,22 @@ export function InstallSection({ downloads }: InstallSectionProps) {
 	const [copied, setCopied] = useState(false)
 	const installCmd = "code --install-extension RooVeterinaryInc.roo-cline"
 
+	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	useEffect(() => {
+		return () => {
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current)
+			}
+		}
+	}, [])
+
 	const handleCopy = async () => {
 		try {
 			await navigator.clipboard.writeText(installCmd)
 			setCopied(true)
-			setTimeout(() => setCopied(false), 1000)
+			const id = setTimeout(() => setCopied(false), 1000)
+			timeoutRef.current = id
 		} catch (_e) {
 			// Fallback for environments without Clipboard API support
 			const textarea = document.createElement("textarea")
@@ -28,7 +39,8 @@ export function InstallSection({ downloads }: InstallSectionProps) {
 			try {
 				document.execCommand("copy")
 				setCopied(true)
-				setTimeout(() => setCopied(false), 1000)
+				const id = setTimeout(() => setCopied(false), 1000)
+				timeoutRef.current = id
 			} finally {
 				document.body.removeChild(textarea)
 			}
@@ -123,7 +135,9 @@ export function InstallSection({ downloads }: InstallSectionProps) {
 													) : (
 														<Copy className="h-4 w-4" />
 													)}
-													<span className="sr-only">{copied ? "Copied" : "Copy"}</span>
+													<span className="sr-only" aria-live="polite" role="status">
+														{copied ? "Copied" : "Copy"}
+													</span>
 												</button>
 											</div>
 										</div>
