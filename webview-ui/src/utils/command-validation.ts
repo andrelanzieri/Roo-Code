@@ -127,7 +127,7 @@ export function containsDangerousSubstitution(source: string): boolean {
 	// Check for $"..." string interpolation with command substitution
 	// $"..." is a bash feature for translated strings that allows command substitution inside
 	// Handle escaped quotes within $"...": use (?:\\.|[^"])* to avoid premature termination on \"
-	const bashTranslatedStringWithSubstitution = /\$"(?:\\.|[^"])*(?:\$\(|`)(?:\\.|[^"])*"/.test(source)
+	const bashTranslatedStringWithSubstitution = /\$"(?:\\.|[^\\"])*(?:\$\(|`)(?:\\.|[^\\"])*"/.test(source)
 
 	// Return true if any dangerous pattern is detected
 	return (
