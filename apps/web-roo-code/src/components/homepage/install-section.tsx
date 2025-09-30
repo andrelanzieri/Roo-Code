@@ -3,12 +3,38 @@
 import { VscVscode } from "react-icons/vsc"
 import Link from "next/link"
 import { motion } from "framer-motion"
+import { Copy, Check } from "lucide-react"
+import { useState } from "react"
 
 interface InstallSectionProps {
 	downloads: string | null
 }
 
 export function InstallSection({ downloads }: InstallSectionProps) {
+	const [copied, setCopied] = useState(false)
+	const installCmd = "code --install-extension RooVeterinaryInc.roo-cline"
+
+	const handleCopy = async () => {
+		try {
+			await navigator.clipboard.writeText(installCmd)
+			setCopied(true)
+			setTimeout(() => setCopied(false), 1000)
+		} catch (_e) {
+			// Fallback for environments without Clipboard API support
+			const textarea = document.createElement("textarea")
+			textarea.value = installCmd
+			document.body.appendChild(textarea)
+			textarea.select()
+			try {
+				document.execCommand("copy")
+				setCopied(true)
+				setTimeout(() => setCopied(false), 1000)
+			} finally {
+				document.body.removeChild(textarea)
+			}
+		}
+	}
+
 	const backgroundVariants = {
 		hidden: {
 			opacity: 0,
@@ -84,12 +110,27 @@ export function InstallSection({ downloads }: InstallSectionProps) {
 									<div className="absolute -inset-px rounded-xl bg-gradient-to-r from-blue-500/50 via-cyan-500/50 to-purple-500/50 opacity-30 blur-sm transition-all duration-500 group-hover:opacity-60 dark:opacity-40 dark:group-hover:opacity-70" />
 									<div className="relative overflow-hidden rounded-xl border border-border bg-background/80 shadow-lg backdrop-blur-xl transition-all duration-500 ease-out group-hover:border-blue-500/50 group-hover:shadow-xl group-hover:shadow-blue-500/10 dark:border-border/50 dark:bg-background/60 dark:group-hover:border-blue-400/50">
 										<div className="border-b border-border/50 bg-muted/30 px-4 py-3 dark:bg-muted/20">
-											<div className="text-sm font-medium text-foreground">or via CLI</div>
+											<div className="flex items-center justify-between">
+												<div className="text-sm font-medium text-foreground">or via CLI</div>
+												<button
+													type="button"
+													onClick={handleCopy}
+													className="inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors"
+													aria-label={copied ? "Copied" : "Copy install command to clipboard"}
+													title={copied ? "Copied!" : "Copy"}>
+													{copied ? (
+														<Check className="h-4 w-4 text-green-500" />
+													) : (
+														<Copy className="h-4 w-4" />
+													)}
+													<span className="sr-only">{copied ? "Copied" : "Copy"}</span>
+												</button>
+											</div>
 										</div>
 										<div className="overflow-x-auto bg-background/50 dark:bg-background/30">
 											<pre className="p-4">
 												<code className="whitespace-pre-wrap break-all text-sm font-mono text-foreground sm:break-normal sm:text-base">
-													code --install-extension RooVeterinaryInc.roo-cline
+													{installCmd}
 												</code>
 											</pre>
 										</div>
