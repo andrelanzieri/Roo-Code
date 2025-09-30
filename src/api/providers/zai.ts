@@ -13,7 +13,7 @@ import type { ApiHandlerOptions } from "../../shared/api"
 
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
 
-export class ZAiHandler extends BaseOpenAiCompatibleProvider<InternationalZAiModelId | MainlandZAiModelId> {
+export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 	constructor(options: ApiHandlerOptions) {
 		const isChina = zaiApiLineConfigs[options.zaiApiLine ?? "international_coding"].isChina
 		const models = isChina ? mainlandZAiModels : internationalZAiModels
