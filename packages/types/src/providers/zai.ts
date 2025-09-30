@@ -3,8 +3,8 @@ import { ZaiApiLine } from "../provider-settings.js"
 
 // Z AI
 // https://docs.z.ai/guides/llm/glm-4.5
+// https://docs.z.ai/guides/llm/glm-4.6
 // https://docs.z.ai/guides/overview/pricing
-
 export type InternationalZAiModelId = keyof typeof internationalZAiModels
 export const internationalZAiDefaultModelId: InternationalZAiModelId = "glm-4.5"
 export const internationalZAiModels = {
@@ -19,30 +19,7 @@ export const internationalZAiModels = {
 		cacheReadsPrice: 0.11,
 		description:
 			"GLM-4.5 is Zhipu's latest featured model. Its comprehensive capabilities in reasoning, coding, and agent reach the state-of-the-art (SOTA) level among open-source models, with a context length of up to 128k.",
-	},
-	"glm-4.5-air": {
-		maxTokens: 98_304,
-		contextWindow: 131_072,
-		supportsImages: false,
-		supportsPromptCache: true,
-		inputPrice: 0.2,
-		outputPrice: 1.1,
-		cacheWritesPrice: 0,
-		cacheReadsPrice: 0.03,
-		description:
-			"GLM-4.5-Air is the lightweight version of GLM-4.5. It balances performance and cost-effectiveness, and can flexibly switch to hybrid thinking models.",
-	},
-	"glm-4.5v": {
-		maxTokens: 16_384,
-		contextWindow: 64_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.6,
-		outputPrice: 1.8,
-		cacheWritesPrice: 0,
-		cacheReadsPrice: 0.11,
-		description:
-			"GLM-4.5V is Zhipu's new generation of visual reasoning models based on the MOE architecture.",
+		owned_by: "zai",
 	},
 	"glm-4.6": {
 		maxTokens: 98_304,
@@ -55,7 +32,94 @@ export const internationalZAiModels = {
 		cacheReadsPrice: 0.11,
 		description:
 			"GLM-4.6 is Zhipu's newest model with an extended context window of up to 200k tokens, providing enhanced capabilities for processing longer documents and conversations.",
-	}
+		owned_by: "zai",
+	},
+	"glm-4.5v": {
+		maxTokens: 16_384,
+		contextWindow: 64_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 0.6,
+		outputPrice: 1.8,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0.11,
+		description: "GLM-4.5V is Zhipu's new generation of visual reasoning models based on the MOE architecture.",
+		owned_by: "zai",
+	},
+	"glm-4.5-x": {
+		maxTokens: 98_304,
+		contextWindow: 131_072,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 2.2,
+		outputPrice: 8.9,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0.45,
+		description: "GLM-4.5-X is the extended version with enhanced capabilities and performance for complex tasks.",
+		owned_by: "zai",
+	},
+	"glm-4.5-air": {
+		maxTokens: 98_304,
+		contextWindow: 131_072,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 0.2,
+		outputPrice: 1.1,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0.03,
+		description:
+			"GLM-4.5-Air is the lightweight version of GLM-4.5. It balances performance and cost-effectiveness, and can flexibly switch to hybrid thinking models.",
+		owned_by: "zai",
+	},
+	"glm-4.6-air": {
+		maxTokens: 98_304,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 0.2,
+		outputPrice: 1.1,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0.03,
+		description:
+			"GLM-4.6-Air is the lightweight version of GLM-4.6. It balances performance and cost-effectiveness, and can flexibly switch to hybrid thinking models.",
+		owned_by: "zai",
+	},
+	"glm-4.5-airx": {
+		maxTokens: 98_304,
+		contextWindow: 131_072,
+		supportsImages: false,
+		supportsPromptCache: true,
+		inputPrice: 1.1,
+		outputPrice: 4.5,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0.22,
+		description: "GLM-4.5-AirX is the extended version of GLM-4.5-Air with enhanced capabilities.",
+		owned_by: "zai",
+	},
+	"glm-4-32b-0414-128k": {
+		maxTokens: 98_304,
+		contextWindow: 131_072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.1,
+		outputPrice: 0.1,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0,
+		description: "GLM-4-32B is a 32 billion parameter model with 128k context length, optimized for efficiency.",
+		owned_by: "zai",
+	},
+	"glm-4.5-flash": {
+		maxTokens: 98_304,
+		contextWindow: 131_072,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+		cacheWritesPrice: 0,
+		cacheReadsPrice: 0,
+		description: "Zhipu's most advanced free model to date.",
+		owned_by: "zai",
+	},
 } as const satisfies Record<string, ModelInfo>
 
 export type MainlandZAiModelId = keyof typeof mainlandZAiModels
@@ -134,26 +198,25 @@ export const mainlandZAiModels = {
 		outputPrice: 1.8,
 		cacheWritesPrice: 0,
 		cacheReadsPrice: 0.11,
-		description:
-			"GLM-4.5V is Zhipu's new generation of visual reasoning models based on the MOE architecture.",
+		description: "GLM-4.5V is Zhipu's new generation of visual reasoning models based on the MOE architecture.",
 		tiers: [
 			{
 				contextWindow: 32_000,
 				inputPrice: 0.21,
 				outputPrice: 0.4,
-				cacheReadsPrice: 0.06
+				cacheReadsPrice: 0.06,
 			},
 			{
 				contextWindow: 64_000,
 				inputPrice: 0.6,
 				outputPrice: 1.8,
-				cacheReadsPrice: 0.11
+				cacheReadsPrice: 0.11,
 			},
 			{
 				contextWindow: Infinity,
 				inputPrice: 0.6,
 				outputPrice: 1.8,
-				cacheReadsPrice: 0.11
+				cacheReadsPrice: 0.11,
 			},
 		],
 	},
@@ -194,7 +257,7 @@ export const mainlandZAiModels = {
 				cacheReadsPrice: 0.057,
 			},
 		],
-	}
+	},
 } as const satisfies Record<string, ModelInfo>
 
 export const ZAI_DEFAULT_TEMPERATURE = 0
