@@ -82,7 +82,6 @@ export const openAiNativeModels = {
 		cacheReadsPrice: 0.13,
 		description: "GPT-5-Codex: A version of GPT-5 optimized for agentic coding in Codex",
 		supportsVerbosity: true,
-		supportsTemperature: false,
 	},
 	"gpt-4.1": {
 		maxTokens: 32_768,
