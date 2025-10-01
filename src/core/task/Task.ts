@@ -344,11 +344,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.taskNumber = -1
 
 		this.rooIgnoreController = new RooIgnoreController(this.cwd)
+		this.gitIgnoreController = new GitIgnoreController(this.cwd)
 		this.rooProtectedController = new RooProtectedController(this.cwd)
 		this.fileContextTracker = new FileContextTracker(provider, this.taskId)
 
 		this.rooIgnoreController.initialize().catch((error) => {
 			console.error("Failed to initialize RooIgnoreController:", error)
+		})
+
+		this.gitIgnoreController.initialize().catch((error) => {
+			console.error("Failed to initialize GitIgnoreController:", error)
 		})
 
 		this.apiConfiguration = apiConfiguration
