@@ -83,6 +83,7 @@ import { ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
 import { restoreTodoListForTask } from "../tools/updateTodoListTool"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
+import { GitIgnoreController } from "../ignore/GitIgnoreController"
 import { RooProtectedController } from "../protect/RooProtectedController"
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { AssistantMessageParser } from "../assistant-message/AssistantMessageParser"
@@ -234,6 +235,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	toolRepetitionDetector: ToolRepetitionDetector
 	rooIgnoreController?: RooIgnoreController
+	gitIgnoreController?: GitIgnoreController
 	rooProtectedController?: RooProtectedController
 	fileContextTracker: FileContextTracker
 	urlContentFetcher: UrlContentFetcher
@@ -1586,6 +1588,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			if (this.rooIgnoreController) {
 				this.rooIgnoreController.dispose()
 				this.rooIgnoreController = undefined
+			}
+			if (this.gitIgnoreController) {
+				this.gitIgnoreController.dispose()
+				this.gitIgnoreController = undefined
 			}
 		} catch (error) {
 			console.error("Error disposing RooIgnoreController:", error)
