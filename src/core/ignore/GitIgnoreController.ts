@@ -51,7 +51,9 @@ export class GitIgnoreController extends BaseIgnoreController {
 
 			// Check each location and load if it exists
 			for (const gitignorePath of commonGitignorePaths) {
-				if (await fileExistsAtPath(gitignorePath)) {
+				const exists = await fileExistsAtPath(gitignorePath)
+
+				if (exists) {
 					this.gitignoreFiles.push(gitignorePath)
 					await this.loadGitignoreFile(gitignorePath)
 				}
@@ -120,24 +122,29 @@ export class GitIgnoreController extends BaseIgnoreController {
 			const relativeDir = path.relative(this.cwd, path.dirname(gitignoreFile))
 
 			if (relativeDir) {
-				// For nested .gitignore files, prefix patterns with the relative directory
+				// For nested .gitignore files, we need to create patterns that match files within that directory
 				const lines = content.split("\n").filter((line) => line.trim() && !line.startsWith("#"))
 				const adjustedPatterns = lines.map((pattern) => {
 					const trimmed = pattern.trim()
+					// Convert Windows paths to POSIX for consistent pattern matching
+					const normalizedRelativeDir = relativeDir.split(path.sep).join("/")
+
 					if (trimmed.startsWith("/")) {
 						// Absolute patterns (starting with /) are relative to the .gitignore location
-						return path.posix.join(relativeDir, trimmed.slice(1))
+						return normalizedRelativeDir + trimmed
 					} else if (trimmed.startsWith("!")) {
 						// Negation patterns
 						const negatedPattern = trimmed.slice(1)
 						if (negatedPattern.startsWith("/")) {
-							return "!" + path.posix.join(relativeDir, negatedPattern.slice(1))
+							return "!" + normalizedRelativeDir + negatedPattern
 						} else {
-							return "!" + path.posix.join(relativeDir, "**", negatedPattern)
+							// For relative negation patterns, match in the directory and subdirectories
+							return "!" + normalizedRelativeDir + "/" + negatedPattern
 						}
 					} else {
-						// Relative patterns apply to the directory and all subdirectories
-						return path.posix.join(relativeDir, "**", trimmed)
+						// Relative patterns - match files directly in the directory
+						// This handles cases like "*.tmp" in src/.gitignore matching "src/temp.tmp"
+						return normalizedRelativeDir + "/" + trimmed
 					}
 				})
 
