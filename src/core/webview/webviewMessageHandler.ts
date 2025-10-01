@@ -18,6 +18,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { type ApiMessage } from "../task-persistence/apiMessages"
 import { saveTaskMessages } from "../task-persistence"
+import { restoreMessagesForTimestamp } from "../condense/journal"
 
 import { ClineProvider } from "./ClineProvider"
 import { handleCheckpointRestoreOperation } from "./checkpointRestoreHandler"
@@ -155,7 +156,30 @@ export const webviewMessageHandler = async (
 			return
 		}
 
-		const { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
+		let { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
+
+		// If the message is not found in API history, try to restore from journal
+		if (apiConversationHistoryIndex === -1 && messageIndex !== -1) {
+			const tsThreshold = currentCline.clineMessages[messageIndex]?.ts
+			if (typeof tsThreshold === "number") {
+				// Try to restore messages from journal
+				const taskDirPath = path.join(provider.contextProxy.globalStorageUri.fsPath, currentCline.taskId)
+				const restoredMessages = await restoreMessagesForTimestamp(
+					taskDirPath,
+					currentCline.apiConversationHistory,
+					tsThreshold,
+				)
+
+				if (restoredMessages) {
+					// Update the API conversation history with restored messages
+					await currentCline.overwriteApiConversationHistory(restoredMessages)
+					// Re-find the indices with restored messages
+					const updatedIndices = findMessageIndices(messageTs, currentCline)
+					apiConversationHistoryIndex = updatedIndices.apiConversationHistoryIndex
+				}
+			}
+		}
+
 		// Determine API truncation index with timestamp fallback if exact match not found
 		let apiIndexToUse = apiConversationHistoryIndex
 		const tsThreshold = currentCline.clineMessages[messageIndex]?.ts
@@ -285,7 +309,29 @@ export const webviewMessageHandler = async (
 		}
 
 		// Use findMessageIndices to find messages based on timestamp
-		const { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
+		let { messageIndex, apiConversationHistoryIndex } = findMessageIndices(messageTs, currentCline)
+
+		// If the message is not found in API history, try to restore from journal
+		if (apiConversationHistoryIndex === -1 && messageIndex !== -1) {
+			const tsThreshold = currentCline.clineMessages[messageIndex]?.ts
+			if (typeof tsThreshold === "number") {
+				// Try to restore messages from journal
+				const taskDirPath = path.join(provider.contextProxy.globalStorageUri.fsPath, currentCline.taskId)
+				const restoredMessages = await restoreMessagesForTimestamp(
+					taskDirPath,
+					currentCline.apiConversationHistory,
+					tsThreshold,
+				)
+
+				if (restoredMessages) {
+					// Update the API conversation history with restored messages
+					await currentCline.overwriteApiConversationHistory(restoredMessages)
+					// Re-find the indices with restored messages
+					const updatedIndices = findMessageIndices(messageTs, currentCline)
+					apiConversationHistoryIndex = updatedIndices.apiConversationHistoryIndex
+				}
+			}
+		}
 
 		if (messageIndex === -1) {
 			const errorMessage = t("common:errors.message.message_not_found", { messageTs })

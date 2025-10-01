@@ -110,6 +110,7 @@ import {
 } from "../checkpoints"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
 import { getMessagesSinceLastSummary, summarizeConversation } from "../condense"
+import { appendJournalEntry, createJournalEntry, findRemovedMessages } from "../condense/journal"
 import { Gpt5Metadata, ClineMessageWithMetadata } from "./types"
 import { MessageQueueService } from "../message-queue/MessageQueueService"
 
@@ -1007,6 +1008,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const { contextTokens: prevContextTokens } = this.getTokenUsage()
 
+		// Store original messages before condensing for journal
+		const originalMessages = [...this.apiConversationHistory]
+
 		const {
 			messages,
 			summary,
@@ -1035,6 +1039,38 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			)
 			return
 		}
+
+		// Write journal entry before overwriting history
+		try {
+			// Find which messages were removed
+			const removedMessages = findRemovedMessages(originalMessages, messages)
+
+			if (removedMessages.length > 0) {
+				// Find boundary messages for the journal
+				const firstKeptMessage = messages.find((msg) => msg.ts && !msg.isSummary)
+				const summaryMessage = messages.find((msg) => msg.isSummary)
+				const lastKeptBeforeSummary = summaryMessage
+					? messages[messages.indexOf(summaryMessage) - 1]
+					: undefined
+
+				// Create and append journal entry
+				const journalEntry = createJournalEntry(
+					removedMessages,
+					firstKeptMessage,
+					lastKeptBeforeSummary,
+					summaryMessage,
+					"manual",
+				)
+
+				// Get task directory path and write journal
+				const taskDirPath = path.join(this.globalStoragePath, this.taskId)
+				await appendJournalEntry(taskDirPath, journalEntry)
+			}
+		} catch (journalError) {
+			// Log but don't fail the condense operation if journal writing fails
+			console.error("Failed to write condense journal entry:", journalError)
+		}
+
 		await this.overwriteApiConversationHistory(messages)
 
 		// Set flag to skip previous_response_id on the next API call after manual condense
