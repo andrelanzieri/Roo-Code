@@ -36,7 +36,7 @@ describe("getMessagesSinceLastSummary", () => {
 		expect(result).toEqual(messages)
 	})
 
-	it("should return messages since the last summary with prepended user message", () => {
+	it("should return messages since the last summary with original first user message", () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "Hello", ts: 1 },
 			{ role: "assistant", content: "Hi there", ts: 2 },
@@ -47,14 +47,14 @@ describe("getMessagesSinceLastSummary", () => {
 
 		const result = getMessagesSinceLastSummary(messages)
 		expect(result).toEqual([
-			{ role: "user", content: "Please continue from the following summary:", ts: 0 },
+			{ role: "user", content: "Hello", ts: 1 },
 			{ role: "assistant", content: "Summary of conversation", ts: 3, isSummary: true },
 			{ role: "user", content: "How are you?", ts: 4 },
 			{ role: "assistant", content: "I'm good", ts: 5 },
 		])
 	})
 
-	it("should handle multiple summary messages and return since the last one with prepended user message", () => {
+	it("should handle multiple summary messages and return since the last one with original first user message", () => {
 		const messages: ApiMessage[] = [
 			{ role: "user", content: "Hello", ts: 1 },
 			{ role: "assistant", content: "First summary", ts: 2, isSummary: true },
@@ -65,7 +65,7 @@ describe("getMessagesSinceLastSummary", () => {
 
 		const result = getMessagesSinceLastSummary(messages)
 		expect(result).toEqual([
-			{ role: "user", content: "Please continue from the following summary:", ts: 0 },
+			{ role: "user", content: "Hello", ts: 1 },
 			{ role: "assistant", content: "Second summary", ts: 4, isSummary: true },
 			{ role: "user", content: "What's new?", ts: 5 },
 		])
@@ -282,6 +282,32 @@ describe("summarizeConversation", () => {
 		// Check that maybeRemoveImageBlocks was called with the correct messages
 		const mockCallArgs = (maybeRemoveImageBlocks as Mock).mock.calls[0][0] as any[]
 		expect(mockCallArgs[mockCallArgs.length - 1]).toEqual(expectedFinalMessage)
+	})
+	it("should include the original first user message in summarization input", async () => {
+		const messages: ApiMessage[] = [
+			{ role: "user", content: "Initial ask", ts: 1 },
+			{ role: "assistant", content: "Ack", ts: 2 },
+			{ role: "user", content: "Follow-up", ts: 3 },
+			{ role: "assistant", content: "Response", ts: 4 },
+			{ role: "user", content: "More", ts: 5 },
+			{ role: "assistant", content: "Later", ts: 6 },
+			{ role: "user", content: "Newest", ts: 7 },
+		]
+
+		await summarizeConversation(messages, mockApiHandler, defaultSystemPrompt, taskId, DEFAULT_PREV_CONTEXT_TOKENS)
+
+		const mockCallArgs = (maybeRemoveImageBlocks as Mock).mock.calls[0][0] as any[]
+
+		// Expect the original first user message to be present in the messages sent to the summarizer
+		const hasInitialAsk = mockCallArgs.some(
+			(m) =>
+				m.role === "user" &&
+				(typeof m.content === "string"
+					? m.content === "Initial ask"
+					: Array.isArray(m.content) &&
+						m.content.some((b: any) => b.type === "text" && b.text === "Initial ask")),
+		)
+		expect(hasInitialAsk).toBe(true)
 	})
 
 	it("should calculate newContextTokens correctly with systemPrompt", async () => {

@@ -41,7 +41,11 @@ describe("ZAiHandler", () => {
 
 		it("should use the correct international Z AI base URL", () => {
 			new ZAiHandler({ zaiApiKey: "test-zai-api-key", zaiApiLine: "international" })
-			expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({ baseURL: "https://api.z.ai/api/paas/v4" }))
+			expect(OpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseURL: "https://api.z.ai/api/paas/v4",
+				}),
+			)
 		})
 
 		it("should use the provided API key for international", () => {
@@ -66,6 +70,19 @@ describe("ZAiHandler", () => {
 			const model = handlerWithModel.getModel()
 			expect(model.id).toBe(testModelId)
 			expect(model.info).toEqual(internationalZAiModels[testModelId])
+		})
+
+		it("should return GLM-4.6 international model with correct configuration", () => {
+			const testModelId: InternationalZAiModelId = "glm-4.6"
+			const handlerWithModel = new ZAiHandler({
+				apiModelId: testModelId,
+				zaiApiKey: "test-zai-api-key",
+				zaiApiLine: "international",
+			})
+			const model = handlerWithModel.getModel()
+			expect(model.id).toBe(testModelId)
+			expect(model.info).toEqual(internationalZAiModels[testModelId])
+			expect(model.info.contextWindow).toBe(204_800)
 		})
 	})
 
@@ -104,12 +121,29 @@ describe("ZAiHandler", () => {
 			expect(model.id).toBe(testModelId)
 			expect(model.info).toEqual(mainlandZAiModels[testModelId])
 		})
+
+		it("should return GLM-4.6 China model with correct configuration", () => {
+			const testModelId: MainlandZAiModelId = "glm-4.6"
+			const handlerWithModel = new ZAiHandler({
+				apiModelId: testModelId,
+				zaiApiKey: "test-zai-api-key",
+				zaiApiLine: "china",
+			})
+			const model = handlerWithModel.getModel()
+			expect(model.id).toBe(testModelId)
+			expect(model.info).toEqual(mainlandZAiModels[testModelId])
+			expect(model.info.contextWindow).toBe(204_800)
+		})
 	})
 
 	describe("Default behavior", () => {
 		it("should default to international when no zaiApiLine is specified", () => {
 			const handlerDefault = new ZAiHandler({ zaiApiKey: "test-zai-api-key" })
-			expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({ baseURL: "https://api.z.ai/api/paas/v4" }))
+			expect(OpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseURL: "https://api.z.ai/api/coding/paas/v4",
+				}),
+			)
 
 			const model = handlerDefault.getModel()
 			expect(model.id).toBe(internationalZAiDefaultModelId)
