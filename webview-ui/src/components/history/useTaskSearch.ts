@@ -3,6 +3,7 @@ import { Fzf } from "fzf"
 
 import { highlightFzfMatch } from "@/utils/highlight"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { arePathsEqual } from "@/utils/path"
 
 type SortOption = "newest" | "oldest" | "mostExpensive" | "mostTokens" | "mostRelevant"
 
@@ -26,7 +27,8 @@ export const useTaskSearch = () => {
 	const presentableTasks = useMemo(() => {
 		let tasks = taskHistory.filter((item) => item.ts && item.task)
 		if (!showAllWorkspaces) {
-			tasks = tasks.filter((item) => item.workspace === cwd)
+			// Use arePathsEqual for proper path comparison that handles Desktop directory correctly
+			tasks = tasks.filter((item) => arePathsEqual(item.workspace, cwd))
 		}
 		return tasks
 	}, [taskHistory, showAllWorkspaces, cwd])
