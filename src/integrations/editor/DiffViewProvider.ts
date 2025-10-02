@@ -37,6 +37,7 @@ export class DiffViewProvider {
 	private streamedLines: string[] = []
 	private preDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] = []
 	private taskRef: WeakRef<Task>
+	private savedWordWrapConfig: string | undefined
 
 	constructor(
 		private cwd: string,
@@ -45,11 +46,37 @@ export class DiffViewProvider {
 		this.taskRef = new WeakRef(task)
 	}
 
+	/**
+	 * Saves the current word wrap configuration
+	 */
+	private async saveWordWrapConfig(): Promise<void> {
+		const config = vscode.workspace.getConfiguration("editor")
+		this.savedWordWrapConfig = config.get<string>("wordWrap")
+	}
+
+	/**
+	 * Restores the saved word wrap configuration if it was changed
+	 */
+	private async restoreWordWrapConfig(): Promise<void> {
+		if (this.savedWordWrapConfig !== undefined) {
+			const config = vscode.workspace.getConfiguration("editor")
+			const currentWordWrap = config.get<string>("wordWrap")
+
+			// Only restore if it was changed
+			if (currentWordWrap !== this.savedWordWrapConfig) {
+				await config.update("wordWrap", this.savedWordWrapConfig, vscode.ConfigurationTarget.Global)
+			}
+		}
+	}
+
 	async open(relPath: string): Promise<void> {
 		this.relPath = relPath
 		const fileExists = this.editType === "modify"
 		const absolutePath = path.resolve(this.cwd, relPath)
 		this.isEditing = true
+
+		// Save the current word wrap configuration before any operations
+		await this.saveWordWrapConfig()
 
 		// If the file is already open, ensure it's not dirty before getting its
 		// contents.
@@ -208,6 +235,10 @@ export class DiffViewProvider {
 		}
 
 		await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), { preview: false, preserveFocus: true })
+
+		// Restore word wrap configuration after showing the document
+		await this.restoreWordWrapConfig()
+
 		await this.closeAllDiffViews()
 
 		// Getting diagnostics before and after the file edit is a better approach than
@@ -409,6 +440,9 @@ export class DiffViewProvider {
 					preview: false,
 					preserveFocus: true,
 				})
+
+				// Restore word wrap configuration after showing the document
+				await this.restoreWordWrapConfig()
 			}
 
 			await this.closeAllDiffViews()
@@ -617,6 +651,10 @@ export class DiffViewProvider {
 
 	async reset(): Promise<void> {
 		await this.closeAllDiffViews()
+
+		// Restore word wrap configuration on reset
+		await this.restoreWordWrapConfig()
+
 		this.editType = undefined
 		this.isEditing = false
 		this.originalContent = undefined
@@ -627,6 +665,7 @@ export class DiffViewProvider {
 		this.activeLineController = undefined
 		this.streamedLines = []
 		this.preDiagnostics = []
+		this.savedWordWrapConfig = undefined
 	}
 
 	/**
@@ -666,6 +705,9 @@ export class DiffViewProvider {
 				preview: false,
 				preserveFocus: true,
 			})
+
+			// Restore word wrap configuration after showing the document
+			await this.restoreWordWrapConfig()
 		} else {
 			// Just open the document in memory to trigger diagnostics without showing it
 			const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(absolutePath))

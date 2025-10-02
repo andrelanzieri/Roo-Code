@@ -38,6 +38,15 @@ vi.mock("vscode", () => ({
 		fs: {
 			stat: vi.fn(),
 		},
+		getConfiguration: vi.fn(() => ({
+			get: vi.fn().mockReturnValue("off"),
+			update: vi.fn().mockResolvedValue(undefined),
+		})),
+	},
+	ConfigurationTarget: {
+		Global: 1,
+		Workspace: 2,
+		WorkspaceFolder: 3,
 	},
 	window: {
 		createTextEditorDecorationType: vi.fn(),
