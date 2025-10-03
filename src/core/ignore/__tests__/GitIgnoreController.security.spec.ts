@@ -175,7 +175,9 @@ build/
 
 			// Mock different content for each file
 			mockReadFile.mockImplementation((filePath: any) => {
-				if (filePath.toString().endsWith("src/.gitignore")) {
+				// Normalize path separators for cross-platform compatibility
+				const normalizedPath = filePath.toString().replace(/\\/g, "/")
+				if (normalizedPath.endsWith("src/.gitignore")) {
 					return Promise.resolve("*.tmp\n*.cache\n")
 				}
 				return Promise.resolve("node_modules/\n*.log\n")

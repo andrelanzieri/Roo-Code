@@ -123,28 +123,38 @@ export class GitIgnoreController extends BaseIgnoreController {
 
 			if (relativeDir) {
 				// For nested .gitignore files, we need to create patterns that match files within that directory
-				const lines = content.split("\n").filter((line) => line.trim() && !line.startsWith("#"))
-				const adjustedPatterns = lines.map((pattern) => {
+				const lines = content.split(/\r?\n/).filter((line) => line.trim() && !line.startsWith("#"))
+				// Convert Windows paths to POSIX for consistent pattern matching
+				const normalizedRelativeDir = relativeDir.split(path.sep).join("/")
+
+				const adjustedPatterns = lines.flatMap((pattern) => {
 					const trimmed = pattern.trim()
-					// Convert Windows paths to POSIX for consistent pattern matching
-					const normalizedRelativeDir = relativeDir.split(path.sep).join("/")
 
 					if (trimmed.startsWith("/")) {
 						// Absolute patterns (starting with /) are relative to the .gitignore location
-						return normalizedRelativeDir + trimmed
+						return [normalizedRelativeDir + trimmed]
 					} else if (trimmed.startsWith("!")) {
 						// Negation patterns
 						const negatedPattern = trimmed.slice(1)
 						if (negatedPattern.startsWith("/")) {
-							return "!" + normalizedRelativeDir + negatedPattern
+							return ["!" + normalizedRelativeDir + negatedPattern]
 						} else {
 							// For relative negation patterns, match in the directory and subdirectories
-							return "!" + normalizedRelativeDir + "/" + negatedPattern
+							return [
+								"!" + normalizedRelativeDir + "/" + negatedPattern,
+								"!" + normalizedRelativeDir + "/**/" + negatedPattern,
+							]
 						}
 					} else {
-						// Relative patterns - match files directly in the directory
-						// This handles cases like "*.tmp" in src/.gitignore matching "src/temp.tmp"
-						return normalizedRelativeDir + "/" + trimmed
+						// Relative patterns - match files in the directory and all subdirectories
+						// For "*.tmp" in src/.gitignore, we need TWO patterns:
+						// - src/*.tmp (matches direct children like src/temp.tmp)
+						// - src/**/*.tmp (matches descendants like src/subdir/temp.tmp)
+						const patterns = [
+							normalizedRelativeDir + "/" + trimmed,
+							normalizedRelativeDir + "/**/" + trimmed,
+						]
+						return patterns
 					}
 				})
 
