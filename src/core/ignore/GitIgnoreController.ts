@@ -59,6 +59,16 @@ export class GitIgnoreController extends BaseIgnoreController {
 				}
 			}
 
+			// Also discover arbitrary nested .gitignore files across the workspace
+			await this.findGitignoreFilesRecursively(this.cwd)
+
+			// Load any files discovered by recursion that weren't loaded yet
+			for (const p of this.gitignoreFiles) {
+				if (!this.gitignoreContents.has(p)) {
+					await this.loadGitignoreFile(p)
+				}
+			}
+
 			// Always ignore .gitignore files themselves
 			this.ignoreInstance.add(".gitignore")
 		} catch (error) {
