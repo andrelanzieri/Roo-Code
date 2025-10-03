@@ -175,6 +175,51 @@ describe("GitIgnoreController", () => {
 			expect(controller.validateAccess("src/temp.tmp")).toBe(false) // Nested .gitignore
 			expect(controller.validateAccess("src/index.ts")).toBe(true) // Should be allowed
 		})
+
+		it("should filter deeply nested files from nested .gitignore patterns", async () => {
+			// Setup mocks to simulate nested .gitignore file
+			mockFileExists.mockImplementation((filePath: string) => {
+				return Promise.resolve(
+					filePath === path.join(TEST_CWD, ".gitignore") ||
+						filePath === path.join(TEST_CWD, "src", ".gitignore"),
+				)
+			})
+
+			// Mock different content for each file
+			mockReadFile.mockImplementation((filePath: any) => {
+				// Normalize path separators for cross-platform compatibility
+				const normalizedPath = filePath.toString().replace(/\\/g, "/")
+				if (normalizedPath.endsWith("src/.gitignore")) {
+					// Pattern that should match files at any depth within src/
+					return Promise.resolve("*.tmp\n*.cache\n")
+				}
+				return Promise.resolve("node_modules/\n")
+			})
+
+			await controller.initialize()
+
+			// Test direct children of src/
+			expect(controller.validateAccess("src/temp.tmp")).toBe(false)
+			expect(controller.validateAccess("src/data.cache")).toBe(false)
+
+			// Test deeply nested files (2 levels deep)
+			expect(controller.validateAccess("src/utils/temp.tmp")).toBe(false)
+			expect(controller.validateAccess("src/components/data.cache")).toBe(false)
+
+			// Test very deeply nested files (3+ levels deep)
+			expect(controller.validateAccess("src/utils/helpers/temp.tmp")).toBe(false)
+			expect(controller.validateAccess("src/components/ui/buttons/data.cache")).toBe(false)
+
+			// Test that non-matching files are allowed at all depths
+			expect(controller.validateAccess("src/index.ts")).toBe(true)
+			expect(controller.validateAccess("src/utils/helper.ts")).toBe(true)
+			expect(controller.validateAccess("src/components/ui/Button.tsx")).toBe(true)
+
+			// Test that patterns don't leak outside src/
+			expect(controller.validateAccess("temp.tmp")).toBe(true)
+			expect(controller.validateAccess("lib/temp.tmp")).toBe(true)
+			expect(controller.validateAccess("test/data.cache")).toBe(true)
+		})
 	})
 
 	describe("filterPaths", () => {
