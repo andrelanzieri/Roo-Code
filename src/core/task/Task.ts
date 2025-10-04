@@ -109,7 +109,7 @@ import {
 	checkpointDiff,
 } from "../checkpoints"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
-import { getMessagesSinceLastSummary, summarizeConversation } from "../condense"
+import { getMessagesSinceLastSummary, summarizeConversation, SummarizeResponse } from "../condense"
 import { Gpt5Metadata, ClineMessageWithMetadata } from "./types"
 import { MessageQueueService } from "../message-queue/MessageQueueService"
 
@@ -1007,13 +1007,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const { contextTokens: prevContextTokens } = this.getTokenUsage()
 
-		const {
-			messages,
-			summary,
-			cost,
-			newContextTokens = 0,
-			error,
-		} = await summarizeConversation(
+		const result = await summarizeConversation(
 			this.apiConversationHistory,
 			this.api, // Main API handler (fallback)
 			systemPrompt, // Default summarization prompt (fallback)
@@ -1023,10 +1017,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			customCondensingPrompt, // User's custom prompt
 			condensingApiHandler, // Specific handler for condensing
 		)
-		if (error) {
+
+		if (result.error) {
 			this.say(
 				"condense_context_error",
-				error,
+				result.error,
 				undefined /* images */,
 				false /* partial */,
 				undefined /* checkpoint */,
@@ -1035,11 +1030,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			)
 			return
 		}
-		await this.overwriteApiConversationHistory(messages)
+
+		// Merge condense metadata into API and UI histories (mark children and replace summary)
+		const { condenseId = `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}` } =
+			result as SummarizeResponse
+		await this.applyCondenseMetadataToHistories(result)
 
 		// Set flag to skip previous_response_id on the next API call after manual condense
 		this.skipPrevResponseIdOnce = true
 
+		const { summary, cost, newContextTokens = 0 } = result as SummarizeResponse
 		const contextCondense: ContextCondense = { summary, cost, newContextTokens, prevContextTokens }
 		await this.say(
 			"condense_context",
@@ -1051,6 +1051,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			{ isNonInteractive: true } /* options */,
 			contextCondense,
 		)
+
+		// Tag the condense_context UI message with condenseId for cross-linking
+		try {
+			const idx = findLastIndex(this.clineMessages, (m) => m.type === "say" && m.say === "condense_context")
+			if (idx !== -1) {
+				;(this.clineMessages[idx] as any).condenseId = condenseId
+				await this.saveClineMessages()
+				await this.updateClineMessage(this.clineMessages[idx])
+			}
+		} catch {
+			// non-fatal
+		}
 	}
 
 	async say(
@@ -2497,11 +2509,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		})
 
 		if (truncateResult.messages !== this.apiConversationHistory) {
-			await this.overwriteApiConversationHistory(truncateResult.messages)
+			await this.applyCondenseMetadataToHistories(truncateResult)
 		}
 
 		if (truncateResult.summary) {
-			const { summary, cost, prevContextTokens, newContextTokens = 0 } = truncateResult
+			const { summary, cost, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
 			const contextCondense: ContextCondense = { summary, cost, newContextTokens, prevContextTokens }
 			await this.say(
 				"condense_context",
@@ -2513,6 +2525,23 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				{ isNonInteractive: true } /* options */,
 				contextCondense,
 			)
+
+			// Tag the condense_context UI message with condenseId for cross-linking
+			try {
+				if (condenseId) {
+					const idx = findLastIndex(
+						this.clineMessages,
+						(m) => m.type === "say" && m.say === "condense_context",
+					)
+					if (idx !== -1) {
+						;(this.clineMessages[idx] as any).condenseId = condenseId
+						await this.saveClineMessages()
+						await this.updateClineMessage(this.clineMessages[idx])
+					}
+				}
+			} catch {
+				// non-fatal
+			}
 		}
 	}
 
@@ -2613,7 +2642,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				currentProfileId,
 			})
 			if (truncateResult.messages !== this.apiConversationHistory) {
-				await this.overwriteApiConversationHistory(truncateResult.messages)
+				await this.applyCondenseMetadataToHistories(truncateResult)
 			}
 			if (truncateResult.error) {
 				await this.say("condense_context_error", truncateResult.error)
@@ -2622,7 +2651,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// send previous_response_id so the request reflects the fresh condensed context.
 				this.skipPrevResponseIdOnce = true
 
-				const { summary, cost, prevContextTokens, newContextTokens = 0 } = truncateResult
+				const { summary, cost, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
 				const contextCondense: ContextCondense = { summary, cost, newContextTokens, prevContextTokens }
 				await this.say(
 					"condense_context",
@@ -2634,10 +2663,29 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					{ isNonInteractive: true } /* options */,
 					contextCondense,
 				)
+
+				// Tag the condense_context UI message with condenseId for cross-linking
+				try {
+					if (condenseId) {
+						const idx = findLastIndex(
+							this.clineMessages,
+							(m) => m.type === "say" && m.say === "condense_context",
+						)
+						if (idx !== -1) {
+							;(this.clineMessages[idx] as any).condenseId = condenseId
+							await this.saveClineMessages()
+							await this.updateClineMessage(this.clineMessages[idx])
+						}
+					}
+				} catch {
+					// non-fatal
+				}
 			}
 		}
 
-		const messagesSinceLastSummary = getMessagesSinceLastSummary(this.apiConversationHistory)
+		// Assemble API history excluding condensed children
+		const filteredForApi = this.apiConversationHistory.filter((m: any) => !m?.condenseParent)
+		const messagesSinceLastSummary = getMessagesSinceLastSummary(filteredForApi)
 		let cleanConversationHistory = maybeRemoveImageBlocks(messagesSinceLastSummary, this.api).map(
 			({ role, content }) => ({ role, content }),
 		)
@@ -2885,6 +2933,82 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		} catch (error) {
 			console.error(`[Task#${this.taskId}] Error persisting GPT-5 metadata:`, error)
 			// Non-fatal error in metadata persistence
+		}
+	}
+
+	// Condense helpers
+
+	/**
+	 * Apply condense metadata to both API and UI histories:
+	 * - Replace the first kept tail message with the summary (parent) and set its condenseId
+	 * - Mark all prior messages (excluding the original first message) with condenseParent = condenseId
+	 * - Persist changes to disk
+	 */
+	private async applyCondenseMetadataToHistories(
+		result: SummarizeResponse,
+	): Promise<{ condenseId: string; thresholdTs?: number }> {
+		try {
+			const condenseId =
+				result.condenseId ?? `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+			const summaryMsg = (result.messages || []).find((m) => (m as any).isSummary) as ApiMessage | undefined
+			const thresholdTs = summaryMsg?.ts
+			const firstApiTs = this.apiConversationHistory[0]?.ts
+
+			// Build new API history by replacing the threshold message with the summary and marking children
+			let replacedSummary = false
+			let newApiHistory: ApiMessage[] = this.apiConversationHistory.map((m) => {
+				// Replace the first kept message with the new summary
+				if (typeof thresholdTs === "number" && m.ts === thresholdTs && summaryMsg) {
+					replacedSummary = true
+					return { ...summaryMsg, condenseId }
+				}
+				// Mark all messages before the threshold as condensed children, except the original first message
+				if (typeof thresholdTs === "number" && typeof m.ts === "number" && m.ts < thresholdTs) {
+					if (typeof firstApiTs === "number" && m.ts === firstApiTs) {
+						return m
+					}
+					if (!(m as any).condenseParent) {
+						return { ...m, condenseParent: condenseId }
+					}
+				}
+				return m
+			})
+
+			// If no existing message matched the summary timestamp, insert summary just before the threshold boundary
+			if (!replacedSummary && summaryMsg && typeof thresholdTs === "number") {
+				let insertAt = newApiHistory.findIndex(
+					(m) => typeof m.ts === "number" && (m.ts as number) >= thresholdTs,
+				)
+				if (insertAt === -1) insertAt = newApiHistory.length
+				newApiHistory = [
+					...newApiHistory.slice(0, insertAt),
+					{ ...summaryMsg, condenseId },
+					...newApiHistory.slice(insertAt),
+				]
+			}
+
+			this.apiConversationHistory = newApiHistory
+			await this.saveApiConversationHistory()
+
+			// Mark UI messages prior to the threshold as condensed children (exclude very first UI row)
+			if (typeof thresholdTs === "number") {
+				let updated = false
+				for (let i = 0; i < this.clineMessages.length; i++) {
+					const uiMsg = this.clineMessages[i] as any
+					if (typeof uiMsg?.ts === "number" && uiMsg.ts < thresholdTs && i > 0 && !uiMsg.condenseParent) {
+						uiMsg.condenseParent = condenseId
+						updated = true
+					}
+				}
+				if (updated) {
+					await this.saveClineMessages()
+				}
+			}
+
+			return { condenseId, thresholdTs }
+		} catch (e) {
+			console.error(`[Task#${this.taskId}] Failed to apply condense metadata:`, e)
+			return { condenseId: `c_${Date.now().toString(36)}`, thresholdTs: undefined }
 		}
 	}
 

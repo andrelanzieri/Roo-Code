@@ -227,6 +227,8 @@ export const clineMessageSchema = z.object({
 				.optional(),
 		})
 		.optional(),
+	condenseId: z.string().optional(),
+	condenseParent: z.string().optional(),
 })
 
 export type ClineMessage = z.infer<typeof clineMessageSchema>

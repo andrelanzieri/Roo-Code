@@ -57,6 +57,7 @@ export type SummarizeResponse = {
 	cost: number // The cost of the summarization operation
 	newContextTokens?: number // The number of tokens in the context for the next API request
 	error?: string // Populated iff the operation fails: error message shown to the user on failure (see Task.ts)
+	condenseId?: string // Identifier linking the summary "parent" with its condensed "children"
 }
 
 /**
@@ -99,7 +100,8 @@ export async function summarizeConversation(
 		!!condensingApiHandler,
 	)
 
-	const response: SummarizeResponse = { messages, cost: 0, summary: "" }
+	const condenseId = `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+	const response: SummarizeResponse = { messages, cost: 0, summary: "", condenseId }
 
 	// Always preserve the first message (which may contain slash command content)
 	const firstMessage = messages[0]
@@ -186,6 +188,7 @@ export async function summarizeConversation(
 		content: summary,
 		ts: keepMessages[0].ts,
 		isSummary: true,
+		condenseId,
 	}
 
 	// Reconstruct messages: [first message, summary, last N messages]
@@ -208,7 +211,7 @@ export async function summarizeConversation(
 		const error = t("common:errors.condense_context_grew")
 		return { ...response, cost, error }
 	}
-	return { messages: newMessages, summary, cost, newContextTokens }
+	return { messages: newMessages, summary, cost, newContextTokens, condenseId }
 }
 
 /* Returns the list of all messages since the last summary message, including the summary. Returns all messages if there is no summary. */
