@@ -182,13 +182,16 @@ export async function summarizeConversation(
 	}
 
 	// Generate a unique condenseId for this condensation
-	const condenseId = `condense-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+	const condenseId = `condense-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+
+	// Choose a unique timestamp that sorts just before the first kept tail message
+	const summaryTs = Math.min((keepMessages[0]?.ts ?? Date.now()) - 1, Date.now())
 
 	// Create the summary message with condenseId
 	const summaryMessage: ApiMessage = {
 		role: "assistant",
 		content: summary,
-		ts: keepMessages[0].ts,
+		ts: summaryTs,
 		isSummary: true,
 		condenseId: condenseId,
 	}
@@ -197,7 +200,7 @@ export async function summarizeConversation(
 	// Middle messages are those that were summarized but not kept
 	const middleMessages = messages.slice(1, -N_MESSAGES_TO_KEEP).map((msg) => ({
 		...msg,
-		condenseParent: condenseId,
+		condenseParent: msg.condenseParent ?? condenseId,
 	}))
 
 	// Reconstruct messages: [first message, tagged middle messages, summary, last N messages]
