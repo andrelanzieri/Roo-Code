@@ -196,12 +196,20 @@ export async function summarizeConversation(
 		condenseId: condenseId,
 	}
 
-	// Tag all middle messages (between first and tail) with condenseParent
-	// Middle messages are those that were summarized but not kept
-	const middleMessages = messages.slice(1, -N_MESSAGES_TO_KEEP).map((msg) => ({
-		...msg,
-		condenseParent: msg.condenseParent ?? condenseId,
-	}))
+	// Tag middle messages from the full middle span, but only set condenseParent
+	// for those that were actually part of the current summarization window and lack a tag.
+	const windowTs = new Set(
+		messagesToSummarize
+			.slice(1) // skip the preserved first
+			.map((m) => m.ts)
+			.filter((ts): ts is number => typeof ts === "number"),
+	)
+	const middleMessages = messages.slice(1, -N_MESSAGES_TO_KEEP).map((msg) => {
+		if (!msg.isSummary && typeof msg.ts === "number" && windowTs.has(msg.ts)) {
+			return { ...msg, condenseParent: msg.condenseParent ?? condenseId }
+		}
+		return msg
+	})
 
 	// Reconstruct messages: [first message, tagged middle messages, summary, last N messages]
 	// This preserves ALL messages, with middle ones tagged for filtering
