@@ -1048,7 +1048,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			false /* partial */,
 			undefined /* checkpoint */,
 			undefined /* progressStatus */,
-			{ isNonInteractive: true } /* options */,
+			{
+				isNonInteractive: true,
+				metadata: {
+					condenseId: messages.find((m) => m.condenseId)?.condenseId,
+				},
+			} /* options */,
 			contextCondense,
 		)
 	}
@@ -2637,7 +2642,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 		}
 
-		const messagesSinceLastSummary = getMessagesSinceLastSummary(this.apiConversationHistory)
+		// Filter messages based on active summaries (non-destructive condense)
+		const activeCondenseIds = new Set(
+			this.apiConversationHistory.filter((m) => m.isSummary && m.condenseId).map((m) => m.condenseId!),
+		)
+
+		// Filter out messages that have been condensed (have condenseParent that matches an active summary)
+		const effectiveHistory = this.apiConversationHistory.filter(
+			(m) => !m.condenseParent || !activeCondenseIds.has(m.condenseParent),
+		)
+
+		const messagesSinceLastSummary = getMessagesSinceLastSummary(effectiveHistory)
 		let cleanConversationHistory = maybeRemoveImageBlocks(messagesSinceLastSummary, this.api).map(
 			({ role, content }) => ({ role, content }),
 		)

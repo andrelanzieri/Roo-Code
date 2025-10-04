@@ -16,7 +16,7 @@ import {
 import { CloudService } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { type ApiMessage } from "../task-persistence/apiMessages"
+import { type ApiMessage, saveApiMessages } from "../task-persistence/apiMessages"
 import { saveTaskMessages } from "../task-persistence"
 
 import { ClineProvider } from "./ClineProvider"
@@ -111,6 +111,66 @@ export const webviewMessageHandler = async (
 			await currentCline.overwriteApiConversationHistory(
 				currentCline.apiConversationHistory.slice(0, apiConversationHistoryIndex),
 			)
+		}
+
+		// Perform hygiene: clean up orphaned condenseParent references
+		await performCondenseHygiene(currentCline)
+	}
+
+	/**
+	 * Clean up orphaned condenseParent references after truncation
+	 */
+	const performCondenseHygiene = async (currentCline: any) => {
+		// Find all active condenseIds (from remaining summary messages)
+		const activeCondenseIds = new Set<string>()
+
+		// Check API conversation history for active summaries
+		currentCline.apiConversationHistory.forEach((msg: ApiMessage) => {
+			if (msg.isSummary && msg.condenseId) {
+				activeCondenseIds.add(msg.condenseId)
+			}
+		})
+
+		// Check UI messages for active summaries
+		currentCline.clineMessages.forEach((msg: any) => {
+			if (msg.say === "condense_context" && msg.metadata?.condenseId) {
+				activeCondenseIds.add(msg.metadata.condenseId)
+			}
+		})
+
+		// Clean up orphaned condenseParent references in API history
+		let apiHistoryModified = false
+		currentCline.apiConversationHistory.forEach((msg: ApiMessage) => {
+			if (msg.condenseParent && !activeCondenseIds.has(msg.condenseParent)) {
+				delete msg.condenseParent
+				apiHistoryModified = true
+			}
+		})
+
+		// Clean up orphaned condenseParent references in UI messages
+		let uiMessagesModified = false
+		currentCline.clineMessages.forEach((msg: any) => {
+			if (msg.metadata?.condenseParent && !activeCondenseIds.has(msg.metadata.condenseParent)) {
+				delete msg.metadata.condenseParent
+				uiMessagesModified = true
+			}
+		})
+
+		// Save if any modifications were made
+		if (apiHistoryModified) {
+			await saveApiMessages({
+				messages: currentCline.apiConversationHistory,
+				taskId: currentCline.taskId,
+				globalStoragePath: provider.contextProxy.globalStorageUri.fsPath,
+			})
+		}
+
+		if (uiMessagesModified) {
+			await saveTaskMessages({
+				messages: currentCline.clineMessages,
+				taskId: currentCline.taskId,
+				globalStoragePath: provider.contextProxy.globalStorageUri.fsPath,
+			})
 		}
 	}
 

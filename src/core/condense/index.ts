@@ -181,15 +181,28 @@ export async function summarizeConversation(
 		return { ...response, cost, error }
 	}
 
+	// Generate a unique condenseId for this condensation
+	const condenseId = `condense-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
+	// Create the summary message with condenseId
 	const summaryMessage: ApiMessage = {
 		role: "assistant",
 		content: summary,
 		ts: keepMessages[0].ts,
 		isSummary: true,
+		condenseId: condenseId,
 	}
 
-	// Reconstruct messages: [first message, summary, last N messages]
-	const newMessages = [firstMessage, summaryMessage, ...keepMessages]
+	// Tag all middle messages (between first and tail) with condenseParent
+	// Middle messages are those that were summarized but not kept
+	const middleMessages = messages.slice(1, -N_MESSAGES_TO_KEEP).map((msg) => ({
+		...msg,
+		condenseParent: condenseId,
+	}))
+
+	// Reconstruct messages: [first message, tagged middle messages, summary, last N messages]
+	// This preserves ALL messages, with middle ones tagged for filtering
+	const newMessages = [firstMessage, ...middleMessages, summaryMessage, ...keepMessages]
 
 	// Count the tokens in the context for the next API request
 	// We only estimate the tokens in summaryMesage if outputTokens is 0, otherwise we use outputTokens
