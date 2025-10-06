@@ -165,11 +165,6 @@ export class Terminal extends BaseTerminal {
 			LC_ALL: "en_US.UTF-8",
 		}
 
-		// On Windows, set the code page to UTF-8 (65001) for proper Unicode support
-		if (process.platform === "win32") {
-			env.CHCP = "65001"
-		}
-
 		// Set Oh My Zsh shell integration if enabled
 		if (Terminal.getTerminalZshOhMy()) {
 			env.ITERM_SHELL_INTEGRATION_INSTALLED = "Yes"

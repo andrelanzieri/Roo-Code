@@ -126,40 +126,5 @@ describe("TerminalRegistry", () => {
 				Terminal.setTerminalZshP10k(false)
 			}
 		})
-
-		it("adds CHCP=65001 on Windows for UTF-8 support", () => {
-			// Mock platform as Windows
-			const originalPlatform = process.platform
-			Object.defineProperty(process, "platform", {
-				value: "win32",
-				writable: true,
-				configurable: true,
-			})
-
-			try {
-				TerminalRegistry.createTerminal("/test/path", "vscode")
-
-				expect(mockCreateTerminal).toHaveBeenCalledWith({
-					cwd: "/test/path",
-					name: "Roo Code",
-					iconPath: expect.any(Object),
-					env: {
-						PAGER: "",
-						VTE_VERSION: "0",
-						PROMPT_EOL_MARK: "",
-						LANG: "en_US.UTF-8",
-						LC_ALL: "en_US.UTF-8",
-						CHCP: "65001",
-					},
-				})
-			} finally {
-				// Restore original platform
-				Object.defineProperty(process, "platform", {
-					value: originalPlatform,
-					writable: true,
-					configurable: true,
-				})
-			}
-		})
 	})
 })
