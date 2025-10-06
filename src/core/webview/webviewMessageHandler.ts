@@ -113,33 +113,51 @@ export const webviewMessageHandler = async (
 			)
 		}
 
-		// Perform hygiene: clean up orphaned condenseParent references
-		await performCondenseHygiene(currentCline)
+		// Perform hygiene: UI is source-of-truth during rewinds (purge API summaries whose UI counterparts were removed)
+		await performCondenseHygiene(currentCline, { uiOnly: true })
 	}
 
 	/**
 	 * Clean up orphaned condenseParent references after truncation
 	 */
-	const performCondenseHygiene = async (currentCline: any) => {
-		// Find all active condenseIds (from remaining summary messages)
+	const performCondenseHygiene = async (currentCline: any, opts?: { uiOnly?: boolean }) => {
+		// Build active condenseIds. If uiOnly, treat UI as source-of-truth (used during rewind/delete).
+		// Otherwise, include API summaries too (general hygiene).
 		const activeCondenseIds = new Set<string>()
 
-		// Check API conversation history for active summaries
-		currentCline.apiConversationHistory.forEach((msg: ApiMessage) => {
-			if (msg.isSummary && msg.condenseId) {
-				activeCondenseIds.add(msg.condenseId)
-			}
-		})
-
-		// Check UI messages for active summaries
+		// Always include UI-derived condenseIds
 		currentCline.clineMessages.forEach((msg: any) => {
 			if (msg.say === "condense_context" && msg.metadata?.condenseId) {
 				activeCondenseIds.add(msg.metadata.condenseId)
 			}
 		})
 
-		// Clean up orphaned condenseParent references in API history
+		// Optionally include API summaries that remain in history (non-delete hygiene)
+		if (!opts?.uiOnly) {
+			currentCline.apiConversationHistory.forEach((msg: ApiMessage) => {
+				if (msg.isSummary && msg.condenseId) {
+					activeCondenseIds.add(msg.condenseId)
+				}
+			})
+		}
+
 		let apiHistoryModified = false
+		let uiMessagesModified = false
+
+		// Purge API summaries that are not represented by UI when uiOnly=true (rewind to pre-condense state).
+		// In general hygiene (uiOnly=false), we only remove summaries with condenseIds not present anywhere.
+		const beforeLen = currentCline.apiConversationHistory.length
+		currentCline.apiConversationHistory = currentCline.apiConversationHistory.filter((msg: ApiMessage) => {
+			if (msg.isSummary && msg.condenseId && !activeCondenseIds.has(msg.condenseId)) {
+				return false
+			}
+			return true
+		})
+		if (currentCline.apiConversationHistory.length !== beforeLen) {
+			apiHistoryModified = true
+		}
+
+		// Clean up orphaned condenseParent references in API history
 		currentCline.apiConversationHistory.forEach((msg: ApiMessage) => {
 			if (msg.condenseParent && !activeCondenseIds.has(msg.condenseParent)) {
 				delete msg.condenseParent
@@ -148,7 +166,6 @@ export const webviewMessageHandler = async (
 		})
 
 		// Clean up orphaned condenseParent references in UI messages
-		let uiMessagesModified = false
 		currentCline.clineMessages.forEach((msg: any) => {
 			if (msg.metadata?.condenseParent && !activeCondenseIds.has(msg.metadata.condenseParent)) {
 				delete msg.metadata.condenseParent

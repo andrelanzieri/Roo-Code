@@ -196,16 +196,12 @@ export async function summarizeConversation(
 		condenseId: condenseId,
 	}
 
-	// Tag middle messages from the full middle span, but only set condenseParent
-	// for those that were actually part of the current summarization window and lack a tag.
-	const windowTs = new Set(
-		messagesToSummarize
-			.slice(1) // skip the preserved first
-			.map((m) => m.ts)
-			.filter((ts): ts is number => typeof ts === "number"),
-	)
+	// Tag middle messages from the full middle span, including any previous summaries
+	// that were part of this summarization window. Preserve existing condenseId/isSummary.
+	const windowTs = new Set(messagesToSummarize.map((m) => m.ts).filter((ts): ts is number => typeof ts === "number"))
 	const middleMessages = messages.slice(1, -N_MESSAGES_TO_KEEP).map((msg) => {
-		if (!msg.isSummary && typeof msg.ts === "number" && windowTs.has(msg.ts)) {
+		if (typeof msg.ts === "number" && windowTs.has(msg.ts)) {
+			// Do not alter isSummary or condenseId on prior summaries; only add condenseParent if missing
 			return { ...msg, condenseParent: msg.condenseParent ?? condenseId }
 		}
 		return msg

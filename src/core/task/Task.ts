@@ -1040,6 +1040,29 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Set flag to skip previous_response_id on the next API call after manual condense
 		this.skipPrevResponseIdOnce = true
 
+		// If there was a previous condense_context in the UI, tag it with condenseParent = newCondenseId
+		try {
+			const newCondenseId = messages.find((m) => m.isSummary && m.condenseId)?.condenseId
+			if (newCondenseId) {
+				const lastCondenseIdx = findLastIndex(
+					this.clineMessages,
+					(m) => m.type === "say" && m.say === "condense_context",
+				)
+				if (lastCondenseIdx !== -1) {
+					const lastCondenseMsg = this.clineMessages[lastCondenseIdx] as ClineMessage &
+						ClineMessageWithMetadata
+					lastCondenseMsg.metadata = lastCondenseMsg.metadata ?? {}
+					if (!lastCondenseMsg.metadata.condenseParent) {
+						lastCondenseMsg.metadata.condenseParent = newCondenseId
+						await this.saveClineMessages()
+						await this.updateClineMessage(lastCondenseMsg)
+					}
+				}
+			}
+		} catch {
+			// non-fatal; UI metadata tagging is best-effort
+		}
+
 		const contextCondense: ContextCondense = { summary, cost, newContextTokens, prevContextTokens }
 		await this.say(
 			"condense_context",
@@ -2627,6 +2650,39 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// send previous_response_id so the request reflects the fresh condensed context.
 				this.skipPrevResponseIdOnce = true
 
+				// Determine the condenseId of the newly created summary in API history
+				let newCondenseId: string | undefined
+				try {
+					const lastSummary = [...this.apiConversationHistory]
+						.reverse()
+						.find((m) => m.isSummary && m.condenseId)
+					newCondenseId = lastSummary?.condenseId
+				} catch {
+					// non-fatal
+				}
+
+				// Tag the previous UI condense_context (if any) with condenseParent to maintain lineage
+				try {
+					if (newCondenseId) {
+						const lastCondenseIdx = findLastIndex(
+							this.clineMessages,
+							(m) => m.type === "say" && m.say === "condense_context",
+						)
+						if (lastCondenseIdx !== -1) {
+							const lastCondenseMsg = this.clineMessages[lastCondenseIdx] as ClineMessage &
+								ClineMessageWithMetadata
+							lastCondenseMsg.metadata = lastCondenseMsg.metadata ?? {}
+							if (!lastCondenseMsg.metadata.condenseParent) {
+								lastCondenseMsg.metadata.condenseParent = newCondenseId
+								await this.saveClineMessages()
+								await this.updateClineMessage(lastCondenseMsg)
+							}
+						}
+					}
+				} catch {
+					// best-effort
+				}
+
 				const { summary, cost, prevContextTokens, newContextTokens = 0 } = truncateResult
 				const contextCondense: ContextCondense = { summary, cost, newContextTokens, prevContextTokens }
 				await this.say(
@@ -2636,7 +2692,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					false /* partial */,
 					undefined /* checkpoint */,
 					undefined /* progressStatus */,
-					{ isNonInteractive: true } /* options */,
+					{
+						isNonInteractive: true,
+						metadata: newCondenseId ? { condenseId: newCondenseId } : undefined,
+					} /* options */,
 					contextCondense,
 				)
 			}
