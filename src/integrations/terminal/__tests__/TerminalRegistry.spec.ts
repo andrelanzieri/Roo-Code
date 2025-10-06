@@ -48,6 +48,8 @@ describe("TerminalRegistry", () => {
 					PAGER,
 					VTE_VERSION: "0",
 					PROMPT_EOL_MARK: "",
+					LANG: "en_US.UTF-8",
+					LC_ALL: "en_US.UTF-8",
 				},
 			})
 		})
@@ -69,6 +71,8 @@ describe("TerminalRegistry", () => {
 						PROMPT_COMMAND: "sleep 0.05",
 						VTE_VERSION: "0",
 						PROMPT_EOL_MARK: "",
+						LANG: "en_US.UTF-8",
+						LC_ALL: "en_US.UTF-8",
 					},
 				})
 			} finally {
@@ -91,6 +95,8 @@ describe("TerminalRegistry", () => {
 						VTE_VERSION: "0",
 						PROMPT_EOL_MARK: "",
 						ITERM_SHELL_INTEGRATION_INSTALLED: "Yes",
+						LANG: "en_US.UTF-8",
+						LC_ALL: "en_US.UTF-8",
 					},
 				})
 			} finally {
@@ -112,10 +118,47 @@ describe("TerminalRegistry", () => {
 						VTE_VERSION: "0",
 						PROMPT_EOL_MARK: "",
 						POWERLEVEL9K_TERM_SHELL_INTEGRATION: "true",
+						LANG: "en_US.UTF-8",
+						LC_ALL: "en_US.UTF-8",
 					},
 				})
 			} finally {
 				Terminal.setTerminalZshP10k(false)
+			}
+		})
+
+		it("adds CHCP=65001 on Windows for UTF-8 support", () => {
+			// Mock platform as Windows
+			const originalPlatform = process.platform
+			Object.defineProperty(process, "platform", {
+				value: "win32",
+				writable: true,
+				configurable: true,
+			})
+
+			try {
+				TerminalRegistry.createTerminal("/test/path", "vscode")
+
+				expect(mockCreateTerminal).toHaveBeenCalledWith({
+					cwd: "/test/path",
+					name: "Roo Code",
+					iconPath: expect.any(Object),
+					env: {
+						PAGER: "",
+						VTE_VERSION: "0",
+						PROMPT_EOL_MARK: "",
+						LANG: "en_US.UTF-8",
+						LC_ALL: "en_US.UTF-8",
+						CHCP: "65001",
+					},
+				})
+			} finally {
+				// Restore original platform
+				Object.defineProperty(process, "platform", {
+					value: originalPlatform,
+					writable: true,
+					configurable: true,
+				})
 			}
 		})
 	})
