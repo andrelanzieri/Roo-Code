@@ -3,6 +3,7 @@ import OpenAI from "openai"
 
 import {
 	type SiliconCloudModelId,
+	type ModelInfo,
 	siliconCloudDefaultModelId,
 	siliconCloudModelsByApiLine,
 	siliconCloudApiLineConfigs,
@@ -13,42 +14,33 @@ import type { ApiHandlerOptions } from "../../shared/api"
 import { ApiStream } from "../transform/stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 
-import type { ApiHandlerCreateMessageMetadata, SingleCompletionHandler } from "../index"
-import { BaseProvider } from "./base-provider"
-import { DEFAULT_HEADERS } from "./constants"
+import type { ApiHandlerCreateMessageMetadata } from "../index"
+import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
 import { handleOpenAIError } from "./utils/openai-error-handler"
 
 const SILICONCLOUD_DEFAULT_TEMPERATURE = 0
 
-export class SiliconCloudHandler extends BaseProvider implements SingleCompletionHandler {
-	private client: OpenAI
-	private options: ApiHandlerOptions
+export class SiliconCloudHandler extends BaseOpenAiCompatibleProvider<SiliconCloudModelId> {
 	private apiLine: SiliconCloudApiLine
-	private models: Record<string, any>
+	private models: Record<string, ModelInfo>
 
 	constructor(options: ApiHandlerOptions) {
-		super()
-		this.options = options
-		this.apiLine = options.siliconCloudApiLine || "china"
-		this.models = siliconCloudModelsByApiLine[this.apiLine]
+		const apiLine = options.siliconCloudApiLine || "china"
+		const models = siliconCloudModelsByApiLine[apiLine]
+		const config = siliconCloudApiLineConfigs[apiLine]
 
-		const apiKey = options.siliconCloudApiKey
-		if (!apiKey) {
-			throw new Error("SiliconCloud API key is required")
-		}
-
-		const config = siliconCloudApiLineConfigs[this.apiLine]
-		this.client = new OpenAI({
+		super({
+			...options,
+			apiKey: options.siliconCloudApiKey,
+			providerName: "SiliconCloud",
 			baseURL: config.baseUrl,
-			apiKey,
-			defaultHeaders: DEFAULT_HEADERS,
+			defaultProviderModelId: siliconCloudDefaultModelId,
+			providerModels: models,
+			defaultTemperature: SILICONCLOUD_DEFAULT_TEMPERATURE,
 		})
-	}
 
-	override getModel() {
-		const id = (this.options.apiModelId as SiliconCloudModelId) || siliconCloudDefaultModelId
-		const info = this.models[id] || this.models[siliconCloudDefaultModelId]
-		return { id, info }
+		this.apiLine = apiLine
+		this.models = models
 	}
 
 	override async *createMessage(
@@ -108,7 +100,7 @@ export class SiliconCloudHandler extends BaseProvider implements SingleCompletio
 		}
 	}
 
-	async completePrompt(prompt: string): Promise<string> {
+	override async completePrompt(prompt: string): Promise<string> {
 		const { id: modelId } = this.getModel()
 
 		try {
