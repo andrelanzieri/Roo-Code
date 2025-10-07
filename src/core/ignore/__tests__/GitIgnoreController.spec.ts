@@ -282,4 +282,190 @@ describe("GitIgnoreController", () => {
 			expect(controller.getGitignoreContent(gitignoreFile)).toBe(content)
 		})
 	})
+
+	describe("escaped literals", () => {
+		it("should treat \\# as a literal # pattern, not a comment", async () => {
+			// Setup .gitignore with escaped # pattern
+			mockFileExists.mockImplementation((filePath: string) => {
+				return Promise.resolve(filePath === path.join(TEST_CWD, ".gitignore"))
+			})
+			// \#foo should match a file literally named "#foo"
+			// Also include a real comment to verify it's ignored
+			mockReadFile.mockResolvedValue("\\#foo\n# This is a comment\n*.log\n")
+
+			await controller.initialize()
+
+			// File named "#foo" should be blocked (pattern matches literal #)
+			expect(controller.validateAccess("#foo")).toBe(false)
+
+			// File named "# This is a comment" should NOT be blocked (it was a comment line)
+			expect(controller.validateAccess("# This is a comment")).toBe(true)
+
+			// Other files should follow normal patterns
+			expect(controller.validateAccess("test.log")).toBe(false)
+			expect(controller.validateAccess("src/index.ts")).toBe(true)
+		})
+		it("should treat \\# as a literal # pattern in nested .gitignore (exposes bug in line 136)", async () => {
+			// This test exposes the bug in line 136 of GitIgnoreController.ts
+			// where !line.startsWith("#") incorrectly filters out \# patterns
+			mockFileExists.mockImplementation((filePath: string) => {
+				return Promise.resolve(
+					filePath === path.join(TEST_CWD, ".gitignore") ||
+						filePath === path.join(TEST_CWD, "src", ".gitignore"),
+				)
+			})
+
+			mockReadFile.mockImplementation((filePath: any) => {
+				const normalizedPath = filePath.toString().replace(/\\/g, "/")
+				if (normalizedPath.endsWith("src/.gitignore")) {
+					// Escaped # should match literal # file
+					return Promise.resolve("\\#special\n# Real comment\n")
+				}
+				return Promise.resolve("")
+			})
+
+			await controller.initialize()
+
+			// File named "#special" in src/ should be blocked
+			// BUG: This currently passes (file is allowed) because line 136 filters out \#special
+			expect(controller.validateAccess("src/#special")).toBe(false)
+
+			// Real comment should not create a pattern
+			expect(controller.validateAccess("src/# Real comment")).toBe(true)
+		})
+
+		it("should treat \\! as a literal ! pattern, not a negation", async () => {
+			// Setup .gitignore with escaped ! pattern
+			mockFileExists.mockImplementation((filePath: string) => {
+				return Promise.resolve(filePath === path.join(TEST_CWD, ".gitignore"))
+			})
+			// First ignore all .txt files, then \!keep.txt should match literal "!keep.txt"
+			mockReadFile.mockResolvedValue("*.txt\n\\!keep.txt\n")
+
+			await controller.initialize()
+
+			// All .txt files should be blocked
+			expect(controller.validateAccess("file.txt")).toBe(false)
+			expect(controller.validateAccess("keep.txt")).toBe(false)
+
+			// File literally named "!keep.txt" should also be blocked (not negated)
+			expect(controller.validateAccess("!keep.txt")).toBe(false)
+
+			// Non-.txt files should be allowed
+			expect(controller.validateAccess("src/index.ts")).toBe(true)
+		})
+
+		it("should handle multiple escaped patterns in the same file", async () => {
+			mockFileExists.mockImplementation((filePath: string) => {
+				return Promise.resolve(filePath === path.join(TEST_CWD, ".gitignore"))
+			})
+			// Mix of escaped and normal patterns
+			mockReadFile.mockResolvedValue("\\#comment-like\n\\!negation-like\n*.log\n")
+
+			await controller.initialize()
+
+			// Escaped patterns should match literal files
+			expect(controller.validateAccess("#comment-like")).toBe(false)
+			expect(controller.validateAccess("!negation-like")).toBe(false)
+
+			// Normal patterns should work
+			expect(controller.validateAccess("debug.log")).toBe(false)
+			expect(controller.validateAccess("src/index.ts")).toBe(true)
+		})
+
+		it("should handle escaped patterns in nested .gitignore files", async () => {
+			mockFileExists.mockImplementation((filePath: string) => {
+				return Promise.resolve(
+					filePath === path.join(TEST_CWD, ".gitignore") ||
+						filePath === path.join(TEST_CWD, "src", ".gitignore"),
+				)
+			})
+
+			mockReadFile.mockImplementation((filePath: any) => {
+				const normalizedPath = filePath.toString().replace(/\\/g, "/")
+				if (normalizedPath.endsWith("src/.gitignore")) {
+					// Nested .gitignore with escaped patterns
+					// Include a real comment to verify it's properly ignored
+					return Promise.resolve("\\#special\n# This is a comment\n\\!important\n")
+				}
+				return Promise.resolve("*.log\n")
+			})
+
+			await controller.initialize()
+
+			// Escaped patterns in nested .gitignore should match literal files in that directory
+			expect(controller.validateAccess("src/#special")).toBe(false)
+			expect(controller.validateAccess("src/!important")).toBe(false)
+
+			// Real comment should not create a pattern
+			expect(controller.validateAccess("src/# This is a comment")).toBe(true)
+
+			// Should not affect files outside src/
+			expect(controller.validateAccess("#special")).toBe(true)
+			expect(controller.validateAccess("!important")).toBe(true)
+
+			// Root patterns should still work
+			expect(controller.validateAccess("debug.log")).toBe(false)
+		})
+
+		it("should not treat escaped \\! as negation in nested .gitignore", async () => {
+			mockFileExists.mockImplementation((filePath: string) => {
+				return Promise.resolve(
+					filePath === path.join(TEST_CWD, ".gitignore") ||
+						filePath === path.join(TEST_CWD, "src", ".gitignore"),
+				)
+			})
+
+			mockReadFile.mockImplementation((filePath: any) => {
+				const normalizedPath = filePath.toString().replace(/\\/g, "/")
+				if (normalizedPath.endsWith("src/.gitignore")) {
+					// First ignore all .txt, then try to use escaped ! (should NOT negate)
+					return Promise.resolve("*.txt\n\\!keep.txt\n")
+				}
+				return Promise.resolve("")
+			})
+
+			await controller.initialize()
+
+			// All .txt files in src/ should be blocked
+			expect(controller.validateAccess("src/file.txt")).toBe(false)
+			expect(controller.validateAccess("src/keep.txt")).toBe(false)
+
+			// File literally named "!keep.txt" should also be blocked (not negated)
+			expect(controller.validateAccess("src/!keep.txt")).toBe(false)
+
+			// Non-.txt files should be allowed
+			expect(controller.validateAccess("src/index.ts")).toBe(true)
+		})
+
+		it("should correctly distinguish between comments and escaped # patterns", async () => {
+			mockFileExists.mockImplementation((filePath: string) => {
+				return Promise.resolve(
+					filePath === path.join(TEST_CWD, ".gitignore") ||
+						filePath === path.join(TEST_CWD, "src", ".gitignore"),
+				)
+			})
+
+			mockReadFile.mockImplementation((filePath: any) => {
+				const normalizedPath = filePath.toString().replace(/\\/g, "/")
+				if (normalizedPath.endsWith("src/.gitignore")) {
+					// Mix of real comments and escaped # patterns
+					return Promise.resolve("# This is a comment\n" + "\\#not-a-comment\n" + "*.tmp\n")
+				}
+				return Promise.resolve("# Root comment\n*.log\n")
+			})
+
+			await controller.initialize()
+
+			// Escaped # pattern should match literal file
+			expect(controller.validateAccess("src/#not-a-comment")).toBe(false)
+
+			// Comments should not create patterns
+			expect(controller.validateAccess("src/# This is a comment")).toBe(true)
+
+			// Normal patterns should work
+			expect(controller.validateAccess("src/file.tmp")).toBe(false)
+			expect(controller.validateAccess("test.log")).toBe(false)
+		})
+	})
 })

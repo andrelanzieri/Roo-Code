@@ -63,8 +63,6 @@ export class GitIgnoreController extends BaseIgnoreController {
 			await this.findGitignoreFilesRecursively(this.cwd)
 
 			// Load any files discovered by recursion that weren't loaded yet
-			// De-duplicate discovered paths to avoid redundant loads
-			this.gitignoreFiles = Array.from(new Set(this.gitignoreFiles))
 			for (const p of this.gitignoreFiles) {
 				if (!this.gitignoreContents.has(p)) {
 					await this.loadGitignoreFile(p)

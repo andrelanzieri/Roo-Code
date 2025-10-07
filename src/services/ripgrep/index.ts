@@ -215,12 +215,9 @@ export async function regexSearchFiles(
 	// console.log(results)
 
 	// Filter results using both controllers if provided
-	const filteredResults = results.filter((result) => {
-		const file = result.file
-		return (
-			(gitIgnoreController?.validateAccess(file) ?? true) && (rooIgnoreController?.validateAccess(file) ?? true)
-		)
-	})
+	const filteredResults = results
+		.filter((result) => gitIgnoreController?.validateAccess(result.file) ?? true)
+		.filter((result) => rooIgnoreController?.validateAccess(result.file) ?? true)
 
 	return formatResults(filteredResults, cwd)
 }
