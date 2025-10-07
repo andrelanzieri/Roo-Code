@@ -67,6 +67,7 @@ export class ProfileValidator {
 			case "xai":
 			case "groq":
 			case "sambanova":
+			case "siliconcloud":
 			case "chutes":
 			case "fireworks":
 			case "featherless":

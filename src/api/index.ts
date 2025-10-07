@@ -32,6 +32,7 @@ import {
 	ClaudeCodeHandler,
 	QwenCodeHandler,
 	SambaNovaHandler,
+	SiliconCloudHandler,
 	IOIntelligenceHandler,
 	DoubaoHandler,
 	ZAiHandler,
@@ -151,6 +152,8 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new CerebrasHandler(options)
 		case "sambanova":
 			return new SambaNovaHandler(options)
+		case "siliconcloud":
+			return new SiliconCloudHandler(options)
 		case "zai":
 			return new ZAiHandler(options)
 		case "fireworks":
