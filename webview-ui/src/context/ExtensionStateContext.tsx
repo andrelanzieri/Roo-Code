@@ -165,6 +165,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setIncludeCurrentTime: (value: boolean) => void
 	includeCurrentCost?: boolean
 	setIncludeCurrentCost: (value: boolean) => void
+	requireCtrlEnterToSend?: boolean
+	setRequireCtrlEnterToSend: (value: boolean) => void
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -273,6 +275,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		alwaysAllowUpdateTodoList: true,
 		includeDiagnosticMessages: true,
 		maxDiagnosticMessages: 50,
+		requireCtrlEnterToSend: false,
 		openRouterImageApiKey: "",
 		openRouterImageGenerationSelectedModel: "",
 		includeCurrentTime: true,
@@ -597,6 +600,10 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setIncludeCurrentTime,
 		includeCurrentCost,
 		setIncludeCurrentCost,
+		requireCtrlEnterToSend: state.requireCtrlEnterToSend,
+		setRequireCtrlEnterToSend: (value) => {
+			setState((prevState) => ({ ...prevState, requireCtrlEnterToSend: value }))
+		},
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

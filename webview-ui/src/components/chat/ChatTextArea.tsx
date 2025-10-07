@@ -94,6 +94,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			clineMessages,
 			commands,
 			cloudUserInfo,
+			requireCtrlEnterToSend,
 		} = useExtensionState()
 
 		// Find the ID and display text for the currently selected API configuration.
@@ -473,6 +474,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				}
 
 				if (event.key === "Enter" && !event.shiftKey && !isComposing) {
+					// If Ctrl+Enter is required but Ctrl key is not pressed, don't send
+					if (requireCtrlEnterToSend && !event.ctrlKey) {
+						return
+					}
+
 					event.preventDefault()
 
 					// Always call onSend - let ChatView handle queueing when disabled
@@ -541,6 +547,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				handleHistoryNavigation,
 				resetHistoryNavigation,
 				commands,
+				requireCtrlEnterToSend,
 			],
 		)
 
