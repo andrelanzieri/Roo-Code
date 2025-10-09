@@ -12,6 +12,7 @@ import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
+import { getFileEncodingAsBufferEncoding } from "../../utils/encoding"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 
 export async function applyDiffToolLegacy(
@@ -88,7 +89,7 @@ export async function applyDiffToolLegacy(
 				return
 			}
 
-			const originalContent: string = await fs.readFile(absolutePath, "utf-8")
+			const originalContent: string = await fs.readFile(absolutePath, getFileEncodingAsBufferEncoding())
 
 			// Apply the diff to the original content
 			const diffResult = (await cline.diffStrategy?.applyDiff(

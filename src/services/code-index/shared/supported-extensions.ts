@@ -22,6 +22,9 @@ export const fallbackExtensions = [
 	".vb", // Visual Basic .NET - no dedicated WASM parser
 	".scala", // Scala - uses fallback chunking instead of Lua query workaround
 	".swift", // Swift - uses fallback chunking due to parser instability
+	".prw", // AdvPL - no dedicated WASM parser
+	".prx", // AdvPL - no dedicated WASM parser
+	".tlpp", // AdvPL - no dedicated WASM parser
 ]
 
 /**

@@ -11,6 +11,7 @@ import { RooIgnoreController } from "../../../core/ignore/RooIgnoreController"
 import { v5 as uuidv5 } from "uuid"
 import { Ignore } from "ignore"
 import { scannerExtensions } from "../shared/supported-extensions"
+import { getFileEncodingAsBufferEncoding } from "../../../utils/encoding"
 import {
 	IFileWatcher,
 	FileProcessingResult,
@@ -542,7 +543,7 @@ export class FileWatcher implements IFileWatcher {
 
 			// Read file content
 			const fileContent = await vscode.workspace.fs.readFile(vscode.Uri.file(filePath))
-			const content = fileContent.toString()
+			const content = Buffer.from(fileContent).toString(getFileEncodingAsBufferEncoding())
 
 			// Calculate hash
 			const newHash = createHash("sha256").update(content).digest("hex")

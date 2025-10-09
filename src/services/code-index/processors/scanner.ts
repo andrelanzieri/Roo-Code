@@ -14,6 +14,7 @@ import pLimit from "p-limit"
 import { Mutex } from "async-mutex"
 import { CacheManager } from "../cache-manager"
 import { t } from "../../../i18n"
+import { getFileEncodingAsBufferEncoding } from "../../../utils/encoding"
 import {
 	QDRANT_CODE_BLOCK_NAMESPACE,
 	MAX_FILE_SIZE_BYTES,
@@ -137,7 +138,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 					// Read file content
 					const content = await vscode.workspace.fs
 						.readFile(vscode.Uri.file(filePath))
-						.then((buffer) => Buffer.from(buffer).toString("utf-8"))
+						.then((buffer) => Buffer.from(buffer).toString(getFileEncodingAsBufferEncoding()))
 
 					// Calculate current hash
 					const currentFileHash = createHash("sha256").update(content).digest("hex")

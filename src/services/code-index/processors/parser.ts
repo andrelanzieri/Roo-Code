@@ -10,6 +10,7 @@ import { MAX_BLOCK_CHARS, MIN_BLOCK_CHARS, MIN_CHUNK_REMAINDER_CHARS, MAX_CHARS_
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
+import { getFileEncodingAsBufferEncoding } from "../../../utils/encoding"
 
 /**
  * Implementation of the code parser interface
@@ -50,7 +51,7 @@ export class CodeParser implements ICodeParser {
 			fileHash = options.fileHash || this.createFileHash(content)
 		} else {
 			try {
-				content = await readFile(filePath, "utf8")
+				content = await readFile(filePath, getFileEncodingAsBufferEncoding())
 				fileHash = this.createFileHash(content)
 			} catch (error) {
 				console.error(`Error reading file ${filePath}:`, error)

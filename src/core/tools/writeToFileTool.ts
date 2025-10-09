@@ -16,6 +16,7 @@ import { detectCodeOmission } from "../../integrations/editor/detect-omission"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
+import { getFileEncodingAsBufferEncoding } from "../../utils/encoding"
 
 export async function writeToFileTool(
 	cline: Task,
@@ -217,7 +218,10 @@ export async function writeToFileTool(
 				cline.diffViewProvider.editType = fileExists ? "modify" : "create"
 				if (fileExists) {
 					const absolutePath = path.resolve(cline.cwd, relPath)
-					cline.diffViewProvider.originalContent = await fs.readFile(absolutePath, "utf-8")
+					cline.diffViewProvider.originalContent = await fs.readFile(
+						absolutePath,
+						getFileEncodingAsBufferEncoding(),
+					)
 				} else {
 					cline.diffViewProvider.originalContent = ""
 				}

@@ -13,6 +13,7 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
+import { getFileEncodingAsBufferEncoding } from "../../utils/encoding"
 
 /**
  * Tool for performing search and replace operations on files
@@ -148,7 +149,7 @@ export async function searchAndReplaceTool(
 		// Read and process file content
 		let fileContent: string
 		try {
-			fileContent = await fs.readFile(absolutePath, "utf-8")
+			fileContent = await fs.readFile(absolutePath, getFileEncodingAsBufferEncoding())
 		} catch (error) {
 			cline.consecutiveMistakeCount++
 			cline.recordToolError("search_and_replace")

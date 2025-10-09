@@ -11,6 +11,7 @@ import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath } from "../../utils/fs"
 import { insertGroups } from "../diff/insert-groups"
 import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
+import { getFileEncodingAsBufferEncoding } from "../../utils/encoding"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 
 export async function insertContentTool(
@@ -92,7 +93,7 @@ export async function insertContentTool(
 				return
 			}
 		} else {
-			fileContent = await fs.readFile(absolutePath, "utf8")
+			fileContent = await fs.readFile(absolutePath, getFileEncodingAsBufferEncoding())
 		}
 
 		cline.consecutiveMistakeCount = 0
