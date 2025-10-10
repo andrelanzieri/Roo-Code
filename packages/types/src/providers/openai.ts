@@ -60,7 +60,6 @@ export const openAiNativeModels = {
 			"GPT-5 Pro: a slow, reasoning-focused model built to tackle tough problems. Requests can take several minutes to finish. Responses API only; no streaming, so it may appear stuck until the reply is ready.",
 		supportsVerbosity: true,
 		supportsTemperature: false,
-		disableTimeout: true,
 	},
 	"gpt-5.1-codex": {
 		maxTokens: 128000,
