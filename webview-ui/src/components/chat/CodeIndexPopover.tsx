@@ -73,6 +73,7 @@ interface LocalCodeIndexSettings {
 	codebaseIndexGeminiApiKey?: string
 	codebaseIndexMistralApiKey?: string
 	codebaseIndexVercelAiGatewayApiKey?: string
+	codebaseIndexNebiusApiKey?: string
 }
 
 // Validation schema for codebase index settings
@@ -194,6 +195,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		codebaseIndexGeminiApiKey: "",
 		codebaseIndexMistralApiKey: "",
 		codebaseIndexVercelAiGatewayApiKey: "",
+		codebaseIndexNebiusApiKey: "",
 	})
 
 	// Initial settings state - stores the settings when popover opens
@@ -229,6 +231,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 				codebaseIndexGeminiApiKey: "",
 				codebaseIndexMistralApiKey: "",
 				codebaseIndexVercelAiGatewayApiKey: "",
+				codebaseIndexNebiusApiKey: "",
 			}
 			setInitialSettings(settings)
 			setCurrentSettings(settings)
@@ -345,6 +348,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 							? SECRET_PLACEHOLDER
 							: ""
 					}
+					if (!prev.codebaseIndexNebiusApiKey || prev.codebaseIndexNebiusApiKey === SECRET_PLACEHOLDER) {
+						updated.codebaseIndexNebiusApiKey = secretStatus.hasNebiusApiKey ? SECRET_PLACEHOLDER : ""
+					}
 
 					return updated
 				}
@@ -418,7 +424,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					key === "codebaseIndexOpenAiCompatibleApiKey" ||
 					key === "codebaseIndexGeminiApiKey" ||
 					key === "codebaseIndexMistralApiKey" ||
-					key === "codebaseIndexVercelAiGatewayApiKey"
+					key === "codebaseIndexVercelAiGatewayApiKey" ||
+					key === "codebaseIndexNebiusApiKey"
 				) {
 					dataToValidate[key] = "placeholder-valid"
 				}
