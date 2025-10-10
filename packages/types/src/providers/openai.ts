@@ -47,6 +47,21 @@ export const openAiNativeModels = {
 		],
 		description: "GPT-5.1: The best model for coding and agentic tasks across domains",
 	},
+	"gpt-5-pro-2025-10-06": {
+		maxTokens: 272000,
+		contextWindow: 400000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningEffort: false,
+		reasoningEffort: "high",
+		inputPrice: 15.0,
+		outputPrice: 120.0,
+		description:
+			"GPT-5 Pro: a slow, reasoning-focused model built to tackle tough problems. Requests can take several minutes to finish. Responses API only; no streaming, so it may appear stuck until the reply is ready.",
+		supportsVerbosity: true,
+		supportsTemperature: false,
+		disableTimeout: true,
+	},
 	"gpt-5.1-codex": {
 		maxTokens: 128000,
 		contextWindow: 400000,
