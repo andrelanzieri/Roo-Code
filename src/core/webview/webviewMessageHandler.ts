@@ -2647,6 +2647,7 @@ export const webviewMessageHandler = async (
 					hasGeminiApiKey,
 					hasMistralApiKey,
 					hasVercelAiGatewayApiKey,
+					hasNebiusApiKey,
 				},
 			})
 			break
