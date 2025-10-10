@@ -14,6 +14,15 @@ vi.mock("../../../../i18n", () => ({
 	}),
 }))
 
+// Mock TelemetryService
+vi.mock("@roo-code/telemetry", () => ({
+	TelemetryService: {
+		instance: {
+			captureEvent: vi.fn(),
+		},
+	},
+}))
+
 // Mock the validation helpers
 vi.mock("../../shared/validation-helpers", () => ({
 	withValidationErrorHandling: vi.fn(async (fn, provider) => {
