@@ -277,6 +277,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	public readonly messageQueueService: MessageQueueService
 	private messageQueueStateChangedHandler: (() => void) | undefined
 
+	// Throttled chat row update batching to reduce webview message flood
+	private messageUpdateBuffer: Map<number, ClineMessage> = new Map()
+	private messageUpdateTimer?: NodeJS.Timeout
+	private readonly MESSAGE_UPDATE_THROTTLE_MS = 33 // ~30 FPS
+
 	// Streaming
 	isWaitingForFirstChunk = false
 	isStreaming = false
@@ -644,8 +649,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	private async updateClineMessage(message: ClineMessage) {
 		const provider = this.providerRef.deref()
-		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
+
+		// Emit internal event immediately (used for token usage, etc)
 		this.emit(RooCodeEventName.Message, { action: "updated", message })
+
+		// Telemetry capture remains unchanged below
 
 		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()
 
@@ -654,6 +662,37 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				event: TelemetryEventName.TASK_MESSAGE,
 				properties: { taskId: this.taskId, message },
 			})
+		}
+
+		// If provider is unavailable, or panel is hidden, skip UI delta updates.
+		// The UI will resync on next visibility or full state push.
+		if (!provider || (typeof (provider as any).isVisible === "function" && !(provider as any).isVisible())) {
+			return
+		}
+
+		// Batch UI updates within a short window to avoid overwhelming the webview
+		const ts = (message as any)?.ts as number | undefined
+		if (typeof ts === "number") {
+			this.messageUpdateBuffer.set(ts, message)
+		} else {
+			// Fallback: no timestamp, just send immediately
+			await provider.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
+			return
+		}
+
+		if (!this.messageUpdateTimer) {
+			this.messageUpdateTimer = setTimeout(async () => {
+				try {
+					const batch = Array.from(this.messageUpdateBuffer.values())
+					this.messageUpdateBuffer.clear()
+					this.messageUpdateTimer = undefined
+					for (const m of batch) {
+						await provider.postMessageToWebview({ type: "messageUpdated", clineMessage: m })
+					}
+				} catch (e) {
+					console.error("[Task#updateClineMessage] Failed to flush message updates:", e)
+				}
+			}, this.MESSAGE_UPDATE_THROTTLE_MS)
 		}
 	}
 
