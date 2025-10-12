@@ -40,6 +40,14 @@ vi.mock("vscode", () => ({
 	ExtensionMode: {
 		Production: 1,
 	},
+	// Provide minimal implementations required by extension.ts watchers in dev
+	Uri: {
+		file: vi.fn().mockImplementation((p: string) => ({ fsPath: p })),
+	},
+	RelativePattern: vi.fn().mockImplementation((base: { fsPath?: string } | string, pattern: string) => ({
+		base: typeof base === "string" ? base : (base?.fsPath ?? ""),
+		pattern,
+	})),
 }))
 
 vi.mock("@dotenvx/dotenvx", () => ({

@@ -152,6 +152,10 @@ export class McpHub {
 	private refCount: number = 0 // Reference counter for active clients
 	private configChangeDebounceTimers: Map<string, NodeJS.Timeout> = new Map()
 
+	private isTestEnvironment(): boolean {
+		return process.env.NODE_ENV === "test" || !!process.env.VITEST || process.env.JEST === "true"
+	}
+
 	constructor(provider: ClineProvider) {
 		this.providerRef = new WeakRef(provider)
 		this.watchMcpSettingsFile()
@@ -261,8 +265,7 @@ export class McpHub {
 	}
 
 	public setupWorkspaceFoldersWatcher(): void {
-		// Skip if test environment is detected
-		if (process.env.NODE_ENV === "test") {
+		if (this.isTestEnvironment() || !vscode.workspace?.onDidChangeWorkspaceFolders) {
 			return
 		}
 
@@ -334,8 +337,12 @@ export class McpHub {
 	}
 
 	private async watchProjectMcpFile(): Promise<void> {
-		// Skip if test environment is detected or VSCode APIs are not available
-		if (process.env.NODE_ENV === "test" || !vscode.workspace.createFileSystemWatcher) {
+		// Skip in test environments or when required VSCode APIs are unavailable
+		if (
+			this.isTestEnvironment() ||
+			!vscode.workspace?.createFileSystemWatcher ||
+			!(vscode as any).RelativePattern
+		) {
 			return
 		}
 
@@ -467,8 +474,13 @@ export class McpHub {
 	}
 
 	private async watchMcpSettingsFile(): Promise<void> {
-		// Skip if test environment is detected or VSCode APIs are not available
-		if (process.env.NODE_ENV === "test" || !vscode.workspace.createFileSystemWatcher) {
+		// Skip in test environments or when required VSCode APIs are unavailable
+		if (
+			this.isTestEnvironment() ||
+			!vscode.workspace?.createFileSystemWatcher ||
+			!(vscode as any).Uri?.file ||
+			!(vscode as any).RelativePattern
+		) {
 			return
 		}
 

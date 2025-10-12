@@ -36,6 +36,8 @@ const mockSelection = class extends mockRange {
 	}
 }
 
+const mockRelativePattern = (base, pattern) => ({ base, pattern })
+
 export const workspace = {
 	workspaceFolders: [],
 	getWorkspaceFolder: () => null,
@@ -107,6 +109,7 @@ export const env = {
 }
 
 export const Uri = mockUri
+export const RelativePattern = mockRelativePattern
 export const Range = mockRange
 export const Position = mockPosition
 export const Selection = mockSelection
@@ -160,6 +163,7 @@ export default {
 	extensions,
 	env,
 	Uri,
+	RelativePattern,
 	Range,
 	Position,
 	Selection,

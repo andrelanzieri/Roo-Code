@@ -303,6 +303,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private tokenUsageSnapshot?: TokenUsage
 	private tokenUsageSnapshotAt?: number
 
+	private safeProviderLog(message: string): void {
+		try {
+			const provider = this.providerRef.deref()
+			if (provider && typeof (provider as any).log === "function") {
+				;(provider as any).log(message)
+			}
+		} catch {
+			// no-op (tests/mocks may not implement log)
+		}
+	}
+
 	constructor({
 		provider,
 		apiConfiguration,
@@ -466,7 +477,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this._taskMode = defaultModeSlug
 			// Use the provider's log method for better error visibility
 			const errorMessage = `Failed to initialize task mode: ${error instanceof Error ? error.message : String(error)}`
-			provider.log(errorMessage)
+			this.safeProviderLog(errorMessage)
 		}
 	}
 
@@ -688,20 +699,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					const providerNow = this.providerRef.deref()
 					if (!providerNow) {
-						this.providerRef
-							.deref()
-							?.log(
-								`[Task#updateClineMessage] Dropping ${batch.length} messageUpdated deltas: provider unavailable`,
-							)
+						this.safeProviderLog(
+							`[Task#updateClineMessage] Dropping ${batch.length} messageUpdated deltas: provider unavailable`,
+						)
 						return
 					}
 					if (!providerNow.isVisible()) {
 						// Drop deltas while hidden; UI will receive a full state sync on visibility
-						this.providerRef
-							.deref()
-							?.log(
-								`[Task#updateClineMessage] Dropping ${batch.length} messageUpdated deltas while hidden`,
-							)
+						this.safeProviderLog(
+							`[Task#updateClineMessage] Dropping ${batch.length} messageUpdated deltas while hidden`,
+						)
 						return
 					}
 
@@ -709,13 +716,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						await providerNow.postMessageToWebview({ type: "messageUpdated", clineMessage: m })
 					}
 				} catch (e) {
-					this.providerRef
-						.deref()
-						?.log(
-							`[Task#updateClineMessage] Failed to flush message updates: ${
-								e instanceof Error ? e.message : String(e)
-							}`,
-						)
+					this.safeProviderLog(
+						`[Task#updateClineMessage] Failed to flush message updates: ${
+							e instanceof Error ? e.message : String(e)
+						}`,
+					)
 				}
 			}, this.MESSAGE_UPDATE_THROTTLE_MS)
 		}
@@ -1741,9 +1746,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// including the subtask result, not just from before the subtask was created
 			this.skipPrevResponseIdOnce = true
 		} catch (error) {
-			this.providerRef
-				.deref()
-				?.log(`Error failed to add reply from subtask into conversation of parent task, error: ${error}`)
+			this.safeProviderLog(
+				`Error failed to add reply from subtask into conversation of parent task, error: ${error}`,
+			)
 
 			throw error
 		}
@@ -1834,9 +1839,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const provider = this.providerRef.deref()
 
 			if (this.isPaused && provider) {
-				provider.log(`[subtasks] paused ${this.taskId}.${this.instanceId}`)
+				this.safeProviderLog(`[subtasks] paused ${this.taskId}.${this.instanceId}`)
 				await this.waitForSubtask()
-				provider.log(`[subtasks] resumed ${this.taskId}.${this.instanceId}`)
+				this.safeProviderLog(`[subtasks] resumed ${this.taskId}.${this.instanceId}`)
 				const currentMode = (await provider.getState())?.mode ?? defaultModeSlug
 
 				if (currentMode !== this.pausedModeSlug) {
@@ -1846,7 +1851,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// Delay to allow mode change to take effect before next tool is executed.
 					await delay(500)
 
-					provider.log(
+					this.safeProviderLog(
 						`[subtasks] task ${this.taskId}.${this.instanceId} has switched back to '${this.pausedModeSlug}' from '${currentMode}'`,
 					)
 				}

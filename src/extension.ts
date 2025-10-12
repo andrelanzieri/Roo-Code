@@ -273,7 +273,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	const enableLogging = typeof socketPath === "string"
 
 	// Watch the core files and automatically reload the extension host.
-	if (process.env.NODE_ENV === "development") {
+	if (
+		process.env.NODE_ENV === "development" &&
+		(vscode as any).RelativePattern &&
+		(vscode as any).Uri?.file &&
+		vscode.workspace?.createFileSystemWatcher
+	) {
 		const watchPaths = [
 			{ path: context.extensionPath, pattern: "**/*.ts" },
 			{ path: path.join(context.extensionPath, "../packages/types"), pattern: "**/*.ts" },
