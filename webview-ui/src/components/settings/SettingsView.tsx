@@ -126,6 +126,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const prevApiConfigName = useRef(currentApiConfigName)
 	const confirmDialogHandler = useRef<() => void>()
 
+	// Guard: ignore programmatic syncs during initial mount to prevent false dirty state
+	const isInitialMountRef = useRef(true)
+	useEffect(() => {
+		const id = setTimeout(() => {
+			isInitialMountRef.current = false
+		}, 0)
+		return () => clearTimeout(id)
+	}, [])
+
 	const [cachedState, setCachedState] = useState(() => extensionState)
 
 	const {
@@ -239,15 +248,17 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 				const previousValue = prevState.apiConfiguration?.[field]
 
-				// Only skip change detection for automatic initialization (not user actions)
-				// This prevents the dirty state when the component initializes and auto-syncs values
-				// Treat undefined, null, and empty string as uninitialized states
+				// Only skip change detection for:
+				// - Automatic initialization (undefined/null/empty -> value)
+				// - Any non-user programmatic syncs happening during the initial mount of SettingsView
+				//   (prevents dirty state when provider/model defaults auto-sync on open)
 				const isInitialSync =
-					!isUserAction &&
-					(previousValue === undefined || previousValue === "" || previousValue === null) &&
-					value !== undefined &&
-					value !== "" &&
-					value !== null
+					(!isUserAction &&
+						(previousValue === undefined || previousValue === "" || previousValue === null) &&
+						value !== undefined &&
+						value !== "" &&
+						value !== null) ||
+					(!isUserAction && isInitialMountRef.current)
 
 				if (!isInitialSync) {
 					setChangeDetected(true)
