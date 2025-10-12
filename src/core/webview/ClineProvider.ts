@@ -583,6 +583,13 @@ export class ClineProvider
 	async dispose() {
 		this.log("Disposing ClineProvider...")
 
+		// Clear throttled timers
+		if (this.indexStatusThrottleTimer) {
+			clearTimeout(this.indexStatusThrottleTimer)
+			this.indexStatusThrottleTimer = undefined
+		}
+		this.pendingIndexStatus = undefined
+
 		// Clear all tasks from the stack.
 		while (this.clineStack.length > 0) {
 			await this.removeClineFromStack()
@@ -2478,7 +2485,7 @@ export class ClineProvider
 						this.pendingIndexStatus = undefined
 						this.indexStatusThrottleTimer = undefined
 
-						this.postMessageToWebview({
+						void this.postMessageToWebview({
 							type: "indexingStatusUpdate",
 							values,
 						})
@@ -2491,7 +2498,7 @@ export class ClineProvider
 			}
 
 			// Send initial status for the current workspace
-			this.postMessageToWebview({
+			void this.postMessageToWebview({
 				type: "indexingStatusUpdate",
 				values: currentManager.getCurrentStatus(),
 			})

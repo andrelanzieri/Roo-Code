@@ -663,7 +663,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		// Batch UI updates within a short window to avoid overwhelming the webview
-		const ts = (message as any)?.ts as number | undefined
+		const ts = message.ts as number | undefined
 		if (typeof ts === "number") {
 			this.messageUpdateBuffer.set(ts, message)
 		} else {
@@ -684,20 +684,24 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					this.messageUpdateBuffer = new Map()
 					this.messageUpdateTimer = undefined
 
-					const batch = Array.from(batchMap.values())
+					const batch = Array.from(batchMap.values()).sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0))
 
 					const providerNow = this.providerRef.deref()
 					if (!providerNow) {
-						console.warn(
-							`[Task#updateClineMessage] Dropping ${batch.length} messageUpdated deltas: provider unavailable`,
-						)
+						this.providerRef
+							.deref()
+							?.log(
+								`[Task#updateClineMessage] Dropping ${batch.length} messageUpdated deltas: provider unavailable`,
+							)
 						return
 					}
 					if (!providerNow.isVisible()) {
 						// Drop deltas while hidden; UI will receive a full state sync on visibility
-						console.debug(
-							`[Task#updateClineMessage] Dropping ${batch.length} messageUpdated deltas while hidden`,
-						)
+						this.providerRef
+							.deref()
+							?.log(
+								`[Task#updateClineMessage] Dropping ${batch.length} messageUpdated deltas while hidden`,
+							)
 						return
 					}
 
@@ -705,7 +709,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						await providerNow.postMessageToWebview({ type: "messageUpdated", clineMessage: m })
 					}
 				} catch (e) {
-					console.error("[Task#updateClineMessage] Failed to flush message updates:", e)
+					this.providerRef
+						.deref()
+						?.log(
+							`[Task#updateClineMessage] Failed to flush message updates: ${
+								e instanceof Error ? e.message : String(e)
+							}`,
+						)
 				}
 			}, this.MESSAGE_UPDATE_THROTTLE_MS)
 		}
@@ -1580,6 +1590,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	public dispose(): void {
 		console.log(`[Task#dispose] disposing task ${this.taskId}.${this.instanceId}`)
+
+		// Clear pending batched message timer and buffer
+		if (this.messageUpdateTimer) {
+			clearTimeout(this.messageUpdateTimer)
+			this.messageUpdateTimer = undefined
+		}
+		this.messageUpdateBuffer.clear()
 
 		// Dispose message queue and remove event listeners.
 		try {
