@@ -2,8 +2,17 @@
 
 import { AnthropicHandler } from "../anthropic"
 import { ApiHandlerOptions } from "../../../shared/api"
+import delay from "delay"
 
 const mockCreate = vitest.fn()
+const mockFetch = vitest.fn()
+
+vitest.mock("delay", () => ({
+	default: vitest.fn(() => Promise.resolve()),
+}))
+
+// Mock global fetch
+global.fetch = mockFetch as any
 
 vitest.mock("@anthropic-ai/sdk", () => {
 	const mockAnthropicConstructor = vitest.fn().mockImplementation(() => ({
@@ -287,6 +296,344 @@ describe("AnthropicHandler", () => {
 			expect(model.info.contextWindow).toBe(1000000)
 			expect(model.info.inputPrice).toBe(6.0)
 			expect(model.info.outputPrice).toBe(22.5)
+		})
+	})
+
+	describe("Batch API", () => {
+		beforeEach(() => {
+			vitest.clearAllMocks()
+			// Reset fetch mock
+			mockFetch.mockReset()
+		})
+
+		it("should use batch API when anthropicUseBatchApi is enabled", async () => {
+			const handlerWithBatch = new AnthropicHandler({
+				...mockOptions,
+				anthropicUseBatchApi: true,
+			})
+
+			// Mock batch API responses
+			mockFetch
+				// First call: Create batch job
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						id: "batch-123",
+						status: "processing",
+						created_at: "2024-01-01T00:00:00Z",
+					}),
+				})
+				// Second call: Check job status (still processing)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						id: "batch-123",
+						status: "processing",
+						created_at: "2024-01-01T00:00:00Z",
+					}),
+				})
+				// Third call: Check job status (ended)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						id: "batch-123",
+						status: "ended",
+						created_at: "2024-01-01T00:00:00Z",
+						ended_at: "2024-01-01T00:00:30Z",
+					}),
+				})
+				// Fourth call: Get results
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						results: [
+							{
+								custom_id: "req_123",
+								result: {
+									type: "succeeded",
+									message: {
+										content: [{ type: "text", text: "Batch response" }],
+										usage: {
+											input_tokens: 100,
+											output_tokens: 50,
+										},
+									},
+								},
+							},
+						],
+					}),
+				})
+
+			const systemPrompt = "You are a helpful assistant"
+			const messages = [{ role: "user" as const, content: "Hello" }]
+
+			const stream = handlerWithBatch.createMessage(systemPrompt, messages)
+
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Verify batch job was created
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining("/v1/messages/batches"),
+				expect.objectContaining({
+					method: "POST",
+					headers: expect.objectContaining({
+						"Content-Type": "application/json",
+						"x-api-key": mockOptions.apiKey,
+						"anthropic-version": "2023-06-01",
+						"anthropic-beta": "message-batches-2024-09-24",
+					}),
+				}),
+			)
+
+			// Verify polling occurred
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining("/v1/messages/batches/batch-123"),
+				expect.objectContaining({
+					method: "GET",
+				}),
+			)
+
+			// Verify results were retrieved
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining("/v1/messages/batches/batch-123/results"),
+				expect.objectContaining({
+					method: "GET",
+				}),
+			)
+
+			// Verify response content
+			const textChunks = chunks.filter((chunk) => chunk.type === "text")
+			expect(textChunks.some((chunk) => chunk.text.includes("Batch response"))).toBe(true)
+
+			// Verify cost calculation with 50% discount
+			const usageChunk = chunks.find((chunk) => chunk.type === "usage" && chunk.totalCost !== undefined)
+			expect(usageChunk).toBeDefined()
+		})
+
+		it("should handle batch API timeout", async () => {
+			const handlerWithBatch = new AnthropicHandler({
+				...mockOptions,
+				anthropicUseBatchApi: true,
+			})
+
+			// Mock batch job creation
+			mockFetch
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						id: "batch-123",
+						status: "processing",
+						created_at: "2024-01-01T00:00:00Z",
+					}),
+				})
+				// Keep returning processing status
+				.mockResolvedValue({
+					ok: true,
+					json: async () => ({
+						id: "batch-123",
+						status: "processing",
+						created_at: "2024-01-01T00:00:00Z",
+					}),
+				})
+
+			// Mock Date.now to simulate timeout
+			const originalDateNow = Date.now
+			let currentTime = originalDateNow()
+			Date.now = vitest.fn(() => {
+				currentTime += 11 * 60 * 1000 // Add 11 minutes each call
+				return currentTime
+			})
+
+			const systemPrompt = "You are a helpful assistant"
+			const messages = [{ role: "user" as const, content: "Hello" }]
+
+			const stream = handlerWithBatch.createMessage(systemPrompt, messages)
+
+			// Expect timeout error
+			await expect(async () => {
+				const chunks: any[] = []
+				for await (const chunk of stream) {
+					chunks.push(chunk)
+				}
+			}).rejects.toThrow("Batch job timed out after 10 minutes")
+
+			// Restore Date.now
+			Date.now = originalDateNow
+		})
+
+		it("should handle batch API failure", async () => {
+			const handlerWithBatch = new AnthropicHandler({
+				...mockOptions,
+				anthropicUseBatchApi: true,
+			})
+
+			// Mock batch job creation
+			mockFetch
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						id: "batch-123",
+						status: "processing",
+						created_at: "2024-01-01T00:00:00Z",
+					}),
+				})
+				// Return failed status
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						id: "batch-123",
+						status: "failed",
+						created_at: "2024-01-01T00:00:00Z",
+						error: {
+							type: "api_error",
+							message: "Batch processing failed",
+						},
+					}),
+				})
+
+			const systemPrompt = "You are a helpful assistant"
+			const messages = [{ role: "user" as const, content: "Hello" }]
+
+			const stream = handlerWithBatch.createMessage(systemPrompt, messages)
+
+			// Expect failure error
+			await expect(async () => {
+				const chunks: any[] = []
+				for await (const chunk of stream) {
+					chunks.push(chunk)
+				}
+			}).rejects.toThrow("Batch job failed: Batch processing failed")
+		})
+
+		it("should show progress updates during batch processing", async () => {
+			const handlerWithBatch = new AnthropicHandler({
+				...mockOptions,
+				anthropicUseBatchApi: true,
+			})
+
+			// Mock delay to return immediately
+			const mockDelay = vitest.mocked(delay)
+			mockDelay.mockResolvedValue(undefined as any)
+
+			let callCount = 0
+			mockFetch
+				// First call: Create batch job
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({
+						id: "batch-123",
+						status: "processing",
+						created_at: "2024-01-01T00:00:00Z",
+					}),
+				})
+				// Multiple status checks
+				.mockImplementation(() => {
+					callCount++
+					if (callCount <= 5) {
+						return Promise.resolve({
+							ok: true,
+							json: async () => ({
+								id: "batch-123",
+								status: "processing",
+								created_at: "2024-01-01T00:00:00Z",
+							}),
+						})
+					} else if (callCount === 6) {
+						return Promise.resolve({
+							ok: true,
+							json: async () => ({
+								id: "batch-123",
+								status: "ended",
+								created_at: "2024-01-01T00:00:00Z",
+								ended_at: "2024-01-01T00:00:30Z",
+							}),
+						})
+					} else {
+						// Results
+						return Promise.resolve({
+							ok: true,
+							json: async () => ({
+								results: [
+									{
+										custom_id: "req_123",
+										result: {
+											type: "succeeded",
+											message: {
+												content: [{ type: "text", text: "Batch response" }],
+												usage: {
+													input_tokens: 100,
+													output_tokens: 50,
+												},
+											},
+										},
+									},
+								],
+							}),
+						})
+					}
+				})
+
+			// Mock Date.now for progress updates
+			const originalDateNow = Date.now
+			let currentTime = originalDateNow()
+			Date.now = vitest.fn(() => {
+				currentTime += 21000 // Add 21 seconds each call to trigger progress updates
+				return currentTime
+			})
+
+			const systemPrompt = "You are a helpful assistant"
+			const messages = [{ role: "user" as const, content: "Hello" }]
+
+			const stream = handlerWithBatch.createMessage(systemPrompt, messages)
+
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Verify progress messages
+			const textChunks = chunks.filter((chunk) => chunk.type === "text")
+			expect(textChunks.some((chunk) => chunk.text.includes("Creating batch job"))).toBe(true)
+			expect(textChunks.some((chunk) => chunk.text.includes("[Batch API] Processing"))).toBe(true)
+			expect(textChunks.some((chunk) => chunk.text.includes("Retrieving batch results"))).toBe(true)
+
+			// Restore Date.now
+			Date.now = originalDateNow
+		})
+
+		it("should use regular streaming API when batch API is disabled", async () => {
+			const handlerWithoutBatch = new AnthropicHandler({
+				...mockOptions,
+				anthropicUseBatchApi: false,
+			})
+
+			const systemPrompt = "You are a helpful assistant"
+			const messages = [
+				{
+					role: "user" as const,
+					content: [{ type: "text" as const, text: "Hello" }],
+				},
+			]
+
+			const stream = handlerWithoutBatch.createMessage(systemPrompt, messages)
+
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Should use regular API (mockCreate), not batch API (fetch)
+			expect(mockCreate).toHaveBeenCalled()
+			expect(mockFetch).not.toHaveBeenCalled()
+
+			// Verify regular streaming response
+			const textChunks = chunks.filter((chunk) => chunk.type === "text")
+			expect(textChunks).toHaveLength(2)
+			expect(textChunks[0].text).toBe("Hello")
+			expect(textChunks[1].text).toBe(" world")
 		})
 	})
 })

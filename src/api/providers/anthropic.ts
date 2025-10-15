@@ -1,6 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
 import { CacheControlEphemeral } from "@anthropic-ai/sdk/resources"
+import delay from "delay"
 
 import {
 	type ModelInfo,
@@ -19,9 +20,41 @@ import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { calculateApiCostAnthropic } from "../../shared/cost"
 
+// Batch API types
+interface BatchRequest {
+	custom_id: string
+	params: Anthropic.Messages.MessageCreateParams
+}
+
+interface BatchJob {
+	id: string
+	status: "creating" | "processing" | "ended" | "canceling" | "canceled" | "expired" | "failed"
+	created_at: string
+	processing_began_at?: string
+	ended_at?: string
+	error?: {
+		type: string
+		message: string
+	}
+}
+
+interface BatchResult {
+	custom_id: string
+	result: {
+		type: "succeeded" | "failed" | "canceled" | "expired"
+		message?: Anthropic.Message
+		error?: {
+			type: string
+			message: string
+		}
+	}
+}
+
 export class AnthropicHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
 	private client: Anthropic
+	private static readonly BATCH_POLLING_INTERVAL = 20000 // 20 seconds
+	private static readonly BATCH_TIMEOUT = 10 * 60 * 1000 // 10 minutes
 
 	constructor(options: ApiHandlerOptions) {
 		super()
@@ -36,13 +69,198 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 		})
 	}
 
+	/**
+	 * Creates a batch job for processing messages asynchronously
+	 */
+	private async createBatchJob(requests: BatchRequest[]): Promise<string> {
+		const response = await fetch(`${this.client.baseURL || "https://api.anthropic.com"}/v1/messages/batches`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-api-key": this.options.apiKey || "",
+				"anthropic-version": "2023-06-01",
+				"anthropic-beta": "message-batches-2024-09-24",
+			},
+			body: JSON.stringify({ requests }),
+		})
+
+		if (!response.ok) {
+			const error = await response.text()
+			throw new Error(`Failed to create batch job: ${error}`)
+		}
+
+		const job: BatchJob = await response.json()
+		return job.id
+	}
+
+	/**
+	 * Polls for batch job status
+	 */
+	private async getBatchJobStatus(jobId: string): Promise<BatchJob> {
+		const response = await fetch(
+			`${this.client.baseURL || "https://api.anthropic.com"}/v1/messages/batches/${jobId}`,
+			{
+				method: "GET",
+				headers: {
+					"x-api-key": this.options.apiKey || "",
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "message-batches-2024-09-24",
+				},
+			},
+		)
+
+		if (!response.ok) {
+			const error = await response.text()
+			throw new Error(`Failed to get batch job status: ${error}`)
+		}
+
+		return response.json()
+	}
+
+	/**
+	 * Retrieves batch job results
+	 */
+	private async getBatchResults(jobId: string): Promise<BatchResult[]> {
+		const response = await fetch(
+			`${this.client.baseURL || "https://api.anthropic.com"}/v1/messages/batches/${jobId}/results`,
+			{
+				method: "GET",
+				headers: {
+					"x-api-key": this.options.apiKey || "",
+					"anthropic-version": "2023-06-01",
+					"anthropic-beta": "message-batches-2024-09-24",
+				},
+			},
+		)
+
+		if (!response.ok) {
+			const error = await response.text()
+			throw new Error(`Failed to get batch results: ${error}`)
+		}
+
+		const data = await response.json()
+		return data.results || []
+	}
+
+	/**
+	 * Process message using batch API with polling
+	 */
+	private async *processBatchMessage(
+		systemPrompt: string,
+		messages: Anthropic.Messages.MessageParam[],
+		modelId: string,
+		maxTokens: number | undefined,
+		temperature: number | undefined,
+		thinking: any,
+	): ApiStream {
+		// Create batch request
+		const batchRequest: BatchRequest = {
+			custom_id: `req_${Date.now()}`,
+			params: {
+				model: modelId,
+				max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
+				temperature,
+				system: systemPrompt,
+				messages,
+			},
+		}
+
+		// Add thinking parameter if applicable
+		if (thinking !== undefined) {
+			;(batchRequest.params as any).thinking = thinking
+		}
+
+		// Create batch job
+		yield { type: "text", text: "Creating batch job for processing (50% cost savings)...\n" }
+		const jobId = await this.createBatchJob([batchRequest])
+
+		// Poll for completion
+		const startTime = Date.now()
+		let lastUpdateTime = startTime
+		let job: BatchJob
+
+		while (true) {
+			// Check for timeout
+			if (Date.now() - startTime > AnthropicHandler.BATCH_TIMEOUT) {
+				throw new Error("Batch job timed out after 10 minutes")
+			}
+
+			job = await this.getBatchJobStatus(jobId)
+
+			// Update progress every 20 seconds
+			const now = Date.now()
+			if (now - lastUpdateTime >= AnthropicHandler.BATCH_POLLING_INTERVAL) {
+				const elapsed = Math.floor((now - startTime) / 1000)
+				yield {
+					type: "text",
+					text: `[Batch API] Processing... (${elapsed}s elapsed, status: ${job.status})\n`,
+				}
+				lastUpdateTime = now
+			}
+
+			if (job.status === "ended") {
+				break
+			} else if (job.status === "failed" || job.status === "canceled" || job.status === "expired") {
+				throw new Error(`Batch job ${job.status}: ${job.error?.message || "Unknown error"}`)
+			}
+
+			// Wait before next poll
+			await delay(5000) // Poll every 5 seconds internally, but only show updates every 20s
+		}
+
+		// Get results
+		yield { type: "text", text: "Retrieving batch results...\n\n" }
+		const results = await this.getBatchResults(jobId)
+
+		if (results.length === 0) {
+			throw new Error("No results returned from batch job")
+		}
+
+		const result = results[0]
+		if (result.result.type !== "succeeded" || !result.result.message) {
+			throw new Error(`Batch request failed: ${result.result.error?.message || "Unknown error"}`)
+		}
+
+		const message = result.result.message
+
+		// Extract content from the message
+		for (const content of message.content) {
+			if (content.type === "text") {
+				yield { type: "text", text: content.text }
+			}
+		}
+
+		// Calculate and report usage (with 50% discount)
+		const usage = message.usage
+		if (usage) {
+			const { input_tokens = 0, output_tokens = 0 } = usage
+			const modelInfo = this.getModel().info
+
+			// Calculate cost with 50% discount for batch API
+			const baseCost = calculateApiCostAnthropic(
+				modelInfo,
+				input_tokens,
+				output_tokens,
+				0, // No cache writes for batch API
+				0, // No cache reads for batch API
+			)
+
+			const discountedCost = baseCost * 0.5
+
+			yield {
+				type: "usage",
+				inputTokens: input_tokens,
+				outputTokens: output_tokens,
+				totalCost: discountedCost,
+			}
+		}
+	}
+
 	async *createMessage(
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		let stream: AnthropicStream<Anthropic.Messages.RawMessageStreamEvent>
-		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
 		let { id: modelId, betas = [], maxTokens, temperature, reasoning: thinking } = this.getModel()
 
 		// Add 1M context beta flag if enabled for Claude Sonnet 4 and 4.5
@@ -52,6 +270,16 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 		) {
 			betas.push("context-1m-2025-08-07")
 		}
+
+		// Use batch API if enabled
+		if (this.options.anthropicUseBatchApi) {
+			yield* this.processBatchMessage(systemPrompt, messages, modelId, maxTokens, temperature, thinking)
+			return
+		}
+
+		// Regular streaming implementation
+		let stream: AnthropicStream<Anthropic.Messages.RawMessageStreamEvent>
+		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
 
 		switch (modelId) {
 			case "claude-sonnet-4-5":
