@@ -479,7 +479,9 @@
 			"placeholder": "預設：claude",
 			"maxTokensLabel": "最大輸出 Token",
 			"maxTokensDescription": "Claude Code 回應的最大輸出 Token 數量。預設為 8000。"
-		}
+		},
+		"anthropicBatchApiLabel": "Use Batch API (50% cost savings)",
+		"anthropicBatchApiDescription": "Process requests asynchronously with 50% cost savings. Responses may take seconds to minutes. Best for non-urgent tasks like documentation, refactoring, and analysis."
 	},
 	"browser": {
 		"enable": {

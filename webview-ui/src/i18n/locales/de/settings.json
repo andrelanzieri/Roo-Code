@@ -479,7 +479,9 @@
 			"placeholder": "Standard: claude",
 			"maxTokensLabel": "Maximale Ausgabe-Tokens",
 			"maxTokensDescription": "Maximale Anzahl an Ausgabe-Tokens für Claude Code-Antworten. Standard ist 8000."
-		}
+		},
+		"anthropicBatchApiLabel": "Use Batch API (50% cost savings)",
+		"anthropicBatchApiDescription": "Process requests asynchronously with 50% cost savings. Responses may take seconds to minutes. Best for non-urgent tasks like documentation, refactoring, and analysis."
 	},
 	"browser": {
 		"enable": {

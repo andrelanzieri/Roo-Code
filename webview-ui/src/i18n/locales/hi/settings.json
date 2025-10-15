@@ -479,7 +479,9 @@
 			"placeholder": "डिफ़ॉल्ट: claude",
 			"maxTokensLabel": "अधिकतम आउटपुट टोकन",
 			"maxTokensDescription": "Claude Code प्रतिक्रियाओं के लिए आउटपुट टोकन की अधिकतम संख्या। डिफ़ॉल्ट 8000 है।"
-		}
+		},
+		"anthropicBatchApiLabel": "Use Batch API (50% cost savings)",
+		"anthropicBatchApiDescription": "Process requests asynchronously with 50% cost savings. Responses may take seconds to minutes. Best for non-urgent tasks like documentation, refactoring, and analysis."
 	},
 	"browser": {
 		"enable": {

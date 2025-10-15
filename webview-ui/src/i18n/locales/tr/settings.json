@@ -479,7 +479,9 @@
 			"placeholder": "Varsayılan: claude",
 			"maxTokensLabel": "Maksimum Çıktı Token sayısı",
 			"maxTokensDescription": "Claude Code yanıtları için maksimum çıktı token sayısı. Varsayılan 8000'dir."
-		}
+		},
+		"anthropicBatchApiLabel": "Use Batch API (50% cost savings)",
+		"anthropicBatchApiDescription": "Process requests asynchronously with 50% cost savings. Responses may take seconds to minutes. Best for non-urgent tasks like documentation, refactoring, and analysis."
 	},
 	"browser": {
 		"enable": {

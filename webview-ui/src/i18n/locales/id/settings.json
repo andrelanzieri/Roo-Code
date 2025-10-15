@@ -483,7 +483,9 @@
 			"placeholder": "Default: claude",
 			"maxTokensLabel": "Token Output Maks",
 			"maxTokensDescription": "Jumlah maksimum token output untuk respons Claude Code. Default adalah 8000."
-		}
+		},
+		"anthropicBatchApiLabel": "Use Batch API (50% cost savings)",
+		"anthropicBatchApiDescription": "Process requests asynchronously with 50% cost savings. Responses may take seconds to minutes. Best for non-urgent tasks like documentation, refactoring, and analysis."
 	},
 	"browser": {
 		"enable": {

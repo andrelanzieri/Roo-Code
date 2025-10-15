@@ -479,7 +479,9 @@
 			"placeholder": "기본값: claude",
 			"maxTokensLabel": "최대 출력 토큰",
 			"maxTokensDescription": "Claude Code 응답의 최대 출력 토큰 수. 기본값은 8000입니다."
-		}
+		},
+		"anthropicBatchApiLabel": "Use Batch API (50% cost savings)",
+		"anthropicBatchApiDescription": "Process requests asynchronously with 50% cost savings. Responses may take seconds to minutes. Best for non-urgent tasks like documentation, refactoring, and analysis."
 	},
 	"browser": {
 		"enable": {
