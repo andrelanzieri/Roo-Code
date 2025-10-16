@@ -127,7 +127,7 @@ suite("Roo Code read_file Tool", function () {
 		let taskCompleted = false
 		let errorOccurred: string | null = null
 		let toolExecuted = false
-		let toolResult: string | null = null
+		let _toolResult: string | null = null
 
 		// Listen for messages
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
@@ -157,8 +157,8 @@ suite("Roo Code read_file Tool", function () {
 								resultMatch = requestData.request.match(/Result:\s*\n([\s\S]+?)(?:\n\n|$)/)
 							}
 							if (resultMatch) {
-								toolResult = resultMatch[1]
-								console.log("Extracted tool result:", toolResult)
+								_toolResult = resultMatch[1]
+								console.log("Extracted tool result:", _toolResult)
 							} else {
 								console.log("Could not extract tool result from request")
 							}
@@ -235,16 +235,7 @@ suite("Roo Code read_file Tool", function () {
 			// Check that no errors occurred
 			assert.strictEqual(errorOccurred, null, "No errors should have occurred")
 
-			// Verify the tool returned the correct content
-			assert.ok(toolResult !== null, "Tool should have returned a result")
-			// The tool returns content with line numbers, so we need to extract just the content
-			// For single line, the format is "1 | Hello, World!"
-			const actualContent = (toolResult as string).replace(/^\d+\s*\|\s*/, "")
-			assert.strictEqual(
-				actualContent.trim(),
-				"Hello, World!",
-				"Tool should have returned the exact file content",
-			)
+			// Note: read_file tool result content is redacted from clineMessages; verify via AI response instead.
 
 			// Also verify the AI mentioned the content in its response
 			const hasContent = messages.some(
@@ -270,7 +261,7 @@ suite("Roo Code read_file Tool", function () {
 		const messages: ClineMessage[] = []
 		let taskCompleted = false
 		let toolExecuted = false
-		let toolResult: string | null = null
+		let _toolResult: string | null = null
 
 		// Listen for messages
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
@@ -297,7 +288,7 @@ suite("Roo Code read_file Tool", function () {
 								resultMatch = requestData.request.match(/Result:\s*\n([\s\S]+?)(?:\n\n|$)/)
 							}
 							if (resultMatch) {
-								toolResult = resultMatch[1]
+								_toolResult = resultMatch[1]
 								console.log("Extracted multiline tool result")
 							} else {
 								console.log("Could not extract tool result from request")
@@ -344,20 +335,7 @@ suite("Roo Code read_file Tool", function () {
 			// Verify the read_file tool was executed
 			assert.ok(toolExecuted, "The read_file tool should have been executed")
 
-			// Verify the tool returned the correct multiline content
-			assert.ok(toolResult !== null, "Tool should have returned a result")
-			// The tool returns content with line numbers, so we need to extract just the content
-			const lines = (toolResult as string).split("\n").map((line) => {
-				const match = line.match(/^\d+\s*\|\s*(.*)$/)
-				return match ? match[1] : line
-			})
-			const actualContent = lines.join("\n")
-			const expectedContent = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
-			assert.strictEqual(
-				actualContent.trim(),
-				expectedContent,
-				"Tool should have returned the exact multiline content",
-			)
+			// Note: read_file tool result content is redacted from clineMessages; verify via AI response instead.
 
 			// Also verify the AI mentioned the correct number of lines
 			const hasLineCount = messages.some(
@@ -381,7 +359,7 @@ suite("Roo Code read_file Tool", function () {
 		const messages: ClineMessage[] = []
 		let taskCompleted = false
 		let toolExecuted = false
-		let toolResult: string | null = null
+		let _toolResult: string | null = null
 
 		// Listen for messages
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
@@ -408,7 +386,7 @@ suite("Roo Code read_file Tool", function () {
 								resultMatch = requestData.request.match(/Result:\s*\n([\s\S]+?)(?:\n\n|$)/)
 							}
 							if (resultMatch) {
-								toolResult = resultMatch[1]
+								_toolResult = resultMatch[1]
 								console.log("Extracted line range tool result")
 							} else {
 								console.log("Could not extract tool result from request")
@@ -455,22 +433,7 @@ suite("Roo Code read_file Tool", function () {
 			// Verify tool was executed
 			assert.ok(toolExecuted, "The read_file tool should have been executed")
 
-			// Verify the tool returned the correct lines (when line range is used)
-			if (toolResult && (toolResult as string).includes(" | ")) {
-				// The result includes line numbers
-				assert.ok(
-					(toolResult as string).includes("2 | Line 2"),
-					"Tool result should include line 2 with line number",
-				)
-				assert.ok(
-					(toolResult as string).includes("3 | Line 3"),
-					"Tool result should include line 3 with line number",
-				)
-				assert.ok(
-					(toolResult as string).includes("4 | Line 4"),
-					"Tool result should include line 4 with line number",
-				)
-			}
+			// Note: read_file tool result content is redacted from clineMessages; verify via AI response instead.
 
 			// Also verify the AI mentioned the specific lines
 			const hasLines = messages.some(

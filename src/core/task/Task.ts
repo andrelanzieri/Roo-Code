@@ -603,11 +603,55 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Cline Messages
 
+	// Redact file payloads from UI-persisted messages (ui_messages.json)
+	// while leaving full content intact for apiConversationHistory.
+	private sanitizeMessageText(text?: string): string | undefined {
+		if (!text) return text
+
+		const scrub = (s: string): string => {
+			// Replace inner contents of known file payload tags with an omission marker
+			// Order matters: scrub more specific tags first.
+			s = s.replace(/<file_content\b[\s\S]*?<\/file_content>/gi, "<file_content>[omitted]</file_content>")
+			s = s.replace(/<content\b[^>]*>[\s\S]*?<\/content>/gi, "<content>[omitted]</content>")
+			s = s.replace(/<file\b[^>]*>[\s\S]*?<\/file>/gi, "<file>[omitted]</file>")
+			s = s.replace(/<files\b[^>]*>[\s\S]*?<\/files>/gi, "<files>[omitted]</files>")
+			return s
+		}
+
+		// If this is a JSON payload (e.g. api_req_started), try to sanitize the 'request' field.
+		try {
+			const obj = JSON.parse(text)
+			if (obj && typeof obj === "object" && typeof obj.request === "string") {
+				obj.request = scrub(obj.request)
+				return JSON.stringify(obj)
+			}
+		} catch {
+			// Not JSON, fall-through to raw scrub
+		}
+
+		return scrub(text)
+	}
+
+	// Sanitize an array of messages for persistence to UI storage
+	private sanitizeMessagesArray(messages: ClineMessage[]): ClineMessage[] {
+		return messages.map((m) => {
+			if (typeof (m as any).text === "string") {
+				return { ...m, text: this.sanitizeMessageText((m as any).text) }
+			}
+			return m
+		})
+	}
+
 	private async getSavedClineMessages(): Promise<ClineMessage[]> {
-		return readTaskMessages({ taskId: this.taskId, globalStoragePath: this.globalStoragePath })
+		const msgs = await readTaskMessages({ taskId: this.taskId, globalStoragePath: this.globalStoragePath })
+		return this.sanitizeMessagesArray(msgs)
 	}
 
 	private async addToClineMessages(message: ClineMessage) {
+		// Sanitize any UI-persisted text before storing
+		if (typeof message.text === "string") {
+			message.text = this.sanitizeMessageText(message.text)
+		}
 		this.clineMessages.push(message)
 		const provider = this.providerRef.deref()
 		await provider?.postStateToWebview()
@@ -625,7 +669,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	public async overwriteClineMessages(newMessages: ClineMessage[]) {
-		this.clineMessages = newMessages
+		this.clineMessages = this.sanitizeMessagesArray(newMessages)
 
 		// If deletion or history truncation leaves a condense_context as the last message,
 		// ensure the next API call suppresses previous_response_id so the condensed context is respected.
@@ -643,6 +687,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	private async updateClineMessage(message: ClineMessage) {
+		// Ensure any updates are also sanitized before persisting/posting
+		if (typeof message.text === "string") {
+			message.text = this.sanitizeMessageText(message.text)
+		}
 		const provider = this.providerRef.deref()
 		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
 		this.emit(RooCodeEventName.Message, { action: "updated", message })
@@ -659,8 +707,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	private async saveClineMessages() {
 		try {
+			// Sanitize just before persisting to ensure any direct mutations are scrubbed
+			const sanitizedMessages = this.sanitizeMessagesArray(this.clineMessages)
+
 			await saveTaskMessages({
-				messages: this.clineMessages,
+				messages: sanitizedMessages,
 				taskId: this.taskId,
 				globalStoragePath: this.globalStoragePath,
 			})
@@ -670,7 +721,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				rootTaskId: this.rootTaskId,
 				parentTaskId: this.parentTaskId,
 				taskNumber: this.taskNumber,
-				messages: this.clineMessages,
+				messages: sanitizedMessages,
 				globalStoragePath: this.globalStoragePath,
 				workspace: this.cwd,
 				mode: this._taskMode || defaultModeSlug, // Use the task's own mode, not the current provider mode.
@@ -1790,12 +1841,45 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const modelId = getModelId(this.apiConfiguration)
 			const apiProtocol = getApiProtocol(this.apiConfiguration.apiProvider, modelId)
 
+			// Redact any read_file results or file payload blocks from UI messages.
+			// This prevents file contents from being persisted to ui_messages.json while
+			// still sending full content to the LLM via apiConversationHistory.
+			const formatRequestWithReadFileRedaction = (blocks: Anthropic.Messages.ContentBlockParam[]) => {
+				let redactNext = false
+				const parts = blocks.map((block: any) => {
+					if (block?.type === "text") {
+						const text = String(block.text ?? "")
+
+						// 1) Detect the explicit read_file header line emitted by pushToolResult
+						const isReadFileHeader = /^\[read_file\b[\s\S]*\]\s*Result:/i.test(text)
+
+						// 2) Detect any XML-like file payloads that tools may include
+						//    Examples: <files>...</files>, <file>...</file>, <content ...>...</content>, <file_content ...>...</file_content>
+						const looksLikeFilePayload = /<files[\s>]|<file[\s>]|<content\b|<file_content\b/i.test(text)
+
+						// If we see the header, show the header but redact the next text block (payload)
+						if (isReadFileHeader) {
+							redactNext = true
+							return text
+						}
+
+						// If the previous block was a read_file header, or this block itself looks like a file payload, redact it
+						if (redactNext || looksLikeFilePayload) {
+							redactNext = false
+							return "[tool output omitted from UI storage]"
+						}
+					}
+
+					// Default formatting for other blocks
+					return formatContentBlockToMarkdown(block as any)
+				})
+				return parts.join("\n\n")
+			}
+
 			await this.say(
 				"api_req_started",
 				JSON.stringify({
-					request:
-						currentUserContent.map((block) => formatContentBlockToMarkdown(block)).join("\n\n") +
-						"\n\nLoading...",
+					request: formatRequestWithReadFileRedaction(currentUserContent) + "\n\nLoading...",
 					apiProtocol,
 				}),
 			)
@@ -1835,7 +1919,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const lastApiReqIndex = findLastIndex(this.clineMessages, (m) => m.say === "api_req_started")
 
 			this.clineMessages[lastApiReqIndex].text = JSON.stringify({
-				request: finalUserContent.map((block) => formatContentBlockToMarkdown(block)).join("\n\n"),
+				request: formatRequestWithReadFileRedaction(finalUserContent),
 				apiProtocol,
 			} satisfies ClineApiReqInfo)
 
