@@ -8,7 +8,7 @@ import {
 	VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
-import { ChevronDown, X, Upload, Download } from "lucide-react"
+import { ChevronDown, X } from "lucide-react"
 
 import { ModeConfig, GroupEntry, PromptComponent, ToolGroup, modeConfigSchema } from "@roo-code/types"
 
@@ -520,6 +520,37 @@ const ModesView = ({ onDone }: ModesViewProps) => {
 							<StandardTooltip content={t("prompts:modes.createNewMode")}>
 								<Button variant="ghost" size="icon" onClick={openCreateModeDialog}>
 									<span className="codicon codicon-add"></span>
+								</Button>
+							</StandardTooltip>
+							{/* Export Mode button */}
+							<StandardTooltip content={t("prompts:exportMode.title")}>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => {
+										const currentMode = getCurrentMode()
+										if (currentMode?.slug && !isExporting) {
+											setIsExporting(true)
+											vscode.postMessage({
+												type: "exportMode",
+												slug: currentMode.slug,
+											})
+										}
+									}}
+									disabled={isExporting || !getCurrentMode()}
+									data-testid="export-mode-button">
+									<span className="codicon codicon-export"></span>
+								</Button>
+							</StandardTooltip>
+							{/* Import Mode button */}
+							<StandardTooltip content={t("prompts:modes.importMode")}>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => setShowImportDialog(true)}
+									disabled={isImporting}
+									data-testid="import-mode-button">
+									<span className="codicon codicon-import"></span>
 								</Button>
 							</StandardTooltip>
 							<div className="relative inline-block">
@@ -1218,41 +1249,6 @@ const ModesView = ({ onDone }: ModesViewProps) => {
 								<span className="codicon codicon-copy"></span>
 							</Button>
 						</StandardTooltip>
-					</div>
-
-					{/* Export/Import Mode Buttons */}
-					<div className="flex items-center gap-2">
-						{/* Export button - visible when any mode is selected */}
-						{getCurrentMode() && (
-							<Button
-								variant="default"
-								onClick={() => {
-									const currentMode = getCurrentMode()
-									if (currentMode?.slug && !isExporting) {
-										setIsExporting(true)
-										vscode.postMessage({
-											type: "exportMode",
-											slug: currentMode.slug,
-										})
-									}
-								}}
-								disabled={isExporting}
-								title={t("prompts:exportMode.title")}
-								data-testid="export-mode-button">
-								<Upload className="h-4 w-4" />
-								{isExporting ? t("prompts:exportMode.exporting") : t("prompts:exportMode.title")}
-							</Button>
-						)}
-						{/* Import button - always visible */}
-						<Button
-							variant="default"
-							onClick={() => setShowImportDialog(true)}
-							disabled={isImporting}
-							title={t("prompts:modes.importMode")}
-							data-testid="import-mode-button">
-							<Download className="h-4 w-4" />
-							{isImporting ? t("prompts:importMode.importing") : t("prompts:modes.importMode")}
-						</Button>
 					</div>
 
 					{/* Advanced Features Disclosure */}
