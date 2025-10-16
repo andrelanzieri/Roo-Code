@@ -46,6 +46,7 @@ export const providerProfilesSchema = z.object({
 			openAiHeadersMigrated: z.boolean().optional(),
 			consecutiveMistakeLimitMigrated: z.boolean().optional(),
 			todoListEnabledMigrated: z.boolean().optional(),
+			zaiApiLineMigrated: z.boolean().optional(),
 		})
 		.optional(),
 })
@@ -70,6 +71,7 @@ export class ProviderSettingsManager {
 			openAiHeadersMigrated: true, // Mark as migrated on fresh installs
 			consecutiveMistakeLimitMigrated: true, // Mark as migrated on fresh installs
 			todoListEnabledMigrated: true, // Mark as migrated on fresh installs
+			zaiApiLineMigrated: true, // Mark as migrated on fresh installs
 		},
 	}
 
@@ -142,6 +144,7 @@ export class ProviderSettingsManager {
 						openAiHeadersMigrated: false,
 						consecutiveMistakeLimitMigrated: false,
 						todoListEnabledMigrated: false,
+						zaiApiLineMigrated: false,
 					} // Initialize with default values
 					isDirty = true
 				}
@@ -173,6 +176,12 @@ export class ProviderSettingsManager {
 				if (!providerProfiles.migrations.todoListEnabledMigrated) {
 					await this.migrateTodoListEnabled(providerProfiles)
 					providerProfiles.migrations.todoListEnabledMigrated = true
+					isDirty = true
+				}
+
+				if (!providerProfiles.migrations.zaiApiLineMigrated) {
+					await this.migrateZaiApiLine(providerProfiles)
+					providerProfiles.migrations.zaiApiLineMigrated = true
 					isDirty = true
 				}
 
@@ -290,6 +299,24 @@ export class ProviderSettingsManager {
 			}
 		} catch (error) {
 			console.error(`[MigrateTodoListEnabled] Failed to migrate todo list enabled setting:`, error)
+		}
+	}
+
+	private async migrateZaiApiLine(providerProfiles: ProviderProfiles) {
+		try {
+			for (const [_name, apiConfig] of Object.entries(providerProfiles.apiConfigs)) {
+				// Cast to any to access the zaiApiLine property which might exist
+				const configAny = apiConfig as any
+
+				// Migrate old "international" and "china" values to new "international_coding" and "china_coding"
+				if (configAny.zaiApiLine === "international") {
+					configAny.zaiApiLine = "international_coding"
+				} else if (configAny.zaiApiLine === "china") {
+					configAny.zaiApiLine = "china_coding"
+				}
+			}
+		} catch (error) {
+			console.error(`[MigrateZaiApiLine] Failed to migrate Z AI API line settings:`, error)
 		}
 	}
 
