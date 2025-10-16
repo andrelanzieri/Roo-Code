@@ -8,6 +8,7 @@ import { fileExistsAtPath } from "../../utils/fs"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { getTaskDirectoryPath } from "../../utils/storage"
+import { sanitizeMessagesForUIStorage, purgeFileContentsFromMessages } from "./sanitizeMessages"
 
 export type ReadTaskMessagesOptions = {
 	taskId: string
@@ -23,7 +24,10 @@ export async function readTaskMessages({
 	const fileExists = await fileExistsAtPath(filePath)
 
 	if (fileExists) {
-		return JSON.parse(await fs.readFile(filePath, "utf8"))
+		const messages = JSON.parse(await fs.readFile(filePath, "utf8"))
+		// Purge file contents from existing messages for backward compatibility
+		// This handles tasks that were saved before the sanitization was implemented
+		return purgeFileContentsFromMessages(messages)
 	}
 
 	return []
@@ -38,5 +42,7 @@ export type SaveTaskMessagesOptions = {
 export async function saveTaskMessages({ messages, taskId, globalStoragePath }: SaveTaskMessagesOptions) {
 	const taskDir = await getTaskDirectoryPath(globalStoragePath, taskId)
 	const filePath = path.join(taskDir, GlobalFileNames.uiMessages)
-	await safeWriteJson(filePath, messages)
+	// Sanitize messages before saving to prevent storage bloat
+	const sanitizedMessages = sanitizeMessagesForUIStorage(messages)
+	await safeWriteJson(filePath, sanitizedMessages)
 }
