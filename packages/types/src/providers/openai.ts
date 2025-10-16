@@ -48,7 +48,7 @@ export const openAiNativeModels = {
 		description: "GPT-5.1: The best model for coding and agentic tasks across domains",
 	},
 	"gpt-5-pro-2025-10-06": {
-		maxTokens: 272000,
+		maxTokens: 128000,
 		contextWindow: 400000,
 		supportsImages: true,
 		supportsPromptCache: true,
