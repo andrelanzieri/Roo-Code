@@ -141,6 +141,8 @@ export class ClineProvider
 	private recentTasksCache?: string[]
 	private pendingOperations: Map<string, PendingEditOperation> = new Map()
 	private static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
+	private isSoftReloading = false // Flag to indicate soft reload state (cancel/checkpoint restore)
+	private stateUpdateDebounceTimer: NodeJS.Timeout | null = null // Debounce timer for state updates
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
@@ -582,6 +584,12 @@ export class ClineProvider
 		// Clear all pending edit operations to prevent memory leaks
 		this.clearAllPendingEditOperations()
 		this.log("Cleared pending operations")
+
+		// Clear debounce timer if it exists
+		if (this.stateUpdateDebounceTimer) {
+			clearTimeout(this.stateUpdateDebounceTimer)
+			this.stateUpdateDebounceTimer = null
+		}
 
 		if (this.view && "dispose" in this.view) {
 			this.view.dispose()
@@ -1602,14 +1610,48 @@ export class ClineProvider
 	}
 
 	async postStateToWebview() {
-		const state = await this.getStateToPostToWebview()
-		this.postMessageToWebview({ type: "state", state })
-
-		// Check MDM compliance and send user to account tab if not compliant
-		// Only redirect if there's an actual MDM policy requiring authentication
-		if (this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance()) {
-			await this.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
+		// Clear existing debounce timer if it exists
+		if (this.stateUpdateDebounceTimer) {
+			clearTimeout(this.stateUpdateDebounceTimer)
+			this.stateUpdateDebounceTimer = null
 		}
+
+		// If we're in soft reload mode, send state immediately without debouncing
+		if (this.isSoftReloading) {
+			const state = await this.getStateToPostToWebview()
+			// Include soft reload flag to prevent UI flickering
+			this.postMessageToWebview({
+				type: "state",
+				state,
+				isSoftReload: this.isSoftReloading,
+			})
+
+			// Check MDM compliance and send user to account tab if not compliant
+			// Only redirect if there's an actual MDM policy requiring authentication
+			if (this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance()) {
+				await this.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
+			}
+			return
+		}
+
+		// Debounce state updates to prevent rapid flickering
+		this.stateUpdateDebounceTimer = setTimeout(async () => {
+			const state = await this.getStateToPostToWebview()
+			// Include soft reload flag to prevent UI flickering
+			this.postMessageToWebview({
+				type: "state",
+				state,
+				isSoftReload: this.isSoftReloading,
+			})
+
+			// Check MDM compliance and send user to account tab if not compliant
+			// Only redirect if there's an actual MDM policy requiring authentication
+			if (this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance()) {
+				await this.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
+			}
+
+			this.stateUpdateDebounceTimer = null
+		}, 50) // 50ms debounce delay
 	}
 
 	/**
@@ -2595,6 +2637,9 @@ export class ClineProvider
 		// Capture the current instance to detect if rehydrate already occurred elsewhere
 		const originalInstanceId = task.instanceId
 
+		// Set soft reload flag to prevent UI flickering
+		this.isSoftReloading = true
+
 		// Begin abort (non-blocking)
 		task.abortTask()
 
@@ -2623,6 +2668,8 @@ export class ClineProvider
 			this.log(
 				`[cancelTask] Skipping rehydrate: current instance ${current.instanceId} != original ${originalInstanceId}`,
 			)
+			// Reset soft reload flag
+			this.isSoftReloading = false
 			return
 		}
 
@@ -2633,12 +2680,20 @@ export class ClineProvider
 				this.log(
 					`[cancelTask] Skipping rehydrate after final check: current instance ${currentAfterCheck.instanceId} != original ${originalInstanceId}`,
 				)
+				// Reset soft reload flag
+				this.isSoftReloading = false
 				return
 			}
 		}
 
 		// Clears task again, so we need to abortTask manually above.
 		await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
+
+		// Reset soft reload flag after task is recreated
+		this.isSoftReloading = false
+
+		// Send a refresh without flickering
+		await this.postStateToWebview()
 	}
 
 	// Clear the current task without treating it as a subtask.

@@ -728,7 +728,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			const trimmedInput = text?.trim()
 
 			if (isStreaming) {
-				vscode.postMessage({ type: "cancelTask" })
+				// Set a flag to indicate soft reload for cancel operation
+				vscode.postMessage({ type: "cancelTask", isSoftReload: true })
 				setDidClickCancel(true)
 				return
 			}
@@ -779,6 +780,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const handleMessage = useCallback(
 		(e: MessageEvent) => {
 			const message: ExtensionMessage = e.data
+
+			// Check for soft reload flag to prevent UI flickering
+			if (message.isSoftReload === true) {
+				// During soft reload, we preserve UI state and skip certain operations
+				// that would cause flickering
+				return
+			}
 
 			switch (message.type) {
 				case "action":
