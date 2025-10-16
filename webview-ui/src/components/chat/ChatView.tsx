@@ -728,8 +728,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			const trimmedInput = text?.trim()
 
 			if (isStreaming) {
-				// Set a flag to indicate soft reload for cancel operation
-				vscode.postMessage({ type: "cancelTask", isSoftReload: true })
+				// Cancel the streaming task
+				vscode.postMessage({ type: "cancelTask" })
 				setDidClickCancel(true)
 				return
 			}
