@@ -58,6 +58,9 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	private currentRequestIsBackground?: boolean
 	// Cutoff sequence for filtering stale events during resume
 	private resumeCutoffSequence?: number
+	// Per-request tracking to prevent stale resume attempts
+	private currentRequestResponseId?: string
+	private currentRequestSequenceNumber?: number
 
 	// Event types handled by the shared event processor to avoid duplication
 	private readonly coreHandledEventTypes = new Set<string>([
@@ -357,12 +360,15 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 		// Annotate if this request uses background mode (used for status chunks)
 		this.currentRequestIsBackground = !!requestBody?.background
+		// Reset per-request tracking to prevent stale values from previous requests
+		this.currentRequestResponseId = undefined
+		this.currentRequestSequenceNumber = undefined
 
 		const canAttemptResume = () =>
 			this.currentRequestIsBackground &&
 			(this.options.openAiNativeBackgroundAutoResume ?? true) &&
-			!!this.lastResponseId &&
-			typeof this.lastSequenceNumber === "number"
+			!!this.currentRequestResponseId &&
+			typeof this.currentRequestSequenceNumber === "number"
 
 		try {
 			// Use the official SDK
@@ -395,8 +401,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				// Stream dropped mid-flight; attempt resume for background requests
 				if (canAttemptResume()) {
 					for await (const chunk of this.attemptResumeOrPoll(
-						this.lastResponseId!,
-						this.lastSequenceNumber!,
+						this.currentRequestResponseId!,
+						this.currentRequestSequenceNumber!,
 						model,
 					)) {
 						yield chunk
@@ -420,8 +426,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				}
 				if (canAttemptResume()) {
 					for await (const chunk of this.attemptResumeOrPoll(
-						this.lastResponseId!,
-						this.lastSequenceNumber!,
+						this.currentRequestResponseId!,
+						this.currentRequestSequenceNumber!,
 						model,
 					)) {
 						yield chunk
@@ -684,6 +690,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 							// Record sequence number for cursor tracking
 							if (typeof parsed?.sequence_number === "number") {
 								this.lastSequenceNumber = parsed.sequence_number
+								// Also track for per-request resume capability
+								this.currentRequestSequenceNumber = parsed.sequence_number
 							}
 
 							// Capture resolved service tier if present
@@ -1384,6 +1392,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		// Record sequence number for cursor tracking
 		if (typeof event?.sequence_number === "number") {
 			this.lastSequenceNumber = event.sequence_number
+			// Also track for per-request resume capability
+			this.currentRequestSequenceNumber = event.sequence_number
 		}
 
 		// Map lifecycle events to status chunks
