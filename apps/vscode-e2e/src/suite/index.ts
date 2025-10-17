@@ -26,15 +26,17 @@ export async function run() {
 			for (const rawLine of content.split("\n")) {
 				const line = rawLine.trim()
 				if (!line || line.startsWith("#")) continue
-				const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/)
-				if (!match) continue
-				const key = match[1]
-				let val = match[2]
+				const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/.exec(line)
+				if (!m) continue
+				const key: string = m[1] ?? ""
+				let val: string = m[2] ?? ""
 				// Strip surrounding quotes if present
 				if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
 					val = val.slice(1, -1)
 				}
-				if (!process.env[key]) process.env[key] = val
+				if (key && !(key in process.env)) {
+					;(process.env as Record<string, string>)[key] = val
+				}
 			}
 		} catch {
 			// ignore env load errors; tests may still pass without API calls
