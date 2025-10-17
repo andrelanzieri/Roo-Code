@@ -235,8 +235,6 @@ suite("Roo Code read_file Tool", function () {
 			// Check that no errors occurred
 			assert.strictEqual(errorOccurred, null, "No errors should have occurred")
 
-			// Note: read_file tool result content is redacted from clineMessages; verify via AI response instead.
-
 			// Also verify the AI mentioned the content in its response
 			const hasContent = messages.some(
 				(m) =>
@@ -335,8 +333,6 @@ suite("Roo Code read_file Tool", function () {
 			// Verify the read_file tool was executed
 			assert.ok(toolExecuted, "The read_file tool should have been executed")
 
-			// Note: read_file tool result content is redacted from clineMessages; verify via AI response instead.
-
 			// Also verify the AI mentioned the correct number of lines
 			const hasLineCount = messages.some(
 				(m) =>
@@ -432,8 +428,6 @@ suite("Roo Code read_file Tool", function () {
 
 			// Verify tool was executed
 			assert.ok(toolExecuted, "The read_file tool should have been executed")
-
-			// Note: read_file tool result content is redacted from clineMessages; verify via AI response instead.
 
 			// Also verify the AI mentioned the specific lines
 			const hasLines = messages.some(
