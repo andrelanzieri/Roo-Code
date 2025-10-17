@@ -119,8 +119,17 @@ const cloudFeatures: Feature[] = [
 import screenshotDark from "/public/heroes/cloud-screen.png"
 
 export default function CloudPage() {
+	const breadcrumbLd = {
+		"@context": "https://schema.org",
+		"@type": "BreadcrumbList",
+		itemListElement: [
+			{ "@type": "ListItem", position: 1, name: "Home", item: SEO.url },
+			{ "@type": "ListItem", position: 2, name: "Cloud", item: `${SEO.url}${PATH}` },
+		],
+	}
 	return (
 		<>
+			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 			<section className="relative flex md:h-[calc(80vh-theme(spacing.12))] items-center overflow-hidden">
 				<AnimatedBackground />
 				<div className="container relative flex items-center h-full z-10 mx-auto px-4 sm:px-6 lg:px-8">

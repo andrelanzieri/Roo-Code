@@ -79,6 +79,20 @@ export function Footer() {
 										</a>
 									</li>
 									<li>
+										<Link
+											href="/cloud"
+											className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">
+											Cloud
+										</Link>
+									</li>
+									<li>
+										<Link
+											href="/pricing"
+											className="text-sm leading-6 text-muted-foreground transition-colors hover:text-foreground">
+											Pricing
+										</Link>
+									</li>
+									<li>
 										<a
 											href={EXTERNAL_LINKS.CHANGELOG}
 											target="_blank"

@@ -35,11 +35,11 @@ export function NavBar({ stars, downloads }: NavBarProps) {
 
 				{/* Desktop Navigation */}
 				<nav className="grow ml-6 hidden text-sm font-medium md:flex md:items-center">
-					<ScrollButton
-						targetId="product"
+					<Link
+						href="/extension"
 						className="text-muted-foreground px-4 py-6 transition-transform duration-200 hover:scale-105 hover:text-foreground max-lg:hidden">
 						Extension
-					</ScrollButton>
+					</Link>
 					<Link
 						href="/cloud"
 						className="text-muted-foreground px-4 py-6 transition-transform duration-200 hover:scale-105 hover:text-foreground">
@@ -141,12 +141,12 @@ export function NavBar({ stars, downloads }: NavBarProps) {
 				<nav className="flex flex-col justify-between h-full pb-16 overflow-y-auto bg-background pointer-events-auto">
 					{/* Main navigation items */}
 					<div className="grow-1 py-4 font-semibold text-lg">
-						<ScrollButton
-							targetId="product"
+						<Link
+							href="/extension"
 							className="block w-full p-5 py-3 text-left text-foreground active:opacity-50"
 							onClick={() => setIsMenuOpen(false)}>
 							Extension
-						</ScrollButton>
+						</Link>
 						<Link
 							href="/cloud"
 							className="block w-full p-5 text-left text-foreground active:opacity-50"

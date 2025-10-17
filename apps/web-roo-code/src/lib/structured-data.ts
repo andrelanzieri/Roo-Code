@@ -47,9 +47,17 @@ interface SoftwareApplication {
 	publisher: { "@id": string }
 }
 
+interface SiteNavigationElement {
+	"@type": "SiteNavigationElement"
+	name: string
+	url: string
+}
+
+type GraphNode = Organization | WebSite | SoftwareApplication | SiteNavigationElement
+
 interface StructuredDataGraph {
 	"@context": "https://schema.org"
-	"@graph": [Organization, WebSite, SoftwareApplication]
+	"@graph": GraphNode[]
 }
 
 /**
@@ -115,9 +123,16 @@ export function getStructuredData(): StructuredDataGraph {
 		publisher: { "@id": orgId },
 	}
 
+	const siteNavigation: SiteNavigationElement[] = [
+		{ "@type": "SiteNavigationElement", name: "Extension", url: `${SEO.url}/extension` },
+		{ "@type": "SiteNavigationElement", name: "Cloud", url: `${SEO.url}/cloud` },
+		{ "@type": "SiteNavigationElement", name: "Docs", url: EXTERNAL_LINKS.DOCUMENTATION },
+		{ "@type": "SiteNavigationElement", name: "Pricing", url: `${SEO.url}/pricing` },
+	]
+
 	return {
 		"@context": "https://schema.org",
-		"@graph": [organization, website, softwareApplication],
+		"@graph": [organization, website, softwareApplication, ...siteNavigation],
 	}
 }
 

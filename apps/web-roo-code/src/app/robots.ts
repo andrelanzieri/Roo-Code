@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
 			userAgent: "*",
 			allow: "/",
 		},
-		sitemap: `${SEO.url}/sitemap.xml`,
+		sitemap: [`${SEO.url}/sitemap.xml`, "https://docs.roocode.com/sitemap.xml"],
 		host: SEO.url,
 	}
 }

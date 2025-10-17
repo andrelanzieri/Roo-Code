@@ -14,6 +14,7 @@ import {
 } from "@/components/homepage"
 import { EXTERNAL_LINKS } from "@/lib/constants"
 import { ArrowRight } from "lucide-react"
+import Link from "next/link"
 import { StructuredData } from "@/components/structured-data"
 
 // Invalidate cache when a request comes in, at most once every hour.
@@ -63,6 +64,19 @@ export default async function Home() {
 										<ArrowRight className="ml-2" />
 									</a>
 								</Button>
+							</div>
+							<div className="text-sm text-muted-foreground text-center md:text-left">
+								<a
+									href={EXTERNAL_LINKS.DOCUMENTATION}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="underline underline-offset-4 hover:text-foreground">
+									Docs
+								</a>
+								<span className="mx-2">•</span>
+								<Link href="/pricing" className="underline underline-offset-4 hover:text-foreground">
+									Pricing
+								</Link>
 							</div>
 							<CompanyLogos />
 						</div>

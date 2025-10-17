@@ -132,9 +132,18 @@ const pricingTiers: PricingTier[] = [
 ]
 
 export default function PricingPage() {
+	const breadcrumbLd = {
+		"@context": "https://schema.org",
+		"@type": "BreadcrumbList",
+		itemListElement: [
+			{ "@type": "ListItem", position: 1, name: "Home", item: SEO.url },
+			{ "@type": "ListItem", position: 2, name: "Pricing", item: `${SEO.url}${PATH}` },
+		],
+	}
 	return (
 		<>
 			<AnimatedBackground />
+			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
 			{/* Hero Section */}
 			<section className="relative overflow-hidden pt-16 pb-12">

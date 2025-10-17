@@ -33,8 +33,17 @@ module.exports = {
     if (path === '/') {
       priority = 1.0;
       changefreq = 'yearly';
-    } else if (path === '/enterprise' || path === '/evals') {
+    } else if (path === '/extension') {
+      priority = 0.9;
+      changefreq = 'monthly';
+    } else if (path === '/cloud' || path === '/pricing') {
       priority = 0.8;
+      changefreq = 'monthly';
+    } else if (path === '/enterprise') {
+      priority = 0.5;
+      changefreq = 'yearly';
+    } else if (path === '/evals') {
+      priority = 0.6;
       changefreq = 'monthly';
     } else if (path === '/privacy' || path === '/terms') {
       priority = 0.5;
@@ -50,24 +59,20 @@ module.exports = {
     };
   },
   additionalPaths: async (config) => {
-    // Add any additional paths that might not be automatically discovered
-    // This is useful for dynamic routes or API-generated pages
-    // Add the /evals page since it's a dynamic route
-    return [{
-      loc: '/evals',
-      changefreq: 'monthly',
-      priority: 0.8,
-      lastmod: new Date().toISOString(),
-    }];
-    
-    // Add the /evals page since it's a dynamic route
-    result.push({
-      loc: '/evals',
-      changefreq: 'monthly',
-      priority: 0.8,
-      lastmod: new Date().toISOString(),
-    });
-    
-    return result;
+    // Explicitly include dynamic or non-file-system paths
+    return [
+      {
+        loc: '/evals',
+        changefreq: 'monthly',
+        priority: 0.6,
+        lastmod: new Date().toISOString(),
+      },
+      {
+        loc: '/extension',
+        changefreq: 'monthly',
+        priority: 0.9,
+        lastmod: new Date().toISOString(),
+      },
+    ];
   },
 };
