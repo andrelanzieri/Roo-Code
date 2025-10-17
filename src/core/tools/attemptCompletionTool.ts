@@ -108,7 +108,7 @@ export async function attemptCompletionTool(
 			}
 
 			// Send offer_pr message if not in PR Creator mode
-			if (cline.mode !== "pr-creator") {
+			if (cline.taskMode !== "pr-creator") {
 				await cline.say("offer_pr", "", undefined, false)
 			} else {
 				// In PR Creator mode, send PR Reviewer upsell after completion

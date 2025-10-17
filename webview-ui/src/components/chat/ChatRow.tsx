@@ -131,7 +131,8 @@ export const ChatRowContent = ({
 }: ChatRowContentProps) => {
 	const { t } = useTranslation()
 
-	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration, cloudApiUrl } = useExtensionState()
+	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration, cloudApiUrl, cloudIsAuthenticated } =
+		useExtensionState()
 	const { info: model } = useSelectedModel(apiConfiguration)
 
 	// Function to switch modes
@@ -1278,6 +1279,10 @@ export const ChatRowContent = ({
 						</>
 					)
 				case "pr_reviewer_upsell":
+					// Only show if user is authenticated to Cloud
+					if (!cloudIsAuthenticated) {
+						return null
+					}
 					return (
 						<div className="ml-6 text-sm mt-2">
 							{t("chat:prReviewerUpsell.message")}{" "}
