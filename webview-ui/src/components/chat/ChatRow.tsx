@@ -75,6 +75,10 @@ interface ChatRowProps {
 	onFollowUpUnmount?: () => void
 	isFollowUpAnswered?: boolean
 	editable?: boolean
+	// External edit controls to avoid losing state during virtualization re-mounts
+	editingTs?: number | null
+	onStartEditing?: (ts: number) => void
+	onCancelEditing?: () => void
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -127,12 +131,15 @@ export const ChatRowContent = ({
 	onBatchFileResponse,
 	isFollowUpAnswered,
 	editable,
+	editingTs,
+	onStartEditing,
+	onCancelEditing,
 }: ChatRowContentProps) => {
 	const { t } = useTranslation()
 
 	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration } = useExtensionState()
 	const { info: model } = useSelectedModel(apiConfiguration)
-	const [isEditing, setIsEditing] = useState(false)
+	const isEditing = (editingTs ?? null) === message.ts
 	const [editedContent, setEditedContent] = useState("")
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
 	const [editImages, setEditImages] = useState<string[]>([])
@@ -170,13 +177,13 @@ export const ChatRowContent = ({
 			// no-op
 		}
 
-		setIsEditing(true)
+		onStartEditing?.(message.ts)
 		setEditedContent(message.text || "")
 		setEditImages(message.images || [])
 		setEditMode(mode || "code")
 		// Edit mode is now handled entirely in the frontend
 		// No need to notify the backend
-	}, [message.text, message.images, mode])
+	}, [message.ts, message.text, message.images, mode, onStartEditing])
 
 	// Ensure the edit textarea is focused and scrolled into view when entering edit mode.
 	// Uses a short delay and a few animation frames to allow virtualization reflow before scrolling.
@@ -256,15 +263,14 @@ export const ChatRowContent = ({
 
 	// Handle cancel edit
 	const handleCancelEdit = useCallback(() => {
-		setIsEditing(false)
+		onCancelEditing?.()
 		setEditedContent(message.text || "")
 		setEditImages(message.images || [])
 		setEditMode(mode || "code")
-	}, [message.text, message.images, mode])
+	}, [message.text, message.images, mode, onCancelEditing])
 
 	// Handle save edit
 	const handleSaveEdit = useCallback(() => {
-		setIsEditing(false)
 		// Send edited message to backend
 		vscode.postMessage({
 			type: "submitEditedMessage",
@@ -272,7 +278,9 @@ export const ChatRowContent = ({
 			editedMessageContent: editedContent,
 			images: editImages,
 		})
-	}, [message.ts, editedContent, editImages])
+		// Exit edit mode
+		onCancelEditing?.()
+	}, [message.ts, editedContent, editImages, onCancelEditing])
 
 	// Handle image selection for editing
 	const handleSelectImages = useCallback(() => {
