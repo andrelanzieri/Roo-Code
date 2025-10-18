@@ -137,6 +137,7 @@ export const ChatRowContent = ({
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
 	const [editImages, setEditImages] = useState<string[]>([])
 	const editAreaRef = useRef<HTMLDivElement>(null)
+	const editTextAreaRef = useRef<HTMLTextAreaElement>(null)
 
 	// Handle message events for image selection during edit mode
 	useEffect(() => {
@@ -166,14 +167,25 @@ export const ChatRowContent = ({
 		// No need to notify the backend
 	}, [message.text, message.images, mode])
 
-	// Scroll to edit area when entering edit mode
+	// Scroll and focus edit textarea when entering edit mode
 	useEffect(() => {
 		if (!isEditing) return
 
 		let cancelled = false
 		const timeoutId = window.setTimeout(() => {
 			if (cancelled) return
-			editAreaRef.current?.scrollIntoView({
+			const targetEl = editTextAreaRef.current ?? editAreaRef.current
+
+			// Focus first to ensure caret is visible; preventScroll avoids double-jump
+			if (editTextAreaRef.current) {
+				try {
+					;(editTextAreaRef.current as any).focus({ preventScroll: true })
+				} catch {
+					editTextAreaRef.current.focus()
+				}
+			}
+
+			targetEl?.scrollIntoView({
 				behavior: "smooth",
 				block: "center",
 				inline: "nearest",
@@ -1141,6 +1153,7 @@ export const ChatRowContent = ({
 								{isEditing ? (
 									<div className="flex flex-col gap-2">
 										<ChatTextArea
+											ref={editTextAreaRef}
 											inputValue={editedContent}
 											setInputValue={setEditedContent}
 											sendingDisabled={false}
