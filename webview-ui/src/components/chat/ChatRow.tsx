@@ -185,6 +185,15 @@ export const ChatRowContent = ({
 		// No need to notify the backend
 	}, [message.ts, message.text, message.images, mode, onStartEditing])
 
+	// Ensure edit fields are initialized when entering edit mode (including after virtualization re-mounts)
+	useEffect(() => {
+		if (!isEditing) return
+		// Only initialize if user hasn't typed yet / images not selected
+		setEditedContent((prev) => (prev !== "" ? prev : message.text || ""))
+		setEditImages((prev) => (prev.length > 0 ? prev : message.images || []))
+		setEditMode((prev) => prev || mode || "code")
+	}, [isEditing, message.text, message.images, mode])
+
 	// Ensure the edit textarea is focused and scrolled into view when entering edit mode.
 	// Uses a short delay and a few animation frames to allow virtualization reflow before scrolling.
 	useEffect(() => {
