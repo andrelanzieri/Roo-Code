@@ -168,14 +168,21 @@ export const ChatRowContent = ({
 
 	// Scroll to edit area when entering edit mode
 	useEffect(() => {
-		if (isEditing && editAreaRef.current) {
-			// Use a small delay to ensure the DOM has updated
-			setTimeout(() => {
-				editAreaRef.current?.scrollIntoView({
-					behavior: "smooth",
-					block: "center",
-				})
-			}, 100)
+		if (!isEditing) return
+
+		let cancelled = false
+		const timeoutId = window.setTimeout(() => {
+			if (cancelled) return
+			editAreaRef.current?.scrollIntoView({
+				behavior: "smooth",
+				block: "center",
+				inline: "nearest",
+			})
+		}, 100)
+
+		return () => {
+			cancelled = true
+			window.clearTimeout(timeoutId)
 		}
 	}, [isEditing])
 
