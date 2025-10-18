@@ -166,13 +166,29 @@ export const ChatRowContent = ({
 
 	// Handle edit button click
 	const handleEditClick = useCallback(() => {
-		// Pre-scroll the bubble container into view so the textarea can mount fully
+		// Pre-scroll the bubble container into view so the textarea can mount fully.
+		// Use center to give Virtuoso more room to render around the target.
 		try {
-			editAreaRef.current?.scrollIntoView({
-				behavior: "auto",
-				block: "nearest",
-				inline: "nearest",
-			})
+			const el = editAreaRef.current
+			if (el) {
+				el.scrollIntoView({
+					behavior: "auto",
+					block: "center",
+					inline: "nearest",
+				})
+				// Safety re-center on the next frame in case virtualization/layout shifts after state updates.
+				requestAnimationFrame(() => {
+					try {
+						el.scrollIntoView({
+							behavior: "auto",
+							block: "center",
+							inline: "nearest",
+						})
+					} catch {
+						// no-op
+					}
+				})
+			}
 		} catch {
 			// no-op
 		}
@@ -195,7 +211,7 @@ export const ChatRowContent = ({
 	}, [isEditing, message.text, message.images, mode])
 
 	// Ensure the edit textarea is focused and scrolled into view when entering edit mode.
-	// Uses a short delay and a few animation frames to allow virtualization reflow before scrolling.
+	// Uses a short delay and repeated frames to allow virtualization reflow before scrolling.
 	useEffect(() => {
 		if (!isEditing) return
 
@@ -205,8 +221,7 @@ export const ChatRowContent = ({
 		const getScrollContainer = (el: HTMLElement | null): HTMLElement | null => {
 			if (!el) return null
 			// ChatView sets the Virtuoso scroller with class "scrollable"
-			const scroller = el.closest(".scrollable") as HTMLElement | null
-			return scroller
+			return el.closest(".scrollable") as HTMLElement | null
 		}
 
 		const isFullyVisible = (el: HTMLElement): boolean => {
@@ -220,6 +235,22 @@ export const ChatRowContent = ({
 			return topVisible && bottomVisible
 		}
 
+		const centerInScroller = (el: HTMLElement) => {
+			const scroller = getScrollContainer(el)
+			if (!scroller) {
+				// Fallback to element's own scroll logic
+				el.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" })
+				return
+			}
+			const rect = el.getBoundingClientRect()
+			const containerRect = scroller.getBoundingClientRect()
+			const elCenter = rect.top + rect.height / 2
+			const containerCenter = containerRect.top + containerRect.height / 2
+			const delta = elCenter - containerCenter
+			// Adjust scrollTop by the delta between element center and container center
+			scroller.scrollTop += delta
+		}
+
 		const focusTextarea = () => {
 			if (editTextAreaRef.current) {
 				try {
@@ -231,23 +262,35 @@ export const ChatRowContent = ({
 		}
 
 		let attempts = 0
-		const maxAttempts = 10
+		const maxAttempts = 20 // a bit more robust across topic switches
 
 		const step = () => {
 			if (cancelled) return
 			attempts += 1
 
-			const targetEl = (editTextAreaRef.current as HTMLTextAreaElement | null) ?? editAreaRef.current
+			const targetEl =
+				(editTextAreaRef.current as HTMLTextAreaElement | null) ?? (editAreaRef.current as HTMLElement | null)
 
 			// Focus first so caret is visible; preventScroll avoids double-jump
 			focusTextarea()
 
-			if (targetEl && !isFullyVisible(targetEl)) {
-				targetEl.scrollIntoView({
-					behavior: "smooth",
-					block: "center",
-					inline: "nearest",
-				})
+			if (targetEl) {
+				if (!isFullyVisible(targetEl)) {
+					// Prefer centering within the Virtuoso scroller; fallback to native scrollIntoView
+					try {
+						centerInScroller(targetEl)
+					} catch {
+						try {
+							targetEl.scrollIntoView({
+								behavior: "auto",
+								block: "center",
+								inline: "nearest",
+							})
+						} catch {
+							// no-op
+						}
+					}
+				}
 			}
 
 			// Continue for a few frames to account for virtualization/layout reflows
@@ -256,12 +299,12 @@ export const ChatRowContent = ({
 			}
 		}
 
-		// Defer until after the textarea has mounted
+		// Defer until after the textarea has mounted and Virtuoso has had a moment to lay out
 		const timeoutId = window.setTimeout(() => {
 			if (!cancelled) {
 				step()
 			}
-		}, 50)
+		}, 80)
 
 		return () => {
 			cancelled = true
