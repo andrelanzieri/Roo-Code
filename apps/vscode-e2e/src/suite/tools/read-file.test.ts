@@ -178,7 +178,7 @@ suite("Roo Code read_file Tool", function () {
 									resultMatch = requestData.request.match(/Result:\s*\n([\s\S]+?)(?:\n\n|$)/)
 								}
 								if (resultMatch) {
-									toolResult = resultMatch[1]
+									toolResult = resultMatch[1] || null
 									console.log("Extracted tool result:", toolResult)
 								} else {
 									console.log("Could not extract tool result from request")
