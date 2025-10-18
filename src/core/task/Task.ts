@@ -847,6 +847,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						.sendNotification({
 							timestamp: Date.now(),
 							type: notificationType,
+							title: "Approval Required",
 							message: notificationMessage,
 							taskId: this.taskId,
 							metadata: {
