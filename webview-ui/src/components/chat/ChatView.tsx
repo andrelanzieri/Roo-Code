@@ -1384,7 +1384,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	const handleRowHeightChange = useCallback(
 		(isTaller: boolean) => {
-			if (!disableAutoScrollRef.current) {
+			// Only auto-scroll when user is already at the bottom.
+			// This prevents editing a historical message from forcing the list to jump to the bottom.
+			if (!disableAutoScrollRef.current && isAtBottom) {
 				if (isTaller) {
 					scrollToBottomSmooth()
 				} else {
@@ -1392,7 +1394,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				}
 			}
 		},
-		[scrollToBottomSmooth, scrollToBottomAuto],
+		[scrollToBottomSmooth, scrollToBottomAuto, isAtBottom],
 	)
 
 	useEffect(() => {

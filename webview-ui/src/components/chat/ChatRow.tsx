@@ -1164,9 +1164,11 @@ export const ChatRowContent = ({
 											className="flex-grow px-2 py-1 wrap-anywhere rounded-lg transition-colors"
 											onClick={(e) => {
 												e.stopPropagation()
-												if (!isStreaming) {
-													handleEditClick()
+												// Allow editing historical messages even while streaming; only block when this is the last message and streaming
+												if (isStreaming && isLast) {
+													return
 												}
+												handleEditClick()
 											}}
 											title={t("chat:queuedMessages.clickToEdit")}>
 											<Mention text={message.text} withShadow />
@@ -1174,7 +1176,7 @@ export const ChatRowContent = ({
 										<div className="flex gap-2 pr-1">
 											<div
 												className="cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-												style={{ visibility: isStreaming ? "hidden" : "visible" }}
+												style={{ visibility: isStreaming && isLast ? "hidden" : "visible" }}
 												onClick={(e) => {
 													e.stopPropagation()
 													handleEditClick()
