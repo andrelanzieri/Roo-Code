@@ -159,6 +159,17 @@ export const ChatRowContent = ({
 
 	// Handle edit button click
 	const handleEditClick = useCallback(() => {
+		// Pre-scroll the bubble container into view so the textarea can mount fully
+		try {
+			editAreaRef.current?.scrollIntoView({
+				behavior: "auto",
+				block: "nearest",
+				inline: "nearest",
+			})
+		} catch {
+			// no-op
+		}
+
 		setIsEditing(true)
 		setEditedContent(message.text || "")
 		setEditImages(message.images || [])
@@ -167,16 +178,33 @@ export const ChatRowContent = ({
 		// No need to notify the backend
 	}, [message.text, message.images, mode])
 
-	// Scroll and focus edit textarea when entering edit mode
+	// Ensure the edit textarea is focused and scrolled into view when entering edit mode.
+	// Uses a short delay and a few animation frames to allow virtualization reflow before scrolling.
 	useEffect(() => {
 		if (!isEditing) return
 
 		let cancelled = false
-		const timeoutId = window.setTimeout(() => {
-			if (cancelled) return
-			const targetEl = editTextAreaRef.current ?? editAreaRef.current
+		let rafId = 0
 
-			// Focus first to ensure caret is visible; preventScroll avoids double-jump
+		const getScrollContainer = (el: HTMLElement | null): HTMLElement | null => {
+			if (!el) return null
+			// ChatView sets the Virtuoso scroller with class "scrollable"
+			const scroller = el.closest(".scrollable") as HTMLElement | null
+			return scroller
+		}
+
+		const isFullyVisible = (el: HTMLElement): boolean => {
+			const scroller = getScrollContainer(el)
+			const rect = el.getBoundingClientRect()
+			const containerRect = scroller
+				? scroller.getBoundingClientRect()
+				: ({ top: 0, bottom: window.innerHeight } as DOMRect | any)
+			const topVisible = rect.top >= containerRect.top + 8
+			const bottomVisible = rect.bottom <= containerRect.bottom - 8
+			return topVisible && bottomVisible
+		}
+
+		const focusTextarea = () => {
 			if (editTextAreaRef.current) {
 				try {
 					;(editTextAreaRef.current as any).focus({ preventScroll: true })
@@ -184,17 +212,45 @@ export const ChatRowContent = ({
 					editTextAreaRef.current.focus()
 				}
 			}
+		}
 
-			targetEl?.scrollIntoView({
-				behavior: "smooth",
-				block: "center",
-				inline: "nearest",
-			})
-		}, 100)
+		let attempts = 0
+		const maxAttempts = 10
+
+		const step = () => {
+			if (cancelled) return
+			attempts += 1
+
+			const targetEl = (editTextAreaRef.current as HTMLTextAreaElement | null) ?? editAreaRef.current
+
+			// Focus first so caret is visible; preventScroll avoids double-jump
+			focusTextarea()
+
+			if (targetEl && !isFullyVisible(targetEl)) {
+				targetEl.scrollIntoView({
+					behavior: "smooth",
+					block: "center",
+					inline: "nearest",
+				})
+			}
+
+			// Continue for a few frames to account for virtualization/layout reflows
+			if (!cancelled && attempts < maxAttempts) {
+				rafId = requestAnimationFrame(step)
+			}
+		}
+
+		// Defer until after the textarea has mounted
+		const timeoutId = window.setTimeout(() => {
+			if (!cancelled) {
+				step()
+			}
+		}, 50)
 
 		return () => {
 			cancelled = true
 			window.clearTimeout(timeoutId)
+			if (rafId) cancelAnimationFrame(rafId)
 		}
 	}, [isEditing])
 
