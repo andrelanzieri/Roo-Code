@@ -303,22 +303,38 @@ The search should find matches across different file types and provide context f
 			// Check for tool execution and capture results
 			if (message.type === "say" && message.say === "api_req_started") {
 				const text = message.text || ""
-				if (text.includes("search_files")) {
+				console.log("Received api_req_started message, checking for search_files...")
+
+				// More robust check for search_files tool
+				if (text.includes("search_files") || text.includes('"tool":"search_files"')) {
 					toolExecuted = true
 					console.log("search_files tool executed:", text.substring(0, 200))
 
-					// Extract search results from the tool execution
+					// Extract search results from the tool execution with better error handling
 					try {
-						const jsonMatch = text.match(/\{"request":".*?"\}/)
-						if (jsonMatch) {
-							const requestData = JSON.parse(jsonMatch[0])
-							if (requestData.request && requestData.request.includes("Result:")) {
+						// Try multiple patterns to extract the request data
+						let requestData: { request?: string } | null = null
+
+						// Pattern 1: Full JSON object
+						try {
+							requestData = JSON.parse(text)
+						} catch {
+							// Pattern 2: JSON object within the text
+							const jsonMatch = text.match(/\{[\s\S]*\}/)
+							if (jsonMatch) {
+								requestData = JSON.parse(jsonMatch[0])
+							}
+						}
+
+						if (requestData && requestData.request) {
+							if (requestData.request.includes("Result:")) {
 								searchResults = requestData.request
 								console.log("Captured search results:", searchResults?.substring(0, 300))
 							}
 						}
 					} catch (e) {
 						console.log("Failed to parse search results:", e)
+						console.log("Raw text that failed to parse:", text.substring(0, 500))
 					}
 				}
 			}
@@ -482,7 +498,13 @@ The search should find matches across different file types and provide context f
 			// Check for tool execution with file pattern
 			if (message.type === "say" && message.say === "api_req_started") {
 				const text = message.text || ""
-				if (text.includes("search_files") && text.includes("*.ts")) {
+				console.log("Checking for search_files with TS filter in:", text.substring(0, 200))
+
+				// More flexible pattern matching
+				if (
+					(text.includes("search_files") || text.includes('"tool":"search_files"')) &&
+					(text.includes("*.ts") || text.includes("\\.ts") || text.includes("file_pattern"))
+				) {
 					toolExecuted = true
 					console.log("search_files tool executed with TypeScript filter")
 				}

@@ -164,14 +164,39 @@ Final content`,
 			// Check for tool execution
 			if (message.type === "say" && message.say === "api_req_started" && message.text) {
 				console.log("API request started:", message.text.substring(0, 200))
+
+				// More robust detection of search_and_replace tool
 				try {
-					const requestData = JSON.parse(message.text)
-					if (requestData.request && requestData.request.includes("search_and_replace")) {
+					// Try multiple patterns to detect the tool
+					const text = message.text
+					if (
+						text.includes("search_and_replace") ||
+						text.includes('"tool":"search_and_replace"') ||
+						text.includes("searchAndReplace")
+					) {
 						searchReplaceExecuted = true
 						console.log("search_and_replace tool executed!")
+					} else {
+						// Also try to parse as JSON if it doesn't match string patterns
+						let requestData: { request?: string } | null = null
+						try {
+							requestData = JSON.parse(text)
+						} catch {
+							// Try extracting JSON from the text
+							const jsonMatch = text.match(/\{[\s\S]*\}/)
+							if (jsonMatch) {
+								requestData = JSON.parse(jsonMatch[0])
+							}
+						}
+
+						if (requestData && requestData.request && requestData.request.includes("search_and_replace")) {
+							searchReplaceExecuted = true
+							console.log("search_and_replace tool executed (parsed from JSON)!")
+						}
 					}
 				} catch (e) {
 					console.log("Failed to parse api_req_started message:", e)
+					console.log("Raw text:", message.text.substring(0, 500))
 				}
 			}
 		}

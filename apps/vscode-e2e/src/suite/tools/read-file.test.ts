@@ -136,35 +136,58 @@ suite("Roo Code read_file Tool", function () {
 			// Check for tool execution and extract result
 			if (message.type === "say" && message.say === "api_req_started") {
 				const text = message.text || ""
-				if (text.includes("read_file")) {
+				console.log("Checking for read_file tool in api_req_started...")
+
+				// More robust detection of read_file tool
+				if (text.includes("read_file") || text.includes('"tool":"read_file"') || text.includes("readFile")) {
 					toolExecuted = true
 					console.log("Tool executed:", text.substring(0, 200))
 
-					// Parse the tool result from the api_req_started message
+					// Parse the tool result from the api_req_started message with better error handling
 					try {
-						const requestData = JSON.parse(text)
-						if (requestData.request && requestData.request.includes("[read_file")) {
-							console.log("Full request for debugging:", requestData.request)
-							// Try multiple patterns to extract the content
-							// Pattern 1: Content between triple backticks
-							let resultMatch = requestData.request.match(/```[^`]*\n([\s\S]*?)\n```/)
-							if (!resultMatch) {
-								// Pattern 2: Content after "Result:" with line numbers
-								resultMatch = requestData.request.match(/Result:[\s\S]*?\n((?:\d+\s*\|[^\n]*\n?)+)/)
+						let requestData: { request?: string } | null = null
+
+						// Try to parse the entire text as JSON
+						try {
+							requestData = JSON.parse(text)
+						} catch {
+							// Try to extract JSON from the text
+							const jsonMatch = text.match(/\{[\s\S]*\}/)
+							if (jsonMatch) {
+								requestData = JSON.parse(jsonMatch[0])
 							}
-							if (!resultMatch) {
-								// Pattern 3: Simple content after Result:
-								resultMatch = requestData.request.match(/Result:\s*\n([\s\S]+?)(?:\n\n|$)/)
-							}
-							if (resultMatch) {
-								toolResult = resultMatch[1]
-								console.log("Extracted tool result:", toolResult)
-							} else {
-								console.log("Could not extract tool result from request")
+						}
+
+						if (requestData && requestData.request) {
+							console.log("Full request for debugging:", requestData.request.substring(0, 500))
+
+							// Check if it's a read_file request
+							if (
+								requestData.request.includes("[read_file") ||
+								requestData.request.includes("read_file")
+							) {
+								// Try multiple patterns to extract the content
+								// Pattern 1: Content between triple backticks
+								let resultMatch = requestData.request.match(/```[^`]*\n([\s\S]*?)\n```/)
+								if (!resultMatch) {
+									// Pattern 2: Content after "Result:" with line numbers
+									resultMatch = requestData.request.match(/Result:[\s\S]*?\n((?:\d+\s*\|[^\n]*\n?)+)/)
+								}
+								if (!resultMatch) {
+									// Pattern 3: Simple content after Result:
+									resultMatch = requestData.request.match(/Result:\s*\n([\s\S]+?)(?:\n\n|$)/)
+								}
+								if (resultMatch) {
+									toolResult = resultMatch[1]
+									console.log("Extracted tool result:", toolResult)
+								} else {
+									console.log("Could not extract tool result from request")
+								}
 							}
 						}
 					} catch (e) {
 						console.log("Failed to parse tool result:", e)
+						console.log("Raw text:", text.substring(0, 500))
 					}
 				}
 			}

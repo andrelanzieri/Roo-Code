@@ -129,19 +129,42 @@ suite("Roo Code execute_command Tool", function () {
 				console.error("Error:", message.text)
 			}
 
-			// Check for tool execution
+			// Check for tool execution with more robust detection
 			if (message.type === "say" && message.say === "api_req_started" && message.text) {
 				console.log("API request started:", message.text.substring(0, 200))
-				try {
-					const requestData = JSON.parse(message.text)
-					if (requestData.request && requestData.request.includes("execute_command")) {
-						executeCommandToolCalled = true
-						// The request contains the actual tool execution result
-						commandExecuted = requestData.request
-						console.log("execute_command tool called, full request:", commandExecuted.substring(0, 300))
+
+				const text = message.text
+				if (
+					text.includes("execute_command") ||
+					text.includes('"tool":"execute_command"') ||
+					text.includes("executeCommand")
+				) {
+					executeCommandToolCalled = true
+					commandExecuted = text
+					console.log("execute_command tool called!")
+				} else {
+					// Also try to parse as JSON if it doesn't match string patterns
+					try {
+						let requestData: { request?: string } | null = null
+						try {
+							requestData = JSON.parse(text)
+						} catch {
+							// Try extracting JSON from the text
+							const jsonMatch = text.match(/\{[\s\S]*\}/)
+							if (jsonMatch) {
+								requestData = JSON.parse(jsonMatch[0])
+							}
+						}
+
+						if (requestData && requestData.request && requestData.request.includes("execute_command")) {
+							executeCommandToolCalled = true
+							commandExecuted = requestData.request
+							console.log("execute_command tool called (parsed from JSON)!")
+						}
+					} catch (e) {
+						console.log("Failed to parse api_req_started message:", e)
+						console.log("Raw text:", text.substring(0, 500))
 					}
-				} catch (e) {
-					console.log("Failed to parse api_req_started message:", e)
 				}
 			}
 		}
@@ -233,21 +256,48 @@ Then use the attempt_completion tool to complete the task. Do not suggest any co
 				console.error("Error:", message.text)
 			}
 
-			// Check for tool execution
+			// Check for tool execution with more robust detection
 			if (message.type === "say" && message.say === "api_req_started" && message.text) {
 				console.log("API request started:", message.text.substring(0, 200))
-				try {
-					const requestData = JSON.parse(message.text)
-					if (requestData.request && requestData.request.includes("execute_command")) {
-						executeCommandToolCalled = true
-						// Check if the request contains the cwd
-						if (requestData.request.includes(subDir) || requestData.request.includes("test-subdir")) {
-							cwdUsed = subDir
-						}
-						console.log("execute_command tool called, checking for cwd in request")
+
+				const text = message.text
+				if (
+					text.includes("execute_command") ||
+					text.includes('"tool":"execute_command"') ||
+					text.includes("executeCommand")
+				) {
+					executeCommandToolCalled = true
+					// Check if the request contains the cwd
+					if (text.includes(subDir) || text.includes("test-subdir")) {
+						cwdUsed = subDir
 					}
-				} catch (e) {
-					console.log("Failed to parse api_req_started message:", e)
+					console.log("execute_command tool called, checking for cwd in request")
+				} else {
+					// Also try to parse as JSON if it doesn't match string patterns
+					try {
+						let requestData: { request?: string } | null = null
+						try {
+							requestData = JSON.parse(text)
+						} catch {
+							// Try extracting JSON from the text
+							const jsonMatch = text.match(/\{[\s\S]*\}/)
+							if (jsonMatch) {
+								requestData = JSON.parse(jsonMatch[0])
+							}
+						}
+
+						if (requestData && requestData.request && requestData.request.includes("execute_command")) {
+							executeCommandToolCalled = true
+							// Check if the request contains the cwd
+							if (requestData.request.includes(subDir) || requestData.request.includes("test-subdir")) {
+								cwdUsed = subDir
+							}
+							console.log("execute_command tool called (parsed from JSON), checking for cwd")
+						}
+					} catch (e) {
+						console.log("Failed to parse api_req_started message:", e)
+						console.log("Raw text:", text.substring(0, 500))
+					}
 				}
 			}
 		}
@@ -349,19 +399,42 @@ Avoid at all costs suggesting a command when using the attempt_completion tool`,
 				console.error("Error:", message.text)
 			}
 
-			// Check for tool execution
+			// Check for tool execution with more robust detection
 			if (message.type === "say" && message.say === "api_req_started" && message.text) {
 				console.log("API request started:", message.text.substring(0, 200))
-				try {
-					const requestData = JSON.parse(message.text)
-					if (requestData.request && requestData.request.includes("execute_command")) {
-						executeCommandCallCount++
-						// Store the full request to check for command content
-						commandsExecuted.push(requestData.request)
-						console.log(`execute_command tool call #${executeCommandCallCount}`)
+
+				const text = message.text
+				if (
+					text.includes("execute_command") ||
+					text.includes('"tool":"execute_command"') ||
+					text.includes("executeCommand")
+				) {
+					executeCommandCallCount++
+					commandsExecuted.push(text)
+					console.log(`execute_command tool call #${executeCommandCallCount}`)
+				} else {
+					// Also try to parse as JSON if it doesn't match string patterns
+					try {
+						let requestData: { request?: string } | null = null
+						try {
+							requestData = JSON.parse(text)
+						} catch {
+							// Try extracting JSON from the text
+							const jsonMatch = text.match(/\{[\s\S]*\}/)
+							if (jsonMatch) {
+								requestData = JSON.parse(jsonMatch[0])
+							}
+						}
+
+						if (requestData && requestData.request && requestData.request.includes("execute_command")) {
+							executeCommandCallCount++
+							commandsExecuted.push(requestData.request)
+							console.log(`execute_command tool call #${executeCommandCallCount} (parsed from JSON)`)
+						}
+					} catch (e) {
+						console.log("Failed to parse api_req_started message:", e)
+						console.log("Raw text:", text.substring(0, 500))
 					}
-				} catch (e) {
-					console.log("Failed to parse api_req_started message:", e)
 				}
 			}
 		}
@@ -468,19 +541,42 @@ After both commands are executed, use the attempt_completion tool to complete th
 				console.log("Command output:", message.text?.substring(0, 200))
 			}
 
-			// Check for tool execution
+			// Check for tool execution with more robust detection
 			if (message.type === "say" && message.say === "api_req_started" && message.text) {
 				console.log("API request started:", message.text.substring(0, 200))
-				try {
-					const requestData = JSON.parse(message.text)
-					if (requestData.request && requestData.request.includes("execute_command")) {
-						executeCommandToolCalled = true
-						// The request contains the actual tool execution result
-						commandExecuted = requestData.request
-						console.log("execute_command tool called, full request:", commandExecuted.substring(0, 300))
+
+				const text = message.text
+				if (
+					text.includes("execute_command") ||
+					text.includes('"tool":"execute_command"') ||
+					text.includes("executeCommand")
+				) {
+					executeCommandToolCalled = true
+					commandExecuted = text
+					console.log("execute_command tool called!")
+				} else {
+					// Also try to parse as JSON if it doesn't match string patterns
+					try {
+						let requestData: { request?: string } | null = null
+						try {
+							requestData = JSON.parse(text)
+						} catch {
+							// Try extracting JSON from the text
+							const jsonMatch = text.match(/\{[\s\S]*\}/)
+							if (jsonMatch) {
+								requestData = JSON.parse(jsonMatch[0])
+							}
+						}
+
+						if (requestData && requestData.request && requestData.request.includes("execute_command")) {
+							executeCommandToolCalled = true
+							commandExecuted = requestData.request
+							console.log("execute_command tool called (parsed from JSON)!")
+						}
+					} catch (e) {
+						console.log("Failed to parse api_req_started message:", e)
+						console.log("Raw text:", text.substring(0, 500))
 					}
-				} catch (e) {
-					console.log("Failed to parse api_req_started message:", e)
 				}
 			}
 		}

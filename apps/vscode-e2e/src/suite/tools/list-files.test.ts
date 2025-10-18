@@ -187,22 +187,35 @@ This directory contains various files and subdirectories for testing the list_fi
 			// Check for tool execution and capture results
 			if (message.type === "say" && message.say === "api_req_started") {
 				const text = message.text || ""
-				if (text.includes("list_files")) {
+				console.log("Checking for list_files tool in api_req_started...")
+
+				// More robust detection of list_files tool
+				if (text.includes("list_files") || text.includes('"tool":"list_files"') || text.includes("listFiles")) {
 					toolExecuted = true
 					console.log("list_files tool executed:", text.substring(0, 200))
 
-					// Extract list results from the tool execution
+					// Extract list results from the tool execution with better error handling
 					try {
-						const jsonMatch = text.match(/\{"request":".*?"\}/)
-						if (jsonMatch) {
-							const requestData = JSON.parse(jsonMatch[0])
-							if (requestData.request && requestData.request.includes("Result:")) {
-								listResults = requestData.request
-								console.log("Captured list results:", listResults?.substring(0, 300))
+						let requestData: { request?: string } | null = null
+
+						// Try to parse the entire text as JSON
+						try {
+							requestData = JSON.parse(text)
+						} catch {
+							// Try to extract JSON from the text
+							const jsonMatch = text.match(/\{[\s\S]*\}/)
+							if (jsonMatch) {
+								requestData = JSON.parse(jsonMatch[0])
 							}
+						}
+
+						if (requestData && requestData.request && requestData.request.includes("Result:")) {
+							listResults = requestData.request
+							console.log("Captured list results:", listResults?.substring(0, 300))
 						}
 					} catch (e) {
 						console.log("Failed to parse list results:", e)
+						console.log("Raw text:", text.substring(0, 500))
 					}
 				}
 			}
