@@ -30,6 +30,7 @@
 		"terminal": "Terminal",
 		"slashCommands": "Slash Commands",
 		"prompts": "Prompts",
+		"privacy": "Privacy",
 		"ui": "UI",
 		"experimental": "Experimental",
 		"language": "Language",
@@ -42,6 +43,17 @@
 		"collapseThinking": {
 			"label": "Collapse Thinking messages by default",
 			"description": "When enabled, thinking blocks will be collapsed by default until you interact with them"
+		}
+	},
+	"privacy": {
+		"includeCurrentTime": {
+			"label": "Include current time in context",
+			"description": "When enabled, the current time will be included in the context sent to AI providers. This helps the AI understand temporal context but may reveal your time zone."
+		},
+		"includeTimezone": {
+			"label": "Include timezone information",
+			"description": "When enabled, your timezone information will be included along with the current time. This provides more accurate temporal context but reveals your geographic location.",
+			"disabled": "Timezone can only be included when current time is enabled."
 		}
 	},
 	"prompts": {

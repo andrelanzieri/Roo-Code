@@ -173,6 +173,10 @@ const baseProviderSettingsSchema = z.object({
 	rateLimitSeconds: z.number().optional(),
 	consecutiveMistakeLimit: z.number().min(0).optional(),
 
+	// Privacy settings
+	includeCurrentTime: z.boolean().optional(),
+	includeTimezone: z.boolean().optional(),
+
 	// Model reasoning.
 	enableReasoningEffort: z.boolean().optional(),
 	reasoningEffort: reasoningEffortWithMinimalSchema.optional(),

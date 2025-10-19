@@ -190,15 +190,24 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		details += terminalDetails
 	}
 
-	// Add current time information with timezone.
-	const now = new Date()
+	// Add current time information with timezone (respecting privacy settings).
+	// Default to true for backward compatibility
+	const includeCurrentTime = state?.apiConfiguration?.includeCurrentTime ?? true
+	const includeTimezone = state?.apiConfiguration?.includeTimezone ?? true
 
-	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
-	const timeZoneOffset = -now.getTimezoneOffset() / 60 // Convert to hours and invert sign to match conventional notation
-	const timeZoneOffsetHours = Math.floor(Math.abs(timeZoneOffset))
-	const timeZoneOffsetMinutes = Math.abs(Math.round((Math.abs(timeZoneOffset) - timeZoneOffsetHours) * 60))
-	const timeZoneOffsetStr = `${timeZoneOffset >= 0 ? "+" : "-"}${timeZoneOffsetHours}:${timeZoneOffsetMinutes.toString().padStart(2, "0")}`
-	details += `\n\n# Current Time\nCurrent time in ISO 8601 UTC format: ${now.toISOString()}\nUser time zone: ${timeZone}, UTC${timeZoneOffsetStr}`
+	if (includeCurrentTime) {
+		const now = new Date()
+		details += `\n\n# Current Time\nCurrent time in ISO 8601 UTC format: ${now.toISOString()}`
+
+		if (includeTimezone) {
+			const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+			const timeZoneOffset = -now.getTimezoneOffset() / 60 // Convert to hours and invert sign to match conventional notation
+			const timeZoneOffsetHours = Math.floor(Math.abs(timeZoneOffset))
+			const timeZoneOffsetMinutes = Math.abs(Math.round((Math.abs(timeZoneOffset) - timeZoneOffsetHours) * 60))
+			const timeZoneOffsetStr = `${timeZoneOffset >= 0 ? "+" : "-"}${timeZoneOffsetHours}:${timeZoneOffsetMinutes.toString().padStart(2, "0")}`
+			details += `\nUser time zone: ${timeZone}, UTC${timeZoneOffsetStr}`
+		}
+	}
 
 	// Add context tokens information.
 	const { contextTokens, totalCost } = getApiMetrics(cline.clineMessages)

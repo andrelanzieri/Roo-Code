@@ -25,6 +25,7 @@ import {
 	LucideIcon,
 	SquareSlash,
 	Glasses,
+	Shield,
 } from "lucide-react"
 
 import type { ProviderSettings, ExperimentId, TelemetrySetting } from "@roo-code/types"
@@ -68,6 +69,7 @@ import { Section } from "./Section"
 import PromptsSettings from "./PromptsSettings"
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { UISettings } from "./UISettings"
+import { PrivacySettings } from "./PrivacySettings"
 
 export const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
 export const settingsTabList =
@@ -90,6 +92,7 @@ const sectionNames = [
 	"contextManagement",
 	"terminal",
 	"prompts",
+	"privacy",
 	"ui",
 	"experimental",
 	"language",
@@ -478,6 +481,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "contextManagement", icon: Database },
 			{ id: "terminal", icon: SquareTerminal },
 			{ id: "prompts", icon: MessageSquare },
+			{ id: "privacy", icon: Shield },
 			{ id: "ui", icon: Glasses },
 			{ id: "experimental", icon: FlaskConical },
 			{ id: "language", icon: Globe },
@@ -775,6 +779,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							setIncludeTaskHistoryInEnhance={(value) =>
 								setCachedStateField("includeTaskHistoryInEnhance", value)
 							}
+						/>
+					)}
+
+					{/* Privacy Section */}
+					{activeTab === "privacy" && (
+						<PrivacySettings
+							includeCurrentTime={apiConfiguration?.includeCurrentTime ?? true}
+							includeTimezone={apiConfiguration?.includeTimezone ?? true}
+							setApiConfigurationField={setApiConfigurationField}
 						/>
 					)}
 

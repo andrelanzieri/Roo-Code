@@ -390,4 +390,73 @@ describe("getEnvironmentDetails", () => {
 		const result = await getEnvironmentDetails(cline as Task)
 		expect(result).toContain("REMINDERS")
 	})
+
+	describe("Privacy settings for time and timezone", () => {
+		it("should include both time and timezone when both settings are true", async () => {
+			mockProvider.getState.mockResolvedValue({
+				...mockState,
+				apiConfiguration: { includeCurrentTime: true, includeTimezone: true },
+			})
+			const result = await getEnvironmentDetails(mockCline as Task)
+			expect(result).toContain("# Current Time")
+			expect(result).toContain("Current time in ISO 8601 UTC format:")
+			expect(result).toContain("User time zone:")
+		})
+
+		it("should include only time when includeCurrentTime is true but includeTimezone is false", async () => {
+			mockProvider.getState.mockResolvedValue({
+				...mockState,
+				apiConfiguration: { includeCurrentTime: true, includeTimezone: false },
+			})
+			const result = await getEnvironmentDetails(mockCline as Task)
+			expect(result).toContain("# Current Time")
+			expect(result).toContain("Current time in ISO 8601 UTC format:")
+			expect(result).not.toContain("User time zone:")
+		})
+
+		it("should exclude time section when includeCurrentTime is false", async () => {
+			mockProvider.getState.mockResolvedValue({
+				...mockState,
+				apiConfiguration: { includeCurrentTime: false, includeTimezone: true },
+			})
+			const result = await getEnvironmentDetails(mockCline as Task)
+			expect(result).not.toContain("# Current Time")
+			expect(result).not.toContain("Current time in ISO 8601 UTC format:")
+			expect(result).not.toContain("User time zone:")
+		})
+
+		it("should include both time and timezone by default when settings are undefined", async () => {
+			mockProvider.getState.mockResolvedValue({
+				...mockState,
+				apiConfiguration: {},
+			})
+			const result = await getEnvironmentDetails(mockCline as Task)
+			expect(result).toContain("# Current Time")
+			expect(result).toContain("Current time in ISO 8601 UTC format:")
+			expect(result).toContain("User time zone:")
+		})
+
+		it("should include both time and timezone when apiConfiguration is undefined", async () => {
+			mockProvider.getState.mockResolvedValue({
+				...mockState,
+				apiConfiguration: undefined,
+			})
+			const result = await getEnvironmentDetails(mockCline as Task)
+			expect(result).toContain("# Current Time")
+			expect(result).toContain("Current time in ISO 8601 UTC format:")
+			expect(result).toContain("User time zone:")
+		})
+
+		it("should handle null apiConfiguration gracefully", async () => {
+			mockProvider.getState.mockResolvedValue({
+				...mockState,
+				apiConfiguration: null,
+			})
+			const result = await getEnvironmentDetails(mockCline as Task)
+			// Should default to including both
+			expect(result).toContain("# Current Time")
+			expect(result).toContain("Current time in ISO 8601 UTC format:")
+			expect(result).toContain("User time zone:")
+		})
+	})
 })
