@@ -260,7 +260,8 @@
 		"triggerLabel_zero": "0 automatisch genehmigt",
 		"triggerLabel_one": "1 automatisch genehmigt",
 		"triggerLabel_other": "{{count}} automatisch genehmigt",
-		"triggerLabelAll": "YOLO"
+		"triggerLabelAll": "YOLO",
+		"triggerLabelOffShort": "Aus"
 	},
 	"reasoning": {
 		"thinking": "Denke nach",
