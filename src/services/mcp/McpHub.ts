@@ -902,6 +902,27 @@ export class McpHub {
 		)
 	}
 
+	/**
+	 * Helper method to check if only tool settings (alwaysAllow or disabledTools) have changed
+	 * @param oldConfig The old configuration
+	 * @param newConfig The new configuration
+	 * @returns true if only tool settings changed, false otherwise
+	 */
+	private areOnlyToolSettingsChanged(oldConfig: any, newConfig: any): boolean {
+		// Create copies without the tool settings arrays
+		const oldConfigWithoutTools = { ...oldConfig }
+		const newConfigWithoutTools = { ...newConfig }
+
+		// Remove tool settings from both configs
+		delete oldConfigWithoutTools.alwaysAllow
+		delete oldConfigWithoutTools.disabledTools
+		delete newConfigWithoutTools.alwaysAllow
+		delete newConfigWithoutTools.disabledTools
+
+		// Check if everything else is equal
+		return deepEqual(oldConfigWithoutTools, newConfigWithoutTools)
+	}
+
 	private async fetchToolsList(serverName: string, source?: "global" | "project"): Promise<McpTool[]> {
 		try {
 			// Use the helper method to find the connection
@@ -1069,17 +1090,41 @@ export class McpHub {
 				} catch (error) {
 					this.showErrorMessage(`Failed to connect to new MCP server ${name}`, error)
 				}
-			} else if (!deepEqual(JSON.parse(currentConnection.server.config), config)) {
-				// Existing server with changed config
-				try {
-					// Only setup file watcher for enabled servers
-					if (!validatedConfig.disabled) {
-						this.setupFileWatcher(name, validatedConfig, source)
+			} else {
+				// Check if the config has changed
+				const currentConfig = JSON.parse(currentConnection.server.config)
+				const configChanged = !deepEqual(currentConfig, config)
+
+				if (configChanged) {
+					// Check if only the alwaysAllow or disabledTools arrays have changed
+					const onlyToolSettingsChanged = this.areOnlyToolSettingsChanged(currentConfig, config)
+
+					if (onlyToolSettingsChanged) {
+						// Only update the tools list without reconnecting
+						try {
+							// Update the stored config
+							currentConnection.server.config = JSON.stringify(validatedConfig)
+
+							// Refresh the tools list with the new settings
+							if (currentConnection.type === "connected") {
+								currentConnection.server.tools = await this.fetchToolsList(name, source)
+							}
+						} catch (error) {
+							this.showErrorMessage(`Failed to update tool settings for MCP server ${name}`, error)
+						}
+					} else {
+						// Config has changed in other ways, need to reconnect
+						try {
+							// Only setup file watcher for enabled servers
+							if (!validatedConfig.disabled) {
+								this.setupFileWatcher(name, validatedConfig, source)
+							}
+							await this.deleteConnection(name, source)
+							await this.connectToServer(name, validatedConfig, source)
+						} catch (error) {
+							this.showErrorMessage(`Failed to reconnect MCP server ${name}`, error)
+						}
 					}
-					await this.deleteConnection(name, source)
-					await this.connectToServer(name, validatedConfig, source)
-				} catch (error) {
-					this.showErrorMessage(`Failed to reconnect MCP server ${name}`, error)
 				}
 			}
 			// If server exists with same config, do nothing
