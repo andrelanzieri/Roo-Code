@@ -81,6 +81,15 @@ describe("CodeIndexOllamaEmbedder", () => {
 			expect(embedderWithDefaults.embedderInfo.name).toBe("ollama")
 		})
 
+		it("should initialize with API key when provided", () => {
+			const embedderWithApiKey = new CodeIndexOllamaEmbedder({
+				ollamaModelId: "nomic-embed-text",
+				ollamaBaseUrl: "http://localhost:11434",
+				ollamaApiKey: "test-api-key-123",
+			})
+			expect(embedderWithApiKey.embedderInfo.name).toBe("ollama")
+		})
+
 		it("should normalize URLs with trailing slashes", async () => {
 			// Create embedder with URL that has a trailing slash
 			const embedderWithTrailingSlash = new CodeIndexOllamaEmbedder({
@@ -161,6 +170,128 @@ describe("CodeIndexOllamaEmbedder", () => {
 				"http://localhost:11434/api/tags",
 				expect.objectContaining({
 					method: "GET",
+				}),
+			)
+		})
+	})
+
+	describe("API Key Authentication", () => {
+		it("should include Authorization header when API key is provided", async () => {
+			const embedderWithApiKey = new CodeIndexOllamaEmbedder({
+				ollamaModelId: "nomic-embed-text",
+				ollamaBaseUrl: "http://localhost:11434",
+				ollamaApiKey: "test-api-key-123",
+			})
+
+			// Mock successful /api/tags call
+			mockFetch.mockImplementationOnce(() =>
+				Promise.resolve({
+					ok: true,
+					status: 200,
+					json: () =>
+						Promise.resolve({
+							models: [{ name: "nomic-embed-text" }],
+						}),
+				} as Response),
+			)
+
+			// Mock successful /api/embed test call
+			mockFetch.mockImplementationOnce(() =>
+				Promise.resolve({
+					ok: true,
+					status: 200,
+					json: () =>
+						Promise.resolve({
+							embeddings: [[0.1, 0.2, 0.3]],
+						}),
+				} as Response),
+			)
+
+			await embedderWithApiKey.validateConfiguration()
+
+			// Check that Authorization header is included in both calls
+			expect(mockFetch).toHaveBeenCalledTimes(2)
+
+			// First call to /api/tags
+			expect(mockFetch.mock.calls[0][1]?.headers).toEqual({
+				"Content-Type": "application/json",
+				Authorization: "Bearer test-api-key-123",
+			})
+
+			// Second call to /api/embed
+			expect(mockFetch.mock.calls[1][1]?.headers).toEqual({
+				"Content-Type": "application/json",
+				Authorization: "Bearer test-api-key-123",
+			})
+		})
+
+		it("should not include Authorization header when API key is not provided", async () => {
+			// Mock successful /api/tags call
+			mockFetch.mockImplementationOnce(() =>
+				Promise.resolve({
+					ok: true,
+					status: 200,
+					json: () =>
+						Promise.resolve({
+							models: [{ name: "nomic-embed-text" }],
+						}),
+				} as Response),
+			)
+
+			// Mock successful /api/embed test call
+			mockFetch.mockImplementationOnce(() =>
+				Promise.resolve({
+					ok: true,
+					status: 200,
+					json: () =>
+						Promise.resolve({
+							embeddings: [[0.1, 0.2, 0.3]],
+						}),
+				} as Response),
+			)
+
+			await embedder.validateConfiguration()
+
+			// Check that Authorization header is NOT included
+			expect(mockFetch).toHaveBeenCalledTimes(2)
+
+			// First call to /api/tags
+			expect(mockFetch.mock.calls[0][1]?.headers).toEqual({
+				"Content-Type": "application/json",
+			})
+
+			// Second call to /api/embed
+			expect(mockFetch.mock.calls[1][1]?.headers).toEqual({
+				"Content-Type": "application/json",
+			})
+		})
+
+		it("should handle authentication errors with API key", async () => {
+			const embedderWithApiKey = new CodeIndexOllamaEmbedder({
+				ollamaModelId: "nomic-embed-text",
+				ollamaBaseUrl: "http://localhost:11434",
+				ollamaApiKey: "invalid-api-key",
+			})
+
+			// Mock 401 Unauthorized response
+			mockFetch.mockImplementationOnce(() =>
+				Promise.resolve({
+					ok: false,
+					status: 401,
+				} as Response),
+			)
+
+			const result = await embedderWithApiKey.validateConfiguration()
+
+			expect(result.valid).toBe(false)
+			expect(result.error).toBe("embeddings:ollama.serviceUnavailable")
+			expect(mockFetch).toHaveBeenCalledWith(
+				"http://localhost:11434/api/tags",
+				expect.objectContaining({
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: "Bearer invalid-api-key",
+					},
 				}),
 			)
 		})
@@ -322,6 +453,143 @@ describe("CodeIndexOllamaEmbedder", () => {
 
 			expect(result.valid).toBe(false)
 			expect(result.error).toBe("Network timeout")
+		})
+
+		describe("createEmbeddings", () => {
+			it("should create embeddings successfully without API key", async () => {
+				const texts = ["Hello world", "Test embedding"]
+
+				// Mock successful /api/embed call
+				mockFetch.mockImplementationOnce(() =>
+					Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () =>
+							Promise.resolve({
+								embeddings: [
+									[0.1, 0.2, 0.3],
+									[0.4, 0.5, 0.6],
+								],
+							}),
+					} as Response),
+				)
+
+				const result = await embedder.createEmbeddings(texts)
+
+				expect(result).toEqual({
+					embeddings: [
+						[0.1, 0.2, 0.3],
+						[0.4, 0.5, 0.6],
+					],
+				})
+
+				expect(mockFetch).toHaveBeenCalledWith(
+					"http://localhost:11434/api/embed",
+					expect.objectContaining({
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							model: "nomic-embed-text",
+							input: texts,
+						}),
+					}),
+				)
+			})
+
+			it("should create embeddings with API key in Authorization header", async () => {
+				const embedderWithApiKey = new CodeIndexOllamaEmbedder({
+					ollamaModelId: "nomic-embed-text",
+					ollamaBaseUrl: "http://localhost:11434",
+					ollamaApiKey: "test-api-key-123",
+				})
+
+				const texts = ["Hello world", "Test embedding"]
+
+				// Mock successful /api/embed call
+				mockFetch.mockImplementationOnce(() =>
+					Promise.resolve({
+						ok: true,
+						status: 200,
+						json: () =>
+							Promise.resolve({
+								embeddings: [
+									[0.1, 0.2, 0.3],
+									[0.4, 0.5, 0.6],
+								],
+							}),
+					} as Response),
+				)
+
+				const result = await embedderWithApiKey.createEmbeddings(texts)
+
+				expect(result).toEqual({
+					embeddings: [
+						[0.1, 0.2, 0.3],
+						[0.4, 0.5, 0.6],
+					],
+				})
+
+				// Verify Authorization header is included
+				expect(mockFetch).toHaveBeenCalledWith(
+					"http://localhost:11434/api/embed",
+					expect.objectContaining({
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: "Bearer test-api-key-123",
+						},
+						body: JSON.stringify({
+							model: "nomic-embed-text",
+							input: texts,
+						}),
+					}),
+				)
+			})
+
+			it("should handle authentication error when creating embeddings", async () => {
+				const embedderWithApiKey = new CodeIndexOllamaEmbedder({
+					ollamaModelId: "nomic-embed-text",
+					ollamaBaseUrl: "http://localhost:11434",
+					ollamaApiKey: "invalid-api-key",
+				})
+
+				const texts = ["Hello world"]
+
+				// Mock 401 Unauthorized response
+				mockFetch.mockImplementationOnce(() =>
+					Promise.resolve({
+						ok: false,
+						status: 401,
+						statusText: "Unauthorized",
+					} as Response),
+				)
+
+				await expect(embedderWithApiKey.createEmbeddings(texts)).rejects.toThrow(
+					"embeddings:ollama.embeddingFailed",
+				)
+
+				// Verify request included the API key
+				expect(mockFetch).toHaveBeenCalledWith(
+					"http://localhost:11434/api/embed",
+					expect.objectContaining({
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: "Bearer invalid-api-key",
+						},
+					}),
+				)
+			})
+
+			it("should handle network errors when creating embeddings", async () => {
+				const texts = ["Hello world"]
+
+				// Mock network error
+				mockFetch.mockRejectedValueOnce(new Error("Network error"))
+
+				await expect(embedder.createEmbeddings(texts)).rejects.toThrow("embeddings:ollama.embeddingFailed")
+			})
 		})
 	})
 })

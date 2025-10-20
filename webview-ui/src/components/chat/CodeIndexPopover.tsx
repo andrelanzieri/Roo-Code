@@ -73,6 +73,7 @@ interface LocalCodeIndexSettings {
 	codebaseIndexGeminiApiKey?: string
 	codebaseIndexMistralApiKey?: string
 	codebaseIndexVercelAiGatewayApiKey?: string
+	codebaseIndexOllamaApiKey?: string
 }
 
 // Validation schema for codebase index settings
@@ -101,6 +102,7 @@ const createValidationSchema = (provider: EmbedderProvider, t: any) => {
 					.string()
 					.min(1, t("settings:codeIndex.validation.ollamaBaseUrlRequired"))
 					.url(t("settings:codeIndex.validation.invalidOllamaUrl")),
+				codebaseIndexOllamaApiKey: z.string().optional(), // API key is optional for Ollama
 				codebaseIndexEmbedderModelId: z.string().min(1, t("settings:codeIndex.validation.modelIdRequired")),
 				codebaseIndexEmbedderModelDimension: z
 					.number()
@@ -194,6 +196,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		codebaseIndexGeminiApiKey: "",
 		codebaseIndexMistralApiKey: "",
 		codebaseIndexVercelAiGatewayApiKey: "",
+		codebaseIndexOllamaApiKey: "",
 	})
 
 	// Initial settings state - stores the settings when popover opens
@@ -229,6 +232,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 				codebaseIndexGeminiApiKey: "",
 				codebaseIndexMistralApiKey: "",
 				codebaseIndexVercelAiGatewayApiKey: "",
+				codebaseIndexOllamaApiKey: "",
 			}
 			setInitialSettings(settings)
 			setCurrentSettings(settings)
@@ -345,6 +349,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 							? SECRET_PLACEHOLDER
 							: ""
 					}
+					if (!prev.codebaseIndexOllamaApiKey || prev.codebaseIndexOllamaApiKey === SECRET_PLACEHOLDER) {
+						updated.codebaseIndexOllamaApiKey = secretStatus.hasOllamaApiKey ? SECRET_PLACEHOLDER : ""
+					}
 
 					return updated
 				}
@@ -418,7 +425,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					key === "codebaseIndexOpenAiCompatibleApiKey" ||
 					key === "codebaseIndexGeminiApiKey" ||
 					key === "codebaseIndexMistralApiKey" ||
-					key === "codebaseIndexVercelAiGatewayApiKey"
+					key === "codebaseIndexVercelAiGatewayApiKey" ||
+					key === "codebaseIndexOllamaApiKey"
 				) {
 					dataToValidate[key] = "placeholder-valid"
 				}
@@ -768,6 +776,28 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 												{formErrors.codebaseIndexEmbedderBaseUrl && (
 													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
 														{formErrors.codebaseIndexEmbedderBaseUrl}
+													</p>
+												)}
+											</div>
+
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.ollamaApiKeyLabel")}
+												</label>
+												<VSCodeTextField
+													type="password"
+													value={currentSettings.codebaseIndexOllamaApiKey || ""}
+													onInput={(e: any) =>
+														updateSetting("codebaseIndexOllamaApiKey", e.target.value)
+													}
+													placeholder={t("settings:codeIndex.ollamaApiKeyPlaceholder")}
+													className={cn("w-full", {
+														"border-red-500": formErrors.codebaseIndexOllamaApiKey,
+													})}
+												/>
+												{formErrors.codebaseIndexOllamaApiKey && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.codebaseIndexOllamaApiKey}
 													</p>
 												)}
 											</div>

@@ -71,6 +71,7 @@ export class CodeIndexConfigManager {
 		const geminiApiKey = this.contextProxy?.getSecret("codebaseIndexGeminiApiKey") ?? ""
 		const mistralApiKey = this.contextProxy?.getSecret("codebaseIndexMistralApiKey") ?? ""
 		const vercelAiGatewayApiKey = this.contextProxy?.getSecret("codebaseIndexVercelAiGatewayApiKey") ?? ""
+		const ollamaApiKey = this.contextProxy?.getSecret("codebaseIndexOllamaApiKey") ?? ""
 
 		// Update instance variables with configuration
 		this.codebaseIndexEnabled = codebaseIndexEnabled ?? true
@@ -116,6 +117,7 @@ export class CodeIndexConfigManager {
 
 		this.ollamaOptions = {
 			ollamaBaseUrl: codebaseIndexEmbedderBaseUrl,
+			ollamaApiKey: ollamaApiKey || undefined,
 		}
 
 		this.openAiCompatibleOptions =
@@ -162,6 +164,7 @@ export class CodeIndexConfigManager {
 			modelDimension: this.modelDimension,
 			openAiKey: this.openAiOptions?.openAiNativeApiKey ?? "",
 			ollamaBaseUrl: this.ollamaOptions?.ollamaBaseUrl ?? "",
+			ollamaApiKey: this.ollamaOptions?.ollamaApiKey ?? "",
 			openAiCompatibleBaseUrl: this.openAiCompatibleOptions?.baseUrl ?? "",
 			openAiCompatibleApiKey: this.openAiCompatibleOptions?.apiKey ?? "",
 			geminiApiKey: this.geminiOptions?.apiKey ?? "",
@@ -263,6 +266,7 @@ export class CodeIndexConfigManager {
 		const prevProvider = prev?.embedderProvider ?? "openai"
 		const prevOpenAiKey = prev?.openAiKey ?? ""
 		const prevOllamaBaseUrl = prev?.ollamaBaseUrl ?? ""
+		const prevOllamaApiKey = prev?.ollamaApiKey ?? ""
 		const prevOpenAiCompatibleBaseUrl = prev?.openAiCompatibleBaseUrl ?? ""
 		const prevOpenAiCompatibleApiKey = prev?.openAiCompatibleApiKey ?? ""
 		const prevModelDimension = prev?.modelDimension
@@ -301,6 +305,7 @@ export class CodeIndexConfigManager {
 		// Authentication changes (API keys)
 		const currentOpenAiKey = this.openAiOptions?.openAiNativeApiKey ?? ""
 		const currentOllamaBaseUrl = this.ollamaOptions?.ollamaBaseUrl ?? ""
+		const currentOllamaApiKey = this.ollamaOptions?.ollamaApiKey ?? ""
 		const currentOpenAiCompatibleBaseUrl = this.openAiCompatibleOptions?.baseUrl ?? ""
 		const currentOpenAiCompatibleApiKey = this.openAiCompatibleOptions?.apiKey ?? ""
 		const currentModelDimension = this.modelDimension
@@ -314,7 +319,7 @@ export class CodeIndexConfigManager {
 			return true
 		}
 
-		if (prevOllamaBaseUrl !== currentOllamaBaseUrl) {
+		if (prevOllamaBaseUrl !== currentOllamaBaseUrl || prevOllamaApiKey !== currentOllamaApiKey) {
 			return true
 		}
 

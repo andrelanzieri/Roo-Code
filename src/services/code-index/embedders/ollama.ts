@@ -17,6 +17,7 @@ const OLLAMA_VALIDATION_TIMEOUT_MS = 30000 // 30 seconds for validation requests
 export class CodeIndexOllamaEmbedder implements IEmbedder {
 	private readonly baseUrl: string
 	private readonly defaultModelId: string
+	private readonly apiKey?: string
 
 	constructor(options: ApiHandlerOptions) {
 		// Ensure ollamaBaseUrl and ollamaModelId exist on ApiHandlerOptions or add defaults
@@ -27,6 +28,7 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 
 		this.baseUrl = baseUrl
 		this.defaultModelId = options.ollamaModelId || "nomic-embed-text:latest"
+		this.apiKey = options.ollamaApiKey
 	}
 
 	/**
@@ -72,11 +74,17 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 			const controller = new AbortController()
 			const timeoutId = setTimeout(() => controller.abort(), OLLAMA_EMBEDDING_TIMEOUT_MS)
 
+			// Build headers with optional API key
+			const headers: Record<string, string> = {
+				"Content-Type": "application/json",
+			}
+			if (this.apiKey) {
+				headers["Authorization"] = `Bearer ${this.apiKey}`
+			}
+
 			const response = await fetch(url, {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers,
 				body: JSON.stringify({
 					model: modelToUse,
 					input: processedTexts, // Using 'input' as requested
@@ -151,11 +159,17 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 				const controller = new AbortController()
 				const timeoutId = setTimeout(() => controller.abort(), OLLAMA_VALIDATION_TIMEOUT_MS)
 
+				// Build headers with optional API key
+				const headers: Record<string, string> = {
+					"Content-Type": "application/json",
+				}
+				if (this.apiKey) {
+					headers["Authorization"] = `Bearer ${this.apiKey}`
+				}
+
 				const modelsResponse = await fetch(modelsUrl, {
 					method: "GET",
-					headers: {
-						"Content-Type": "application/json",
-					},
+					headers,
 					signal: controller.signal,
 				})
 				clearTimeout(timeoutId)
@@ -208,11 +222,17 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 				const testController = new AbortController()
 				const testTimeoutId = setTimeout(() => testController.abort(), OLLAMA_VALIDATION_TIMEOUT_MS)
 
+				// Build headers with optional API key for test request
+				const testHeaders: Record<string, string> = {
+					"Content-Type": "application/json",
+				}
+				if (this.apiKey) {
+					testHeaders["Authorization"] = `Bearer ${this.apiKey}`
+				}
+
 				const testResponse = await fetch(testUrl, {
 					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
+					headers: testHeaders,
 					body: JSON.stringify({
 						model: this.defaultModelId,
 						input: ["test"],

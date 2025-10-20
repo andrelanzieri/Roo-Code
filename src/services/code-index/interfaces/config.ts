@@ -32,6 +32,7 @@ export type PreviousConfigSnapshot = {
 	modelDimension?: number // Generic dimension property
 	openAiKey?: string
 	ollamaBaseUrl?: string
+	ollamaApiKey?: string
 	openAiCompatibleBaseUrl?: string
 	openAiCompatibleApiKey?: string
 	geminiApiKey?: string
