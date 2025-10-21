@@ -442,6 +442,21 @@ export const AWS_INFERENCE_PROFILE_MAPPING: Array<[string, string]> = [
 	["sa-", "sa."],
 ]
 
+// Global Inference Profile prefix
+// https://docs.aws.amazon.com/bedrock/latest/userguide/global-inference.html
+export const AWS_GLOBAL_INFERENCE_PREFIX = "global."
+
+// Models that support Global Inference
+// Based on AWS documentation, these models can use the global. prefix
+export const BEDROCK_GLOBAL_INFERENCE_MODEL_IDS = [
+	"anthropic.claude-sonnet-4-20250514-v1:0",
+	"anthropic.claude-sonnet-4-5-20250929-v1:0",
+	"anthropic.claude-opus-4-20250514-v1:0",
+	"anthropic.claude-opus-4-1-20250805-v1:0",
+	"anthropic.claude-3-7-sonnet-20250219-v1:0",
+	"anthropic.claude-haiku-4-5-20251001-v1:0",
+] as const
+
 // Amazon Bedrock supported regions for the regions dropdown
 // Based on official AWS documentation
 export const BEDROCK_REGIONS = [

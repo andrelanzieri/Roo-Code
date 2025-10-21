@@ -341,6 +341,7 @@
 		"awsSecretKey": "AWS Secret Key",
 		"awsSessionToken": "AWS Session Token",
 		"awsRegion": "AWS Region",
+		"awsGlobalInference": "Use global inference",
 		"awsCrossRegion": "Use cross-region inference",
 		"awsBedrockVpc": {
 			"useCustomVpcEndpoint": "Use custom VPC endpoint",

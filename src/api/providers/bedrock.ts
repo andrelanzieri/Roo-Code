@@ -22,6 +22,8 @@ import {
 	BEDROCK_DEFAULT_CONTEXT,
 	AWS_INFERENCE_PROFILE_MAPPING,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
+	AWS_GLOBAL_INFERENCE_PREFIX,
+	BEDROCK_GLOBAL_INFERENCE_MODEL_IDS,
 } from "@roo-code/types"
 
 import { ApiStream } from "../transform/stream"
@@ -209,7 +211,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			}
 
 			this.options.apiModelId = this.arnInfo.modelId
-			if (this.arnInfo.awsUseCrossRegionInference) this.options.awsUseCrossRegionInference = true
+			if (this.arnInfo.crossRegionInference) this.options.awsUseCrossRegionInference = true
+			if (this.arnInfo.globalInference) this.options.awsUseGlobalInference = true
 		}
 
 		if (!this.options.modelTemperature) {
@@ -832,9 +835,11 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				modelId?: string
 				errorMessage?: string
 				crossRegionInference: boolean
+				globalInference?: boolean
 			} = {
 				isValid: true,
 				crossRegionInference: false, // Default to false
+				globalInference: false, // Default to false
 			}
 
 			result.modelType = match[3]
@@ -845,11 +850,17 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			const arnRegion = match[1]
 			result.region = arnRegion
 
-			// Check if the original model ID had a region prefix
+			// Check if the original model ID had a prefix
 			if (originalModelId && result.modelId !== originalModelId) {
-				// If the model ID changed after parsing, it had a region prefix
+				// If the model ID changed after parsing, it had a prefix
 				let prefix = originalModelId.replace(result.modelId, "")
-				result.crossRegionInference = AwsBedrockHandler.isSystemInferenceProfile(prefix)
+
+				// Check if it's a global inference prefix
+				if (prefix === AWS_GLOBAL_INFERENCE_PREFIX) {
+					result.globalInference = true
+				} else {
+					result.crossRegionInference = AwsBedrockHandler.isSystemInferenceProfile(prefix)
+				}
 			}
 
 			// Check if region in ARN matches provided region (if specified)
@@ -876,6 +887,11 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	private parseBaseModelId(modelId: string): string {
 		if (!modelId) {
 			return modelId
+		}
+
+		// Remove AWS global inference prefix first
+		if (modelId.startsWith(AWS_GLOBAL_INFERENCE_PREFIX)) {
+			return modelId.substring(AWS_GLOBAL_INFERENCE_PREFIX.length)
 		}
 
 		// Remove AWS cross-region inference profile prefixes
@@ -958,17 +974,44 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 			//If the user entered an ARN for a foundation-model they've done the same thing as picking from our list of options.
 			//We leave the model data matching the same as if a drop-down input method was used by not overwriting the model ID with the user input ARN
-			//Otherwise the ARN is not a foundation-model resource type that ARN should be used as the identifier in Bedrock interactions
-			if (this.arnInfo.modelType !== "foundation-model") modelConfig.id = this.options.awsCustomArn
+			//For inference-profile ARNs with global or cross-region prefixes, reconstruct the model ID with the prefix
+			//Otherwise the ARN should be used as the identifier in Bedrock interactions
+			if (this.arnInfo.modelType === "inference-profile") {
+				if (this.arnInfo.globalInference) {
+					// Re-add the global. prefix that was stripped during parsing
+					modelConfig.id = `${AWS_GLOBAL_INFERENCE_PREFIX}${this.arnInfo.modelId}`
+				} else if (this.arnInfo.crossRegionInference) {
+					// For cross-region, we need to determine the prefix based on the region
+					const prefix = AwsBedrockHandler.getPrefixForRegion(this.options.awsRegion!)
+					if (prefix) {
+						modelConfig.id = `${prefix}${this.arnInfo.modelId}`
+					} else {
+						// Fallback to the original ARN if we can't determine the prefix
+						modelConfig.id = this.options.awsCustomArn
+					}
+				} else {
+					// No special prefix, use the ARN as-is
+					modelConfig.id = this.options.awsCustomArn
+				}
+			} else if (this.arnInfo.modelType !== "foundation-model") {
+				modelConfig.id = this.options.awsCustomArn
+			}
 		} else {
 			//a model was selected from the drop down
 			modelConfig = this.getModelById(this.options.apiModelId as string)
 
-			// Add cross-region inference prefix if enabled
-			if (this.options.awsUseCrossRegionInference && this.options.awsRegion) {
+			// Use parseBaseModelId to get the clean model ID for checking against support lists
+			const baseModelId = this.parseBaseModelId(modelConfig.id)
+
+			// Add global inference prefix if enabled and model supports it
+			if (this.options.awsUseGlobalInference && BEDROCK_GLOBAL_INFERENCE_MODEL_IDS.includes(baseModelId as any)) {
+				modelConfig.id = `${AWS_GLOBAL_INFERENCE_PREFIX}${baseModelId}`
+			}
+			// Add cross-region inference prefix if enabled (and global inference is not being used)
+			else if (this.options.awsUseCrossRegionInference && this.options.awsRegion) {
 				const prefix = AwsBedrockHandler.getPrefixForRegion(this.options.awsRegion)
 				if (prefix) {
-					modelConfig.id = `${prefix}${modelConfig.id}`
+					modelConfig.id = `${prefix}${baseModelId}`
 				}
 			}
 		}
