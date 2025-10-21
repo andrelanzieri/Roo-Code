@@ -38,22 +38,28 @@ Parameters:
 - text: (optional) Use this for providing the text for the \`type\` action.
     * Example: <text>Hello, world!</text>
 Usage:
-<browser_action>
-<action>Action to perform (e.g., launch, click, type, scroll_down, scroll_up, close)</action>
-<url>URL to launch the browser at (optional)</url>
-<coordinate>x,y coordinates (optional)</coordinate>
-<text>Text to type (optional)</text>
-</browser_action>
+<function_calls>
+<invoke name="browser_action">
+<parameter name="action">Action to perform (e.g., launch, click, type, scroll_down, scroll_up, close)</parameter>
+<parameter name="url">URL to launch the browser at (optional)</parameter>
+<parameter name="coordinate">x,y coordinates (optional)</parameter>
+<parameter name="text">Text to type (optional)</parameter>
+</invoke>
+</function_calls>
 
 Example: Requesting to launch a browser at https://example.com
-<browser_action>
-<action>launch</action>
-<url>https://example.com</url>
-</browser_action>
+<function_calls>
+<invoke name="browser_action">
+<parameter name="action">launch</parameter>
+<parameter name="url">https://example.com</parameter>
+</invoke>
+</function_calls>
 
 Example: Requesting to click on the element at coordinates 450,300
-<browser_action>
-<action>click</action>
-<coordinate>450,300</coordinate>
-</browser_action>`
+<function_calls>
+<invoke name="browser_action">
+<parameter name="action">click</parameter>
+<parameter name="coordinate">450,300</parameter>
+</invoke>
+</function_calls>`
 }

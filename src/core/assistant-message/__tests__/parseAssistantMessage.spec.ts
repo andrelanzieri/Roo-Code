@@ -50,7 +50,8 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 
 		describe("tool use parsing", () => {
 			it("should parse a simple tool use", () => {
-				const message = "<read_file><path>src/file.ts</path></read_file>"
+				const message =
+					'<function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter></invoke></function_calls>'
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(1)
@@ -63,7 +64,7 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 
 			it("should parse a tool use with multiple parameters", () => {
 				const message =
-					"<read_file><path>src/file.ts</path><start_line>10</start_line><end_line>20</end_line></read_file>"
+					'<function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter><parameter name="start_line">10</parameter><parameter name="end_line">20</parameter></invoke></function_calls>'
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(1)
@@ -77,7 +78,8 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 			})
 
 			it("should mark tool use as partial when it's not closed", () => {
-				const message = "<read_file><path>src/file.ts</path>"
+				const message =
+					'<function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter>'
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(1)
@@ -89,7 +91,7 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 			})
 
 			it("should handle a partial parameter in a tool use", () => {
-				const message = "<read_file><path>src/file.ts"
+				const message = '<function_calls><invoke name="read_file"><parameter name="path">src/file.ts'
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(1)
@@ -103,7 +105,8 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 
 		describe("mixed content parsing", () => {
 			it("should parse text followed by a tool use", () => {
-				const message = "Here's the file content: <read_file><path>src/file.ts</path></read_file>"
+				const message =
+					'Here\'s the file content: <function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter></invoke></function_calls>'
 				const result = parser(message)
 
 				expect(result).toHaveLength(2)
@@ -121,7 +124,8 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 			})
 
 			it("should parse a tool use followed by text", () => {
-				const message = "<read_file><path>src/file.ts</path></read_file>Here's what I found in the file."
+				const message =
+					'<function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter></invoke></function_calls>Here\'s what I found in the file.'
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(2)
@@ -140,7 +144,7 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 
 			it("should parse multiple tool uses separated by text", () => {
 				const message =
-					"First file: <read_file><path>src/file1.ts</path></read_file>Second file: <read_file><path>src/file2.ts</path></read_file>"
+					'First file: <function_calls><invoke name="read_file"><parameter name="path">src/file1.ts</parameter></invoke></function_calls>Second file: <function_calls><invoke name="read_file"><parameter name="path">src/file2.ts</parameter></invoke></function_calls>'
 				const result = parser(message)
 
 				expect(result).toHaveLength(4)
@@ -163,12 +167,12 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 
 		describe("special cases", () => {
 			it("should handle the write_to_file tool with content that contains closing tags", () => {
-				const message = `<write_to_file><path>src/file.ts</path><content>
+				const message = `<function_calls><invoke name="write_to_file"><parameter name="path">src/file.ts</parameter><parameter name="content">
 	function example() {
-	// This has XML-like content: </content>
+	// This has XML-like content: </parameter>
 	return true;
 	}
-	</content><line_count>5</line_count></write_to_file>`
+	</parameter><parameter name="line_count">5</parameter></invoke></function_calls>`
 
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
@@ -179,7 +183,7 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 				expect(toolUse.params.path).toBe("src/file.ts")
 				expect(toolUse.params.line_count).toBe("5")
 				expect(toolUse.params.content).toContain("function example()")
-				expect(toolUse.params.content).toContain("// This has XML-like content: </content>")
+				expect(toolUse.params.content).toContain("// This has XML-like content: </parameter>")
 				expect(toolUse.params.content).toContain("return true;")
 				expect(toolUse.partial).toBe(false)
 			})
@@ -201,7 +205,7 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 			})
 
 			it("should handle tool use with no parameters", () => {
-				const message = "<browser_action></browser_action>"
+				const message = '<function_calls><invoke name="browser_action"></invoke></function_calls>'
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(1)
@@ -214,7 +218,7 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 
 			it("should handle nested tool tags that aren't actually nested", () => {
 				const message =
-					"<execute_command><command>echo '<read_file><path>test.txt</path></read_file>'</command></execute_command>"
+					'<function_calls><invoke name="execute_command"><parameter name="command">echo \'<function_calls><invoke name="read_file"><parameter name="path">test.txt</parameter></invoke></function_calls>\'</parameter></invoke></function_calls>'
 
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
@@ -222,12 +226,15 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 				const toolUse = result[0] as ToolUse
 				expect(toolUse.type).toBe("tool_use")
 				expect(toolUse.name).toBe("execute_command")
-				expect(toolUse.params.command).toBe("echo '<read_file><path>test.txt</path></read_file>'")
+				expect(toolUse.params.command).toBe(
+					'echo \'<function_calls><invoke name="read_file"><parameter name="path">test.txt</parameter></invoke></function_calls>\'',
+				)
 				expect(toolUse.partial).toBe(false)
 			})
 
 			it("should handle a tool use with a parameter containing XML-like content", () => {
-				const message = "<search_files><regex><div>.*</div></regex><path>src</path></search_files>"
+				const message =
+					'<function_calls><invoke name="search_files"><parameter name="regex"><div>.*</div></parameter><parameter name="path">src</parameter></invoke></function_calls>'
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(1)
@@ -241,7 +248,7 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 
 			it("should handle consecutive tool uses without text in between", () => {
 				const message =
-					"<read_file><path>file1.ts</path></read_file><read_file><path>file2.ts</path></read_file>"
+					'<function_calls><invoke name="read_file"><parameter name="path">file1.ts</parameter></invoke></function_calls><function_calls><invoke name="read_file"><parameter name="path">file2.ts</parameter></invoke></function_calls>'
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(2)
@@ -260,7 +267,8 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 			})
 
 			it("should handle whitespace in parameters", () => {
-				const message = "<read_file><path>  src/file.ts  </path></read_file>"
+				const message =
+					'<function_calls><invoke name="read_file"><parameter name="path">  src/file.ts  </parameter></invoke></function_calls>'
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(1)
@@ -272,11 +280,11 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 			})
 
 			it("should handle multi-line parameters", () => {
-				const message = `<write_to_file><path>file.ts</path><content>
+				const message = `<function_calls><invoke name="write_to_file"><parameter name="path">file.ts</parameter><parameter name="content">
 	line 1
 	line 2
 	line 3
-	</content><line_count>3</line_count></write_to_file>`
+	</parameter><parameter name="line_count">3</parameter></invoke></function_calls>`
 				const result = parser(message).filter((block) => !isEmptyTextContent(block))
 
 				expect(result).toHaveLength(1)
@@ -294,18 +302,18 @@ const isEmptyTextContent = (block: AssistantMessageContent) =>
 			it("should handle a complex message with multiple content types", () => {
 				const message = `I'll help you with that task.
 
-	<read_file><path>src/index.ts</path></read_file>
+	<function_calls><invoke name="read_file"><parameter name="path">src/index.ts</parameter></invoke></function_calls>
 
 	Now let's modify the file:
 
-	<write_to_file><path>src/index.ts</path><content>
+	<function_calls><invoke name="write_to_file"><parameter name="path">src/index.ts</parameter><parameter name="content">
 	// Updated content
 	console.log("Hello world");
-	</content><line_count>2</line_count></write_to_file>
+	</parameter><parameter name="line_count">2</parameter></invoke></function_calls>
 
 	Let's run the code:
 
-	<execute_command><command>node src/index.ts</command></execute_command>`
+	<function_calls><invoke name="execute_command"><parameter name="command">node src/index.ts</parameter></invoke></function_calls>`
 
 				const result = parser(message)
 

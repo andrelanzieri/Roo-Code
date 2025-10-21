@@ -33,27 +33,31 @@ Replace the entire TODO list with an updated checklist reflecting the current st
 - Remove tasks only if they are no longer relevant or if the user requests deletion.
 
 **Usage Example:**
-<update_todo_list>
-<todos>
+<function_calls>
+<invoke name="update_todo_list">
+<parameter name="todos">
 [x] Analyze requirements
 [x] Design architecture
 [-] Implement core logic
 [ ] Write tests
 [ ] Update documentation
-</todos>
-</update_todo_list>
+</parameter>
+</invoke>
+</function_calls>
 
 *After completing "Implement core logic" and starting "Write tests":*
-<update_todo_list>
-<todos>
+<function_calls>
+<invoke name="update_todo_list">
+<parameter name="todos">
 [x] Analyze requirements
 [x] Design architecture
 [x] Implement core logic
 [-] Write tests
 [ ] Update documentation
 [ ] Add performance benchmarks
-</todos>
-</update_todo_list>
+</parameter>
+</invoke>
+</function_calls>
 
 **When to Use:**
 - The task is complicated or involves multiple steps or requires ongoing tracking.

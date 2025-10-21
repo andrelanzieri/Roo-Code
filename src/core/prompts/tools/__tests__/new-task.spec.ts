@@ -21,9 +21,9 @@ describe("getNewTaskDescription", () => {
 		// Should have a simple example without todos
 		expect(description).toContain("Implement a new feature for the application")
 
-		// Should NOT have any todos tags in examples
-		expect(description).not.toContain("<todos>")
-		expect(description).not.toContain("</todos>")
+		// Should NOT have any todos parameter in examples
+		expect(description).not.toContain('<parameter name="todos">')
+		expect(description).not.toContain("[ ] First task to complete")
 
 		// Should still have mode and message as required
 		expect(description).toContain("mode: (required)")
@@ -51,8 +51,8 @@ describe("getNewTaskDescription", () => {
 		expect(description).not.toContain("optional initial todo list")
 
 		// Should include todos in the example
-		expect(description).toContain("<todos>")
-		expect(description).toContain("</todos>")
+		expect(description).toContain('<parameter name="todos">')
+		expect(description).toContain("</parameter>")
 		expect(description).toContain("Set up auth middleware")
 	})
 
@@ -68,8 +68,8 @@ describe("getNewTaskDescription", () => {
 		// Check that todos parameter is NOT shown by default
 		expect(description).not.toContain("todos:")
 		expect(description).not.toContain("The initial todo list in markdown checklist format")
-		expect(description).not.toContain("<todos>")
-		expect(description).not.toContain("</todos>")
+		expect(description).not.toContain('<parameter name="todos">')
+		expect(description).not.toContain("[ ] First task to complete")
 	})
 
 	it("should NOT show todos parameter when newTaskRequireTodos is undefined", () => {
@@ -84,8 +84,8 @@ describe("getNewTaskDescription", () => {
 		// Check that todos parameter is NOT shown by default
 		expect(description).not.toContain("todos:")
 		expect(description).not.toContain("The initial todo list in markdown checklist format")
-		expect(description).not.toContain("<todos>")
-		expect(description).not.toContain("</todos>")
+		expect(description).not.toContain('<parameter name="todos">')
+		expect(description).not.toContain("[ ] First task to complete")
 	})
 
 	it("should include todos in examples only when setting is enabled", () => {
@@ -111,17 +111,17 @@ describe("getNewTaskDescription", () => {
 		// When setting is on, should include todos in main example
 		expect(descriptionOn).toContain("Implement user authentication")
 		expect(descriptionOn).toContain("[ ] Set up auth middleware")
-		expect(descriptionOn).toContain("<todos>")
-		expect(descriptionOn).toContain("</todos>")
+		expect(descriptionOn).toContain('<parameter name="todos">')
+		expect(descriptionOn).toContain("</parameter>")
 
 		// When setting is off, should NOT include any todos references
-		expect(descriptionOff).not.toContain("<todos>")
-		expect(descriptionOff).not.toContain("</todos>")
+		expect(descriptionOff).not.toContain('<parameter name="todos">')
 		expect(descriptionOff).not.toContain("[ ] Set up auth middleware")
 		expect(descriptionOff).not.toContain("[ ] First task to complete")
 
 		// When setting is off, main example should be simple
-		const usagePattern = /<new_task>\s*<mode>.*<\/mode>\s*<message>.*<\/message>\s*<\/new_task>/s
+		const usagePattern =
+			/<invoke name="new_task">\s*<parameter name="mode">.*<\/parameter>\s*<parameter name="message">.*<\/parameter>\s*<\/invoke>/s
 		expect(descriptionOff).toMatch(usagePattern)
 	})
 })

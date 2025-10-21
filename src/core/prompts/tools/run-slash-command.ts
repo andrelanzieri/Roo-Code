@@ -10,23 +10,29 @@ Parameters:
 - args: (optional) Additional arguments or context to pass to the command
 
 Usage:
-<run_slash_command>
-<command>command_name</command>
-<args>optional arguments</args>
-</run_slash_command>
+<function_calls>
+<invoke name="run_slash_command">
+<parameter name="command">command_name</parameter>
+<parameter name="args">optional arguments</parameter>
+</invoke>
+</function_calls>
 
 Examples:
 
 1. Running the init command to analyze a codebase:
-<run_slash_command>
-<command>init</command>
-</run_slash_command>
+<function_calls>
+<invoke name="run_slash_command">
+<parameter name="command">init</parameter>
+</invoke>
+</function_calls>
 
 2. Running a command with additional context:
-<run_slash_command>
-<command>test</command>
-<args>focus on integration tests</args>
-</run_slash_command>
+<function_calls>
+<invoke name="run_slash_command">
+<parameter name="command">test</parameter>
+<parameter name="args">focus on integration tests</parameter>
+</invoke>
+</function_calls>
 
 The command content will be returned for you to execute or follow as instructions.`
 }

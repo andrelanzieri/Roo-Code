@@ -9,23 +9,24 @@ export type AssistantMessageContent = TextContent | ToolUse
  * usage blocks marked with XML-like tags into an array of structured content
  * objects.
  *
+ * Supports the new format:
+ * <function_calls>
+ *   <invoke name="tool_name">
+ *     <parameter name="param_name">value</parameter>
+ *   </invoke>
+ * </function_calls>
+ *
  * This version aims for efficiency by avoiding the character-by-character
  * accumulator of V1. It iterates through the string using an index `i`. At each
  * position, it checks if the substring *ending* at `i` matches any known
- * opening or closing tags for tools or parameters using `startsWith` with an
- * offset.
- * It uses pre-computed Maps (`toolUseOpenTags`, `toolParamOpenTags`) for quick
- * tag lookups.
- * State is managed using indices (`currentTextContentStart`,
- * `currentToolUseStart`, `currentParamValueStart`) pointing to the start of the
- * current block within the original `assistantMessage` string.
+ * opening or closing tags.
  *
- * Slicing is used to extract content only when a block (text, parameter, or
- * tool use) is completed.
+ * State is managed using indices pointing to the start of the current block
+ * within the original `assistantMessage` string.
  *
- * Special handling for `write_to_file` and `new_rule` content parameters is
- * included, using `indexOf` and `lastIndexOf` on the relevant slice to handle
- * potentially nested closing tags.
+ * Slicing is used to extract content only when a block is completed.
+ *
+ * Special handling for `write_to_file` content parameters is included.
  *
  * If the input string ends mid-block, the last open block is added and marked
  * as partial.
@@ -40,113 +41,99 @@ export type AssistantMessageContent = TextContent | ToolUse
 export function parseAssistantMessageV2(assistantMessage: string): AssistantMessageContent[] {
 	const contentBlocks: AssistantMessageContent[] = []
 
-	let currentTextContentStart = 0 // Index where the current text block started.
+	let currentTextContentStart = 0
 	let currentTextContent: TextContent | undefined = undefined
-	let currentToolUseStart = 0 // Index *after* the opening tag of the current tool use.
+	let currentToolUseStart = 0
 	let currentToolUse: ToolUse | undefined = undefined
-	let currentParamValueStart = 0 // Index *after* the opening tag of the current param.
+	let currentParamValueStart = 0
 	let currentParamName: ToolParamName | undefined = undefined
-
-	// Precompute tags for faster lookups.
-	const toolUseOpenTags = new Map<string, ToolName>()
-	const toolParamOpenTags = new Map<string, ToolParamName>()
-
-	for (const name of toolNames) {
-		toolUseOpenTags.set(`<${name}>`, name)
-	}
-
-	for (const name of toolParamNames) {
-		toolParamOpenTags.set(`<${name}>`, name)
-	}
+	let inFunctionCalls = false
 
 	const len = assistantMessage.length
 
 	for (let i = 0; i < len; i++) {
 		const currentCharIndex = i
 
-		// Parsing a tool parameter
+		// Inside function_calls block, handle parameters (check FIRST to avoid nested tag issues)
 		if (currentToolUse && currentParamName) {
-			const closeTag = `</${currentParamName}>`
-			// Check if the string *ending* at index `i` matches the closing tag
+			const paramCloseTag = "</parameter>"
 			if (
-				currentCharIndex >= closeTag.length - 1 &&
-				assistantMessage.startsWith(
-					closeTag,
-					currentCharIndex - closeTag.length + 1, // Start checking from potential start of tag.
-				)
+				currentCharIndex >= paramCloseTag.length - 1 &&
+				assistantMessage.startsWith(paramCloseTag, currentCharIndex - paramCloseTag.length + 1)
 			) {
-				// Found the closing tag for the parameter.
+				// Found the closing tag for the parameter
 				const value = assistantMessage.slice(
-					currentParamValueStart, // Start after the opening tag.
-					currentCharIndex - closeTag.length + 1, // End before the closing tag.
+					currentParamValueStart,
+					currentCharIndex - paramCloseTag.length + 1,
 				)
-				// Don't trim content parameters to preserve newlines, but strip first and last newline only
 				currentToolUse.params[currentParamName] =
 					currentParamName === "content" ? value.replace(/^\n/, "").replace(/\n$/, "") : value.trim()
-				currentParamName = undefined // Go back to parsing tool content.
-				// We don't continue loop here, need to check for tool close or other params at index i.
+				currentParamName = undefined
 			} else {
-				continue // Still inside param value, move to next char.
+				continue // Still inside param value
 			}
 		}
 
-		// Parsing a tool use (but not a specific parameter).
-		if (currentToolUse && !currentParamName) {
-			// Ensure we are not inside a parameter already.
-			// Check if starting a new parameter.
-			let startedNewParam = false
+		// Check for <function_calls> opening tag (only if not in a parameter)
+		const functionCallsOpenTag = "<function_calls>"
+		if (
+			!inFunctionCalls &&
+			!currentParamName &&
+			currentCharIndex >= functionCallsOpenTag.length - 1 &&
+			assistantMessage.startsWith(functionCallsOpenTag, currentCharIndex - functionCallsOpenTag.length + 1)
+		) {
+			inFunctionCalls = true
 
-			for (const [tag, paramName] of toolParamOpenTags.entries()) {
-				if (
-					currentCharIndex >= tag.length - 1 &&
-					assistantMessage.startsWith(tag, currentCharIndex - tag.length + 1)
-				) {
-					currentParamName = paramName
-					currentParamValueStart = currentCharIndex + 1 // Value starts after the tag.
-					startedNewParam = true
-					break
+			// End current text content if exists
+			if (currentTextContent) {
+				currentTextContent.content = assistantMessage
+					.slice(currentTextContentStart, currentCharIndex - functionCallsOpenTag.length + 1)
+					.trim()
+				currentTextContent.partial = false
+				if (currentTextContent.content.length > 0) {
+					contentBlocks.push(currentTextContent)
 				}
+				currentTextContent = undefined
 			}
+			currentTextContentStart = currentCharIndex + 1
+			continue
+		}
 
-			if (startedNewParam) {
-				continue // Handled start of param, move to next char.
-			}
+		// Check for </function_calls> closing tag (only if not in a parameter)
+		const functionCallsCloseTag = "</function_calls>"
+		if (
+			inFunctionCalls &&
+			!currentParamName &&
+			currentCharIndex >= functionCallsCloseTag.length - 1 &&
+			assistantMessage.startsWith(functionCallsCloseTag, currentCharIndex - functionCallsCloseTag.length + 1)
+		) {
+			inFunctionCalls = false
+			currentTextContentStart = currentCharIndex + 1
+			continue
+		}
 
-			// Check if closing the current tool use.
-			const toolCloseTag = `</${currentToolUse.name}>`
-
+		// Inside function_calls, handle invoke tags
+		if (inFunctionCalls) {
+			// Check for </invoke> closing tag
+			const invokeCloseTag = "</invoke>"
 			if (
-				currentCharIndex >= toolCloseTag.length - 1 &&
-				assistantMessage.startsWith(toolCloseTag, currentCharIndex - toolCloseTag.length + 1)
+				currentToolUse &&
+				currentCharIndex >= invokeCloseTag.length - 1 &&
+				assistantMessage.startsWith(invokeCloseTag, currentCharIndex - invokeCloseTag.length + 1)
 			) {
-				// End of the tool use found.
-				// Special handling for content params *before* finalizing the
-				// tool.
-				const toolContentSlice = assistantMessage.slice(
-					currentToolUseStart, // From after the tool opening tag.
-					currentCharIndex - toolCloseTag.length + 1, // To before the tool closing tag.
-				)
-
-				// Check if content parameter needs special handling
-				// (write_to_file/new_rule).
-				// This check is important if the closing </content> tag was
-				// missed by the parameter parsing logic (e.g., if content is
-				// empty or parsing logic prioritizes tool close).
+				// Special case for write_to_file content parameter
 				const contentParamName: ToolParamName = "content"
-				if (
-					currentToolUse.name === "write_to_file" /* || currentToolUse.name === "new_rule" */ &&
-					// !(contentParamName in currentToolUse.params) && // Only if not already parsed.
-					toolContentSlice.includes(`<${contentParamName}>`) // Check if tag exists.
-				) {
-					const contentStartTag = `<${contentParamName}>`
-					const contentEndTag = `</${contentParamName}>`
+				if (currentToolUse.name === "write_to_file") {
+					const toolContentSlice = assistantMessage.slice(
+						currentToolUseStart,
+						currentCharIndex - invokeCloseTag.length + 1,
+					)
+					const contentStartTag = `<parameter name="${contentParamName}">`
+					const contentEndTag = "</parameter>"
 					const contentStart = toolContentSlice.indexOf(contentStartTag)
-
-					// Use `lastIndexOf` for robustness against nested tags.
 					const contentEnd = toolContentSlice.lastIndexOf(contentEndTag)
 
 					if (contentStart !== -1 && contentEnd !== -1 && contentEnd > contentStart) {
-						// Don't trim content to preserve newlines, but strip first and last newline only
 						const contentValue = toolContentSlice
 							.slice(contentStart + contentStartTag.length, contentEnd)
 							.replace(/^\n/, "")
@@ -155,98 +142,59 @@ export function parseAssistantMessageV2(assistantMessage: string): AssistantMess
 					}
 				}
 
-				currentToolUse.partial = false // Mark as complete.
+				// End of tool use
+				currentToolUse.partial = false
 				contentBlocks.push(currentToolUse)
-				currentToolUse = undefined // Reset state.
-				currentTextContentStart = currentCharIndex + 1 // Potential text starts after this tag.
-				continue // Move to next char.
+				currentToolUse = undefined
+				continue
 			}
 
-			// If not starting a param and not closing the tool, continue
-			// accumulating tool content implicitly.
-			continue
-		}
-
-		// Parsing text / looking for tool start.
-		if (!currentToolUse) {
-			// Check if starting a new tool use.
-			let startedNewTool = false
-
-			for (const [tag, toolName] of toolUseOpenTags.entries()) {
-				if (
-					currentCharIndex >= tag.length - 1 &&
-					assistantMessage.startsWith(tag, currentCharIndex - tag.length + 1)
-				) {
-					// End current text block if one was active.
-					if (currentTextContent) {
-						currentTextContent.content = assistantMessage
-							.slice(
-								currentTextContentStart, // From where text started.
-								currentCharIndex - tag.length + 1, // To before the tool tag starts.
-							)
-							.trim()
-
-						currentTextContent.partial = false // Ended because tool started.
-
-						if (currentTextContent.content.length > 0) {
-							contentBlocks.push(currentTextContent)
-						}
-
-						currentTextContent = undefined
-					} else {
-						// Check for any text between the last block and this tag.
-						const potentialText = assistantMessage
-							.slice(
-								currentTextContentStart, // From where text *might* have started.
-								currentCharIndex - tag.length + 1, // To before the tool tag starts.
-							)
-							.trim()
-
-						if (potentialText.length > 0) {
-							contentBlocks.push({
-								type: "text",
-								content: potentialText,
-								partial: false,
-							})
-						}
+			// Check for <parameter name="..."> opening tag
+			if (currentToolUse && !currentParamName) {
+				const paramMatch = assistantMessage
+					.slice(Math.max(0, currentCharIndex - 50), currentCharIndex + 1)
+					.match(/<parameter name="([^"]+)">$/)
+				if (paramMatch) {
+					const paramName = paramMatch[1]
+					if (toolParamNames.includes(paramName as ToolParamName)) {
+						currentParamName = paramName as ToolParamName
+						currentParamValueStart = currentCharIndex + 1
 					}
-
-					// Start the new tool use.
-					currentToolUse = {
-						type: "tool_use",
-						name: toolName,
-						params: {},
-						partial: true, // Assume partial until closing tag is found.
-					}
-
-					currentToolUseStart = currentCharIndex + 1 // Tool content starts after the opening tag.
-					startedNewTool = true
-
-					break
+					continue
 				}
 			}
 
-			if (startedNewTool) {
-				continue // Handled start of tool, move to next char.
+			// Check for <invoke name="..."> opening tag
+			if (!currentToolUse) {
+				const invokeMatch = assistantMessage
+					.slice(Math.max(0, currentCharIndex - 50), currentCharIndex + 1)
+					.match(/<invoke name="([^"]+)">$/)
+				if (invokeMatch) {
+					const toolName = invokeMatch[1]
+					if (toolNames.includes(toolName as ToolName)) {
+						currentToolUse = {
+							type: "tool_use",
+							name: toolName as ToolName,
+							params: {},
+							partial: true,
+						}
+						currentToolUseStart = currentCharIndex + 1
+					}
+					continue
+				}
 			}
+		}
 
-			// If not starting a tool, it must be text content.
+		// Outside function_calls, handle text content
+		if (!inFunctionCalls && !currentToolUse) {
 			if (!currentTextContent) {
-				// Start a new text block if we aren't already in one.
-				currentTextContentStart = currentCharIndex // Text starts at the current character.
-
-				// Check if the current char is the start of potential text *immediately* after a tag.
-				// This needs the previous state - simpler to let slicing handle it later.
-				// Resetting start index accurately is key.
-				// It should be the index *after* the last processed tag.
-				// The logic managing currentTextContentStart after closing tags handles this.
+				currentTextContentStart = currentCharIndex
 				currentTextContent = {
 					type: "text",
-					content: "", // Will be determined by slicing at the end or when a tool starts
+					content: "",
 					partial: true,
 				}
 			}
-			// Continue accumulating text implicitly; content is extracted later.
 		}
 	}
 

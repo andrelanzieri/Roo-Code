@@ -23,7 +23,7 @@ import {
 
 /**
  * Simplified read file tool for models that only support single file reads
- * Uses the format: <read_file><path>file/path.ext</path></read_file>
+ * Uses the format: <function_calls><invoke name="read_file"><parameter name="path">file/path.ext</parameter></invoke></function_calls>
  *
  * This is a streamlined version of readFileTool that:
  * - Only accepts a single path parameter

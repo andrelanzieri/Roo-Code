@@ -7,16 +7,20 @@ IMPORTANT NOTE: This tool CANNOT be used until you've confirmed from the user th
 Parameters:
 - result: (required) The result of the task. Formulate this result in a way that is final and does not require further input from the user. Don't end your result with questions or offers for further assistance.
 Usage:
-<attempt_completion>
-<result>
+<function_calls>
+<invoke name="attempt_completion">
+<parameter name="result">
 Your final result description here
-</result>
-</attempt_completion>
+</parameter>
+</invoke>
+</function_calls>
 
 Example: Requesting to attempt completion with a result
-<attempt_completion>
-<result>
+<function_calls>
+<invoke name="attempt_completion">
+<parameter name="result">
 I've updated the CSS
-</result>
-</attempt_completion>`
+</parameter>
+</invoke>
+</function_calls>`
 }

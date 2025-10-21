@@ -5,14 +5,18 @@ Parameters:
 - mode_slug: (required) The slug of the mode to switch to (e.g., "code", "ask", "architect")
 - reason: (optional) The reason for switching modes
 Usage:
-<switch_mode>
-<mode_slug>Mode slug here</mode_slug>
-<reason>Reason for switching here</reason>
-</switch_mode>
+<function_calls>
+<invoke name="switch_mode">
+<parameter name="mode_slug">Mode slug here</parameter>
+<parameter name="reason">Reason for switching here</parameter>
+</invoke>
+</function_calls>
 
 Example: Requesting to switch to code mode
-<switch_mode>
-<mode_slug>code</mode_slug>
-<reason>Need to make code changes</reason>
-</switch_mode>`
+<function_calls>
+<invoke name="switch_mode">
+<parameter name="mode_slug">code</parameter>
+<parameter name="reason">Need to make code changes</parameter>
+</invoke>
+</function_calls>`
 }

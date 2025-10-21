@@ -11,16 +11,20 @@ Parameters:
 - message: (required) The initial user message or instructions for this new task.
 
 Usage:
-<new_task>
-<mode>your-mode-slug-here</mode>
-<message>Your initial instructions here</message>
-</new_task>
+<function_calls>
+<invoke name="new_task">
+<parameter name="mode">your-mode-slug-here</parameter>
+<parameter name="message">Your initial instructions here</parameter>
+</invoke>
+</function_calls>
 
 Example:
-<new_task>
-<mode>code</mode>
-<message>Implement a new feature for the application</message>
-</new_task>
+<function_calls>
+<invoke name="new_task">
+<parameter name="mode">code</parameter>
+<parameter name="message">Implement a new feature for the application</parameter>
+</invoke>
+</function_calls>
 `
 
 /**
@@ -35,27 +39,31 @@ Parameters:
 - todos: (required) The initial todo list in markdown checklist format for the new task.
 
 Usage:
-<new_task>
-<mode>your-mode-slug-here</mode>
-<message>Your initial instructions here</message>
-<todos>
+<function_calls>
+<invoke name="new_task">
+<parameter name="mode">your-mode-slug-here</parameter>
+<parameter name="message">Your initial instructions here</parameter>
+<parameter name="todos">
 [ ] First task to complete
 [ ] Second task to complete
 [ ] Third task to complete
-</todos>
-</new_task>
+</parameter>
+</invoke>
+</function_calls>
 
 Example:
-<new_task>
-<mode>code</mode>
-<message>Implement user authentication</message>
-<todos>
+<function_calls>
+<invoke name="new_task">
+<parameter name="mode">code</parameter>
+<parameter name="message">Implement user authentication</parameter>
+<parameter name="todos">
 [ ] Set up auth middleware
 [ ] Create login endpoint
 [ ] Add session management
 [ ] Write tests
-</todos>
-</new_task>
+</parameter>
+</invoke>
+</function_calls>
 
 `
 

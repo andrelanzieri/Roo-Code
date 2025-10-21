@@ -22,18 +22,22 @@ Notes:
 Examples:
 
 1. Simple text replacement:
-<search_and_replace>
-<path>example.ts</path>
-<search>oldText</search>
-<replace>newText</replace>
-</search_and_replace>
+<function_calls>
+<invoke name="search_and_replace">
+<parameter name="path">example.ts</parameter>
+<parameter name="search">oldText</parameter>
+<parameter name="replace">newText</parameter>
+</invoke>
+</function_calls>
 
 2. Case-insensitive regex pattern:
-<search_and_replace>
-<path>example.ts</path>
-<search>old\w+</search>
-<replace>new$&</replace>
-<use_regex>true</use_regex>
-<ignore_case>true</ignore_case>
-</search_and_replace>`
+<function_calls>
+<invoke name="search_and_replace">
+<parameter name="path">example.ts</parameter>
+<parameter name="search">old\w+</parameter>
+<parameter name="replace">new$&</parameter>
+<parameter name="use_regex">true</parameter>
+<parameter name="ignore_case">true</parameter>
+</invoke>
+</function_calls>`
 }

@@ -86,16 +86,16 @@ export function convertToBedrockConverseMessages(anthropicMessages: Anthropic.Me
 			}
 
 			if (messageBlock.type === "tool_use") {
-				// Convert tool use to XML format
+				// Convert tool use to new XML format
 				const toolParams = Object.entries(messageBlock.input || {})
-					.map(([key, value]) => `<${key}>\n${value}\n</${key}>`)
+					.map(([key, value]) => `<parameter name="${key}">\n${value}\n</parameter>`)
 					.join("\n")
 
 				return {
 					toolUse: {
 						toolUseId: messageBlock.id || "",
 						name: messageBlock.name || "",
-						input: `<${messageBlock.name}>\n${toolParams}\n</${messageBlock.name}>`,
+						input: `<function_calls>\n<invoke name="${messageBlock.name}">\n${toolParams}\n</invoke>\n</function_calls>`,
 					},
 				} as ContentBlock
 			}

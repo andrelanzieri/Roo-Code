@@ -58,21 +58,21 @@ const testCases = [
 	},
 	{
 		name: "Message with a simple tool use",
-		input: "Let's read a file: <read_file><path>src/file.ts</path></read_file>",
+		input: 'Let\'s read a file: <function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter></invoke></function_calls>',
 	},
 	{
 		name: "Message with a complex tool use (write_to_file)",
-		input: "<write_to_file><path>src/file.ts</path><content>\nfunction example() {\n  // This has XML-like content: </content>\n  return true;\n}\n</content><line_count>5</line_count></write_to_file>",
+		input: '<function_calls><invoke name="write_to_file"><parameter name="path">src/file.ts</parameter><parameter name="content">\nfunction example() {\n  // This has XML-like content: </parameter>\n  return true;\n}\n</parameter><parameter name="line_count">5</parameter></invoke></function_calls>',
 	},
 	{
 		name: "Message with multiple tool uses",
-		input: "First file: <read_file><path>src/file1.ts</path></read_file>\nSecond file: <read_file><path>src/file2.ts</path></read_file>\nLet's write a new file: <write_to_file><path>src/file3.ts</path><content>\nexport function newFunction() {\n  return 'Hello world';\n}\n</content><line_count>3</line_count></write_to_file>",
+		input: 'First file: <function_calls><invoke name="read_file"><parameter name="path">src/file1.ts</parameter></invoke></function_calls>\nSecond file: <function_calls><invoke name="read_file"><parameter name="path">src/file2.ts</parameter></invoke></function_calls>\nLet\'s write a new file: <function_calls><invoke name="write_to_file"><parameter name="path">src/file3.ts</parameter><parameter name="content">\nexport function newFunction() {\n  return \'Hello world\';\n}\n</parameter><parameter name="line_count">3</parameter></invoke></function_calls>',
 	},
 	{
 		name: "Large message with repeated tool uses",
 		input: Array(50)
 			.fill(
-				'<read_file><path>src/file.ts</path></read_file>\n<write_to_file><path>output.ts</path><content>console.log("hello");</content><line_count>1</line_count></write_to_file>',
+				'<function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter></invoke></function_calls>\n<function_calls><invoke name="write_to_file"><parameter name="path">output.ts</parameter><parameter name="content">console.log("hello");</parameter><parameter name="line_count">1</parameter></invoke></function_calls>',
 			)
 			.join("\n"),
 	},

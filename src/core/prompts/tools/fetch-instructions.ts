@@ -14,14 +14,18 @@ export function getFetchInstructionsDescription(enableMcpServerCreation?: boolea
 		enableMcpServerCreation !== false
 			? `Example: Requesting instructions to create an MCP Server
 
-<fetch_instructions>
-<task>create_mcp_server</task>
-</fetch_instructions>`
+<function_calls>
+<invoke name="fetch_instructions">
+<parameter name="task">create_mcp_server</parameter>
+</invoke>
+</function_calls>`
 			: `Example: Requesting instructions to create a Mode
 
-<fetch_instructions>
-<task>create_mode</task>
-</fetch_instructions>`
+<function_calls>
+<invoke name="fetch_instructions">
+<parameter name="task">create_mode</parameter>
+</invoke>
+</function_calls>`
 
 	return `## fetch_instructions
 Description: Request to fetch instructions to perform a task

@@ -7,7 +7,7 @@ describe("getFetchInstructionsDescription", () => {
 		expect(description).toContain("create_mcp_server")
 		expect(description).toContain("create_mode")
 		expect(description).toContain("Example: Requesting instructions to create an MCP Server")
-		expect(description).toContain("<task>create_mcp_server</task>")
+		expect(description).toContain('<parameter name="task">create_mcp_server</parameter>')
 	})
 
 	it("should include create_mcp_server when enableMcpServerCreation is undefined (default behavior)", () => {
@@ -16,7 +16,7 @@ describe("getFetchInstructionsDescription", () => {
 		expect(description).toContain("create_mcp_server")
 		expect(description).toContain("create_mode")
 		expect(description).toContain("Example: Requesting instructions to create an MCP Server")
-		expect(description).toContain("<task>create_mcp_server</task>")
+		expect(description).toContain('<parameter name="task">create_mcp_server</parameter>')
 	})
 
 	it("should exclude create_mcp_server when enableMcpServerCreation is false", () => {
@@ -25,7 +25,7 @@ describe("getFetchInstructionsDescription", () => {
 		expect(description).not.toContain("create_mcp_server")
 		expect(description).toContain("create_mode")
 		expect(description).toContain("Example: Requesting instructions to create a Mode")
-		expect(description).toContain("<task>create_mode</task>")
+		expect(description).toContain('<parameter name="task">create_mode</parameter>')
 		expect(description).not.toContain("Example: Requesting instructions to create an MCP Server")
 	})
 
@@ -36,8 +36,8 @@ describe("getFetchInstructionsDescription", () => {
 		expect(description).toContain("Description: Request to fetch instructions to perform a task")
 		expect(description).toContain("Parameters:")
 		expect(description).toContain("- task: (required) The task to get instructions for.")
-		expect(description).toContain("<fetch_instructions>")
-		expect(description).toContain("</fetch_instructions>")
+		expect(description).toContain('<invoke name="fetch_instructions">')
+		expect(description).toContain("</invoke>")
 	})
 
 	it("should handle null value consistently (treat as default/undefined)", () => {
@@ -47,6 +47,6 @@ describe("getFetchInstructionsDescription", () => {
 		expect(description).toContain("create_mcp_server")
 		expect(description).toContain("create_mode")
 		expect(description).toContain("Example: Requesting instructions to create an MCP Server")
-		expect(description).toContain("<task>create_mcp_server</task>")
+		expect(description).toContain('<parameter name="task">create_mcp_server</parameter>')
 	})
 })

@@ -76,7 +76,8 @@ describe("AssistantMessageParser (streaming)", () => {
 
 	describe("tool use streaming", () => {
 		it("should parse a tool use with parameter, streamed char by char", () => {
-			const message = "<read_file><path>src/file.ts</path></read_file>"
+			const message =
+				'<function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter></invoke></function_calls>'
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 			expect(result).toHaveLength(1)
 			const toolUse = result[0] as ToolUse
@@ -87,7 +88,7 @@ describe("AssistantMessageParser (streaming)", () => {
 		})
 
 		it("should mark tool use as partial when not closed", () => {
-			const message = "<read_file><path>src/file.ts</path>"
+			const message = '<function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter>'
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 			expect(result).toHaveLength(1)
 			const toolUse = result[0] as ToolUse
@@ -98,7 +99,7 @@ describe("AssistantMessageParser (streaming)", () => {
 		})
 
 		it("should handle a partial parameter in a tool use", () => {
-			const message = "<read_file><path>src/file"
+			const message = '<function_calls><invoke name="read_file"><parameter name="path">src/file'
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 			expect(result).toHaveLength(1)
 			const toolUse = result[0] as ToolUse
@@ -110,7 +111,7 @@ describe("AssistantMessageParser (streaming)", () => {
 
 		it("should handle tool use with multiple parameters streamed", () => {
 			const message =
-				"<read_file><path>src/file.ts</path><start_line>10</start_line><end_line>20</end_line></read_file>"
+				'<function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter><parameter name="start_line">10</parameter><parameter name="end_line">20</parameter></invoke></function_calls>'
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 			expect(result).toHaveLength(1)
 			const toolUse = result[0] as ToolUse
@@ -125,7 +126,8 @@ describe("AssistantMessageParser (streaming)", () => {
 
 	describe("mixed content streaming", () => {
 		it("should parse text followed by a tool use, streamed", () => {
-			const message = "Text before tool <read_file><path>src/file.ts</path></read_file>"
+			const message =
+				'Text before tool <function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter></invoke></function_calls>'
 			const result = streamChunks(parser, message)
 			expect(result).toHaveLength(2)
 			const textContent = result[0] as TextContent
@@ -140,7 +142,8 @@ describe("AssistantMessageParser (streaming)", () => {
 		})
 
 		it("should parse a tool use followed by text, streamed", () => {
-			const message = "<read_file><path>src/file.ts</path></read_file>Text after tool"
+			const message =
+				'<function_calls><invoke name="read_file"><parameter name="path">src/file.ts</parameter></invoke></function_calls>Text after tool'
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 			expect(result).toHaveLength(2)
 			const toolUse = result[0] as ToolUse
@@ -156,7 +159,7 @@ describe("AssistantMessageParser (streaming)", () => {
 
 		it("should parse multiple tool uses separated by text, streamed", () => {
 			const message =
-				"First: <read_file><path>file1.ts</path></read_file>Second: <read_file><path>file2.ts</path></read_file>"
+				'First: <function_calls><invoke name="read_file"><parameter name="path">file1.ts</parameter></invoke></function_calls>Second: <function_calls><invoke name="read_file"><parameter name="path">file2.ts</parameter></invoke></function_calls>'
 			const result = streamChunks(parser, message)
 			expect(result).toHaveLength(4)
 			expect(result[0].type).toBe("text")
@@ -174,12 +177,12 @@ describe("AssistantMessageParser (streaming)", () => {
 
 	describe("special and edge cases", () => {
 		it("should handle the write_to_file tool with content that contains closing tags", () => {
-			const message = `<write_to_file><path>src/file.ts</path><content>
+			const message = `<function_calls><invoke name="write_to_file"><parameter name="path">src/file.ts</parameter><parameter name="content">
 	function example() {
-	// This has XML-like content: </content>
+	// This has XML-like content: </parameter>
 	return true;
 	}
-	</content><line_count>5</line_count></write_to_file>`
+	</parameter><parameter name="line_count">5</parameter></invoke></function_calls>`
 
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 
@@ -190,7 +193,7 @@ describe("AssistantMessageParser (streaming)", () => {
 			expect(toolUse.params.path).toBe("src/file.ts")
 			expect(toolUse.params.line_count).toBe("5")
 			expect(toolUse.params.content).toContain("function example()")
-			expect(toolUse.params.content).toContain("// This has XML-like content: </content>")
+			expect(toolUse.params.content).toContain("// This has XML-like content: </parameter>")
 			expect(toolUse.params.content).toContain("return true;")
 			expect(toolUse.partial).toBe(false)
 		})
@@ -209,7 +212,7 @@ describe("AssistantMessageParser (streaming)", () => {
 		})
 
 		it("should handle tool use with no parameters", () => {
-			const message = "<browser_action></browser_action>"
+			const message = '<function_calls><invoke name="browser_action"></invoke></function_calls>'
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 			expect(result).toHaveLength(1)
 			const toolUse = result[0] as ToolUse
@@ -220,7 +223,8 @@ describe("AssistantMessageParser (streaming)", () => {
 		})
 
 		it("should handle a tool use with a parameter containing XML-like content", () => {
-			const message = "<search_files><regex><div>.*</div></regex><path>src</path></search_files>"
+			const message =
+				'<function_calls><invoke name="search_files"><parameter name="regex"><div>.*</div></parameter><parameter name="path">src</parameter></invoke></function_calls>'
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 			expect(result).toHaveLength(1)
 			const toolUse = result[0] as ToolUse
@@ -232,7 +236,8 @@ describe("AssistantMessageParser (streaming)", () => {
 		})
 
 		it("should handle consecutive tool uses without text in between", () => {
-			const message = "<read_file><path>file1.ts</path></read_file><read_file><path>file2.ts</path></read_file>"
+			const message =
+				'<function_calls><invoke name="read_file"><parameter name="path">file1.ts</parameter></invoke></function_calls><function_calls><invoke name="read_file"><parameter name="path">file2.ts</parameter></invoke></function_calls>'
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 			expect(result).toHaveLength(2)
 			const toolUse1 = result[0] as ToolUse
@@ -248,7 +253,8 @@ describe("AssistantMessageParser (streaming)", () => {
 		})
 
 		it("should handle whitespace in parameters", () => {
-			const message = "<read_file><path>  src/file.ts  </path></read_file>"
+			const message =
+				'<function_calls><invoke name="read_file"><parameter name="path">  src/file.ts  </parameter></invoke></function_calls>'
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 			expect(result).toHaveLength(1)
 			const toolUse = result[0] as ToolUse
@@ -259,11 +265,11 @@ describe("AssistantMessageParser (streaming)", () => {
 		})
 
 		it("should handle multi-line parameters", () => {
-			const message = `<write_to_file><path>file.ts</path><content>
+			const message = `<function_calls><invoke name="write_to_file"><parameter name="path">file.ts</parameter><parameter name="content">
 	line 1
 	line 2
 	line 3
-	</content><line_count>3</line_count></write_to_file>`
+	</parameter><parameter name="line_count">3</parameter></invoke></function_calls>`
 			const result = streamChunks(parser, message).filter((block) => !isEmptyTextContent(block))
 
 			expect(result).toHaveLength(1)
@@ -280,18 +286,18 @@ describe("AssistantMessageParser (streaming)", () => {
 		it("should handle a complex message with multiple content types", () => {
 			const message = `I'll help you with that task.
 
-	<read_file><path>src/index.ts</path></read_file>
+	<function_calls><invoke name="read_file"><parameter name="path">src/index.ts</parameter></invoke></function_calls>
 
 	Now let's modify the file:
 
-	<write_to_file><path>src/index.ts</path><content>
+	<function_calls><invoke name="write_to_file"><parameter name="path">src/index.ts</parameter><parameter name="content">
 	// Updated content
 	console.log("Hello world");
-	</content><line_count>2</line_count></write_to_file>
+	</parameter><parameter name="line_count">2</parameter></invoke></function_calls>
 
 	Let's run the code:
 
-	<execute_command><command>node src/index.ts</command></execute_command>`
+	<function_calls><invoke name="execute_command"><parameter name="command">node src/index.ts</parameter></invoke></function_calls>`
 
 			const result = streamChunks(parser, message)
 
@@ -336,7 +342,7 @@ describe("AssistantMessageParser (streaming)", () => {
 		it("should gracefully handle a parameter that exceeds MAX_PARAM_LENGTH", () => {
 			// Create a parameter value that exceeds 100KB (MAX_PARAM_LENGTH)
 			const largeParamValue = "x".repeat(1024 * 100 + 1) // 100KB + 1 byte
-			const message = `<write_to_file><path>test.txt</path><content>${largeParamValue}</content></write_to_file>After tool`
+			const message = `<function_calls><invoke name="write_to_file"><parameter name="path">test.txt</parameter><parameter name="content">${largeParamValue}</parameter></invoke></function_calls>After tool`
 
 			// Process the message in chunks to simulate streaming
 			let result: AssistantMessageContent[] = []
@@ -344,7 +350,9 @@ describe("AssistantMessageParser (streaming)", () => {
 
 			try {
 				// Process the opening tags
-				result = parser.processChunk("<write_to_file><path>test.txt</path><content>")
+				result = parser.processChunk(
+					'<function_calls><invoke name="write_to_file"><parameter name="path">test.txt</parameter><parameter name="content">',
+				)
 
 				// Process the large parameter value in chunks
 				const chunkSize = 1000
@@ -354,7 +362,7 @@ describe("AssistantMessageParser (streaming)", () => {
 				}
 
 				// Process the closing tags and text after
-				result = parser.processChunk("</content></write_to_file>After tool")
+				result = parser.processChunk("</parameter></invoke></function_calls>After tool")
 			} catch (e) {
 				error = e as Error
 			}
@@ -381,7 +389,7 @@ describe("AssistantMessageParser (streaming)", () => {
 
 	describe("finalizeContentBlocks", () => {
 		it("should mark all partial blocks as complete", () => {
-			const message = "<read_file><path>src/file.ts"
+			const message = '<function_calls><invoke name="read_file"><parameter name="path">src/file.ts'
 			streamChunks(parser, message)
 			let blocks = parser.getContentBlocks()
 			// The block may already be partial or not, depending on chunking.

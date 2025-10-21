@@ -6,19 +6,25 @@ Description: Request to list definition names (classes, functions, methods, etc.
 Parameters:
 - path: (required) The path of the file or directory (relative to the current working directory ${args.cwd}) to analyze. When given a directory, it lists definitions from all top-level source files.
 Usage:
-<list_code_definition_names>
-<path>Directory path here</path>
-</list_code_definition_names>
+<function_calls>
+<invoke name="list_code_definition_names">
+<parameter name="path">Directory path here</parameter>
+</invoke>
+</function_calls>
 
 Examples:
 
 1. List definitions from a specific file:
-<list_code_definition_names>
-<path>src/main.ts</path>
-</list_code_definition_names>
+<function_calls>
+<invoke name="list_code_definition_names">
+<parameter name="path">src/main.ts</parameter>
+</invoke>
+</function_calls>
 
 2. List definitions from all files in a directory:
-<list_code_definition_names>
-<path>src/</path>
-</list_code_definition_names>`
+<function_calls>
+<invoke name="list_code_definition_names">
+<parameter name="path">src/</parameter>
+</invoke>
+</function_calls>`
 }

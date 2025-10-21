@@ -170,14 +170,16 @@ def calculate_sum(items):
 
 
 Usage:
-<apply_diff>
-<path>File path here</path>
-<diff>
+<function_calls>
+<invoke name="apply_diff">
+<parameter name="path">File path here</parameter>
+<parameter name="diff">
 Your search/replace content here
 You can use multi search/replace block in one diff block, but make sure to include the line numbers for each block.
 Only use a single line of '=======' between search and replacement content, because multiple '=======' will corrupt the file.
-</diff>
-</apply_diff>`
+</parameter>
+</invoke>
+</function_calls>`
 	}
 
 	private unescapeMarkers(content: string): string {

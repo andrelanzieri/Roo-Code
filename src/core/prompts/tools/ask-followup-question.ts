@@ -7,21 +7,25 @@ Parameters:
 - follow_up: (required) A list of 2-4 suggested answers, each in its own <suggest> tag. Suggestions must be complete, actionable answers without placeholders. Optionally include mode attribute to switch modes (code/architect/etc.)
 
 Usage:
-<ask_followup_question>
-<question>Your question here</question>
-<follow_up>
+<function_calls>
+<invoke name="ask_followup_question">
+<parameter name="question">Your question here</parameter>
+<parameter name="follow_up">
 <suggest>First suggestion</suggest>
 <suggest mode="code">Action with mode switch</suggest>
-</follow_up>
-</ask_followup_question>
+</parameter>
+</invoke>
+</function_calls>
 
 Example:
-<ask_followup_question>
-<question>What is the path to the frontend-config.json file?</question>
-<follow_up>
+<function_calls>
+<invoke name="ask_followup_question">
+<parameter name="question">What is the path to the frontend-config.json file?</parameter>
+<parameter name="follow_up">
 <suggest>./src/frontend-config.json</suggest>
 <suggest>./config/frontend-config.json</suggest>
 <suggest>./frontend-config.json</suggest>
-</follow_up>
-</ask_followup_question>`
+</parameter>
+</invoke>
+</function_calls>`
 }

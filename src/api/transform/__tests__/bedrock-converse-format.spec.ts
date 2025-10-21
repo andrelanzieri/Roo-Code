@@ -97,7 +97,7 @@ describe("convertToBedrockConverseMessages", () => {
 			expect(toolBlock.toolUse).toEqual({
 				toolUseId: "test-id",
 				name: "read_file",
-				input: "<read_file>\n<path>\ntest.txt\n</path>\n</read_file>",
+				input: '<function_calls>\n<invoke name="read_file">\n<parameter name="path">\ntest.txt\n</parameter>\n</invoke>\n</function_calls>',
 			})
 		} else {
 			expect.fail("Expected tool use block not found")

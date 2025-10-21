@@ -13,18 +13,18 @@ export function parseAssistantMessage(assistantMessage: string): AssistantMessag
 	let currentParamName: ToolParamName | undefined = undefined
 	let currentParamValueStartIndex = 0
 	let accumulator = ""
+	let inFunctionCalls = false
 
 	for (let i = 0; i < assistantMessage.length; i++) {
 		const char = assistantMessage[i]
 		accumulator += char
 
-		// There should not be a param without a tool use.
+		// Inside function_calls block, handle parameters (check this FIRST to avoid nested tag issues)
 		if (currentToolUse && currentParamName) {
 			const currentParamValue = accumulator.slice(currentParamValueStartIndex)
-			const paramClosingTag = `</${currentParamName}>`
+			const paramClosingTag = `</parameter>`
 			if (currentParamValue.endsWith(paramClosingTag)) {
-				// End of param value.
-				// Don't trim content parameters to preserve newlines, but strip first and last newline only
+				// End of param value
 				const paramValue = currentParamValue.slice(0, -paramClosingTag.length)
 				currentToolUse.params[currentParamName] =
 					currentParamName === "content"
@@ -33,102 +33,103 @@ export function parseAssistantMessage(assistantMessage: string): AssistantMessag
 				currentParamName = undefined
 				continue
 			} else {
-				// Partial param value is accumulating.
+				// Partial param value is accumulating
 				continue
 			}
 		}
 
-		// No currentParamName.
+		// Check for <function_calls> opening tag (only if not in a parameter)
+		if (!inFunctionCalls && !currentParamName && accumulator.endsWith("<function_calls>")) {
+			inFunctionCalls = true
 
-		if (currentToolUse) {
-			const currentToolValue = accumulator.slice(currentToolUseStartIndex)
-			const toolUseClosingTag = `</${currentToolUse.name}>`
-			if (currentToolValue.endsWith(toolUseClosingTag)) {
-				// End of a tool use.
+			// End current text content if exists
+			if (currentTextContent) {
+				currentTextContent.partial = false
+				currentTextContent.content = accumulator
+					.slice(currentTextContentStartIndex, accumulator.length - "<function_calls>".length)
+					.trim()
+				if (currentTextContent.content.length > 0) {
+					contentBlocks.push(currentTextContent)
+				}
+				currentTextContent = undefined
+			}
+			currentTextContentStartIndex = accumulator.length
+			continue
+		}
+
+		// Check for </function_calls> closing tag (only if not in a parameter)
+		if (inFunctionCalls && !currentParamName && accumulator.endsWith("</function_calls>")) {
+			inFunctionCalls = false
+			currentTextContentStartIndex = accumulator.length
+			continue
+		}
+
+		// Inside function_calls, handle invoke tags
+		if (inFunctionCalls) {
+			// Check for </invoke> closing tag
+			if (currentToolUse && accumulator.endsWith("</invoke>")) {
+				// Special case for write_to_file content parameter
+				const contentParamName: ToolParamName = "content"
+				if (currentToolUse.name === "write_to_file") {
+					const toolContent = accumulator.slice(
+						currentToolUseStartIndex,
+						accumulator.length - "</invoke>".length,
+					)
+					const contentStartTag = `<parameter name="${contentParamName}">`
+					const contentEndTag = `</parameter>`
+					const contentStartIndex = toolContent.indexOf(contentStartTag)
+					const contentEndIndex = toolContent.lastIndexOf(contentEndTag)
+
+					if (contentStartIndex !== -1 && contentEndIndex !== -1 && contentEndIndex > contentStartIndex) {
+						const contentValue = toolContent
+							.slice(contentStartIndex + contentStartTag.length, contentEndIndex)
+							.replace(/^\n/, "")
+							.replace(/\n$/, "")
+						currentToolUse.params[contentParamName] = contentValue
+					}
+				}
+
+				// End of tool use
 				currentToolUse.partial = false
 				contentBlocks.push(currentToolUse)
 				currentToolUse = undefined
 				continue
-			} else {
-				const possibleParamOpeningTags = toolParamNames.map((name) => `<${name}>`)
-				for (const paramOpeningTag of possibleParamOpeningTags) {
-					if (accumulator.endsWith(paramOpeningTag)) {
-						// Start of a new parameter.
-						currentParamName = paramOpeningTag.slice(1, -1) as ToolParamName
+			}
+
+			// Check for <parameter name="..."> opening tag
+			if (currentToolUse && !currentParamName) {
+				const match = accumulator.match(/<parameter name="([^"]+)">$/)
+				if (match) {
+					const paramName = match[1]
+					if (toolParamNames.includes(paramName as ToolParamName)) {
+						currentParamName = paramName as ToolParamName
 						currentParamValueStartIndex = accumulator.length
-						break
 					}
+					continue
 				}
+			}
 
-				// There's no current param, and not starting a new param.
-
-				// Special case for write_to_file where file contents could
-				// contain the closing tag, in which case the param would have
-				// closed and we end up with the rest of the file contents here.
-				// To work around this, we get the string between the starting
-				// content tag and the LAST content tag.
-				const contentParamName: ToolParamName = "content"
-
-				if (currentToolUse.name === "write_to_file" && accumulator.endsWith(`</${contentParamName}>`)) {
-					const toolContent = accumulator.slice(currentToolUseStartIndex)
-					const contentStartTag = `<${contentParamName}>`
-					const contentEndTag = `</${contentParamName}>`
-					const contentStartIndex = toolContent.indexOf(contentStartTag) + contentStartTag.length
-					const contentEndIndex = toolContent.lastIndexOf(contentEndTag)
-
-					if (contentStartIndex !== -1 && contentEndIndex !== -1 && contentEndIndex > contentStartIndex) {
-						// Don't trim content to preserve newlines, but strip first and last newline only
-						currentToolUse.params[contentParamName] = toolContent
-							.slice(contentStartIndex, contentEndIndex)
-							.replace(/^\n/, "")
-							.replace(/\n$/, "")
+			// Check for <invoke name="..."> opening tag
+			if (!currentToolUse) {
+				const match = accumulator.match(/<invoke name="([^"]+)">$/)
+				if (match) {
+					const toolName = match[1]
+					if (toolNames.includes(toolName as ToolName)) {
+						currentToolUse = {
+							type: "tool_use",
+							name: toolName as ToolName,
+							params: {},
+							partial: true,
+						}
+						currentToolUseStartIndex = accumulator.length
 					}
+					continue
 				}
-
-				// Partial tool value is accumulating.
-				continue
 			}
 		}
 
-		// No currentToolUse.
-
-		let didStartToolUse = false
-		const possibleToolUseOpeningTags = toolNames.map((name) => `<${name}>`)
-
-		for (const toolUseOpeningTag of possibleToolUseOpeningTags) {
-			if (accumulator.endsWith(toolUseOpeningTag)) {
-				// Start of a new tool use.
-				currentToolUse = {
-					type: "tool_use",
-					name: toolUseOpeningTag.slice(1, -1) as ToolName,
-					params: {},
-					partial: true,
-				}
-
-				currentToolUseStartIndex = accumulator.length
-
-				// This also indicates the end of the current text content.
-				if (currentTextContent) {
-					currentTextContent.partial = false
-
-					// Remove the partially accumulated tool use tag from the
-					// end of text (<tool).
-					currentTextContent.content = currentTextContent.content
-						.slice(0, -toolUseOpeningTag.slice(0, -1).length)
-						.trim()
-
-					contentBlocks.push(currentTextContent)
-					currentTextContent = undefined
-				}
-
-				didStartToolUse = true
-				break
-			}
-		}
-
-		if (!didStartToolUse) {
-			// No tool use, so it must be text either at the beginning or
-			// between tools.
+		// Outside function_calls, handle text content
+		if (!inFunctionCalls && !currentToolUse) {
 			if (currentTextContent === undefined) {
 				currentTextContentStartIndex = i
 			}
@@ -142,10 +143,9 @@ export function parseAssistantMessage(assistantMessage: string): AssistantMessag
 	}
 
 	if (currentToolUse) {
-		// Stream did not complete tool call, add it as partial.
+		// Stream did not complete tool call, add it as partial
 		if (currentParamName) {
-			// Tool call has a parameter that was not completed.
-			// Don't trim content parameters to preserve newlines, but strip first and last newline only
+			// Tool call has a parameter that was not completed
 			const paramValue = accumulator.slice(currentParamValueStartIndex)
 			currentToolUse.params[currentParamName] =
 				currentParamName === "content" ? paramValue.replace(/^\n/, "").replace(/\n$/, "") : paramValue.trim()
@@ -158,7 +158,7 @@ export function parseAssistantMessage(assistantMessage: string): AssistantMessag
 	// currentTextContent, only one of them will be defined since only one can
 	// be partial at a time.
 	if (currentTextContent) {
-		// Stream did not complete text content, add it as partial.
+		// Stream did not complete text content, add it as partial
 		contentBlocks.push(currentTextContent)
 	}
 

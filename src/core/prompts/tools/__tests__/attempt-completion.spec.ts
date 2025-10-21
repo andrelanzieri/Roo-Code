@@ -12,14 +12,16 @@ describe("getAttemptCompletionDescription", () => {
 		// Check that command parameter is NOT included (permanently disabled)
 		expect(description).not.toContain("- command: (optional)")
 		expect(description).not.toContain("A CLI command to execute to show a live demo")
-		expect(description).not.toContain("<command>Command to demonstrate result (optional)</command>")
-		expect(description).not.toContain("<command>open index.html</command>")
+		expect(description).not.toContain(
+			'<parameter name="command">Command to demonstrate result (optional)</parameter>',
+		)
+		expect(description).not.toContain('<parameter name="command">open index.html</parameter>')
 
 		// But should still have the basic structure
 		expect(description).toContain("## attempt_completion")
 		expect(description).toContain("- result: (required)")
-		expect(description).toContain("<attempt_completion>")
-		expect(description).toContain("</attempt_completion>")
+		expect(description).toContain('<invoke name="attempt_completion">')
+		expect(description).toContain("</invoke>")
 	})
 
 	it("should work when no args provided", () => {
@@ -28,14 +30,16 @@ describe("getAttemptCompletionDescription", () => {
 		// Check that command parameter is NOT included (permanently disabled)
 		expect(description).not.toContain("- command: (optional)")
 		expect(description).not.toContain("A CLI command to execute to show a live demo")
-		expect(description).not.toContain("<command>Command to demonstrate result (optional)</command>")
-		expect(description).not.toContain("<command>open index.html</command>")
+		expect(description).not.toContain(
+			'<parameter name="command">Command to demonstrate result (optional)</parameter>',
+		)
+		expect(description).not.toContain('<parameter name="command">open index.html</parameter>')
 
 		// But should still have the basic structure
 		expect(description).toContain("## attempt_completion")
 		expect(description).toContain("- result: (required)")
-		expect(description).toContain("<attempt_completion>")
-		expect(description).toContain("</attempt_completion>")
+		expect(description).toContain('<invoke name="attempt_completion">')
+		expect(description).toContain("</invoke>")
 	})
 
 	it("should show example without command", () => {

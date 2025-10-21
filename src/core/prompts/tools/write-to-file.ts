@@ -8,18 +8,21 @@ Parameters:
 - content: (required) The content to write to the file. When performing a full rewrite of an existing file or creating a new one, ALWAYS provide the COMPLETE intended content of the file, without any truncation or omissions. You MUST include ALL parts of the file, even if they haven't been modified. Do NOT include the line numbers in the content though, just the actual content of the file.
 - line_count: (required) The number of lines in the file. Make sure to compute this based on the actual content of the file, not the number of lines in the content you're providing.
 Usage:
-<write_to_file>
-<path>File path here</path>
-<content>
+<function_calls>
+<invoke name="write_to_file">
+<parameter name="path">File path here</parameter>
+<parameter name="content">
 Your file content here
-</content>
-<line_count>total number of lines in the file, including empty lines</line_count>
-</write_to_file>
+</parameter>
+<parameter name="line_count">total number of lines in the file, including empty lines</parameter>
+</invoke>
+</function_calls>
 
 Example: Requesting to write to frontend-config.json
-<write_to_file>
-<path>frontend-config.json</path>
-<content>
+<function_calls>
+<invoke name="write_to_file">
+<parameter name="path">frontend-config.json</parameter>
+<parameter name="content">
 {
   "apiEndpoint": "https://api.example.com",
   "theme": {
@@ -34,7 +37,8 @@ Example: Requesting to write to frontend-config.json
   },
   "version": "1.0.0"
 }
-</content>
-<line_count>14</line_count>
-</write_to_file>`
+</parameter>
+<parameter name="line_count">14</parameter>
+</invoke>
+</function_calls>`
 }

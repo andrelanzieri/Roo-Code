@@ -225,7 +225,7 @@ export async function applyDiffToolLegacy(
 			let partFailHint = ""
 
 			if (diffResult.failParts && diffResult.failParts.length > 0) {
-				partFailHint = `But unable to apply all diff parts to file: ${absolutePath}, silently use <read_file> tool to check newest file version and re-apply diffs\n`
+				partFailHint = `But unable to apply all diff parts to file: ${absolutePath}, silently use read_file tool to check newest file version and re-apply diffs\n`
 			}
 
 			// Get the formatted response message

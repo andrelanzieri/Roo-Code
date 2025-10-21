@@ -7,13 +7,14 @@ You have access to a set of tools that are executed upon the user's approval. Yo
 
 # Tool Use Formatting
 
-Tool uses are formatted using XML-style tags. The tool name itself becomes the XML tag name. Each parameter is enclosed within its own set of tags. Here's the structure:
+Tool uses are formatted using XML-style tags. All tool calls must be wrapped in a <function_calls> element, with each tool invocation using an <invoke> tag that specifies the tool name in a "name" attribute. Parameters are specified using <parameter> tags with a "name" attribute. Here's the structure:
 
-<actual_tool_name>
-<parameter1_name>value1</parameter1_name>
-<parameter2_name>value2</parameter2_name>
-...
-</actual_tool_name>
+<function_calls>
+<invoke name="actual_tool_name">
+<parameter name="parameter1_name">value1</parameter>
+<parameter name="parameter2_name">value2</parameter>
+</invoke>
+</function_calls>
 
-Always use the actual tool name as the XML tag name for proper parsing and execution.`
+Always use the actual tool name in the name attribute of the invoke tag for proper parsing and execution.`
 }

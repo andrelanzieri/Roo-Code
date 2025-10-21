@@ -5,6 +5,13 @@ import { AssistantMessageContent } from "./parseAssistantMessage"
 /**
  * Parser for assistant messages. Maintains state between chunks
  * to avoid reprocessing the entire message on each update.
+ *
+ * Supports the new format:
+ * <function_calls>
+ *   <invoke name="tool_name">
+ *     <parameter name="param_name">value</parameter>
+ *   </invoke>
+ * </function_calls>
  */
 export class AssistantMessageParser {
 	private contentBlocks: AssistantMessageContent[] = []
@@ -17,6 +24,7 @@ export class AssistantMessageParser {
 	private readonly MAX_ACCUMULATOR_SIZE = 1024 * 1024 // 1MB limit
 	private readonly MAX_PARAM_LENGTH = 1024 * 100 // 100KB per parameter limit
 	private accumulator = ""
+	private inFunctionCalls = false
 
 	/**
 	 * Initialize a new AssistantMessageParser instance.
@@ -37,6 +45,7 @@ export class AssistantMessageParser {
 		this.currentParamName = undefined
 		this.currentParamValueStartIndex = 0
 		this.accumulator = ""
+		this.inFunctionCalls = false
 	}
 
 	/**
@@ -48,7 +57,16 @@ export class AssistantMessageParser {
 		return this.contentBlocks.slice()
 	}
 	/**
+	 * Extract the name attribute from a tag like <invoke name="tool_name"> or <parameter name="param_name">
+	 */
+	private extractNameAttribute(tagContent: string): string | null {
+		const match = tagContent.match(/name="([^"]+)"/)
+		return match ? match[1] : null
+	}
+
+	/**
 	 * Process a new chunk of text and update the parser state.
+	 * Supports the new format: <function_calls><invoke name="tool"><parameter name="param">value</parameter></invoke></function_calls>
 	 * @param chunk The new chunk of text to process.
 	 */
 	public processChunk(chunk: string): AssistantMessageContent[] {
@@ -63,7 +81,32 @@ export class AssistantMessageParser {
 			this.accumulator += char
 			const currentPosition = accumulatorStartLength + i
 
-			// There should not be a param without a tool use.
+			// Check for <function_calls> opening tag
+			if (!this.inFunctionCalls && this.accumulator.endsWith("<function_calls>")) {
+				this.inFunctionCalls = true
+
+				// End current text content if exists
+				if (this.currentTextContent) {
+					this.currentTextContent.partial = false
+					this.currentTextContent.content = this.accumulator
+						.slice(this.currentTextContentStartIndex, this.accumulator.length - "<function_calls>".length)
+						.trim()
+					if (this.currentTextContent.content.length > 0) {
+						// No need to push, already in contentBlocks
+					}
+					this.currentTextContent = undefined
+				}
+				continue
+			}
+
+			// Check for </function_calls> closing tag
+			if (this.inFunctionCalls && this.accumulator.endsWith("</function_calls>")) {
+				this.inFunctionCalls = false
+				this.currentTextContentStartIndex = this.accumulator.length
+				continue
+			}
+
+			// Inside function_calls block, handle parameters
 			if (this.currentToolUse && this.currentParamName) {
 				const currentParamValue = this.accumulator.slice(this.currentParamValueStartIndex)
 				if (currentParamValue.length > this.MAX_PARAM_LENGTH) {
@@ -72,11 +115,10 @@ export class AssistantMessageParser {
 					this.currentParamValueStartIndex = 0
 					continue
 				}
-				const paramClosingTag = `</${this.currentParamName}>`
-				// Streamed param content: always write the currently accumulated value
+
+				const paramClosingTag = `</parameter>`
 				if (currentParamValue.endsWith(paramClosingTag)) {
-					// End of param value.
-					// Do not trim content parameters to preserve newlines, but strip first and last newline only
+					// End of param value
 					const paramValue = currentParamValue.slice(0, -paramClosingTag.length)
 					this.currentToolUse.params[this.currentParamName] =
 						this.currentParamName === "content"
@@ -85,141 +127,92 @@ export class AssistantMessageParser {
 					this.currentParamName = undefined
 					continue
 				} else {
-					// Partial param value is accumulating.
-					// Write the currently accumulated param content in real time
+					// Partial param value is accumulating
 					this.currentToolUse.params[this.currentParamName] = currentParamValue
 					continue
 				}
 			}
 
-			// No currentParamName.
-
-			if (this.currentToolUse) {
-				const currentToolValue = this.accumulator.slice(this.currentToolUseStartIndex)
-				const toolUseClosingTag = `</${this.currentToolUse.name}>`
-				if (currentToolValue.endsWith(toolUseClosingTag)) {
-					// End of a tool use.
-					this.currentToolUse.partial = false
-
-					this.currentToolUse = undefined
-					continue
-				} else {
-					const possibleParamOpeningTags = toolParamNames.map((name) => `<${name}>`)
-					for (const paramOpeningTag of possibleParamOpeningTags) {
-						if (this.accumulator.endsWith(paramOpeningTag)) {
-							// Start of a new parameter.
-							const paramName = paramOpeningTag.slice(1, -1)
-							if (!toolParamNames.includes(paramName as ToolParamName)) {
-								// Handle invalid parameter name gracefully
-								continue
-							}
-							this.currentParamName = paramName as ToolParamName
-							this.currentParamValueStartIndex = this.accumulator.length
-							break
-						}
-					}
-
-					// There's no current param, and not starting a new param.
-
-					// Special case for write_to_file where file contents could
-					// contain the closing tag, in which case the param would have
-					// closed and we end up with the rest of the file contents here.
-					// To work around this, get the string between the starting
-					// content tag and the LAST content tag.
+			// Inside function_calls, handle invoke tags
+			if (this.inFunctionCalls) {
+				// Check for </invoke> closing tag
+				if (this.currentToolUse && this.accumulator.endsWith("</invoke>")) {
+					// Special case for write_to_file content parameter
 					const contentParamName: ToolParamName = "content"
-
-					if (
-						this.currentToolUse.name === "write_to_file" &&
-						this.accumulator.endsWith(`</${contentParamName}>`)
-					) {
-						const toolContent = this.accumulator.slice(this.currentToolUseStartIndex)
-						const contentStartTag = `<${contentParamName}>`
-						const contentEndTag = `</${contentParamName}>`
-						const contentStartIndex = toolContent.indexOf(contentStartTag) + contentStartTag.length
+					if (this.currentToolUse.name === "write_to_file") {
+						const toolContent = this.accumulator.slice(
+							this.currentToolUseStartIndex,
+							this.accumulator.length - "</invoke>".length,
+						)
+						const contentStartTag = `<parameter name="${contentParamName}">`
+						const contentEndTag = `</parameter>`
+						const contentStartIndex = toolContent.indexOf(contentStartTag)
 						const contentEndIndex = toolContent.lastIndexOf(contentEndTag)
 
 						if (contentStartIndex !== -1 && contentEndIndex !== -1 && contentEndIndex > contentStartIndex) {
-							// Don't trim content to preserve newlines, but strip first and last newline only
-							this.currentToolUse.params[contentParamName] = toolContent
-								.slice(contentStartIndex, contentEndIndex)
+							const contentValue = toolContent
+								.slice(contentStartIndex + contentStartTag.length, contentEndIndex)
 								.replace(/^\n/, "")
 								.replace(/\n$/, "")
+							this.currentToolUse.params[contentParamName] = contentValue
 						}
 					}
 
-					// Partial tool value is accumulating.
+					// End of tool use
+					this.currentToolUse.partial = false
+					this.currentToolUse = undefined
 					continue
 				}
-			}
 
-			// No currentToolUse.
-
-			let didStartToolUse = false
-			const possibleToolUseOpeningTags = toolNames.map((name) => `<${name}>`)
-
-			for (const toolUseOpeningTag of possibleToolUseOpeningTags) {
-				if (this.accumulator.endsWith(toolUseOpeningTag)) {
-					// Extract and validate the tool name
-					const extractedToolName = toolUseOpeningTag.slice(1, -1)
-
-					// Check if the extracted tool name is valid
-					if (!toolNames.includes(extractedToolName as ToolName)) {
-						// Invalid tool name, treat as plain text and continue
+				// Check for <parameter name="..."> opening tag
+				if (this.currentToolUse && !this.currentParamName) {
+					const paramMatch = this.accumulator.match(/<parameter name="([^"]+)">$/)
+					if (paramMatch) {
+						const paramName = paramMatch[1]
+						if (toolParamNames.includes(paramName as ToolParamName)) {
+							this.currentParamName = paramName as ToolParamName
+							this.currentParamValueStartIndex = this.accumulator.length
+						}
 						continue
 					}
+				}
 
-					// Start of a new tool use.
-					this.currentToolUse = {
-						type: "tool_use",
-						name: extractedToolName as ToolName,
-						params: {},
-						partial: true,
+				// Check for <invoke name="..."> opening tag
+				if (!this.currentToolUse) {
+					const invokeMatch = this.accumulator.match(/<invoke name="([^"]+)">$/)
+					if (invokeMatch) {
+						const toolName = invokeMatch[1]
+						if (toolNames.includes(toolName as ToolName)) {
+							this.currentToolUse = {
+								type: "tool_use",
+								name: toolName as ToolName,
+								params: {},
+								partial: true,
+							}
+							this.currentToolUseStartIndex = this.accumulator.length
+
+							// Immediately push new tool_use block as partial
+							let idx = this.contentBlocks.findIndex((block) => block === this.currentToolUse)
+							if (idx === -1) {
+								this.contentBlocks.push(this.currentToolUse)
+							}
+						}
+						continue
 					}
-
-					this.currentToolUseStartIndex = this.accumulator.length
-
-					// This also indicates the end of the current text content.
-					if (this.currentTextContent) {
-						this.currentTextContent.partial = false
-
-						// Remove the partially accumulated tool use tag from the
-						// end of text (<tool).
-						this.currentTextContent.content = this.currentTextContent.content
-							.slice(0, -toolUseOpeningTag.slice(0, -1).length)
-							.trim()
-
-						// No need to push, currentTextContent is already in contentBlocks
-						this.currentTextContent = undefined
-					}
-
-					// Immediately push new tool_use block as partial
-					let idx = this.contentBlocks.findIndex((block) => block === this.currentToolUse)
-					if (idx === -1) {
-						this.contentBlocks.push(this.currentToolUse)
-					}
-
-					didStartToolUse = true
-					break
 				}
 			}
 
-			if (!didStartToolUse) {
-				// No tool use, so it must be text either at the beginning or
-				// between tools.
+			// Outside function_calls, handle text content
+			if (!this.inFunctionCalls && !this.currentToolUse) {
 				if (this.currentTextContent === undefined) {
-					// If this is the first chunk and we're at the beginning of processing,
-					// set the start index to the current position in the accumulator
 					this.currentTextContentStartIndex = currentPosition
 
-					// Create a new text content block and add it to contentBlocks
 					this.currentTextContent = {
 						type: "text",
 						content: this.accumulator.slice(this.currentTextContentStartIndex).trim(),
 						partial: true,
 					}
 
-					// Add the new text content to contentBlocks immediately
-					// Ensures it appears in the UI right away
 					this.contentBlocks.push(this.currentTextContent)
 				} else {
 					// Update the existing text content
@@ -227,9 +220,7 @@ export class AssistantMessageParser {
 				}
 			}
 		}
-		// Do not call finalizeContentBlocks() here.
-		// Instead, update any partial blocks in the array and add new ones as they're completed.
-		// This matches the behavior of the original parseAssistantMessage function.
+
 		return this.getContentBlocks()
 	}
 

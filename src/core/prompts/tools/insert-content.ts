@@ -12,22 +12,26 @@ Parameters:
 - content: (required) The content to insert at the specified line
 
 Example for inserting imports at start of file:
-<insert_content>
-<path>src/utils.ts</path>
-<line>1</line>
-<content>
+<function_calls>
+<invoke name="insert_content">
+<parameter name="path">src/utils.ts</parameter>
+<parameter name="line">1</parameter>
+<parameter name="content">
 // Add imports at start of file
 import { sum } from './math';
-</content>
-</insert_content>
+</parameter>
+</invoke>
+</function_calls>
 
 Example for appending to the end of file:
-<insert_content>
-<path>src/utils.ts</path>
-<line>0</line>
-<content>
+<function_calls>
+<invoke name="insert_content">
+<parameter name="path">src/utils.ts</parameter>
+<parameter name="line">0</parameter>
+<parameter name="content">
 // This is the end of the file
-</content>
-</insert_content>
+</parameter>
+</invoke>
+</function_calls>
 `
 }

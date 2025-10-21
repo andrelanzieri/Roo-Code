@@ -9,15 +9,19 @@ Parameters:
 - path: (optional) Limit search to specific subdirectory (relative to the current workspace directory ${args.cwd}). Leave empty for entire workspace.
 
 Usage:
-<codebase_search>
-<query>Your natural language query here</query>
-<path>Optional subdirectory path</path>
-</codebase_search>
+<function_calls>
+<invoke name="codebase_search">
+<parameter name="query">Your natural language query here</parameter>
+<parameter name="path">Optional subdirectory path</parameter>
+</invoke>
+</function_calls>
 
 Example:
-<codebase_search>
-<query>User login and password hashing</query>
-<path>src/auth</path>
-</codebase_search>
+<function_calls>
+<invoke name="codebase_search">
+<parameter name="query">User login and password hashing</parameter>
+<parameter name="path">src/auth</parameter>
+</invoke>
+</function_calls>
 `
 }

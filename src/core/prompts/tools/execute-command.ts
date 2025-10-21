@@ -7,19 +7,25 @@ Parameters:
 - command: (required) The CLI command to execute. This should be valid for the current operating system. Ensure the command is properly formatted and does not contain any harmful instructions.
 - cwd: (optional) The working directory to execute the command in (default: ${args.cwd})
 Usage:
-<execute_command>
-<command>Your command here</command>
-<cwd>Working directory path (optional)</cwd>
-</execute_command>
+<function_calls>
+<invoke name="execute_command">
+<parameter name="command">Your command here</parameter>
+<parameter name="cwd">Working directory path (optional)</parameter>
+</invoke>
+</function_calls>
 
 Example: Requesting to execute npm run dev
-<execute_command>
-<command>npm run dev</command>
-</execute_command>
+<function_calls>
+<invoke name="execute_command">
+<parameter name="command">npm run dev</parameter>
+</invoke>
+</function_calls>
 
 Example: Requesting to execute ls in a specific directory if directed
-<execute_command>
-<command>ls -la</command>
-<cwd>/home/user/projects</cwd>
-</execute_command>`
+<function_calls>
+<invoke name="execute_command">
+<parameter name="command">ls -la</parameter>
+<parameter name="cwd">/home/user/projects</parameter>
+</invoke>
+</function_calls>`
 }

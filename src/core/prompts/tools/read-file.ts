@@ -16,32 +16,37 @@ Parameters:
   ${args.partialReadsEnabled ? `- line_range: (optional) One or more line range elements in format "start-end" (1-based, inclusive)` : ""}
 
 Usage:
-<read_file>
-<args>
+<function_calls>
+<invoke name="read_file">
+<parameter name="args">
   <file>
     <path>path/to/file</path>
     ${args.partialReadsEnabled ? `<line_range>start-end</line_range>` : ""}
   </file>
-</args>
-</read_file>
+</parameter>
+</invoke>
+</function_calls>
 
 Examples:
 
 1. Reading a single file:
-<read_file>
-<args>
+<function_calls>
+<invoke name="read_file">
+<parameter name="args">
   <file>
     <path>src/app.ts</path>
     ${args.partialReadsEnabled ? `<line_range>1-1000</line_range>` : ""}
   </file>
-</args>
-</read_file>
+</parameter>
+</invoke>
+</function_calls>
 
 ${isMultipleReadsEnabled ? `2. Reading multiple files (within the ${maxConcurrentReads}-file limit):` : ""}${
 		isMultipleReadsEnabled
 			? `
-<read_file>
-<args>
+<function_calls>
+<invoke name="read_file">
+<parameter name="args">
   <file>
     <path>src/app.ts</path>
     ${
@@ -55,19 +60,22 @@ ${isMultipleReadsEnabled ? `2. Reading multiple files (within the ${maxConcurren
     <path>src/utils.ts</path>
     ${args.partialReadsEnabled ? `<line_range>10-20</line_range>` : ""}
   </file>
-</args>
-</read_file>`
+</parameter>
+</invoke>
+</function_calls>`
 			: ""
 	}
 
 ${isMultipleReadsEnabled ? "3. " : "2. "}Reading an entire file:
-<read_file>
-<args>
+<function_calls>
+<invoke name="read_file">
+<parameter name="args">
   <file>
     <path>config.json</path>
   </file>
-</args>
-</read_file>
+</parameter>
+</invoke>
+</function_calls>
 
 IMPORTANT: You MUST use this Efficient Reading Strategy:
 - ${isMultipleReadsEnabled ? `You MUST read all related files and implementations together in a single operation (up to ${maxConcurrentReads} files at once)` : "You MUST read files one at a time, as multiple file reads are currently disabled"}

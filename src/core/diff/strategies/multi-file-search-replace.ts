@@ -134,8 +134,9 @@ Original file:
 \`\`\`
 
 Search/Replace content:
-<apply_diff>
-<args>
+<function_calls>
+<invoke name="apply_diff">
+<parameter name="args">
 <file>
   <path>eg.file.py</path>
   <diff>
@@ -154,12 +155,14 @@ def calculate_total(items):
 ]]></content>
   </diff>
 </file>
-</args>
-</apply_diff>
+</parameter>
+</invoke>
+</function_calls>
 
 Search/Replace content with multi edits across multiple files:
-<apply_diff>
-<args>
+<function_calls>
+<invoke name="apply_diff">
+<parameter name="args">
 <file>
   <path>eg.file.py</path>
   <diff>
@@ -199,13 +202,15 @@ def greet(name):
 ]]></content>
   </diff>
 </file>
-</args>
-</apply_diff>
+</parameter>
+</invoke>
+</function_calls>
 
 
 Usage:
-<apply_diff>
-<args>
+<function_calls>
+<invoke name="apply_diff">
+<parameter name="args">
 <file>
   <path>File path here</path>
   <diff>
@@ -228,8 +233,9 @@ Each file requires its own path, start_line, and diff elements.
     <start_line>5</start_line>
   </diff>
 </file>
-</args>
-</apply_diff>`
+</parameter>
+</invoke>
+</function_calls>`
 	}
 
 	private unescapeMarkers(content: string): string {

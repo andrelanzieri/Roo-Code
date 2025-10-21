@@ -8,16 +8,20 @@ Parameters:
 - regex: (required) The regular expression pattern to search for. Uses Rust regex syntax.
 - file_pattern: (optional) Glob pattern to filter files (e.g., '*.ts' for TypeScript files). If not provided, it will search all files (*).
 Usage:
-<search_files>
-<path>Directory path here</path>
-<regex>Your regex pattern here</regex>
-<file_pattern>file pattern here (optional)</file_pattern>
-</search_files>
+<function_calls>
+<invoke name="search_files">
+<parameter name="path">Directory path here</parameter>
+<parameter name="regex">Your regex pattern here</parameter>
+<parameter name="file_pattern">file pattern here (optional)</parameter>
+</invoke>
+</function_calls>
 
 Example: Requesting to search for all .ts files in the current directory
-<search_files>
-<path>.</path>
-<regex>.*</regex>
-<file_pattern>*.ts</file_pattern>
-</search_files>`
+<function_calls>
+<invoke name="search_files">
+<parameter name="path">.</parameter>
+<parameter name="regex">.*</parameter>
+<parameter name="file_pattern">*.ts</parameter>
+</invoke>
+</function_calls>`
 }

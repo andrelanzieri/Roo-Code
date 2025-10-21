@@ -8,29 +8,37 @@ Parameters:
 - path: (required) The file path where the generated/edited image should be saved (relative to the current workspace directory ${args.cwd}). The tool will automatically add the appropriate image extension if not provided.
 - image: (optional) The file path to an input image to edit or transform (relative to the current workspace directory ${args.cwd}). Supported formats: PNG, JPG, JPEG, GIF, WEBP.
 Usage:
-<generate_image>
-<prompt>Your image description here</prompt>
-<path>path/to/save/image.png</path>
-<image>path/to/input/image.jpg</image>
-</generate_image>
+<function_calls>
+<invoke name="generate_image">
+<parameter name="prompt">Your image description here</parameter>
+<parameter name="path">path/to/save/image.png</parameter>
+<parameter name="image">path/to/input/image.jpg</parameter>
+</invoke>
+</function_calls>
 
 Example: Requesting to generate a sunset image
-<generate_image>
-<prompt>A beautiful sunset over mountains with vibrant orange and purple colors</prompt>
-<path>images/sunset.png</path>
-</generate_image>
+<function_calls>
+<invoke name="generate_image">
+<parameter name="prompt">A beautiful sunset over mountains with vibrant orange and purple colors</parameter>
+<parameter name="path">images/sunset.png</parameter>
+</invoke>
+</function_calls>
 
 Example: Editing an existing image
-<generate_image>
-<prompt>Transform this image into a watercolor painting style</prompt>
-<path>images/watercolor-output.png</path>
-<image>images/original-photo.jpg</image>
-</generate_image>
+<function_calls>
+<invoke name="generate_image">
+<parameter name="prompt">Transform this image into a watercolor painting style</parameter>
+<parameter name="path">images/watercolor-output.png</parameter>
+<parameter name="image">images/original-photo.jpg</parameter>
+</invoke>
+</function_calls>
 
 Example: Upscaling and enhancing an image
-<generate_image>
-<prompt>Upscale this image to higher resolution, enhance details, improve clarity and sharpness while maintaining the original content and composition</prompt>
-<path>images/enhanced-photo.png</path>
-<image>images/low-res-photo.jpg</image>
-</generate_image>`
+<function_calls>
+<invoke name="generate_image">
+<parameter name="prompt">Upscale this image to higher resolution, enhance details, improve clarity and sharpness while maintaining the original content and composition</parameter>
+<parameter name="path">images/enhanced-photo.png</parameter>
+<parameter name="image">images/low-res-photo.jpg</parameter>
+</invoke>
+</function_calls>`
 }
