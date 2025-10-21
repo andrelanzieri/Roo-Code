@@ -1053,41 +1053,8 @@ export const ChatRowContent = ({
 								}}
 								onClick={canExpand ? handleToggleExpand : undefined}>
 								<div style={{ display: "flex", alignItems: "center", gap: "10px", flexGrow: 1 }}>
-									{apiReqCancelReason !== null && apiReqCancelReason !== undefined ? (
-										apiReqCancelReason === "user_cancelled" ? (
-											<div
-												style={{
-													width: 16,
-													height: 16,
-													display: "flex",
-													alignItems: "center",
-													justifyContent: "center",
-												}}>
-												<span
-													className="codicon codicon-error"
-													style={{
-														color: cancelledColor,
-														fontSize: 16,
-														marginBottom: "-1.5px",
-													}}
-												/>
-											</div>
-										) : (
-											<div
-												style={{
-													width: 16,
-													height: 16,
-													display: "flex",
-													alignItems: "center",
-													justifyContent: "center",
-												}}>
-												<span
-													className="codicon codicon-error"
-													style={{ color: errorColor, fontSize: 16, marginBottom: "-1.5px" }}
-												/>
-											</div>
-										)
-									) : canExpand ? (
+									{/* Use chevron icon for expandable completed requests, otherwise use the computed icon */}
+									{canExpand ? (
 										<div
 											style={{
 												width: 16,
@@ -1101,22 +1068,8 @@ export const ChatRowContent = ({
 												style={{ color: normalColor, fontSize: 16, marginBottom: "-1.5px" }}
 											/>
 										</div>
-									) : apiRequestFailedMessage ? (
-										<div
-											style={{
-												width: 16,
-												height: 16,
-												display: "flex",
-												alignItems: "center",
-												justifyContent: "center",
-											}}>
-											<span
-												className="codicon codicon-error"
-												style={{ color: errorColor, fontSize: 16, marginBottom: "-1.5px" }}
-											/>
-										</div>
 									) : (
-										<ProgressIndicator />
+										icon
 									)}
 									{title}
 								</div>
@@ -1133,7 +1086,7 @@ export const ChatRowContent = ({
 										code={message.text}
 										language="json"
 										isExpanded={true}
-										onToggleExpand={() => {}}
+										onToggleExpand={handleToggleExpand}
 									/>
 								</div>
 							)}
