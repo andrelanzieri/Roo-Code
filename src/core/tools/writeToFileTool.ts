@@ -86,6 +86,10 @@ export async function writeToFileTool(
 	if (!cline.api.getModel().id.includes("claude")) {
 		newContent = unescapeHtmlEntities(newContent)
 	}
+	// Strip accidental XML-like parameter spillover that can appear at the end of content
+	// e.g., "</parameter>\n<parameter name=\"line_count\">1"
+	newContent = newContent.replace(/\n<\/parameter>\s*\n<parameter name="line_count">[\s\S]*$/i, "")
+	newContent = newContent.replace(/\n<\/parameter>\s*$/i, "")
 
 	// Determine if the path is outside the workspace
 	const fullPath = relPath ? path.resolve(cline.cwd, removeClosingTag("path", relPath)) : ""
