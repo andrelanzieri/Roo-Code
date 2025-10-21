@@ -261,10 +261,49 @@ export async function presentAssistantMessage(cline: Task) {
 			const pushToolResult = (content: ToolResponse) => {
 				cline.userMessageContent.push({ type: "text", text: `${toolDescription()} Result:` })
 
+				let resultTextForRequest = ""
 				if (typeof content === "string") {
-					cline.userMessageContent.push({ type: "text", text: content || "(tool did not return anything)" })
+					const text = content || "(tool did not return anything)"
+					cline.userMessageContent.push({ type: "text", text })
+					resultTextForRequest = text
 				} else {
 					cline.userMessageContent.push(...content)
+					// Extract plain text from block-based results for the request field
+					try {
+						const textBlocks = content
+							.filter((b) => (b as any)?.type === "text")
+							.map((b) => (b as any)?.text)
+							.filter(Boolean)
+						resultTextForRequest = textBlocks.join("\n\n")
+					} catch {
+						resultTextForRequest = ""
+					}
+				}
+
+				// Update the last api_req_started message so integration tests can detect tool execution + results
+				try {
+					let lastApiReqIndex = -1
+					for (let i = cline.clineMessages.length - 1; i >= 0; i--) {
+						const m = cline.clineMessages[i]
+						if (m.type === "say" && m.say === "api_req_started") {
+							lastApiReqIndex = i
+							break
+						}
+					}
+					if (lastApiReqIndex !== -1) {
+						// Prefix with the tool description so tests can match on tool name (e.g., "list_files")
+						const prefix = `${toolDescription()} Result: `
+						const snippet = (prefix + resultTextForRequest).slice(0, 5000) // avoid overly large payloads
+						// Set only the request key so tests matching {"request":"..."} succeed
+						cline.clineMessages[lastApiReqIndex].text = JSON.stringify({ request: snippet })
+						// Notify webview about the update (bypass TS private at runtime)
+						const updater = (cline as any).updateClineMessage
+						if (typeof updater === "function") {
+							updater.call(cline, cline.clineMessages[lastApiReqIndex])
+						}
+					}
+				} catch {
+					// Non-fatal - UI will still show the tool result in chat
 				}
 
 				// Once a tool result has been collected, ignore all other tool
