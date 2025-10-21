@@ -39,6 +39,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	private readonly apiKey: string
 	private readonly isFullUrl: boolean
 	private readonly maxItemTokens: number
+	private readonly customQueryInstruction?: string
 
 	// Global rate limiting state shared across all instances
 	private static globalRateLimitState = {
@@ -56,8 +57,15 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	 * @param apiKey The API key for authentication
 	 * @param modelId Optional model identifier (defaults to "text-embedding-3-small")
 	 * @param maxItemTokens Optional maximum tokens per item (defaults to MAX_ITEM_TOKENS)
+	 * @param customQueryInstruction Optional custom query instruction for instruction-aware models
 	 */
-	constructor(baseUrl: string, apiKey: string, modelId?: string, maxItemTokens?: number) {
+	constructor(
+		baseUrl: string,
+		apiKey: string,
+		modelId?: string,
+		maxItemTokens?: number,
+		customQueryInstruction?: string,
+	) {
 		if (!baseUrl) {
 			throw new Error(t("embeddings:validation.baseUrlRequired"))
 		}
@@ -83,6 +91,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 		// Cache the URL type check for performance
 		this.isFullUrl = this.isFullEndpointUrl(baseUrl)
 		this.maxItemTokens = maxItemTokens || MAX_ITEM_TOKENS
+		this.customQueryInstruction = customQueryInstruction
 	}
 
 	/**
@@ -94,8 +103,8 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	async createEmbeddings(texts: string[], model?: string): Promise<EmbeddingResponse> {
 		const modelToUse = model || this.defaultModelId
 
-		// Apply model-specific query prefix if required
-		const queryPrefix = getModelQueryPrefix("openai-compatible", modelToUse)
+		// Use custom query instruction if provided, otherwise fall back to model-specific prefix
+		const queryPrefix = this.customQueryInstruction || getModelQueryPrefix("openai-compatible", modelToUse)
 		const processedTexts = queryPrefix
 			? texts.map((text, index) => {
 					// Prevent double-prefixing

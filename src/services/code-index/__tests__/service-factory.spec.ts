@@ -194,6 +194,8 @@ describe("CodeIndexServiceFactory", () => {
 				"https://api.example.com/v1",
 				"test-api-key",
 				testModelId,
+				undefined, // maxItemTokens
+				undefined, // customQueryInstruction
 			)
 		})
 
@@ -216,7 +218,9 @@ describe("CodeIndexServiceFactory", () => {
 			expect(MockedOpenAICompatibleEmbedder).toHaveBeenCalledWith(
 				"https://api.example.com/v1",
 				"test-api-key",
-				undefined,
+				undefined, // modelId
+				undefined, // maxItemTokens
+				undefined, // customQueryInstruction
 			)
 		})
 
@@ -279,7 +283,7 @@ describe("CodeIndexServiceFactory", () => {
 			factory.createEmbedder()
 
 			// Assert
-			expect(MockedGeminiEmbedder).toHaveBeenCalledWith("test-gemini-api-key", undefined)
+			expect(MockedGeminiEmbedder).toHaveBeenCalledWith("test-gemini-api-key", undefined, undefined)
 		})
 
 		it("should create GeminiEmbedder with specified modelId", () => {
@@ -297,7 +301,7 @@ describe("CodeIndexServiceFactory", () => {
 			factory.createEmbedder()
 
 			// Assert
-			expect(MockedGeminiEmbedder).toHaveBeenCalledWith("test-gemini-api-key", "text-embedding-004")
+			expect(MockedGeminiEmbedder).toHaveBeenCalledWith("test-gemini-api-key", "text-embedding-004", undefined)
 		})
 
 		it("should throw error when Gemini API key is missing", () => {

@@ -19,6 +19,7 @@ export interface CodeIndexConfig {
 	qdrantApiKey?: string
 	searchMinScore?: number
 	searchMaxResults?: number
+	customQueryInstruction?: string
 }
 
 /**

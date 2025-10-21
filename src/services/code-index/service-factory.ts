@@ -46,6 +46,7 @@ export class CodeIndexServiceFactory {
 			return new OpenAiEmbedder({
 				...config.openAiOptions,
 				openAiEmbeddingModelId: config.modelId,
+				customQueryInstruction: config.customQueryInstruction,
 			})
 		} else if (provider === "ollama") {
 			if (!config.ollamaOptions?.ollamaBaseUrl) {
@@ -54,6 +55,7 @@ export class CodeIndexServiceFactory {
 			return new CodeIndexOllamaEmbedder({
 				...config.ollamaOptions,
 				ollamaModelId: config.modelId,
+				customQueryInstruction: config.customQueryInstruction,
 			})
 		} else if (provider === "openai-compatible") {
 			if (!config.openAiCompatibleOptions?.baseUrl || !config.openAiCompatibleOptions?.apiKey) {
@@ -63,22 +65,28 @@ export class CodeIndexServiceFactory {
 				config.openAiCompatibleOptions.baseUrl,
 				config.openAiCompatibleOptions.apiKey,
 				config.modelId,
+				undefined, // maxItemTokens
+				config.customQueryInstruction,
 			)
 		} else if (provider === "gemini") {
 			if (!config.geminiOptions?.apiKey) {
 				throw new Error(t("embeddings:serviceFactory.geminiConfigMissing"))
 			}
-			return new GeminiEmbedder(config.geminiOptions.apiKey, config.modelId)
+			return new GeminiEmbedder(config.geminiOptions.apiKey, config.modelId, config.customQueryInstruction)
 		} else if (provider === "mistral") {
 			if (!config.mistralOptions?.apiKey) {
 				throw new Error(t("embeddings:serviceFactory.mistralConfigMissing"))
 			}
-			return new MistralEmbedder(config.mistralOptions.apiKey, config.modelId)
+			return new MistralEmbedder(config.mistralOptions.apiKey, config.modelId, config.customQueryInstruction)
 		} else if (provider === "vercel-ai-gateway") {
 			if (!config.vercelAiGatewayOptions?.apiKey) {
 				throw new Error(t("embeddings:serviceFactory.vercelAiGatewayConfigMissing"))
 			}
-			return new VercelAiGatewayEmbedder(config.vercelAiGatewayOptions.apiKey, config.modelId)
+			return new VercelAiGatewayEmbedder(
+				config.vercelAiGatewayOptions.apiKey,
+				config.modelId,
+				config.customQueryInstruction,
+			)
 		}
 
 		throw new Error(

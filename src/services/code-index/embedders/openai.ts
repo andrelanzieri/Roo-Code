@@ -21,12 +21,13 @@ import { handleOpenAIError } from "../../../api/providers/utils/openai-error-han
 export class OpenAiEmbedder extends OpenAiNativeHandler implements IEmbedder {
 	private embeddingsClient: OpenAI
 	private readonly defaultModelId: string
+	private readonly customQueryInstruction?: string
 
 	/**
 	 * Creates a new OpenAI embedder
 	 * @param options API handler options
 	 */
-	constructor(options: ApiHandlerOptions & { openAiEmbeddingModelId?: string }) {
+	constructor(options: ApiHandlerOptions & { openAiEmbeddingModelId?: string; customQueryInstruction?: string }) {
 		super(options)
 		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
 
@@ -39,6 +40,7 @@ export class OpenAiEmbedder extends OpenAiNativeHandler implements IEmbedder {
 		}
 
 		this.defaultModelId = options.openAiEmbeddingModelId || "text-embedding-3-small"
+		this.customQueryInstruction = options.customQueryInstruction
 	}
 
 	/**
@@ -50,8 +52,8 @@ export class OpenAiEmbedder extends OpenAiNativeHandler implements IEmbedder {
 	async createEmbeddings(texts: string[], model?: string): Promise<EmbeddingResponse> {
 		const modelToUse = model || this.defaultModelId
 
-		// Apply model-specific query prefix if required
-		const queryPrefix = getModelQueryPrefix("openai", modelToUse)
+		// Use custom query instruction if provided, otherwise fall back to model-specific prefix
+		const queryPrefix = this.customQueryInstruction || getModelQueryPrefix("openai", modelToUse)
 		const processedTexts = queryPrefix
 			? texts.map((text, index) => {
 					// Prevent double-prefixing

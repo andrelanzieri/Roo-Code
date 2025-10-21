@@ -31,8 +31,9 @@ export class VercelAiGatewayEmbedder implements IEmbedder {
 	 * Creates a new Vercel AI Gateway embedder
 	 * @param apiKey The Vercel AI Gateway API key for authentication
 	 * @param modelId The model ID to use (defaults to mistral/codestral-embed)
+	 * @param customQueryInstruction Optional custom query instruction for instruction-aware models
 	 */
-	constructor(apiKey: string, modelId?: string) {
+	constructor(apiKey: string, modelId?: string, customQueryInstruction?: string) {
 		if (!apiKey) {
 			throw new Error(t("embeddings:validation.apiKeyRequired"))
 		}
@@ -46,6 +47,7 @@ export class VercelAiGatewayEmbedder implements IEmbedder {
 			apiKey,
 			this.modelId,
 			MAX_ITEM_TOKENS,
+			customQueryInstruction,
 		)
 	}
 

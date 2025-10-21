@@ -22,8 +22,9 @@ export class MistralEmbedder implements IEmbedder {
 	 * Creates a new Mistral embedder
 	 * @param apiKey The Mistral API key for authentication
 	 * @param modelId The model ID to use (defaults to codestral-embed-2505)
+	 * @param customQueryInstruction Optional custom query instruction for instruction-aware models
 	 */
-	constructor(apiKey: string, modelId?: string) {
+	constructor(apiKey: string, modelId?: string, customQueryInstruction?: string) {
 		if (!apiKey) {
 			throw new Error(t("embeddings:validation.apiKeyRequired"))
 		}
@@ -37,6 +38,7 @@ export class MistralEmbedder implements IEmbedder {
 			apiKey,
 			this.modelId,
 			MAX_ITEM_TOKENS, // This is the max token limit (8191), not the embedding dimension
+			customQueryInstruction,
 		)
 	}
 

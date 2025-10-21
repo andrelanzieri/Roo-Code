@@ -141,6 +141,42 @@ describe("CodeIndexConfigManager", () => {
 			})
 		})
 
+		it("should load custom query instruction from globalState", async () => {
+			const mockGlobalState = {
+				codebaseIndexEnabled: true,
+				codebaseIndexQdrantUrl: "http://qdrant.local",
+				codebaseIndexEmbedderProvider: "openai",
+				codebaseIndexEmbedderModelId: "text-embedding-3-large",
+				codebaseIndexCustomQueryInstruction: "Represent this code for searching:",
+			}
+			mockContextProxy.getGlobalState.mockReturnValue(mockGlobalState)
+
+			// Mock both sync and async secret access
+			setupSecretMocks({
+				codeIndexOpenAiKey: "test-openai-key",
+				codeIndexQdrantApiKey: "test-qdrant-key",
+			})
+
+			const result = await configManager.loadConfiguration()
+
+			expect(result.currentConfig).toEqual({
+				isConfigured: true,
+				embedderProvider: "openai",
+				modelId: "text-embedding-3-large",
+				modelDimension: undefined,
+				openAiOptions: { openAiNativeApiKey: "test-openai-key" },
+				ollamaOptions: { ollamaBaseUrl: undefined },
+				geminiOptions: undefined,
+				mistralOptions: undefined,
+				openAiCompatibleOptions: undefined,
+				vercelAiGatewayOptions: undefined,
+				qdrantUrl: "http://qdrant.local",
+				qdrantApiKey: "test-qdrant-key",
+				searchMinScore: 0.4,
+				customQueryInstruction: "Represent this code for searching:",
+			})
+		})
+
 		it("should load OpenAI Compatible configuration from globalState and secrets", async () => {
 			const mockGlobalState = {
 				codebaseIndexEnabled: true,
@@ -1806,6 +1842,105 @@ describe("CodeIndexConfigManager", () => {
 
 				// Should return undefined since custom dimension is invalid
 				expect(configManager.currentModelDimension).toBe(undefined)
+			})
+		})
+
+		describe("currentCustomQueryInstruction", () => {
+			it("should return custom query instruction when set", async () => {
+				mockContextProxy.getGlobalState.mockReturnValue({
+					codebaseIndexEnabled: true,
+					codebaseIndexQdrantUrl: "http://localhost:6333",
+					codebaseIndexEmbedderProvider: "openai",
+					codebaseIndexEmbedderModelId: "text-embedding-3-small",
+					codebaseIndexCustomQueryInstruction: "Represent this code for retrieval:",
+				})
+				mockContextProxy.getSecret.mockImplementation((key: string) => {
+					if (key === "codeIndexOpenAiKey") return "test-key"
+					return undefined
+				})
+
+				configManager = new CodeIndexConfigManager(mockContextProxy)
+				await configManager.loadConfiguration()
+
+				expect(configManager.currentCustomQueryInstruction).toBe("Represent this code for retrieval:")
+			})
+
+			it("should return undefined when custom query instruction is not set", async () => {
+				mockContextProxy.getGlobalState.mockReturnValue({
+					codebaseIndexEnabled: true,
+					codebaseIndexQdrantUrl: "http://localhost:6333",
+					codebaseIndexEmbedderProvider: "openai",
+					codebaseIndexEmbedderModelId: "text-embedding-3-small",
+					// No custom query instruction
+				})
+				mockContextProxy.getSecret.mockImplementation((key: string) => {
+					if (key === "codeIndexOpenAiKey") return "test-key"
+					return undefined
+				})
+
+				configManager = new CodeIndexConfigManager(mockContextProxy)
+				await configManager.loadConfiguration()
+
+				expect(configManager.currentCustomQueryInstruction).toBe(undefined)
+			})
+
+			it("should return empty string when custom query instruction is explicitly empty", async () => {
+				mockContextProxy.getGlobalState.mockReturnValue({
+					codebaseIndexEnabled: true,
+					codebaseIndexQdrantUrl: "http://localhost:6333",
+					codebaseIndexEmbedderProvider: "openai",
+					codebaseIndexEmbedderModelId: "text-embedding-3-small",
+					codebaseIndexCustomQueryInstruction: "",
+				})
+				mockContextProxy.getSecret.mockImplementation((key: string) => {
+					if (key === "codeIndexOpenAiKey") return "test-key"
+					return undefined
+				})
+
+				configManager = new CodeIndexConfigManager(mockContextProxy)
+				await configManager.loadConfiguration()
+
+				expect(configManager.currentCustomQueryInstruction).toBe("")
+			})
+
+			it("should handle custom query instruction with different providers", async () => {
+				// Test with Ollama
+				mockContextProxy.getGlobalState.mockReturnValue({
+					codebaseIndexEnabled: true,
+					codebaseIndexQdrantUrl: "http://localhost:6333",
+					codebaseIndexEmbedderProvider: "ollama",
+					codebaseIndexEmbedderBaseUrl: "http://localhost:11434",
+					codebaseIndexEmbedderModelId: "nomic-embed-text",
+					codebaseIndexCustomQueryInstruction: "search_query: ",
+				})
+
+				configManager = new CodeIndexConfigManager(mockContextProxy)
+				await configManager.loadConfiguration()
+
+				expect(configManager.currentCustomQueryInstruction).toBe("search_query: ")
+
+				// Test with OpenAI Compatible
+				mockContextProxy.getGlobalState.mockImplementation((key: string) => {
+					if (key === "codebaseIndexConfig") {
+						return {
+							codebaseIndexEnabled: true,
+							codebaseIndexQdrantUrl: "http://localhost:6333",
+							codebaseIndexEmbedderProvider: "openai-compatible",
+							codebaseIndexEmbedderModelId: "custom-model",
+							codebaseIndexOpenAiCompatibleBaseUrl: "https://api.example.com/v1",
+							codebaseIndexCustomQueryInstruction: "query: ",
+						}
+					}
+					return undefined
+				})
+				setupSecretMocks({
+					codebaseIndexOpenAiCompatibleApiKey: "test-key",
+				})
+
+				const newManager = new CodeIndexConfigManager(mockContextProxy)
+				await newManager.loadConfiguration()
+
+				expect(newManager.currentCustomQueryInstruction).toBe("query: ")
 			})
 		})
 	})

@@ -23,8 +23,9 @@ export class GeminiEmbedder implements IEmbedder {
 	 * Creates a new Gemini embedder
 	 * @param apiKey The Gemini API key for authentication
 	 * @param modelId The model ID to use (defaults to gemini-embedding-001)
+	 * @param customQueryInstruction Optional custom query instruction for instruction-aware models
 	 */
-	constructor(apiKey: string, modelId?: string) {
+	constructor(apiKey: string, modelId?: string, customQueryInstruction?: string) {
 		if (!apiKey) {
 			throw new Error(t("embeddings:validation.apiKeyRequired"))
 		}
@@ -38,6 +39,7 @@ export class GeminiEmbedder implements IEmbedder {
 			apiKey,
 			this.modelId,
 			GEMINI_MAX_ITEM_TOKENS,
+			customQueryInstruction,
 		)
 	}
 

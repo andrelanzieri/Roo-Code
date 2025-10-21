@@ -17,8 +17,9 @@ const OLLAMA_VALIDATION_TIMEOUT_MS = 30000 // 30 seconds for validation requests
 export class CodeIndexOllamaEmbedder implements IEmbedder {
 	private readonly baseUrl: string
 	private readonly defaultModelId: string
+	private readonly customQueryInstruction?: string
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: ApiHandlerOptions & { customQueryInstruction?: string }) {
 		// Ensure ollamaBaseUrl and ollamaModelId exist on ApiHandlerOptions or add defaults
 		let baseUrl = options.ollamaBaseUrl || "http://localhost:11434"
 
@@ -27,6 +28,7 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 
 		this.baseUrl = baseUrl
 		this.defaultModelId = options.ollamaModelId || "nomic-embed-text:latest"
+		this.customQueryInstruction = options.customQueryInstruction
 	}
 
 	/**
@@ -39,8 +41,8 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 		const modelToUse = model || this.defaultModelId
 		const url = `${this.baseUrl}/api/embed` // Endpoint as specified
 
-		// Apply model-specific query prefix if required
-		const queryPrefix = getModelQueryPrefix("ollama", modelToUse)
+		// Use custom query instruction if provided, otherwise fall back to model-specific prefix
+		const queryPrefix = this.customQueryInstruction || getModelQueryPrefix("ollama", modelToUse)
 		const processedTexts = queryPrefix
 			? texts.map((text, index) => {
 					// Prevent double-prefixing
