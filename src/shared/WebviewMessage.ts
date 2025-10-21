@@ -195,6 +195,7 @@ export interface WebviewMessage {
 		| "profileThresholds"
 		| "setHistoryPreviewCollapsed"
 		| "setReasoningBlockCollapsed"
+		| "setUseJumpingRooAnimation"
 		| "openExternal"
 		| "filterMarketplaceItems"
 		| "marketplaceButtonClicked"

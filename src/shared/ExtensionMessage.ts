@@ -288,6 +288,7 @@ export type ExtensionState = Pick<
 	| "openRouterImageGenerationSelectedModel"
 	| "includeTaskHistoryInEnhance"
 	| "reasoningBlockCollapsed"
+	| "useJumpingRooAnimation"
 > & {
 	version: string
 	clineMessages: ClineMessage[]

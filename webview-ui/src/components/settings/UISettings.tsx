@@ -11,10 +11,16 @@ import { ExtensionStateContextType } from "@/context/ExtensionStateContext"
 
 interface UISettingsProps extends HTMLAttributes<HTMLDivElement> {
 	reasoningBlockCollapsed: boolean
+	useJumpingRooAnimation?: boolean
 	setCachedStateField: SetCachedStateField<keyof ExtensionStateContextType>
 }
 
-export const UISettings = ({ reasoningBlockCollapsed, setCachedStateField, ...props }: UISettingsProps) => {
+export const UISettings = ({
+	reasoningBlockCollapsed,
+	useJumpingRooAnimation,
+	setCachedStateField,
+	...props
+}: UISettingsProps) => {
 	const { t } = useAppTranslation()
 
 	const handleReasoningBlockCollapsedChange = (value: boolean) => {
@@ -22,6 +28,15 @@ export const UISettings = ({ reasoningBlockCollapsed, setCachedStateField, ...pr
 
 		// Track telemetry event
 		telemetryClient.capture("ui_settings_collapse_thinking_changed", {
+			enabled: value,
+		})
+	}
+
+	const handleJumpingRooAnimationChange = (value: boolean) => {
+		setCachedStateField("useJumpingRooAnimation", value)
+
+		// Track telemetry event
+		telemetryClient.capture("ui_settings_jumping_roo_changed", {
 			enabled: value,
 		})
 	}
@@ -47,6 +62,19 @@ export const UISettings = ({ reasoningBlockCollapsed, setCachedStateField, ...pr
 						</VSCodeCheckbox>
 						<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
 							{t("settings:ui.collapseThinking.description")}
+						</div>
+					</div>
+
+					{/* Jumping Roo Animation Setting */}
+					<div className="flex flex-col gap-1">
+						<VSCodeCheckbox
+							checked={useJumpingRooAnimation ?? false}
+							onChange={(e: any) => handleJumpingRooAnimationChange(e.target.checked)}
+							data-testid="jumping-roo-animation-checkbox">
+							<span className="font-medium">{t("settings:ui.jumpingRooAnimation.label")}</span>
+						</VSCodeCheckbox>
+						<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
+							{t("settings:ui.jumpingRooAnimation.description")}
 						</div>
 					</div>
 				</div>
