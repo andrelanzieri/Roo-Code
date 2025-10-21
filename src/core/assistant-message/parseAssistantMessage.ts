@@ -12,6 +12,7 @@ export function parseAssistantMessage(assistantMessage: string): AssistantMessag
 	let currentToolUseStartIndex = 0
 	let currentParamName: ToolParamName | undefined = undefined
 	let currentParamValueStartIndex = 0
+	let parameterNestingDepth = 0
 	let accumulator = ""
 	let inFunctionCalls = false
 
@@ -22,15 +23,28 @@ export function parseAssistantMessage(assistantMessage: string): AssistantMessag
 		// Inside function_calls block, handle parameters (check this FIRST to avoid nested tag issues)
 		if (currentToolUse && currentParamName) {
 			const currentParamValue = accumulator.slice(currentParamValueStartIndex)
+
+			// Check for nested <parameter> opening tags within param value
+			if (currentParamValue.endsWith('<parameter name="')) {
+				parameterNestingDepth++
+			}
+
+			// Check for </parameter> closing tag
 			const paramClosingTag = `</parameter>`
 			if (currentParamValue.endsWith(paramClosingTag)) {
-				// End of param value
+				if (parameterNestingDepth > 0) {
+					// This is a nested closing tag, decrement depth and continue
+					parameterNestingDepth--
+					continue
+				}
+				// This is the actual closing tag for our parameter
 				const paramValue = currentParamValue.slice(0, -paramClosingTag.length)
 				currentToolUse.params[currentParamName] =
 					currentParamName === "content"
 						? paramValue.replace(/^\n/, "").replace(/\n$/, "")
 						: paramValue.trim()
 				currentParamName = undefined
+				parameterNestingDepth = 0
 				continue
 			} else {
 				// Partial param value is accumulating
@@ -104,6 +118,7 @@ export function parseAssistantMessage(assistantMessage: string): AssistantMessag
 					if (toolParamNames.includes(paramName as ToolParamName)) {
 						currentParamName = paramName as ToolParamName
 						currentParamValueStartIndex = accumulator.length
+						parameterNestingDepth = 0
 					}
 					continue
 				}

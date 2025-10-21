@@ -47,6 +47,7 @@ export function parseAssistantMessageV2(assistantMessage: string): AssistantMess
 	let currentToolUse: ToolUse | undefined = undefined
 	let currentParamValueStart = 0
 	let currentParamName: ToolParamName | undefined = undefined
+	let parameterNestingDepth = 0
 	let inFunctionCalls = false
 
 	const len = assistantMessage.length
@@ -56,12 +57,27 @@ export function parseAssistantMessageV2(assistantMessage: string): AssistantMess
 
 		// Inside function_calls block, handle parameters (check FIRST to avoid nested tag issues)
 		if (currentToolUse && currentParamName) {
+			// Check for nested <parameter name=" opening tags
+			const paramOpenPattern = '<parameter name="'
+			if (
+				currentCharIndex >= paramOpenPattern.length - 1 &&
+				assistantMessage.startsWith(paramOpenPattern, currentCharIndex - paramOpenPattern.length + 1)
+			) {
+				parameterNestingDepth++
+			}
+
+			// Check for </parameter> closing tag
 			const paramCloseTag = "</parameter>"
 			if (
 				currentCharIndex >= paramCloseTag.length - 1 &&
 				assistantMessage.startsWith(paramCloseTag, currentCharIndex - paramCloseTag.length + 1)
 			) {
-				// Found the closing tag for the parameter
+				if (parameterNestingDepth > 0) {
+					// This is a nested closing tag, decrement depth and continue
+					parameterNestingDepth--
+					continue
+				}
+				// This is the actual closing tag for our parameter
 				const value = assistantMessage.slice(
 					currentParamValueStart,
 					currentCharIndex - paramCloseTag.length + 1,
@@ -69,6 +85,7 @@ export function parseAssistantMessageV2(assistantMessage: string): AssistantMess
 				currentToolUse.params[currentParamName] =
 					currentParamName === "content" ? value.replace(/^\n/, "").replace(/\n$/, "") : value.trim()
 				currentParamName = undefined
+				parameterNestingDepth = 0
 			} else {
 				continue // Still inside param value
 			}
@@ -159,6 +176,7 @@ export function parseAssistantMessageV2(assistantMessage: string): AssistantMess
 					if (toolParamNames.includes(paramName as ToolParamName)) {
 						currentParamName = paramName as ToolParamName
 						currentParamValueStart = currentCharIndex + 1
+						parameterNestingDepth = 0
 					}
 					continue
 				}
