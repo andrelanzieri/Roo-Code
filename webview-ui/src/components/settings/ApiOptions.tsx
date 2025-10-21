@@ -442,7 +442,11 @@ const ApiOptions = ({
 					<label className="block font-medium mb-1">{t("settings:providers.apiProvider")}</label>
 					{docs && (
 						<div className="text-xs text-vscode-descriptionForeground">
-							<VSCodeLink href={docs.url} className="hover:text-vscode-foreground" target="_blank">
+							<VSCodeLink
+								href={docs.url}
+								className="hover:text-vscode-foreground"
+								target="_blank"
+								rel="noreferrer noopener">
 								{t("settings:providers.providerDocumentation", { provider: docs.name })}
 							</VSCodeLink>
 						</div>

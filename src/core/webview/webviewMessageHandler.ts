@@ -979,11 +979,29 @@ export const webviewMessageHandler = async (
 		case "openMention":
 			openMention(getCurrentCwd(), message.text)
 			break
-		case "openExternal":
-			if (message.url) {
-				vscode.env.openExternal(vscode.Uri.parse(message.url))
+		case "openExternal": {
+			const url = message.url
+			if (typeof url === "string") {
+				try {
+					const uri = vscode.Uri.parse(url)
+					const isAllowedScheme = uri.scheme === "http" || uri.scheme === "https"
+					if (isAllowedScheme) {
+						await vscode.env.openExternal(uri)
+					} else {
+						console.warn(`Blocked external URL with disallowed scheme: ${url}`)
+						vscode.window.showErrorMessage(
+							t("common:errors.invalid_url_scheme") || "Invalid URL scheme. Only http/https are allowed.",
+						)
+					}
+				} catch (error) {
+					console.error("Failed to open external URL:", error)
+					vscode.window.showErrorMessage(
+						t("common:errors.open_external_failed") || "Failed to open external URL",
+					)
+				}
 			}
 			break
+		}
 		case "checkpointDiff":
 			const result = checkoutDiffPayloadSchema.safeParse(message.payload)
 
