@@ -3,11 +3,30 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
+/**
+ * Local minimal typings to avoid module resolution issues in e2e package.
+ * We only use a subset of fields in these tests.
+ */
+type ClineMessage = {
+	type: "ask" | "say"
+	say?: string
+	ask?: string
+	text?: string
+}
+
+const RooCodeEventName = {
+	Message: "message",
+	TaskStarted: "taskStarted",
+	TaskCompleted: "taskCompleted",
+} as const
 
 import { waitFor, sleep } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
 
+/**
+ * Local minimal typings to avoid module resolution issues in e2e package.
+ * We only use a subset of fields in these tests.
+ */
 // Local minimal type shapes to avoid ts-module resolution issues in e2e package
 type ToolUsage = Record<string, { attempts: number; failures: number }>
 type TokenUsage = {
@@ -17,6 +36,15 @@ type TokenUsage = {
 	contextTokens: number
 	totalCacheWrites?: number
 	totalCacheReads?: number
+}
+
+// Global fallback storage for tool usage across handlers
+let lastToolUsage: ToolUsage | undefined = undefined
+
+// Helper to safely read apply_diff attempts without using `any`
+function getApplyDiffAttempts() {
+	const lu = lastToolUsage as unknown as Record<string, { attempts?: number }>
+	return lu?.apply_diff?.attempts ?? 0
 }
 
 suite("Roo Code apply_diff Tool", function () {
@@ -219,6 +247,7 @@ function validateInput(input) {
 			if (id === taskId) {
 				taskCompleted = true
 				toolUsageRef.current = toolUsage
+				lastToolUsage = toolUsage
 				console.log("Task completed:", id)
 			}
 		}
@@ -262,7 +291,7 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 
 			// Fallback to toolUsage if api_req_started message is not emitted
 			if (!applyDiffExecuted) {
-				applyDiffExecuted = (lastToolUsage?.apply_diff?.attempts ?? 0) > 0
+				applyDiffExecuted = getApplyDiffAttempts() > 0
 			}
 
 			// Verify tool was executed
@@ -339,6 +368,7 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 			if (id === taskId) {
 				taskCompleted = true
 				toolUsageRef.current = toolUsage
+				lastToolUsage = toolUsage
 				console.log("Task completed:", id)
 			}
 		}
@@ -384,7 +414,7 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 
 			// Fallback to toolUsage if api_req_started message is not emitted
 			if (!applyDiffExecuted) {
-				applyDiffExecuted = (lastToolUsage?.apply_diff?.attempts ?? 0) > 0
+				applyDiffExecuted = getApplyDiffAttempts() > 0
 			}
 
 			// Verify tool was executed
@@ -464,6 +494,7 @@ function keepThis() {
 			if (id === taskId) {
 				taskCompleted = true
 				toolUsageRef.current = toolUsage
+				lastToolUsage = toolUsage
 			}
 		}
 		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
@@ -503,7 +534,7 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 
 			// Fallback to toolUsage if api_req_started message is not emitted
 			if (!applyDiffExecuted) {
-				applyDiffExecuted = (lastToolUsage?.apply_diff?.attempts ?? 0) > 0
+				applyDiffExecuted = getApplyDiffAttempts() > 0
 			}
 
 			// Verify tool was executed
@@ -579,6 +610,7 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 			if (id === taskId) {
 				taskCompleted = true
 				toolUsageRef.current = toolUsage
+				lastToolUsage = toolUsage
 			}
 		}
 		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
@@ -621,7 +653,7 @@ Assume the file exists and you can modify it directly.`,
 
 			// The AI should have attempted to use apply_diff (fallback to toolUsage attempts)
 			if (!applyDiffAttempted) {
-				applyDiffAttempted = (lastToolUsage?.apply_diff?.attempts ?? 0) > 0
+				applyDiffAttempted = getApplyDiffAttempts() > 0
 			}
 			assert.strictEqual(applyDiffAttempted, true, "apply_diff tool should have been attempted")
 
@@ -716,6 +748,7 @@ function checkInput(input) {
 			if (id === taskId) {
 				taskCompleted = true
 				toolUsageRef.current = toolUsage
+				lastToolUsage = toolUsage
 				console.log("Task completed:", id)
 			}
 		}
@@ -768,7 +801,7 @@ Assume the file exists and you can modify it directly.`,
 			console.log("File content after modification:", actualContent)
 
 			// Fallback to toolUsage counts if message-based detection didn't trigger
-			const attempts = lastToolUsage?.apply_diff?.attempts ?? 0
+			const attempts = getApplyDiffAttempts()
 			if (!applyDiffExecuted) {
 				applyDiffExecuted = attempts > 0
 			}
