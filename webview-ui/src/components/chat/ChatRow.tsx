@@ -1032,12 +1032,16 @@ export const ChatRowContent = ({
 					const isApiRequestInProgress =
 						apiReqCancelReason === undefined && apiRequestFailedMessage === undefined && cost === undefined
 
+					// For completed requests (with cost), make them expandable
+					const isCompletedRequest = cost !== null && cost !== undefined
+					const canExpand = isCompletedRequest && message.text !== null && message.text !== undefined
+
 					return (
 						<>
 							<div
 								className={`group text-sm transition-opacity ${
 									isApiRequestInProgress ? "opacity-100" : "opacity-40 hover:opacity-100"
-								}`}
+								} ${canExpand ? "cursor-pointer" : ""}`}
 								style={{
 									...headerStyle,
 									marginBottom:
@@ -1046,9 +1050,74 @@ export const ChatRowContent = ({
 											? 10
 											: 0,
 									justifyContent: "space-between",
-								}}>
+								}}
+								onClick={canExpand ? handleToggleExpand : undefined}>
 								<div style={{ display: "flex", alignItems: "center", gap: "10px", flexGrow: 1 }}>
-									{icon}
+									{apiReqCancelReason !== null && apiReqCancelReason !== undefined ? (
+										apiReqCancelReason === "user_cancelled" ? (
+											<div
+												style={{
+													width: 16,
+													height: 16,
+													display: "flex",
+													alignItems: "center",
+													justifyContent: "center",
+												}}>
+												<span
+													className="codicon codicon-error"
+													style={{
+														color: cancelledColor,
+														fontSize: 16,
+														marginBottom: "-1.5px",
+													}}
+												/>
+											</div>
+										) : (
+											<div
+												style={{
+													width: 16,
+													height: 16,
+													display: "flex",
+													alignItems: "center",
+													justifyContent: "center",
+												}}>
+												<span
+													className="codicon codicon-error"
+													style={{ color: errorColor, fontSize: 16, marginBottom: "-1.5px" }}
+												/>
+											</div>
+										)
+									) : canExpand ? (
+										<div
+											style={{
+												width: 16,
+												height: 16,
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "center",
+											}}>
+											<span
+												className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}
+												style={{ color: normalColor, fontSize: 16, marginBottom: "-1.5px" }}
+											/>
+										</div>
+									) : apiRequestFailedMessage ? (
+										<div
+											style={{
+												width: 16,
+												height: 16,
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "center",
+											}}>
+											<span
+												className="codicon codicon-error"
+												style={{ color: errorColor, fontSize: 16, marginBottom: "-1.5px" }}
+											/>
+										</div>
+									) : (
+										<ProgressIndicator />
+									)}
 									{title}
 								</div>
 								<div
@@ -1057,6 +1126,17 @@ export const ChatRowContent = ({
 									${Number(cost || 0)?.toFixed(4)}
 								</div>
 							</div>
+							{/* Show API request details when expanded */}
+							{canExpand && isExpanded && message.text && (
+								<div className="pl-6 mt-2">
+									<CodeAccordian
+										code={message.text}
+										language="json"
+										isExpanded={true}
+										onToggleExpand={() => {}}
+									/>
+								</div>
+							)}
 							{(((cost === null || cost === undefined) && apiRequestFailedMessage) ||
 								apiReqStreamingFailedMessage) && (
 								<ErrorRow
