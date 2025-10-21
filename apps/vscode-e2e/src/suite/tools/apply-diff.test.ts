@@ -3,23 +3,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-/**
- * Local minimal typings to avoid module resolution issues in e2e package.
- * We only use a subset of fields in these tests.
- */
-type ClineMessage = {
-	type: "ask" | "say"
-	say?: string
-	ask?: string
-	text?: string
-}
-
-const RooCodeEventName = {
-	Message: "message",
-	TaskStarted: "taskStarted",
-	TaskCompleted: "taskCompleted",
-} as const
-
+import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
 import { waitFor, sleep } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
 
