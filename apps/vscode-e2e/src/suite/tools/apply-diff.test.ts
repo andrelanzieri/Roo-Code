@@ -8,6 +8,17 @@ import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
 import { waitFor, sleep } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
 
+// Local minimal type shapes to avoid ts-module resolution issues in e2e package
+type ToolUsage = Record<string, { attempts: number; failures: number }>
+type TokenUsage = {
+	totalTokensIn: number
+	totalTokensOut: number
+	totalCost: number
+	contextTokens: number
+	totalCacheWrites?: number
+	totalCacheReads?: number
+}
+
 suite("Roo Code apply_diff Tool", function () {
 	setDefaultSuiteTimeout(this)
 
@@ -161,6 +172,7 @@ function validateInput(input) {
 		let taskCompleted = false
 		let errorOccurred: string | null = null
 		let applyDiffExecuted = false
+		const toolUsageRef: { current: ToolUsage | undefined } = { current: undefined }
 
 		// Listen for messages
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
@@ -203,9 +215,10 @@ function validateInput(input) {
 		}
 		api.on(RooCodeEventName.TaskStarted, taskStartedHandler)
 
-		const taskCompletedHandler = (id: string) => {
+		const taskCompletedHandler = (id: string, _tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
 			if (id === taskId) {
 				taskCompleted = true
+				toolUsageRef.current = toolUsage
 				console.log("Task completed:", id)
 			}
 		}
@@ -247,6 +260,11 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 			const actualContent = await fs.readFile(testFile.path, "utf-8")
 			console.log("File content after modification:", actualContent)
 
+			// Fallback to toolUsage if api_req_started message is not emitted
+			if (!applyDiffExecuted) {
+				applyDiffExecuted = (lastToolUsage?.apply_diff?.attempts ?? 0) > 0
+			}
+
 			// Verify tool was executed
 			assert.strictEqual(applyDiffExecuted, true, "apply_diff tool should have been executed")
 
@@ -280,6 +298,7 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 		let taskStarted = false
 		let taskCompleted = false
 		let applyDiffExecuted = false
+		const toolUsageRef: { current: ToolUsage | undefined } = { current: undefined }
 
 		// Listen for messages
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
@@ -316,9 +335,10 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 		}
 		api.on(RooCodeEventName.TaskStarted, taskStartedHandler)
 
-		const taskCompletedHandler = (id: string) => {
+		const taskCompletedHandler = (id: string, _tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
 			if (id === taskId) {
 				taskCompleted = true
+				toolUsageRef.current = toolUsage
 				console.log("Task completed:", id)
 			}
 		}
@@ -362,6 +382,11 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 			const actualContent = await fs.readFile(testFile.path, "utf-8")
 			console.log("File content after modification:", actualContent)
 
+			// Fallback to toolUsage if api_req_started message is not emitted
+			if (!applyDiffExecuted) {
+				applyDiffExecuted = (lastToolUsage?.apply_diff?.attempts ?? 0) > 0
+			}
+
 			// Verify tool was executed
 			assert.strictEqual(applyDiffExecuted, true, "apply_diff tool should have been executed")
 
@@ -402,6 +427,7 @@ function keepThis() {
 		let taskStarted = false
 		let taskCompleted = false
 		let applyDiffExecuted = false
+		const toolUsageRef: { current: ToolUsage | undefined } = { current: undefined }
 
 		// Listen for messages
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
@@ -434,9 +460,10 @@ function keepThis() {
 		}
 		api.on(RooCodeEventName.TaskStarted, taskStartedHandler)
 
-		const taskCompletedHandler = (id: string) => {
+		const taskCompletedHandler = (id: string, _tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
 			if (id === taskId) {
 				taskCompleted = true
+				toolUsageRef.current = toolUsage
 			}
 		}
 		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
@@ -474,6 +501,11 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 			const actualContent = await fs.readFile(testFile.path, "utf-8")
 			console.log("File content after modification:", actualContent)
 
+			// Fallback to toolUsage if api_req_started message is not emitted
+			if (!applyDiffExecuted) {
+				applyDiffExecuted = (lastToolUsage?.apply_diff?.attempts ?? 0) > 0
+			}
+
 			// Verify tool was executed
 			assert.strictEqual(applyDiffExecuted, true, "apply_diff tool should have been executed")
 
@@ -501,6 +533,7 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 		let taskCompleted = false
 		let errorDetected = false
 		let applyDiffAttempted = false
+		const toolUsageRef: { current: ToolUsage | undefined } = { current: undefined }
 
 		// Listen for messages
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
@@ -542,9 +575,10 @@ ${testFile.content}\nAssume the file exists and you can modify it directly.`,
 		}
 		api.on(RooCodeEventName.TaskStarted, taskStartedHandler)
 
-		const taskCompletedHandler = (id: string) => {
+		const taskCompletedHandler = (id: string, _tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
 			if (id === taskId) {
 				taskCompleted = true
+				toolUsageRef.current = toolUsage
 			}
 		}
 		api.on(RooCodeEventName.TaskCompleted, taskCompletedHandler)
@@ -585,7 +619,10 @@ Assume the file exists and you can modify it directly.`,
 			const actualContent = await fs.readFile(testFile.path, "utf-8")
 			console.log("File content after task:", actualContent)
 
-			// The AI should have attempted to use apply_diff
+			// The AI should have attempted to use apply_diff (fallback to toolUsage attempts)
+			if (!applyDiffAttempted) {
+				applyDiffAttempted = (lastToolUsage?.apply_diff?.attempts ?? 0) > 0
+			}
 			assert.strictEqual(applyDiffAttempted, true, "apply_diff tool should have been attempted")
 
 			// The content should remain unchanged since the search pattern wasn't found
@@ -631,6 +668,7 @@ function checkInput(input) {
 		let errorOccurred: string | null = null
 		let applyDiffExecuted = false
 		let applyDiffCount = 0
+		const toolUsageRef: { current: ToolUsage | undefined } = { current: undefined }
 
 		// Listen for messages
 		const messageHandler = ({ message }: { message: ClineMessage }) => {
@@ -674,9 +712,10 @@ function checkInput(input) {
 		}
 		api.on(RooCodeEventName.TaskStarted, taskStartedHandler)
 
-		const taskCompletedHandler = (id: string) => {
+		const taskCompletedHandler = (id: string, _tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
 			if (id === taskId) {
 				taskCompleted = true
+				toolUsageRef.current = toolUsage
 				console.log("Task completed:", id)
 			}
 		}
@@ -727,6 +766,13 @@ Assume the file exists and you can modify it directly.`,
 			// Check if the file was modified correctly
 			const actualContent = await fs.readFile(testFile.path, "utf-8")
 			console.log("File content after modification:", actualContent)
+
+			// Fallback to toolUsage counts if message-based detection didn't trigger
+			const attempts = lastToolUsage?.apply_diff?.attempts ?? 0
+			if (!applyDiffExecuted) {
+				applyDiffExecuted = attempts > 0
+			}
+			applyDiffCount = Math.max(applyDiffCount, attempts)
 
 			// Verify tool was executed
 			assert.strictEqual(applyDiffExecuted, true, "apply_diff tool should have been executed")
