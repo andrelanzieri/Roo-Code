@@ -1793,10 +1793,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const modelId = getModelId(this.apiConfiguration)
 			const apiProtocol = getApiProtocol(this.apiConfiguration.apiProvider, modelId)
 
+			// Include a summary of the current user request so integration tests can detect tool execution intent.
+			const requestText = currentUserContent
+				.map((block) => (block.type === "text" ? block.text : ""))
+				.filter(Boolean)
+				.join("\n")
+				.trim()
+
 			await this.say(
 				"api_req_started",
 				JSON.stringify({
 					apiProtocol,
+					request: requestText,
 				}),
 			)
 
@@ -1834,7 +1842,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// message.
 			const lastApiReqIndex = findLastIndex(this.clineMessages, (m) => m.say === "api_req_started")
 
+			const existingApiReqData = JSON.parse(this.clineMessages[lastApiReqIndex].text || "{}")
 			this.clineMessages[lastApiReqIndex].text = JSON.stringify({
+				...existingApiReqData,
 				apiProtocol,
 			} satisfies ClineApiReqInfo)
 
