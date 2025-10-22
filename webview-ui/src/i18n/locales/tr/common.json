@@ -95,5 +95,9 @@
 		"months_ago": "{{count}} ay önce",
 		"year_ago": "bir yıl önce",
 		"years_ago": "{{count}} yıl önce"
+	},
+	"errors": {
+		"wait_checkpoint_long_time": "{{timeout}} saniye boyunca kontrol noktası başlatılması beklendi. Bu özelliğe ihtiyacın yoksa <settingsLink>ayarlardan.</settingsLink> kapatabilirsin",
+		"init_checkpoint_fail_long_time": "Kontrol noktası başlatılması {{timeout}} saniyeden fazla sürdü. Bu görev için kontrol noktası özelliği devre dışı bırakıldı. Özelliği kapatabilir veya <settingsLink>ayarlardan.</settingsLink> bekleme süresini artırabilirsin"
 	}
 }

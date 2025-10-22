@@ -192,7 +192,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const [isAtBottom, setIsAtBottom] = useState(false)
 	const lastTtsRef = useRef<string>("")
 	const [wasStreaming, setWasStreaming] = useState<boolean>(false)
-	const [checkpointWarningText, setCheckpointWarningText] = useState<string>("")
+	const [checkpointWarning, setCheckpointWarning] = useState<
+		{ type: "WAIT_TIMEOUT" | "INIT_TIMEOUT"; timeout: number } | undefined
+	>(undefined)
 	const [isCondensing, setIsCondensing] = useState<boolean>(false)
 	const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
 	const everVisibleMessagesTsRef = useRef<LRUCache<number, boolean>>(
@@ -830,7 +832,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					}
 					break
 				case "checkpointInitWarning":
-					setCheckpointWarningText(message.checkpointWarning || "")
+					setCheckpointWarning(message.checkpointWarning)
 					break
 			}
 			// textAreaRef.current is not explicitly required here since React
@@ -848,7 +850,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			handleSetChatBoxMessage,
 			handlePrimaryButtonClick,
 			handleSecondaryButtonClick,
-			setCheckpointWarningText,
+			setCheckpointWarning,
 		],
 	)
 
@@ -1427,7 +1429,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// Effect to clear checkpoint warning when messages appear or task changes
 	useEffect(() => {
 		if (isHidden || !task) {
-			setCheckpointWarningText("")
+			setCheckpointWarning(undefined)
 		}
 	}, [modifiedMessages.length, isStreaming, isHidden, task])
 
@@ -1800,11 +1802,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						</div>
 					)}
 
-					{checkpointWarningText && (
-						<div className="px-3">
-							<CheckpointWarning text={checkpointWarningText} />
-						</div>
-					)}
+					{/* TEMPORARY: Always show warning for testing */}
+					<div className="px-3">
+						<CheckpointWarning warning={checkpointWarning || { type: "WAIT_TIMEOUT", timeout: 5 }} />
+					</div>
 				</>
 			) : (
 				<div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 relative">

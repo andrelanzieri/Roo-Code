@@ -95,5 +95,9 @@
 		"months_ago": "hace {{count}} meses",
 		"year_ago": "hace un año",
 		"years_ago": "hace {{count}} años"
+	},
+	"errors": {
+		"wait_checkpoint_long_time": "Has esperado {{timeout}} segundos para la inicialización del punto de control. Si no necesitas esta función, desactívala en <settingsLink>la configuración.</settingsLink>",
+		"init_checkpoint_fail_long_time": "La inicialización del punto de control ha tardado más de {{timeout}} segundos. La función de punto de control está desactivada para esta tarea. Puedes desactivarla o aumentar el tiempo de espera en <settingsLink>la configuración.</settingsLink>"
 	}
 }

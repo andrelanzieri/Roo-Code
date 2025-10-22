@@ -17,13 +17,11 @@ import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider
 import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../../services/checkpoints"
 
 const WARNING_THRESHOLD_MS = 5000
-const WAIT_LONG_TIME_I18_KEY = "common:errors.wait_checkpoint_long_time"
-const INIT_FAIL_LONG_TIME_I18_KEY = "common:errors.init_checkpoint_fail_long_time"
 
-function sendCheckpointInitWarn(task: Task, checkpointWarning: string) {
+function sendCheckpointInitWarn(task: Task, type?: "WAIT_TIMEOUT" | "INIT_TIMEOUT", timeout?: number) {
 	task.providerRef.deref()?.postMessageToWebview({
 		type: "checkpointInitWarning",
-		checkpointWarning,
+		checkpointWarning: type && timeout ? { type, timeout } : undefined,
 	})
 }
 
@@ -88,10 +86,7 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 					// Show warning if we're past the threshold and haven't shown it yet
 					if (!warningShown && elapsed >= WARNING_THRESHOLD_MS) {
 						warningShown = true
-						sendCheckpointInitWarn(
-							task,
-							t(WAIT_LONG_TIME_I18_KEY, { timeout: WARNING_THRESHOLD_MS / 1000 }),
-						)
+						sendCheckpointInitWarn(task, "WAIT_TIMEOUT", WARNING_THRESHOLD_MS / 1000)
 					}
 
 					console.log(
@@ -102,11 +97,11 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 				{ interval, timeout: checkpointTimeoutMs },
 			)
 			if (!task?.checkpointService) {
-				sendCheckpointInitWarn(task, t(INIT_FAIL_LONG_TIME_I18_KEY, { timeout: task.checkpointTimeout }))
+				sendCheckpointInitWarn(task, "INIT_TIMEOUT", task.checkpointTimeout)
 				task.enableCheckpoints = false
 				return undefined
 			} else {
-				sendCheckpointInitWarn(task, "")
+				sendCheckpointInitWarn(task)
 			}
 			return task.checkpointService
 		}
@@ -120,12 +115,12 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 		await checkGitInstallation(task, service, log, provider)
 		task.checkpointService = service
 		if (task.enableCheckpoints) {
-			sendCheckpointInitWarn(task, "")
+			sendCheckpointInitWarn(task)
 		}
 		return service
 	} catch (err) {
 		if (err.name === "TimeoutError" && task.enableCheckpoints) {
-			sendCheckpointInitWarn(task, t(INIT_FAIL_LONG_TIME_I18_KEY, { timeout: task.checkpointTimeout }))
+			sendCheckpointInitWarn(task, "INIT_TIMEOUT", task.checkpointTimeout)
 		}
 		log(`[Task#getCheckpointService] ${err.message}`)
 		task.enableCheckpoints = false
@@ -169,7 +164,7 @@ async function checkGitInstallation(
 
 		service.on("checkpoint", ({ fromHash: from, toHash: to, suppressMessage }) => {
 			try {
-				sendCheckpointInitWarn(task, "")
+				sendCheckpointInitWarn(task)
 				// Always update the current checkpoint hash in the webview, including the suppress flag
 				provider?.postMessageToWebview({
 					type: "currentCheckpointUpdated",

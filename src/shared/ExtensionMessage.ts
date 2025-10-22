@@ -128,7 +128,10 @@ export interface ExtensionMessage {
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	// Checkpoint warning message
-	checkpointWarning?: string
+	checkpointWarning?: {
+		type: "WAIT_TIMEOUT" | "INIT_TIMEOUT"
+		timeout: number
+	}
 	action?:
 		| "chatButtonClicked"
 		| "mcpButtonClicked"
