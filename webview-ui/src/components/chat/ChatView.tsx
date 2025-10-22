@@ -1802,10 +1802,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 						</div>
 					)}
 
-					{/* TEMPORARY: Always show warning for testing */}
-					<div className="px-3">
-						<CheckpointWarning warning={checkpointWarning || { type: "WAIT_TIMEOUT", timeout: 5 }} />
-					</div>
+					{checkpointWarning && (
+						<div className="px-3">
+							<CheckpointWarning warning={checkpointWarning} />
+						</div>
+					)}
 				</>
 			) : (
 				<div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 relative">
