@@ -109,6 +109,21 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 				}
 			}
 
+			// Handle reasoning chunks - support both 'reasoning' and 'reasoning_content' fields
+			// Some providers use 'reasoning_content' (like OpenAI o1/o3 models)
+			// Others use 'reasoning' (like custom OpenAI-compatible providers)
+			if ("reasoning_content" in delta && delta.reasoning_content) {
+				yield {
+					type: "reasoning",
+					text: (delta.reasoning_content as string | undefined) || "",
+				}
+			} else if ("reasoning" in delta && delta.reasoning) {
+				yield {
+					type: "reasoning",
+					text: (delta.reasoning as string | undefined) || "",
+				}
+			}
+
 			if (chunk.usage) {
 				yield {
 					type: "usage",
