@@ -155,7 +155,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 	// Filter out Browser toggle when browser tool is disabled
 	const visibleSettingsArray = React.useMemo(
 		() => settingsArray.filter((s) => browserToolEnabled || s.key !== "alwaysAllowBrowser"),
-		[settingsArray, browserToolEnabled],
+		[browserToolEnabled],
 	)
 
 	const visibleKeys = React.useMemo(() => visibleSettingsArray.map((s) => s.key), [visibleSettingsArray])
