@@ -15,7 +15,6 @@ import { getApiMetrics } from "../../shared/getApiMetrics"
 import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider"
 
 import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../../services/checkpoints"
-import { time } from "node:console"
 
 const WARNING_THRESHOLD_MS = 5000
 const WAIT_LONG_TIME_I18_KEY = "common:errors.wait_checkpoint_long_time"
