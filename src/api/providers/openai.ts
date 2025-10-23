@@ -13,6 +13,7 @@ import {
 import type { ApiHandlerOptions } from "../../shared/api"
 
 import { XmlMatcher } from "../../utils/xml-matcher"
+import { UTF8StreamDecoder } from "../utils/utf8-stream-decoder"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
@@ -188,25 +189,44 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					}) as const,
 			)
 
+			// Create UTF-8 decoder for handling large outputs properly
+			const utf8Decoder = new UTF8StreamDecoder()
+
 			let lastUsage
 
 			for await (const chunk of stream) {
 				const delta = chunk.choices[0]?.delta ?? {}
 
 				if (delta.content) {
-					for (const chunk of matcher.update(delta.content)) {
-						yield chunk
+					// Decode the content properly to handle UTF-8 boundary issues
+					const decodedContent = utf8Decoder.decode(delta.content)
+					if (decodedContent) {
+						for (const chunk of matcher.update(decodedContent)) {
+							yield chunk
+						}
 					}
 				}
 
 				if ("reasoning_content" in delta && delta.reasoning_content) {
-					yield {
-						type: "reasoning",
-						text: (delta.reasoning_content as string | undefined) || "",
+					// Also decode reasoning content properly
+					const decodedReasoning = utf8Decoder.decode(delta.reasoning_content as string)
+					if (decodedReasoning) {
+						yield {
+							type: "reasoning",
+							text: decodedReasoning,
+						}
 					}
 				}
 				if (chunk.usage) {
 					lastUsage = chunk.usage
+				}
+			}
+
+			// Finalize any remaining buffered content
+			const finalContent = utf8Decoder.finalize()
+			if (finalContent) {
+				for (const chunk of matcher.update(finalContent)) {
+					yield chunk
 				}
 			}
 
@@ -386,12 +406,19 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	}
 
 	private async *handleStreamResponse(stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>): ApiStream {
+		// Create UTF-8 decoder for handling large outputs properly
+		const utf8Decoder = new UTF8StreamDecoder()
+
 		for await (const chunk of stream) {
 			const delta = chunk.choices[0]?.delta
 			if (delta?.content) {
-				yield {
-					type: "text",
-					text: delta.content,
+				// Decode the content properly to handle UTF-8 boundary issues
+				const decodedContent = utf8Decoder.decode(delta.content)
+				if (decodedContent) {
+					yield {
+						type: "text",
+						text: decodedContent,
+					}
 				}
 			}
 
@@ -401,6 +428,15 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					inputTokens: chunk.usage.prompt_tokens || 0,
 					outputTokens: chunk.usage.completion_tokens || 0,
 				}
+			}
+		}
+
+		// Finalize any remaining buffered content
+		const finalContent = utf8Decoder.finalize()
+		if (finalContent) {
+			yield {
+				type: "text",
+				text: finalContent,
 			}
 		}
 	}

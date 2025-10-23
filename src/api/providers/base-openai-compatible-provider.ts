@@ -6,6 +6,7 @@ import type { ModelInfo } from "@roo-code/types"
 import type { ApiHandlerOptions } from "../../shared/api"
 import { ApiStream } from "../transform/stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { UTF8StreamDecoder } from "../utils/utf8-stream-decoder"
 
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { DEFAULT_HEADERS } from "./constants"
@@ -99,13 +100,20 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 	): ApiStream {
 		const stream = await this.createStream(systemPrompt, messages, metadata)
 
+		// Create UTF-8 decoder for handling large outputs properly
+		const utf8Decoder = new UTF8StreamDecoder()
+
 		for await (const chunk of stream) {
 			const delta = chunk.choices[0]?.delta
 
 			if (delta?.content) {
-				yield {
-					type: "text",
-					text: delta.content,
+				// Decode the content properly to handle UTF-8 boundary issues
+				const decodedContent = utf8Decoder.decode(delta.content)
+				if (decodedContent) {
+					yield {
+						type: "text",
+						text: decodedContent,
+					}
 				}
 			}
 
@@ -115,6 +123,15 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 					inputTokens: chunk.usage.prompt_tokens || 0,
 					outputTokens: chunk.usage.completion_tokens || 0,
 				}
+			}
+		}
+
+		// Finalize any remaining buffered content
+		const finalContent = utf8Decoder.finalize()
+		if (finalContent) {
+			yield {
+				type: "text",
+				text: finalContent,
 			}
 		}
 	}
