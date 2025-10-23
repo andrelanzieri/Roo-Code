@@ -294,7 +294,11 @@
 		"triggerLabel_zero": "0 disetujui otomatis",
 		"triggerLabel_one": "1 disetujui otomatis",
 		"triggerLabel_other": "{{count}} disetujui otomatis",
-		"triggerLabelAll": "YOLO"
+		"triggerLabelAll": "YOLO",
+		"concurrentEdits": {
+			"label": "Edit Bersamaan",
+			"description": "Aktifkan edit file bersamaan untuk operasi multi-file yang lebih cepat"
+		}
 	},
 	"announcement": {
 		"title": "🎉 Roo Code {{version}} Dirilis",

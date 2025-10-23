@@ -267,7 +267,11 @@
 		"triggerLabel_zero": "0 approuvé automatiquement",
 		"triggerLabel_one": "1 approuvé automatiquement",
 		"triggerLabel_other": "{{count}} approuvés automatiquement",
-		"triggerLabelAll": "YOLO"
+		"triggerLabelAll": "YOLO",
+		"concurrentEdits": {
+			"label": "Éditions Concurrentes",
+			"description": "Active les éditions concurrentes de fichiers pour des opérations multi-fichiers plus rapides"
+		}
 	},
 	"reasoning": {
 		"thinking": "Réflexion",

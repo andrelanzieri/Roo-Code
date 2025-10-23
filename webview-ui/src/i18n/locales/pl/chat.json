@@ -267,7 +267,11 @@
 		"triggerLabel_zero": "0 automatycznie zatwierdzone",
 		"triggerLabel_one": "1 automatycznie zatwierdzony",
 		"triggerLabel_other": "{{count}} automatycznie zatwierdzonych",
-		"triggerLabelAll": "YOLO"
+		"triggerLabelAll": "YOLO",
+		"concurrentEdits": {
+			"label": "Edycje Równoległe",
+			"description": "Włącz równoległe edytowanie plików dla szybszych operacji wieloplikowych"
+		}
 	},
 	"reasoning": {
 		"thinking": "Myślenie",

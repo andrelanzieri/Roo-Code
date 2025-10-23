@@ -267,7 +267,11 @@
 		"triggerLabel_zero": "0개 자동 승인됨",
 		"triggerLabel_one": "1개 자동 승인됨",
 		"triggerLabel_other": "{{count}}개 자동 승인됨",
-		"triggerLabelAll": "YOLO"
+		"triggerLabelAll": "YOLO",
+		"concurrentEdits": {
+			"label": "동시 편집",
+			"description": "더 빠른 다중 파일 작업을 위해 동시 파일 편집 활성화"
+		}
 	},
 	"reasoning": {
 		"thinking": "생각 중",

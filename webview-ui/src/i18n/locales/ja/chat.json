@@ -267,7 +267,11 @@
 		"triggerLabel_zero": "0個の自動承認",
 		"triggerLabel_one": "1個の自動承認済み",
 		"triggerLabel_other": "{{count}}個の自動承認済み",
-		"triggerLabelAll": "YOLO"
+		"triggerLabelAll": "YOLO",
+		"concurrentEdits": {
+			"label": "並行編集",
+			"description": "複数ファイル操作を高速化するため、ファイルの並行編集を有効にする"
+		}
 	},
 	"reasoning": {
 		"thinking": "考え中",

@@ -292,7 +292,11 @@
 		"triggerLabel_zero": "0 個自動核准",
 		"triggerLabel_one": "1 個自動核准",
 		"triggerLabel_other": "{{count}} 個自動核准",
-		"triggerLabelAll": "YOLO"
+		"triggerLabelAll": "YOLO",
+		"concurrentEdits": {
+			"label": "並行編輯",
+			"description": "啟用並行文件編輯以加快多文件操作"
+		}
 	},
 	"announcement": {
 		"title": "🎉 Roo Code {{version}} 已發布",
