@@ -290,7 +290,11 @@
 		"triggerLabel_zero": "0 auto-approve",
 		"triggerLabel_one": "1 auto-approved",
 		"triggerLabel_other": "{{count}} auto-approved",
-		"triggerLabelAll": "YOLO"
+		"triggerLabelAll": "YOLO",
+		"concurrentEdits": {
+			"label": "Concurrent Edits",
+			"description": "Enable concurrent file edits for faster multi-file operations"
+		}
 	},
 	"announcement": {
 		"title": "🎉 Roo Code {{version}} Released",

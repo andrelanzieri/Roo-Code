@@ -1,5 +1,5 @@
 import React from "react"
-import { ListChecks, LayoutList, Settings, CheckCheck, X } from "lucide-react"
+import { ListChecks, LayoutList, Settings, CheckCheck, X, FileEdit } from "lucide-react"
 
 import { vscode } from "@/utils/vscode"
 import { cn } from "@/lib/utils"
@@ -35,6 +35,8 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 		setAlwaysApproveResubmit,
 		setAlwaysAllowFollowupQuestions,
 		setAlwaysAllowUpdateTodoList,
+		experiments,
+		setExperimentEnabled,
 	} = useExtensionState()
 
 	const baseToggles = useAutoApprovalToggles()
@@ -214,6 +216,34 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 						<p className="m-0 text-xs text-vscode-descriptionForeground">
 							{t("chat:autoApprove.description")}
 						</p>
+					</div>
+
+					{/* Concurrent Edits Toggle - Always visible as a quick access toggle */}
+					<div className="px-3 py-2 border-b border-vscode-dropdown-border">
+						<StandardTooltip content={t("chat:autoApprove.concurrentEdits.description")}>
+							<label className="flex items-center justify-between cursor-pointer">
+								<div className="flex items-center gap-2">
+									<FileEdit className="size-4 flex-shrink-0" />
+									<span className="text-sm font-medium">
+										{t("chat:autoApprove.concurrentEdits.label")}
+									</span>
+								</div>
+								<ToggleSwitch
+									checked={experiments?.multiFileApplyDiff ?? false}
+									onChange={() => {
+										const newValue = !(experiments?.multiFileApplyDiff ?? false)
+										if (setExperimentEnabled) {
+											setExperimentEnabled("multiFileApplyDiff", newValue)
+										}
+										vscode.postMessage({
+											type: "updateExperimental",
+											values: { multiFileApplyDiff: newValue },
+										})
+									}}
+									aria-label={t("chat:autoApprove.concurrentEdits.label")}
+								/>
+							</label>
+						</StandardTooltip>
 					</div>
 					<div className="grid grid-cols-1 min-[340px]:grid-cols-2 gap-x-2 gap-y-2 p-3">
 						{settingsArray.map(({ key, labelKey, descriptionKey, icon }) => {
