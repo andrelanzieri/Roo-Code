@@ -340,7 +340,7 @@ export const ChatRowContent = ({
 						)
 					) : bgDone ? (
 						bgStatus === "completed" ? (
-							<span className={`codicon codicon-chevron-${isExpanded ? "down" : "right"}`} />
+							getIconSpan("arrow-swap", normalColor)
 						) : (
 							getIconSpan("error", bgStatus === "canceled" ? cancelledColor : errorColor)
 						)
@@ -352,7 +352,9 @@ export const ChatRowContent = ({
 						<ProgressIndicator />
 					),
 					apiReqCancelReason !== null && apiReqCancelReason !== undefined ? (
-						apiReqCancelReason === "user_cancelled" ? (
+						isBackground && label ? (
+							<span style={{ color: normalColor }}>{label}</span>
+						) : apiReqCancelReason === "user_cancelled" ? (
 							<span style={{ color: normalColor, fontWeight: "bold" }}>
 								{t("chat:apiRequest.cancelled")}
 							</span>
@@ -379,17 +381,7 @@ export const ChatRowContent = ({
 			default:
 				return [null, null]
 		}
-	}, [
-		type,
-		isCommandExecuting,
-		message,
-		isExpanded,
-		isMcpServerResponding,
-		apiReqCancelReason,
-		cost,
-		apiRequestFailedMessage,
-		t,
-	])
+	}, [type, isCommandExecuting, message, isMcpServerResponding, apiReqCancelReason, cost, apiRequestFailedMessage, t])
 
 	const headerStyle: React.CSSProperties = {
 		display: "flex",
