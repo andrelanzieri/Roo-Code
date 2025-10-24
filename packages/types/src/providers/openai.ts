@@ -51,9 +51,8 @@ export const openAiNativeModels = {
 		maxTokens: 128000,
 		contextWindow: 400000,
 		supportsImages: true,
-		supportsPromptCache: true,
+		supportsPromptCache: false,
 		supportsReasoningEffort: false,
-		reasoningEffort: "high",
 		inputPrice: 15.0,
 		outputPrice: 120.0,
 		description:

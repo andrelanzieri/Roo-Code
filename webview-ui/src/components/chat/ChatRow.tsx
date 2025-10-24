@@ -340,11 +340,7 @@ export const ChatRowContent = ({
 						)
 					) : bgDone ? (
 						bgStatus === "completed" ? (
-							isExpanded ? (
-								<ChevronDown className="w-4 shrink-0" />
-							) : (
-								<ChevronRight className="w-4 shrink-0" />
-							)
+							<span className={`codicon codicon-chevron-${isExpanded ? "down" : "right"}`} />
 						) : (
 							getIconSpan("error", bgStatus === "canceled" ? cancelledColor : errorColor)
 						)
@@ -383,7 +379,17 @@ export const ChatRowContent = ({
 			default:
 				return [null, null]
 		}
-	}, [type, isCommandExecuting, message, isMcpServerResponding, apiReqCancelReason, cost, apiRequestFailedMessage, t])
+	}, [
+		type,
+		isCommandExecuting,
+		message,
+		isExpanded,
+		isMcpServerResponding,
+		apiReqCancelReason,
+		cost,
+		apiRequestFailedMessage,
+		t,
+	])
 
 	const headerStyle: React.CSSProperties = {
 		display: "flex",
