@@ -2351,7 +2351,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// lastMessage.ts = Date.now() DO NOT update ts since it is used as a key for virtuoso list
 						lastMessage.partial = false
 						// instead of streaming partialMessage events, we do a save and post like normal to persist to disk
-						console.log("updating partial message", lastMessage)
 					}
 
 					// Update `api_req_started` to have cancelled and cost, so that

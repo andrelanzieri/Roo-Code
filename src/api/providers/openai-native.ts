@@ -1230,13 +1230,18 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					this.resumeCutoffSequence = undefined
 					throw e
 				}
-			} catch (err) {
+			} catch (err: any) {
 				// If terminal error, don't keep retrying resume; fall back to polling immediately
 				const delay = resumeBaseDelayMs * Math.pow(2, attempt)
+				const msg = err instanceof Error ? err.message : String(err)
+
 				if (isTerminalBackgroundError(err)) {
+					console.error(`[OpenAiNative][resume] terminal background error on attempt ${attempt + 1}: ${msg}`)
 					break
 				}
-				// Otherwise retry with backoff
+
+				// Otherwise retry with backoff (transient failure)
+				console.warn(`[OpenAiNative][resume] attempt ${attempt + 1} failed; retrying in ${delay}ms: ${msg}`)
 				if (delay > 0) {
 					await new Promise((r) => setTimeout(r, delay))
 				}
@@ -1354,12 +1359,31 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					const msg = detail ? `Response ${status}: ${detail}` : `Response ${status}: ${respId || responseId}`
 					throw createTerminalBackgroundError(msg)
 				}
-			} catch (err) {
+			} catch (err: any) {
 				// If we've already emitted a terminal status, propagate to consumer to stop polling.
 				if (lastEmittedStatus === "failed" || lastEmittedStatus === "canceled") {
 					throw err
 				}
-				// Otherwise ignore transient poll errors
+
+				// Classify polling errors and log appropriately
+				const statusCode = err?.status ?? err?.response?.status
+				const msg = err instanceof Error ? err.message : String(err)
+
+				// Permanent errors: stop polling
+				if (statusCode === 401 || statusCode === 403 || statusCode === 404) {
+					console.error(`[OpenAiNative][poll] permanent error (status ${statusCode}); stopping: ${msg}`)
+					throw createTerminalBackgroundError(`Polling failed with status ${statusCode}: ${msg}`)
+				}
+
+				// Rate limit: transient, will retry
+				if (statusCode === 429) {
+					console.warn(`[OpenAiNative][poll] rate limited; will retry: ${msg}`)
+				} else {
+					// Other transient/network errors
+					console.warn(
+						`[OpenAiNative][poll] transient error; will retry${statusCode ? ` (status ${statusCode})` : ""}: ${msg}`,
+					)
+				}
 			}
 
 			// Stop polling immediately on terminal background statuses
