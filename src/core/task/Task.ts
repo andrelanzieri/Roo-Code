@@ -103,6 +103,7 @@ import {
 } from "../task-persistence"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
+import { trimImagesFromConversation, countImagesInConversation } from "../context/image-limit-handler"
 import {
 	type CheckpointDiffOptions,
 	type CheckpointRestoreOptions,
@@ -601,6 +602,26 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async addToApiConversationHistory(message: Anthropic.MessageParam) {
 		const messageWithTs = { ...message, ts: Date.now() }
 		this.apiConversationHistory.push(messageWithTs)
+
+		// Check if we need to trim images after adding the new message
+		const modelInfo = this.api.getModel().info
+		if (modelInfo.supportsImages && modelInfo.maxImages) {
+			const imageCount = countImagesInConversation(this.apiConversationHistory)
+			if (imageCount > modelInfo.maxImages) {
+				const trimResult = trimImagesFromConversation(this.apiConversationHistory, modelInfo)
+
+				// Update conversation history with trimmed messages
+				this.apiConversationHistory = trimResult.messages
+
+				// Notify user about trimmed images
+				if (trimResult.warningMessage) {
+					await this.say("text", trimResult.warningMessage, undefined, false, undefined, undefined, {
+						isNonInteractive: true,
+					})
+				}
+			}
+		}
+
 		await this.saveApiConversationHistory()
 	}
 
@@ -2568,6 +2589,25 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			autoCondenseContextPercent = 100,
 			profileThresholds = {},
 		} = state ?? {}
+
+		// Check and trim images if needed
+		const modelInfo = this.api.getModel().info
+		if (modelInfo.supportsImages && modelInfo.maxImages) {
+			const imageCount = countImagesInConversation(this.apiConversationHistory)
+			if (imageCount > modelInfo.maxImages) {
+				const trimResult = trimImagesFromConversation(this.apiConversationHistory, modelInfo)
+
+				// Update conversation history with trimmed messages
+				await this.overwriteApiConversationHistory(trimResult.messages)
+
+				// Notify user about trimmed images
+				if (trimResult.warningMessage) {
+					await this.say("text", trimResult.warningMessage, undefined, false, undefined, undefined, {
+						isNonInteractive: true,
+					})
+				}
+			}
+		}
 
 		// Get condensing configuration for automatic triggers.
 		const customCondensingPrompt = state?.customCondensingPrompt
