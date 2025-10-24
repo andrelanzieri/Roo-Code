@@ -52,11 +52,12 @@ export const openAiNativeModels = {
 		contextWindow: 400000,
 		supportsImages: true,
 		supportsPromptCache: false,
-		supportsReasoningEffort: false,
+		supportsReasoningEffort: false, // This is set to false to prevent the ui from displaying the reasoning effort selector
+		reasoningEffort: "high", // Pro model uses high reasoning effort by default and must be specified
 		inputPrice: 15.0,
 		outputPrice: 120.0,
 		description:
-			"GPT-5 Pro: A slow, reasoning-focused model for complex problems. Uses background mode with resilient streaming - requests may take several minutes with automatic recovery if connection drops.",
+			"GPT-5 Pro: A slow, reasoning-focused model for complex problems. Uses background mode with resilient streaming - requests may somte time and will automatically reconnect if they timeout.",
 		supportsVerbosity: true,
 		supportsTemperature: false,
 		backgroundMode: true,
