@@ -2625,11 +2625,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 										if (chunk.responseId) {
 											;(apiReqMsg as any).metadata.responseId = chunk.responseId
 										}
-										// Temporary debug to confirm UI metadata updates
+										// Update the specific message; avoid full-state refresh on every status chunk to reduce re-renders
 										await this.updateClineMessage(apiReqMsg)
-										// Force state refresh to ensure UI recomputes derived labels/memos
-										const provider = this.providerRef.deref()
-										await provider?.postStateToWebview()
 									}
 								} catch {}
 								break
