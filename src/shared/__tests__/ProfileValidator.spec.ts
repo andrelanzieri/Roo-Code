@@ -189,6 +189,7 @@ describe("ProfileValidator", () => {
 			"gemini",
 			"mistral",
 			"deepseek",
+			"minimax",
 			"xai",
 			"groq",
 			"chutes",

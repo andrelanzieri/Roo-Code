@@ -15,6 +15,7 @@ import {
 	geminiModels,
 	groqModels,
 	ioIntelligenceModels,
+	miniMaxModels,
 	mistralModels,
 	moonshotModels,
 	openAiNativeModels,
@@ -125,6 +126,7 @@ export const providerNames = [
 	"doubao",
 	"deepseek",
 	"featherless",
+	"minimax",
 	"fireworks",
 	"gemini",
 	"gemini-cli",
@@ -327,6 +329,11 @@ const moonshotSchema = apiModelIdProviderModelSchema.extend({
 	moonshotApiKey: z.string().optional(),
 })
 
+const miniMaxSchema = apiModelIdProviderModelSchema.extend({
+	miniMaxBaseUrl: z.string().optional(),
+	miniMaxApiKey: z.string().optional(),
+})
+
 const unboundSchema = baseProviderSettingsSchema.extend({
 	unboundApiKey: z.string().optional(),
 	unboundModelId: z.string().optional(),
@@ -433,6 +440,7 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 	mistralSchema.merge(z.object({ apiProvider: z.literal("mistral") })),
 	deepSeekSchema.merge(z.object({ apiProvider: z.literal("deepseek") })),
 	deepInfraSchema.merge(z.object({ apiProvider: z.literal("deepinfra") })),
+	miniMaxSchema.merge(z.object({ apiProvider: z.literal("minimax") })),
 	doubaoSchema.merge(z.object({ apiProvider: z.literal("doubao") })),
 	moonshotSchema.merge(z.object({ apiProvider: z.literal("moonshot") })),
 	unboundSchema.merge(z.object({ apiProvider: z.literal("unbound") })),
@@ -474,6 +482,7 @@ export const providerSettingsSchema = z.object({
 	...mistralSchema.shape,
 	...deepSeekSchema.shape,
 	...deepInfraSchema.shape,
+	...miniMaxSchema.shape,
 	...doubaoSchema.shape,
 	...moonshotSchema.shape,
 	...unboundSchema.shape,
@@ -562,6 +571,7 @@ export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
 	moonshot: "apiModelId",
 	deepseek: "apiModelId",
 	deepinfra: "deepInfraModelId",
+	minimax: "apiModelId",
 	doubao: "apiModelId",
 	"qwen-code": "apiModelId",
 	unbound: "unboundModelId",
@@ -638,6 +648,11 @@ export const MODELS_BY_PROVIDER: Record<
 		id: "deepseek",
 		label: "DeepSeek",
 		models: Object.keys(deepSeekModels),
+	},
+	minimax: {
+		id: "minimax",
+		label: "MiniMax",
+		models: Object.keys(miniMaxModels),
 	},
 	doubao: { id: "doubao", label: "Doubao", models: Object.keys(doubaoModels) },
 	featherless: {

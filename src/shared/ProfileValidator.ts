@@ -64,6 +64,7 @@ export class ProfileValidator {
 			case "gemini":
 			case "mistral":
 			case "deepseek":
+			case "minimax":
 			case "xai":
 			case "groq":
 			case "sambanova":

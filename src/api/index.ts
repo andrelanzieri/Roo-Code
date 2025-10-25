@@ -17,6 +17,7 @@ import {
 	GeminiHandler,
 	OpenAiNativeHandler,
 	DeepSeekHandler,
+	MiniMaxHandler,
 	MoonshotHandler,
 	MistralHandler,
 	VsCodeLmHandler,
@@ -117,6 +118,8 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new OpenAiNativeHandler(options)
 		case "deepseek":
 			return new DeepSeekHandler(options)
+		case "minimax":
+			return new MiniMaxHandler(options)
 		case "doubao":
 			return new DoubaoHandler(options)
 		case "qwen-code":
