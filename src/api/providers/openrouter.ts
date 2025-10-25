@@ -60,6 +60,8 @@ type OpenRouterChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
 	include_reasoning?: boolean
 	// https://openrouter.ai/docs/use-cases/reasoning-tokens
 	reasoning?: OpenRouterReasoningParams
+	// OpenRouter vendor-specific additional body for special templates (e.g., DeepSeek V3.1 Terminus)
+	extra_body?: Record<string, unknown>
 }
 
 // See `OpenAI.Chat.Completions.ChatCompletionChunk["usage"]`
@@ -140,6 +142,16 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		}
 
 		const transforms = (this.options.openRouterUseMiddleOutTransform ?? true) ? ["middle-out"] : undefined
+		const isDeepSeekV31Terminus = modelId.includes("DeepSeek-V3.1-Terminus")
+		// DeepSeek V3.1 Terminus uses chat_template_kwargs.thinking via extra_body on OpenRouter
+		const extra_body = isDeepSeekV31Terminus
+			? {
+					chat_template_kwargs: {
+						// Default OFF unless explicitly requested via reasoning settings
+						thinking: Boolean(reasoning) && !(reasoning as any)?.exclude,
+					},
+				}
+			: undefined
 
 		// https://openrouter.ai/docs/transforms
 		const completionParams: OpenRouterChatCompletionParams = {
@@ -160,7 +172,9 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 					},
 				}),
 			...(transforms && { transforms }),
-			...(reasoning && { reasoning }),
+			...(extra_body && { extra_body }),
+			// Do not pass OpenRouter "reasoning" param for DeepSeek V3.1 Terminus; use extra_body instead
+			...(!isDeepSeekV31Terminus && reasoning ? { reasoning } : {}),
 		}
 
 		let stream
@@ -248,6 +262,16 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	async completePrompt(prompt: string) {
 		let { id: modelId, maxTokens, temperature, reasoning } = await this.fetchModel()
 
+		const isDeepSeekV31Terminus = modelId.includes("DeepSeek-V3.1-Terminus")
+		const extra_body = isDeepSeekV31Terminus
+			? {
+					chat_template_kwargs: {
+						// Default OFF unless explicitly requested via reasoning settings
+						thinking: Boolean(reasoning) && !(reasoning as any)?.exclude,
+					},
+				}
+			: undefined
+
 		const completionParams: OpenRouterChatCompletionParams = {
 			model: modelId,
 			max_tokens: maxTokens,
@@ -263,7 +287,9 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 						allow_fallbacks: false,
 					},
 				}),
-			...(reasoning && { reasoning }),
+			...(extra_body && { extra_body }),
+			// Do not pass OpenRouter "reasoning" param for DeepSeek V3.1 Terminus; use extra_body instead
+			...(!isDeepSeekV31Terminus && reasoning ? { reasoning } : {}),
 		}
 
 		let response
