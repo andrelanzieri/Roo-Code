@@ -34,5 +34,3 @@ export const miniMaxModels = {
 		description: `MiniMax-M2 Vision adds multimodal capabilities to the Pro model, supporting image understanding alongside code generation and reasoning tasks.`,
 	},
 } as const satisfies Record<string, ModelInfo>
-
-export const MINIMAX_DEFAULT_TEMPERATURE = 0.7

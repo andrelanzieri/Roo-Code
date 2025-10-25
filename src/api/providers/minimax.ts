@@ -1,4 +1,4 @@
-import { miniMaxModels, miniMaxDefaultModelId, MINIMAX_DEFAULT_TEMPERATURE } from "@roo-code/types"
+import { miniMaxModels, miniMaxDefaultModelId } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
