@@ -1475,7 +1475,8 @@ export class ClineProvider
 			newConfiguration.requestyBaseUrl = baseUrl
 		}
 
-		await this.upsertProviderProfile("Requesty", newConfiguration)
+		const profileName = `Requesty (${new Date().toLocaleString()})`
+		await this.upsertProviderProfile(profileName, newConfiguration)
 	}
 
 	// Task history
