@@ -264,7 +264,7 @@
 			"success": "Model listesi başarıyla yenilendi!",
 			"error": "Model listesi yenilenemedi. Lütfen tekrar deneyin."
 		},
-		"getRequestyApiKey": "Requesty API Anahtarı Al",
+		"getRequestyApiKey": "Yeni Requesty API Anahtarı oluştur",
 		"getRequestyBaseUrl": "Temel URL",
 		"requestyUseCustomBaseUrl": "Özel temel URL kullan",
 		"openRouterTransformsText": "İstem ve mesaj zincirlerini bağlam boyutuna sıkıştır (<a>OpenRouter Dönüşümleri</a>)",

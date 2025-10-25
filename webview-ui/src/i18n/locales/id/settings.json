@@ -268,7 +268,7 @@
 			"success": "Daftar model berhasil direfresh!",
 			"error": "Gagal merefresh daftar model. Silakan coba lagi."
 		},
-		"getRequestyApiKey": "Dapatkan Requesty API Key",
+		"getRequestyApiKey": "Buat Requesty API Key baru",
 		"getRequestyBaseUrl": "Base URL",
 		"requestyUseCustomBaseUrl": "Gunakan URL dasar khusus",
 		"openRouterTransformsText": "Kompres prompt dan rantai pesan ke ukuran konteks (<a>OpenRouter Transforms</a>)",
