@@ -505,6 +505,10 @@
 			"label": "Kualitas screenshot",
 			"description": "Sesuaikan kualitas WebP screenshot browser. Nilai yang lebih tinggi memberikan screenshot yang lebih jelas tetapi meningkatkan penggunaan token."
 		},
+		"autoExpand": {
+			"label": "Perluas otomatis tindakan browser",
+			"description": "Perluas otomatis tangkapan layar tindakan browser di tampilan obrolan"
+		},
 		"remote": {
 			"label": "Gunakan koneksi browser remote",
 			"description": "Hubungkan ke browser Chrome yang berjalan dengan remote debugging diaktifkan (--remote-debugging-port=9222).",

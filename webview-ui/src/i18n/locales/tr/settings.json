@@ -501,6 +501,10 @@
 			"label": "Ekran görüntüsü kalitesi",
 			"description": "Tarayıcı ekran görüntülerinin WebP kalitesini ayarlayın. Daha yüksek değerler daha net ekran görüntüleri sağlar ancak token kullanımını artırır."
 		},
+		"autoExpand": {
+			"label": "Tarayıcı eylemlerini otomatik genişlet",
+			"description": "Sohbet görünümünde tarayıcı eylem ekran görüntülerini otomatik olarak genişletin"
+		},
 		"remote": {
 			"label": "Uzak tarayıcı bağlantısı kullan",
 			"description": "Uzaktan hata ayıklama etkinleştirilmiş olarak çalışan bir Chrome tarayıcısına bağlanın (--remote-debugging-port=9222).",

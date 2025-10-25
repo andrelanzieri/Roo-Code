@@ -198,6 +198,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		reasoningBlockCollapsed,
 		includeCurrentTime,
 		includeCurrentCost,
+		browserActionsAutoExpand,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -353,6 +354,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			vscode.postMessage({ type: "fuzzyMatchThreshold", value: fuzzyMatchThreshold ?? 1.0 })
 			vscode.postMessage({ type: "writeDelayMs", value: writeDelayMs })
 			vscode.postMessage({ type: "screenshotQuality", value: screenshotQuality ?? 75 })
+			vscode.postMessage({ type: "browserActionsAutoExpand", bool: browserActionsAutoExpand ?? false })
 			vscode.postMessage({ type: "terminalOutputLineLimit", value: terminalOutputLineLimit ?? 500 })
 			vscode.postMessage({ type: "terminalOutputCharacterLimit", value: terminalOutputCharacterLimit ?? 50000 })
 			vscode.postMessage({ type: "terminalShellIntegrationTimeout", value: terminalShellIntegrationTimeout })
@@ -710,6 +712,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							screenshotQuality={screenshotQuality}
 							remoteBrowserHost={remoteBrowserHost}
 							remoteBrowserEnabled={remoteBrowserEnabled}
+							browserActionsAutoExpand={browserActionsAutoExpand}
 							setCachedStateField={setCachedStateField}
 						/>
 					)}

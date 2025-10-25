@@ -1047,6 +1047,15 @@ export const webviewMessageHandler = async (
 		case "cancelTask":
 			await provider.cancelTask()
 			break
+		case "killBrowserSession":
+			{
+				const task = provider.getCurrentTask()
+				if (task?.browserSession) {
+					await task.browserSession.closeBrowser()
+					await provider.postStateToWebview()
+				}
+			}
+			break
 		case "allowedCommands": {
 			// Validate and sanitize the commands array
 			const commands = message.commands ?? []
@@ -1612,6 +1621,10 @@ export const webviewMessageHandler = async (
 			break
 		case "browserToolEnabled":
 			await updateGlobalState("browserToolEnabled", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "browserActionsAutoExpand":
+			await updateGlobalState("browserActionsAutoExpand", message.bool ?? false)
 			await provider.postStateToWebview()
 			break
 		case "language":

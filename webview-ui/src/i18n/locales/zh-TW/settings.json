@@ -501,6 +501,10 @@
 			"label": "截圖品質",
 			"description": "調整瀏覽器截圖的 WebP 品質。數值越高截圖越清晰，但會增加 token 用量。"
 		},
+		"autoExpand": {
+			"label": "自動展開瀏覽器操作",
+			"description": "在聊天視圖中自動展開瀏覽器操作截圖"
+		},
 		"remote": {
 			"label": "使用遠端瀏覽器連線",
 			"description": "連線到啟用遠端除錯的 Chrome 瀏覽器（--remote-debugging-port=9222）。",

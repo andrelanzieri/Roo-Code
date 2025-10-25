@@ -501,6 +501,10 @@
 			"label": "Qualidade das capturas de tela",
 			"description": "Ajuste a qualidade WebP das capturas de tela do navegador. Valores mais altos fornecem capturas mais nítidas, mas aumentam o uso de token."
 		},
+		"autoExpand": {
+			"label": "Expandir ações do navegador automaticamente",
+			"description": "Expandir automaticamente as capturas de tela de ação do navegador na visualização de bate-papo"
+		},
 		"remote": {
 			"label": "Usar conexão remota de navegador",
 			"description": "Conectar a um navegador Chrome executando com depuração remota ativada (--remote-debugging-port=9222).",

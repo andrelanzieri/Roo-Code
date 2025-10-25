@@ -501,6 +501,10 @@
 			"label": "Screenshotkwaliteit",
 			"description": "Pas de WebP-kwaliteit van browserscreenshots aan. Hogere waarden geven duidelijkere screenshots maar verhogen het tokengebruik."
 		},
+		"autoExpand": {
+			"label": "Browseracties automatisch uitvouwen",
+			"description": "Screenshots van browseracties automatisch uitvouwen in chatweergave"
+		},
 		"remote": {
 			"label": "Gebruik externe browserverbinding",
 			"description": "Verbind met een Chrome-browser die draait met remote debugging ingeschakeld (--remote-debugging-port=9222).",

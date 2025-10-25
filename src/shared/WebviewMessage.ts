@@ -103,6 +103,7 @@ export interface WebviewMessage {
 		| "checkpointTimeout"
 		| "browserViewportSize"
 		| "screenshotQuality"
+		| "browserActionsAutoExpand"
 		| "remoteBrowserHost"
 		| "openKeyboardShortcuts"
 		| "openMcpSettings"
@@ -233,6 +234,7 @@ export interface WebviewMessage {
 		| "editQueuedMessage"
 		| "dismissUpsell"
 		| "getDismissedUpsells"
+		| "killBrowserSession"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"

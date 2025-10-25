@@ -501,6 +501,10 @@
 			"label": "截图质量",
 			"description": "调整浏览器的截图质量。更高的值提供更清晰的截图，但会增加 token 消耗。"
 		},
+		"autoExpand": {
+			"label": "自动展开浏览器操作",
+			"description": "在聊天视图中自动展开浏览器操作截图"
+		},
 		"remote": {
 			"label": "使用远程浏览器连接",
 			"description": "连接到启用远程调试的 Chrome 浏览器 (--remote-debugging-port=9222)。",

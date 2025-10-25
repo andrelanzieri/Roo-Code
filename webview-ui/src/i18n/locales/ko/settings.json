@@ -501,6 +501,10 @@
 			"label": "스크린샷 품질",
 			"description": "브라우저 스크린샷의 WebP 품질을 조정합니다. 높은 값은 더 선명한 스크린샷을 제공하지만 token 사용량이 증가합니다."
 		},
+		"autoExpand": {
+			"label": "브라우저 작업 자동 확장",
+			"description": "채팅 보기에서 브라우저 작업 스크린샷 자동 확장"
+		},
 		"remote": {
 			"label": "원격 브라우저 연결 사용",
 			"description": "원격 디버깅이 활성화된 Chrome 브라우저에 연결합니다(--remote-debugging-port=9222).",

@@ -501,6 +501,10 @@
 			"label": "Qualità screenshot",
 			"description": "Regola la qualità WebP degli screenshot del browser. Valori più alti forniscono screenshot più nitidi ma aumentano l'utilizzo di token."
 		},
+		"autoExpand": {
+			"label": "Espandi automaticamente le azioni del browser",
+			"description": "Espandi automaticamente gli screenshot delle azioni del browser nella visualizzazione della chat"
+		},
 		"remote": {
 			"label": "Usa connessione browser remoto",
 			"description": "Connettiti a un browser Chrome in esecuzione con debug remoto abilitato (--remote-debugging-port=9222).",

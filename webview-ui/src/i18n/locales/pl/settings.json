@@ -501,6 +501,10 @@
 			"label": "Jakość zrzutów ekranu",
 			"description": "Dostosuj jakość WebP zrzutów ekranu przeglądarki. Wyższe wartości zapewniają wyraźniejsze zrzuty ekranu, ale zwiększają zużycie token."
 		},
+		"autoExpand": {
+			"label": "Automatycznie rozwijaj akcje przeglądarki",
+			"description": "Automatycznie rozwijaj zrzuty ekranu akcji przeglądarki w widoku czatu"
+		},
 		"remote": {
 			"label": "Użyj zdalnego połączenia przeglądarki",
 			"description": "Połącz się z przeglądarką Chrome uruchomioną z włączonym zdalnym debugowaniem (--remote-debugging-port=9222).",

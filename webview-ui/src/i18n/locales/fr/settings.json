@@ -501,6 +501,10 @@
 			"label": "Qualité des captures d'écran",
 			"description": "Ajustez la qualité WebP des captures d'écran du navigateur. Des valeurs plus élevées fournissent des captures plus claires mais augmentent l'utilisation de token."
 		},
+		"autoExpand": {
+			"label": "Développer automatiquement les actions du navigateur",
+			"description": "Développer automatiquement les captures d'écran des actions du navigateur dans la vue de discussion"
+		},
 		"remote": {
 			"label": "Utiliser une connexion de navigateur distant",
 			"description": "Se connecter à un navigateur Chrome exécuté avec le débogage à distance activé (--remote-debugging-port=9222).",

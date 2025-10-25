@@ -501,6 +501,10 @@
 			"label": "Chất lượng ảnh chụp màn hình",
 			"description": "Điều chỉnh chất lượng WebP của ảnh chụp màn hình trình duyệt. Giá trị cao hơn cung cấp ảnh chụp màn hình rõ ràng hơn nhưng tăng sử dụng token."
 		},
+		"autoExpand": {
+			"label": "Tự động mở rộng các hành động của trình duyệt",
+			"description": "Tự động mở rộng ảnh chụp màn hình hành động của trình duyệt trong chế độ xem trò chuyện"
+		},
 		"remote": {
 			"label": "Sử dụng kết nối trình duyệt từ xa",
 			"description": "Kết nối với trình duyệt Chrome đang chạy với tính năng gỡ lỗi từ xa được bật (--remote-debugging-port=9222).",

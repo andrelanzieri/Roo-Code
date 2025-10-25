@@ -18,12 +18,14 @@ type BrowserSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	screenshotQuality?: number
 	remoteBrowserHost?: string
 	remoteBrowserEnabled?: boolean
+	browserActionsAutoExpand?: boolean
 	setCachedStateField: SetCachedStateField<
 		| "browserToolEnabled"
 		| "browserViewportSize"
 		| "screenshotQuality"
 		| "remoteBrowserHost"
 		| "remoteBrowserEnabled"
+		| "browserActionsAutoExpand"
 	>
 }
 
@@ -33,6 +35,7 @@ export const BrowserSettings = ({
 	screenshotQuality,
 	remoteBrowserHost,
 	remoteBrowserEnabled,
+	browserActionsAutoExpand,
 	setCachedStateField,
 	...props
 }: BrowserSettingsProps) => {
@@ -165,6 +168,19 @@ export const BrowserSettings = ({
 							</div>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
 								{t("settings:browser.screenshotQuality.description")}
+							</div>
+						</div>
+
+						<div>
+							<VSCodeCheckbox
+								checked={browserActionsAutoExpand}
+								onChange={(e: any) =>
+									setCachedStateField("browserActionsAutoExpand", e.target.checked)
+								}>
+								<span className="font-medium">{t("settings:browser.autoExpand.label")}</span>
+							</VSCodeCheckbox>
+							<div className="text-vscode-descriptionForeground text-sm mt-1">
+								{t("settings:browser.autoExpand.description")}
 							</div>
 						</div>
 
