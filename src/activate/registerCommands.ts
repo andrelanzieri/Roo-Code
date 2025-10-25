@@ -64,11 +64,38 @@ export type RegisterCommandOptions = {
 }
 
 export const registerCommands = (options: RegisterCommandOptions) => {
-	const { context } = options
+	const { context, outputChannel } = options
+	const failedCommands: string[] = []
 
 	for (const [id, callback] of Object.entries(getCommandsMap(options))) {
 		const command = getCommand(id as CommandId)
-		context.subscriptions.push(vscode.commands.registerCommand(command, callback))
+		try {
+			// Check if command already exists (might have been registered as placeholder)
+			const existingIndex = context.subscriptions.findIndex((sub) => (sub as any).command === command)
+
+			// Remove existing placeholder if found
+			if (existingIndex !== -1) {
+				const existing = context.subscriptions[existingIndex]
+				context.subscriptions.splice(existingIndex, 1)
+				existing.dispose()
+			}
+
+			// Register the command with proper handler
+			const disposable = vscode.commands.registerCommand(command, callback)
+			context.subscriptions.push(disposable)
+		} catch (error) {
+			failedCommands.push(id)
+			outputChannel.appendLine(
+				`[Commands] Failed to register command '${id}': ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+	}
+
+	if (failedCommands.length > 0) {
+		outputChannel.appendLine(
+			`[Commands] Warning: Failed to register ${failedCommands.length} command(s): ${failedCommands.join(", ")}`,
+		)
+		// Don't throw - allow extension to continue with partial functionality
 	}
 }
 

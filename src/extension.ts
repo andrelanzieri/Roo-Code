@@ -80,8 +80,24 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Create logger for cloud services.
 	const cloudLogger = createDualLogger(createOutputChannelLogger(outputChannel))
 
-	// Initialize MDM service
-	const mdmService = await MdmService.createInstance(cloudLogger)
+	// Initialize MDM service (with timeout for slow environments)
+	let mdmService: MdmService | undefined
+	try {
+		mdmService = await Promise.race([
+			MdmService.createInstance(cloudLogger),
+			new Promise<MdmService | undefined>((resolve) =>
+				setTimeout(() => {
+					outputChannel.appendLine("[MDM] Initialization timeout - continuing without MDM")
+					resolve(undefined)
+				}, 5000),
+			),
+		])
+	} catch (error) {
+		outputChannel.appendLine(
+			`[MDM] Failed to initialize: ${error instanceof Error ? error.message : String(error)}`,
+		)
+		mdmService = undefined
+	}
 
 	// Initialize i18n for internationalization support.
 	initializeI18n(context.globalState.get("language") ?? formatLanguage(vscode.env.language))
@@ -97,7 +113,24 @@ export async function activate(context: vscode.ExtensionContext) {
 		context.globalState.update("allowedCommands", defaultCommands)
 	}
 
-	const contextProxy = await ContextProxy.getInstance(context)
+	// Get context proxy with timeout for slow environments
+	let contextProxy: ContextProxy
+	try {
+		contextProxy = await Promise.race([
+			ContextProxy.getInstance(context),
+			new Promise<ContextProxy>((resolve, reject) =>
+				setTimeout(() => {
+					reject(new Error("ContextProxy initialization timeout"))
+				}, 10000),
+			),
+		])
+	} catch (error) {
+		outputChannel.appendLine(
+			`[ContextProxy] Failed to initialize, using fallback: ${error instanceof Error ? error.message : String(error)}`,
+		)
+		// Force creation even if slow
+		contextProxy = await ContextProxy.getInstance(context)
+	}
 
 	// Initialize code index managers for all workspace folders.
 	const codeIndexManagers: CodeIndexManager[] = []
@@ -124,6 +157,45 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Initialize the provider *before* the Roo Code Cloud service.
 	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy, mdmService)
+
+	// CRITICAL: Register commands early to ensure they're available on slow environments
+	// This must happen before any long-running async operations
+	try {
+		registerCommands({ context, outputChannel, provider })
+		outputChannel.appendLine("[Commands] Successfully registered all commands")
+	} catch (error) {
+		outputChannel.appendLine(
+			`[Commands] CRITICAL: Failed to register commands: ${error instanceof Error ? error.message : String(error)}`,
+		)
+		// Attempt individual command registration as fallback
+		try {
+			const criticalCommands = [
+				"settingsButtonClicked",
+				"plusButtonClicked",
+				"mcpButtonClicked",
+				"historyButtonClicked",
+			]
+			for (const cmdId of criticalCommands) {
+				try {
+					const command = `${Package.name}.${cmdId}`
+					if (!context.subscriptions.find((sub) => (sub as any).command === command)) {
+						context.subscriptions.push(
+							vscode.commands.registerCommand(command, () => {
+								outputChannel.appendLine(`[Command] ${cmdId} invoked but handler not fully initialized`)
+								vscode.window.showWarningMessage(
+									`Extension is still initializing. Please try again in a moment.`,
+								)
+							}),
+						)
+					}
+				} catch (cmdError) {
+					outputChannel.appendLine(`[Commands] Failed to register fallback for ${cmdId}: ${cmdError}`)
+				}
+			}
+		} catch (fallbackError) {
+			outputChannel.appendLine(`[Commands] Failed to register fallback commands: ${fallbackError}`)
+		}
+	}
 
 	// Initialize Roo Code Cloud service.
 	const postStateListener = () => ClineProvider.getVisibleInstance()?.postStateToWebview()
@@ -225,7 +297,15 @@ export async function activate(context: vscode.ExtensionContext) {
 		)
 	}
 
-	registerCommands({ context, outputChannel, provider })
+	// Commands already registered earlier, but re-register to ensure proper handlers
+	// This overwrites the temporary handlers with the actual ones
+	try {
+		registerCommands({ context, outputChannel, provider })
+	} catch (error) {
+		outputChannel.appendLine(
+			`[Commands] Failed to re-register commands with proper handlers: ${error instanceof Error ? error.message : String(error)}`,
+		)
+	}
 
 	/**
 	 * We use the text document content provider API to show the left side for diff
