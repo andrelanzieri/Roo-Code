@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react"
+import { memo, useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { CloudUpsellDialog } from "@src/components/cloud/CloudUpsellDialog"
@@ -16,6 +16,7 @@ import { cn } from "@src/lib/utils"
 import { StandardTooltip } from "@src/components/ui"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
+import { vscode } from "@src/utils/vscode"
 
 import Thumbnails from "../common/Thumbnails"
 
@@ -23,6 +24,7 @@ import { TaskActions } from "./TaskActions"
 import { ContextWindowProgress } from "./ContextWindowProgress"
 import { Mention } from "./Mention"
 import { TodoListDisplay } from "./TodoListDisplay"
+import { ApiConfigSelector } from "./ApiConfigSelector"
 
 export interface TaskHeaderProps {
 	task: ClineMessage
@@ -50,13 +52,35 @@ const TaskHeader = ({
 	todos,
 }: TaskHeaderProps) => {
 	const { t } = useTranslation()
-	const { apiConfiguration, currentTaskItem, clineMessages } = useExtensionState()
+	const {
+		apiConfiguration,
+		currentTaskItem,
+		clineMessages,
+		currentApiConfigName,
+		listApiConfigMeta,
+		pinnedApiConfigs,
+		togglePinnedApiConfig,
+	} = useExtensionState()
 	const { id: modelId, info: model } = useSelectedModel(apiConfiguration)
 	const [isTaskExpanded, setIsTaskExpanded] = useState(false)
 	const [showLongRunningTaskMessage, setShowLongRunningTaskMessage] = useState(false)
 	const { isOpen, openUpsell, closeUpsell, handleConnect } = useCloudUpsell({
 		autoOpenOnAuth: false,
 	})
+
+	// Find the ID and display text for the currently selected API configuration
+	const { currentConfigId, displayName } = useMemo(() => {
+		const currentConfig = listApiConfigMeta?.find((config) => config.name === currentApiConfigName)
+		return {
+			currentConfigId: currentConfig?.id || "",
+			displayName: currentApiConfigName || "",
+		}
+	}, [listApiConfigMeta, currentApiConfigName])
+
+	// Helper function to handle API config change
+	const handleApiConfigChange = useCallback((value: string) => {
+		vscode.postMessage({ type: "loadApiConfigurationById", text: value })
+	}, [])
 
 	// Check if the task is complete by looking at the last relevant message (skipping resume messages)
 	const isTaskComplete =
@@ -151,7 +175,21 @@ const TaskHeader = ({
 								</div>
 							)}
 						</div>
-						<div className="flex items-center shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+						<div className="flex items-center shrink-0 ml-2 gap-1" onClick={(e) => e.stopPropagation()}>
+							{/* Add API Config Selector in header */}
+							{listApiConfigMeta && listApiConfigMeta.length > 0 && (
+								<ApiConfigSelector
+									value={currentConfigId}
+									displayName={displayName}
+									disabled={false}
+									title={t("chat:selectApiConfig")}
+									onChange={handleApiConfigChange}
+									triggerClassName="text-xs min-w-[60px] max-w-[120px] text-ellipsis overflow-hidden"
+									listApiConfigMeta={listApiConfigMeta}
+									pinnedApiConfigs={pinnedApiConfigs}
+									togglePinnedApiConfig={togglePinnedApiConfig}
+								/>
+							)}
 							<StandardTooltip content={isTaskExpanded ? t("chat:task.collapse") : t("chat:task.expand")}>
 								<button
 									onClick={() => setIsTaskExpanded(!isTaskExpanded)}

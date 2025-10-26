@@ -292,6 +292,27 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			}
 		}, [showContextMenu, setShowContextMenu])
 
+		// Helper function to trigger UI pickers programmatically
+		const triggerUIPicker = useCallback(
+			(selector: string) => {
+				// Clear the input and close context menu
+				setSelectedMenuIndex(-1)
+				setInputValue("")
+				setShowContextMenu(false)
+
+				// Find and click the picker trigger with error handling
+				setTimeout(() => {
+					const trigger = document.querySelector(selector) as HTMLElement
+					if (trigger) {
+						trigger.click()
+					} else {
+						console.warn(`Could not find UI element with selector: ${selector}`)
+					}
+				}, 100)
+			},
+			[setInputValue],
+		)
+
 		const handleMentionSelect = useCallback(
 			(type: ContextMenuOptionType, value?: string) => {
 				if (type === ContextMenuOptionType.NoResults) {
@@ -308,7 +329,16 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				}
 
 				if (type === ContextMenuOptionType.Command && value) {
-					// Handle command selection.
+					// Handle special commands that trigger UI actions
+					if (value === "profiles") {
+						triggerUIPicker('[data-testid="dropdown-trigger"]')
+						return
+					} else if (value === "models") {
+						triggerUIPicker('[data-testid="mode-selector-trigger"]')
+						return
+					}
+
+					// Handle regular command selection.
 					setSelectedMenuIndex(-1)
 					setInputValue("")
 					setShowContextMenu(false)
@@ -386,7 +416,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				}
 			},
 			// eslint-disable-next-line react-hooks/exhaustive-deps
-			[setInputValue, cursorPosition],
+			[setInputValue, cursorPosition, triggerUIPicker],
 		)
 
 		const handleKeyDown = useCallback(
@@ -470,6 +500,16 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				if (event.key === "Enter" && !event.shiftKey && !isComposing) {
 					event.preventDefault()
 
+					// Check if the input is a special command that should trigger UI actions
+					const trimmedInput = inputValue.trim()
+					if (trimmedInput === "/profiles") {
+						triggerUIPicker('[data-testid="dropdown-trigger"]')
+						return
+					} else if (trimmedInput === "/models") {
+						triggerUIPicker('[data-testid="mode-selector-trigger"]')
+						return
+					}
+
 					// Always call onSend - let ChatView handle queueing when disabled
 					resetHistoryNavigation()
 					onSend()
@@ -536,6 +576,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				handleHistoryNavigation,
 				resetHistoryNavigation,
 				commands,
+				triggerUIPicker,
 			],
 		)
 

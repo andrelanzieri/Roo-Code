@@ -8,6 +8,22 @@ interface BuiltInCommandDefinition {
 }
 
 const BUILT_IN_COMMANDS: Record<string, BuiltInCommandDefinition> = {
+	profiles: {
+		name: "profiles",
+		description: "Open the API configuration profile picker",
+		content: `<special_command>
+This is a special command that opens the API configuration profile picker in the UI.
+It does not execute a traditional slash command with text content.
+</special_command>`,
+	},
+	models: {
+		name: "models",
+		description: "Open the model picker for the current API profile",
+		content: `<special_command>
+This is a special command that opens the model picker in the UI.
+It does not execute a traditional slash command with text content.
+</special_command>`,
+	},
 	init: {
 		name: "init",
 		description: "Analyze codebase and create concise AGENTS.md files for AI assistants",

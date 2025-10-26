@@ -5,8 +5,8 @@ describe("Built-in Commands", () => {
 		it("should return all built-in commands", async () => {
 			const commands = await getBuiltInCommands()
 
-			expect(commands).toHaveLength(1)
-			expect(commands.map((cmd) => cmd.name)).toEqual(expect.arrayContaining(["init"]))
+			expect(commands).toHaveLength(3)
+			expect(commands.map((cmd) => cmd.name)).toEqual(expect.arrayContaining(["init", "profiles", "models"]))
 
 			// Verify all commands have required properties
 			commands.forEach((command) => {
@@ -63,10 +63,10 @@ describe("Built-in Commands", () => {
 		it("should return all built-in command names", async () => {
 			const names = await getBuiltInCommandNames()
 
-			expect(names).toHaveLength(1)
-			expect(names).toEqual(expect.arrayContaining(["init"]))
+			expect(names).toHaveLength(3)
+			expect(names).toEqual(expect.arrayContaining(["init", "profiles", "models"]))
 			// Order doesn't matter since it's based on filesystem order
-			expect(names.sort()).toEqual(["init"])
+			expect(names.sort()).toEqual(["init", "models", "profiles"])
 		})
 
 		it("should return array of strings", async () => {
