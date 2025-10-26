@@ -182,7 +182,7 @@ export const globalSettingsSchema = z.object({
 
 	// Speech-to-Text settings
 	sttEnabled: z.boolean().optional(),
-	sttProvider: z.enum(["assemblyai", "openai-whisper"]).optional(),
+	sttProvider: z.enum(["assemblyai", "openai-whisper", "none"]).optional(),
 	sttAutoStopTimeout: z.number().min(500).max(10000).optional(), // milliseconds
 	sttAutoSend: z.boolean().optional(),
 })
