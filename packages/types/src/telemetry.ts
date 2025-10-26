@@ -23,6 +23,9 @@ export enum TelemetryEventName {
 	TASK_COMPLETED = "Task Completed",
 	TASK_MESSAGE = "Task Message",
 	TASK_CONVERSATION_MESSAGE = "Conversation Message",
+	TASK_TERMINATED = "Task Terminated",
+	TASK_CORRECTED = "Task Corrected",
+	TASK_ABANDONED = "Task Abandoned",
 	LLM_COMPLETION = "LLM Completion",
 	MODE_SWITCH = "Mode Switched",
 	MODE_SELECTOR_OPENED = "Mode Selector Opened",
@@ -229,6 +232,37 @@ export const rooCodeTelemetryEventSchema = z.discriminatedUnion("type", [
 			cacheReadTokens: z.number().optional(),
 			cacheWriteTokens: z.number().optional(),
 			cost: z.number().optional(),
+		}),
+	}),
+	z.object({
+		type: z.literal(TelemetryEventName.TASK_TERMINATED),
+		properties: z.object({
+			...telemetryPropertiesSchema.shape,
+			taskId: z.string(),
+			terminationSource: z.enum(["button", "command", "api"]),
+			elapsedTime: z.number(),
+			taskState: z.string(),
+			clickCount: z.number(),
+			intent: z.enum(["correction", "abandonment", "guidance"]),
+		}),
+	}),
+	z.object({
+		type: z.literal(TelemetryEventName.TASK_CORRECTED),
+		properties: z.object({
+			...telemetryPropertiesSchema.shape,
+			taskId: z.string(),
+			elapsedTime: z.number(),
+			taskState: z.string(),
+		}),
+	}),
+	z.object({
+		type: z.literal(TelemetryEventName.TASK_ABANDONED),
+		properties: z.object({
+			...telemetryPropertiesSchema.shape,
+			taskId: z.string(),
+			elapsedTime: z.number(),
+			taskState: z.string(),
+			clickCount: z.number(),
 		}),
 	}),
 ])

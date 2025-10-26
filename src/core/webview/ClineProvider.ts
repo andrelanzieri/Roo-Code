@@ -2580,14 +2580,64 @@ export class ClineProvider
 		return task
 	}
 
-	public async cancelTask(): Promise<void> {
+	public async cancelTask(clickCount?: number): Promise<void> {
 		const task = this.getCurrentTask()
 
 		if (!task) {
 			return
 		}
 
-		console.log(`[cancelTask] cancelling task ${task.taskId}.${task.instanceId}`)
+		console.log(
+			`[cancelTask] cancelling task ${task.taskId}.${task.instanceId} with click count: ${clickCount || 1}`,
+		)
+
+		// Update task's termination click count if provided
+		if (clickCount !== undefined) {
+			task.terminationClickCount = clickCount
+		}
+
+		// Track task termination for telemetry
+		const taskStartTime = task.metadata?.startTime || Date.now()
+		const elapsedTime = Date.now() - taskStartTime
+		const taskState = task.taskStatus || "unknown"
+
+		// Get termination context from task history
+		const taskHistory = this.getGlobalState("taskHistory") ?? []
+		const currentTaskItem = taskHistory.find((item: HistoryItem) => item.id === task.taskId)
+		const terminationClickCount = task.terminationClickCount || clickCount || 1
+
+		// Determine user intent based on context
+		let intent: "correction" | "abandonment" | "guidance" = "correction"
+		if (terminationClickCount > 1) {
+			intent = "abandonment"
+		} else if (task.isStreaming) {
+			intent = "correction"
+		} else if (task.taskAsk) {
+			intent = "guidance"
+		}
+
+		// Capture telemetry event
+		TelemetryService.instance.captureTaskTerminated(task.taskId, {
+			terminationSource: "button",
+			elapsedTime,
+			taskState,
+			clickCount: terminationClickCount,
+			intent,
+		})
+
+		// Also capture specific intent events
+		if (intent === "correction") {
+			TelemetryService.instance.captureTaskCorrected(task.taskId, {
+				elapsedTime,
+				taskState,
+			})
+		} else if (intent === "abandonment") {
+			TelemetryService.instance.captureTaskAbandoned(task.taskId, {
+				elapsedTime,
+				taskState,
+				clickCount: terminationClickCount,
+			})
+		}
 
 		const { historyItem, uiMessagesFilePath } = await this.getTaskWithId(task.taskId)
 

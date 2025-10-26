@@ -152,9 +152,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	childTaskId?: string
 
 	readonly instanceId: string
-	readonly metadata: TaskMetadata
+	readonly metadata: TaskMetadata & { startTime?: number }
 
 	todoList?: TodoItem[]
+	terminationClickCount: number = 0
 
 	readonly rootTask: Task | undefined = undefined
 	readonly parentTask: Task | undefined = undefined
@@ -351,6 +352,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.metadata = {
 			task: historyItem ? historyItem.task : task,
 			images: historyItem ? [] : images,
+			startTime: Date.now(),
 		}
 
 		// Normal use-case is usually retry similar history task with new workspace.

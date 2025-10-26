@@ -77,6 +77,40 @@ export class TelemetryService {
 		this.captureEvent(TelemetryEventName.TASK_COMPLETED, { taskId })
 	}
 
+	public captureTaskTerminated(
+		taskId: string,
+		properties: {
+			terminationSource: "button" | "command" | "api"
+			elapsedTime: number
+			taskState: string
+			clickCount: number
+			intent: "correction" | "abandonment" | "guidance"
+		},
+	): void {
+		this.captureEvent(TelemetryEventName.TASK_TERMINATED, { taskId, ...properties })
+	}
+
+	public captureTaskCorrected(
+		taskId: string,
+		properties: {
+			elapsedTime: number
+			taskState: string
+		},
+	): void {
+		this.captureEvent(TelemetryEventName.TASK_CORRECTED, { taskId, ...properties })
+	}
+
+	public captureTaskAbandoned(
+		taskId: string,
+		properties: {
+			elapsedTime: number
+			taskState: string
+			clickCount: number
+		},
+	): void {
+		this.captureEvent(TelemetryEventName.TASK_ABANDONED, { taskId, ...properties })
+	}
+
 	public captureConversationMessage(taskId: string, source: "user" | "assistant"): void {
 		this.captureEvent(TelemetryEventName.TASK_CONVERSATION_MESSAGE, { taskId, source })
 	}

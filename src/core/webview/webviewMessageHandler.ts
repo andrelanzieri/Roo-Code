@@ -1045,7 +1045,7 @@ export const webviewMessageHandler = async (
 			break
 		}
 		case "cancelTask":
-			await provider.cancelTask()
+			await provider.cancelTask(message.clickCount)
 			break
 		case "allowedCommands": {
 			// Validate and sanitize the commands array
