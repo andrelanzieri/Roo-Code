@@ -22,6 +22,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	maxReadFileLine?: number
 	maxImageFileSize?: number
 	maxTotalImageSize?: number
+	useSingleFileReadMode?: boolean
 	maxConcurrentFileReads?: number
 	profileThresholds?: Record<string, number>
 	includeDiagnosticMessages?: boolean
@@ -36,6 +37,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 		| "maxReadFileLine"
 		| "maxImageFileSize"
 		| "maxTotalImageSize"
+		| "useSingleFileReadMode"
 		| "maxConcurrentFileReads"
 		| "profileThresholds"
 		| "includeDiagnosticMessages"
@@ -55,6 +57,7 @@ export const ContextManagementSettings = ({
 	maxReadFileLine,
 	maxImageFileSize,
 	maxTotalImageSize,
+	useSingleFileReadMode,
 	maxConcurrentFileReads,
 	profileThresholds = {},
 	includeDiagnosticMessages,
@@ -433,6 +436,25 @@ export const ContextManagementSettings = ({
 											threshold: autoCondenseContextPercent,
 										})
 									: t("settings:contextManagement.condensingThreshold.profileDescription")}
+							</div>
+						</div>
+
+						<div className="mb-6 p-4 bg-vscode-editor-inactiveSelectionBackground rounded-lg border border-vscode-editorWidget-border">
+							<div className="flex flex-col gap-2">
+								<span className="font-medium">
+									{t("settings:contextManagement.useSingleFileReadMode.label")}
+								</span>
+								<VSCodeCheckbox
+									checked={useSingleFileReadMode ?? false}
+									onChange={(e: any) =>
+										setCachedStateField("useSingleFileReadMode", e.target.checked)
+									}
+									data-testid="use-single-file-read-mode-checkbox">
+									{t("settings:contextManagement.useSingleFileReadMode.checkboxLabel")}
+								</VSCodeCheckbox>
+								<div className="text-vscode-descriptionForeground text-sm mt-2">
+									{t("settings:contextManagement.useSingleFileReadMode.description")}
+								</div>
 							</div>
 						</div>
 					</div>

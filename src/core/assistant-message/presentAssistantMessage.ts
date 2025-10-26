@@ -470,7 +470,8 @@ export async function presentAssistantMessage(cline: Task) {
 				case "read_file":
 					// Check if this model should use the simplified single-file read tool
 					const modelId = cline.api.getModel().id
-					if (shouldUseSingleFileRead(modelId)) {
+					const useSingleFileReadMode = (await cline.providerRef.deref()?.getState())?.useSingleFileReadMode
+					if (shouldUseSingleFileRead(modelId, useSingleFileReadMode)) {
 						await simpleReadFileTool(
 							cline,
 							block,

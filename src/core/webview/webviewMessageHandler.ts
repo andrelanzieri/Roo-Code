@@ -1639,6 +1639,10 @@ export const webviewMessageHandler = async (
 			await updateGlobalState("maxReadFileLine", message.value)
 			await provider.postStateToWebview()
 			break
+		case "useSingleFileReadMode":
+			await updateGlobalState("useSingleFileReadMode", message.bool ?? false)
+			await provider.postStateToWebview()
+			break
 		case "maxImageFileSize":
 			await updateGlobalState("maxImageFileSize", message.value)
 			await provider.postStateToWebview()

@@ -580,6 +580,10 @@
 			"lines": "lines",
 			"always_full_read": "Always read entire file"
 		},
+		"useSingleFileReadMode": {
+			"label": "Force single-file read mode",
+			"description": "When enabled, forces the read_file tool to use single-file mode syntax. This helps with models like Qwen3-Coder that get confused by the multi-file XML args format and incorrectly use it with other tools. Only enable if you're experiencing 'required parameter not provided' errors."
+		},
 		"maxImageFileSize": {
 			"label": "Max image file size",
 			"mb": "MB",

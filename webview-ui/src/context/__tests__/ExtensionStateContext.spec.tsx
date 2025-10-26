@@ -215,6 +215,7 @@ describe("mergeExtensionState", () => {
 			taskSyncEnabled: false,
 			featureRoomoteControlEnabled: false,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, // Add the checkpoint timeout property
+			useSingleFileReadMode: false,
 		}
 
 		const prevState: ExtensionState = {

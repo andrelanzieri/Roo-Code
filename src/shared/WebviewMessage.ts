@@ -174,6 +174,7 @@ export interface WebviewMessage {
 		| "maxReadFileLine"
 		| "maxImageFileSize"
 		| "maxTotalImageSize"
+		| "useSingleFileReadMode"
 		| "maxConcurrentFileReads"
 		| "includeDiagnosticMessages"
 		| "maxDiagnosticMessages"

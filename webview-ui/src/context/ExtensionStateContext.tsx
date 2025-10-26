@@ -140,6 +140,8 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setMaxImageFileSize: (value: number) => void
 	maxTotalImageSize: number
 	setMaxTotalImageSize: (value: number) => void
+	useSingleFileReadMode: boolean
+	setUseSingleFileReadMode: (value: boolean) => void
 	machineId?: string
 	pinnedApiConfigs?: Record<string, boolean>
 	setPinnedApiConfigs: (value: Record<string, boolean>) => void
@@ -238,6 +240,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		maxReadFileLine: -1, // Default max read file line limit
 		maxImageFileSize: 5, // Default max image file size in MB
 		maxTotalImageSize: 20, // Default max total image size in MB
+		useSingleFileReadMode: false, // Default to multi-file mode
 		pinnedApiConfigs: {}, // Empty object for pinned API configs
 		terminalZshOhMy: false, // Default Oh My Zsh integration setting
 		maxConcurrentFileReads: 5, // Default concurrent file reads
@@ -531,6 +534,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setMaxReadFileLine: (value) => setState((prevState) => ({ ...prevState, maxReadFileLine: value })),
 		setMaxImageFileSize: (value) => setState((prevState) => ({ ...prevState, maxImageFileSize: value })),
 		setMaxTotalImageSize: (value) => setState((prevState) => ({ ...prevState, maxTotalImageSize: value })),
+		setUseSingleFileReadMode: (value) => setState((prevState) => ({ ...prevState, useSingleFileReadMode: value })),
 		setPinnedApiConfigs: (value) => setState((prevState) => ({ ...prevState, pinnedApiConfigs: value })),
 		setTerminalCompressProgressBar: (value) =>
 			setState((prevState) => ({ ...prevState, terminalCompressProgressBar: value })),

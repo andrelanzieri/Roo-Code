@@ -130,6 +130,7 @@ export const globalSettingsSchema = z.object({
 	maxReadFileLine: z.number().optional(),
 	maxImageFileSize: z.number().optional(),
 	maxTotalImageSize: z.number().optional(),
+	useSingleFileReadMode: z.boolean().optional(),
 
 	terminalOutputLineLimit: z.number().optional(),
 	terminalOutputCharacterLimit: z.number().optional(),
