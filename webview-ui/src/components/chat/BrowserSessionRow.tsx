@@ -87,22 +87,26 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 		consoleLogs: latestState.consoleLogs,
 	}
 
-	// Find latest click position for cursor display
-	const latestClickPosition = useMemo(() => {
-		if (!isBrowsing) return undefined
-
-		// Look through messages backwards for the latest browser_action with click
+	// Find latest browser action and click position
+	const latestBrowserAction = useMemo(() => {
+		// Look through messages backwards for the latest browser_action
 		for (let i = messages.length - 1; i >= 0; i--) {
 			const message = messages[i]
 			if (message.say === "browser_action" && message.text) {
 				const browserAction = JSON.parse(message.text) as ClineSayBrowserAction
-				if (browserAction.action === "click" && browserAction.coordinate) {
-					return browserAction.coordinate
-				}
+				return browserAction
 			}
 		}
 		return undefined
-	}, [isBrowsing, messages])
+	}, [messages])
+
+	const latestClickPosition = useMemo(() => {
+		if (!isBrowsing || !latestBrowserAction) return undefined
+		if (latestBrowserAction.action === "click" && latestBrowserAction.coordinate) {
+			return latestBrowserAction.coordinate
+		}
+		return undefined
+	}, [isBrowsing, latestBrowserAction])
 
 	const mousePosition = isBrowsing
 		? latestClickPosition || displayState.mousePosition
@@ -226,6 +230,15 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 					<CodeBlock source={displayState.consoleLogs || t("chat:browser.noNewLogs")} language="shell" />
 				)}
 			</div>
+
+			{/* Show latest browser action */}
+			{latestBrowserAction && (
+				<BrowserActionBox
+					action={latestBrowserAction.action}
+					coordinate={latestBrowserAction.coordinate}
+					text={latestBrowserAction.text}
+				/>
+			)}
 		</div>,
 	)
 
@@ -272,7 +285,7 @@ const BrowserActionBox = ({
 		}
 	}
 	return (
-		<div style={{ padding: "10px 0 0 0" }}>
+		<div className="ml-6 mr-1.5 mb-4">
 			<div
 				style={{
 					borderRadius: 3,
