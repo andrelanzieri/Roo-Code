@@ -3159,5 +3159,49 @@ export const webviewMessageHandler = async (
 			})
 			break
 		}
+		case "startSttCapture":
+			try {
+				const sttService = provider.getSttService()
+				if (!sttService) {
+					await provider.postMessageToWebview({
+						type: "sttError",
+						error: "STT service not initialized",
+					})
+					break
+				}
+
+				const captureUrl = await sttService.startCapture()
+				if (captureUrl) {
+					// Open the capture URL in the default browser
+					await vscode.env.openExternal(vscode.Uri.parse(captureUrl))
+
+					// Notify the webview that capture has started
+					await provider.postMessageToWebview({
+						type: "sttCaptureStarted",
+					})
+				}
+			} catch (error) {
+				await provider.postMessageToWebview({
+					type: "sttError",
+					error: error instanceof Error ? error.message : "Failed to start STT capture",
+				})
+			}
+			break
+		case "stopSttCapture":
+			try {
+				const sttService = provider.getSttService()
+				if (sttService) {
+					await sttService.stopCapture()
+					await provider.postMessageToWebview({
+						type: "sttCaptureStopped",
+					})
+				}
+			} catch (error) {
+				await provider.postMessageToWebview({
+					type: "sttError",
+					error: error instanceof Error ? error.message : "Failed to stop STT capture",
+				})
+			}
+			break
 	}
 }

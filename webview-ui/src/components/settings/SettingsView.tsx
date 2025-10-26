@@ -25,6 +25,7 @@ import {
 	LucideIcon,
 	SquareSlash,
 	Glasses,
+	Mic,
 } from "lucide-react"
 
 import type { ProviderSettings, ExperimentId, TelemetrySetting } from "@roo-code/types"
@@ -68,6 +69,7 @@ import { Section } from "./Section"
 import PromptsSettings from "./PromptsSettings"
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { UISettings } from "./UISettings"
+import { SttSettings } from "./SttSettings"
 
 export const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
 export const settingsTabList =
@@ -87,6 +89,7 @@ const sectionNames = [
 	"browser",
 	"checkpoints",
 	"notifications",
+	"stt",
 	"contextManagement",
 	"terminal",
 	"prompts",
@@ -477,6 +480,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "browser", icon: SquareMousePointer },
 			{ id: "checkpoints", icon: GitBranch },
 			{ id: "notifications", icon: Bell },
+			{ id: "stt", icon: Mic },
 			{ id: "contextManagement", icon: Database },
 			{ id: "terminal", icon: SquareTerminal },
 			{ id: "prompts", icon: MessageSquare },
@@ -727,6 +731,20 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							soundEnabled={soundEnabled}
 							soundVolume={soundVolume}
 							setCachedStateField={setCachedStateField}
+						/>
+					)}
+
+					{/* STT Section */}
+					{activeTab === "stt" && (
+						<SttSettings
+							sttEnabled={apiConfiguration.sttEnabled}
+							sttProvider={apiConfiguration.sttProvider}
+							sttAutoStopTimeout={apiConfiguration.sttAutoStopTimeout}
+							sttAutoSend={apiConfiguration.sttAutoSend}
+							sttAssemblyAiApiKey={apiConfiguration.sttAssemblyAiApiKey}
+							sttOpenAiWhisperApiKey={apiConfiguration.sttOpenAiWhisperApiKey}
+							setCachedStateField={setCachedStateField}
+							setApiConfigurationField={setApiConfigurationField}
 						/>
 					)}
 

@@ -1,7 +1,7 @@
 import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useEvent } from "react-use"
 import DynamicTextArea from "react-textarea-autosize"
-import { VolumeX, Image, WandSparkles, SendHorizontal, MessageSquareX } from "lucide-react"
+import { VolumeX, Image, WandSparkles, SendHorizontal, MessageSquareX, Mic, MicOff } from "lucide-react"
 
 import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
 import { WebviewMessage } from "@roo/WebviewMessage"
@@ -880,6 +880,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		)
 
 		const [isTtsPlaying, setIsTtsPlaying] = useState(false)
+		const [isSttRecording, setIsSttRecording] = useState(false)
 
 		useEvent("message", (event: MessageEvent) => {
 			const message: ExtensionMessage = event.data
@@ -888,6 +889,27 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				setIsTtsPlaying(true)
 			} else if (message.type === "ttsStop") {
 				setIsTtsPlaying(false)
+			} else if (message.type === "sttStart") {
+				setIsSttRecording(true)
+			} else if (message.type === "sttStop") {
+				setIsSttRecording(false)
+			} else if (message.type === "sttTranscript") {
+				// Append the transcript to the current input
+				if (message.transcript) {
+					const newValue = inputValue.trim() ? inputValue + " " + message.transcript : message.transcript
+					setInputValue(newValue)
+					// Focus the textarea
+					setTimeout(() => {
+						if (textAreaRef.current) {
+							textAreaRef.current.focus()
+							textAreaRef.current.setSelectionRange(newValue.length, newValue.length)
+						}
+					}, 0)
+				}
+				setIsSttRecording(false)
+			} else if (message.type === "sttError") {
+				console.error("STT Error:", message.sttError)
+				setIsSttRecording(false)
 			}
 		})
 
@@ -906,6 +928,15 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const handleApiConfigChange = useCallback((value: string) => {
 			vscode.postMessage({ type: "loadApiConfigurationById", text: value })
 		}, [])
+
+		// Handle STT recording toggle
+		const handleSttToggle = useCallback(() => {
+			if (isSttRecording) {
+				vscode.postMessage({ type: "stopSttCapture" })
+			} else {
+				vscode.postMessage({ type: "startSttCapture" })
+			}
+		}, [isSttRecording])
 
 		return (
 			<div
@@ -1108,6 +1139,27 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 												"opacity-40 cursor-not-allowed grayscale-[30%] hover:bg-transparent hover:border-[rgba(255,255,255,0.08)] active:bg-transparent",
 										)}>
 										<Image className="w-4 h-4" />
+									</button>
+								</StandardTooltip>
+								<StandardTooltip
+									content={isSttRecording ? t("chat:stopRecording") : t("chat:startRecording")}>
+									<button
+										aria-label={isSttRecording ? t("chat:stopRecording") : t("chat:startRecording")}
+										onClick={handleSttToggle}
+										className={cn(
+											"relative inline-flex items-center justify-center",
+											"bg-transparent border-none p-1.5",
+											"rounded-md min-w-[28px] min-h-[28px]",
+											"text-vscode-descriptionForeground hover:text-vscode-foreground",
+											"transition-all duration-1000",
+											"cursor-pointer",
+											"opacity-50 hover:opacity-100 delay-750 pointer-events-auto",
+											"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
+											"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
+											"active:bg-[rgba(255,255,255,0.1)]",
+											isSttRecording && "text-red-500 animate-pulse",
+										)}>
+										{isSttRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
 									</button>
 								</StandardTooltip>
 								<StandardTooltip content={t("chat:enhancePrompt")}>

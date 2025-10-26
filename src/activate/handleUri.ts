@@ -47,6 +47,25 @@ export const handleUri = async (uri: vscode.Uri) => {
 			)
 			break
 		}
+		case "/stt/transcript": {
+			const transcript = query.get("transcript")
+			const error = query.get("error")
+
+			if (error) {
+				// Send error to webview
+				await visibleProvider.postMessageToWebview({
+					type: "sttError",
+					error: decodeURIComponent(error),
+				})
+			} else if (transcript) {
+				// Send transcript to webview
+				await visibleProvider.postMessageToWebview({
+					type: "sttTranscript",
+					text: decodeURIComponent(transcript),
+				})
+			}
+			break
+		}
 		default:
 			break
 	}

@@ -37,6 +37,15 @@ export interface WebviewMessage {
 		| "loadApiConfigurationById"
 		| "renameApiConfiguration"
 		| "getListApiConfiguration"
+		| "startSttCapture"
+		| "stopSttCapture"
+		| "sttTranscriptReceived"
+		| "sttEnabled"
+		| "sttProvider"
+		| "sttAutoStopTimeout"
+		| "sttAutoSend"
+		| "assemblyAiApiKey"
+		| "openAiWhisperApiKey"
 		| "customInstructions"
 		| "allowedCommands"
 		| "deniedCommands"
@@ -279,6 +288,8 @@ export interface WebviewMessage {
 	upsellId?: string // For dismissUpsell
 	list?: string[] // For dismissedUpsells response
 	organizationId?: string | null // For organization switching
+	transcript?: string // For STT transcript
+	sttError?: string // For STT errors
 	codeIndexSettings?: {
 		// Global state settings
 		codebaseIndexEnabled: boolean

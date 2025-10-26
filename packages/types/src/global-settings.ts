@@ -45,6 +45,12 @@ export const MAX_CHECKPOINT_TIMEOUT_SECONDS = 60
 export const DEFAULT_CHECKPOINT_TIMEOUT_SECONDS = 15
 
 /**
+ * Default STT settings
+ */
+export const DEFAULT_STT_AUTO_STOP_TIMEOUT = 2000 // 2 seconds of silence
+export const DEFAULT_STT_AUTO_SEND = false
+
+/**
  * GlobalSettings
  */
 
@@ -173,6 +179,12 @@ export const globalSettingsSchema = z.object({
 	hasOpenedModeSelector: z.boolean().optional(),
 	lastModeExportPath: z.string().optional(),
 	lastModeImportPath: z.string().optional(),
+
+	// Speech-to-Text settings
+	sttEnabled: z.boolean().optional(),
+	sttProvider: z.enum(["assemblyai", "openai-whisper"]).optional(),
+	sttAutoStopTimeout: z.number().min(500).max(10000).optional(), // milliseconds
+	sttAutoSend: z.boolean().optional(),
 })
 
 export type GlobalSettings = z.infer<typeof globalSettingsSchema>
@@ -227,11 +239,15 @@ export const SECRET_STATE_KEYS = [
 	"featherlessApiKey",
 	"ioIntelligenceApiKey",
 	"vercelAiGatewayApiKey",
+	"assemblyAiApiKey",
+	"openAiWhisperApiKey",
 ] as const
 
 // Global secrets that are part of GlobalSettings (not ProviderSettings)
 export const GLOBAL_SECRET_KEYS = [
 	"openRouterImageApiKey", // For image generation
+	"assemblyAiApiKey", // For speech-to-text
+	"openAiWhisperApiKey", // For OpenAI Whisper STT
 ] as const
 
 // Type for the actual secret storage keys

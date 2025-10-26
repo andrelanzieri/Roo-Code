@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roo Code - Speech to Text</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .transcript-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 150px;
+            margin-bottom: 30px;
+            font-size: 16px;
+            line-height: 1.5;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .transcript-box:empty::before {
+            content: "Your speech will appear here...";
+            opacity: 0.5;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.recording {
+            background: #ef4444;
+            border-color: #ef4444;
+            animation: pulse 1.5s infinite;
+        }
+
+        button.send {
+            background: #10b981;
+            border-color: #10b981;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        .mic-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .visualizer {
+            height: 60px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+        }
+
+        .bar {
+            width: 4px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 2px;
+            transition: height 0.1s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Roo Code Speech-to-Text</h1>
+        
+        <div class="status" id="status">Initializing...</div>
+        
+        <div class="visualizer" id="visualizer" style="display: none;">
+            <!-- Audio visualizer bars will be added here -->
+        </div>
+        
+        <div class="transcript-box" id="transcript"></div>
+        
+        <div class="controls">
+            <button id="recordBtn" disabled>
+                <svg class="mic-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+                </svg>
+                <span id="recordBtnText">Start Recording</span>
+            </button>
+            
+            <button id="sendBtn" style="display: none;">
+                <svg class="mic-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+                </svg>
+                Send to Roo Code
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const provider = params.get('provider');
+        const callbackUrl = params.get('callback');
+        const autoStopTimeout = parseInt(params.get('autoStopTimeout') || '2000');
+        const autoSend = params.get('autoSend') === 'true';
+
+        let mediaRecorder = null;
+        let audioContext = null;
+        let analyser = null;
+        let microphone = null;
+        let javascriptNode = null;
+        let isRecording = false;
+        let silenceTimer = null;
+        let transcriptText = '';
+        let socket = null;
+
+        const statusEl = document.getElementById('status');
+        const transcriptEl = document.getElementById('transcript');
+        const recordBtn = document.getElementById('recordBtn');
+        const recordBtnText = document.getElementById('recordBtnText');
+        const sendBtn = document.getElementById('sendBtn');
+        const visualizerEl = document.getElementById('visualizer');
+
+        // Initialize audio visualizer
+        function initVisualizer() {
+            visualizerEl.innerHTML = '';
+            for (let i = 0; i < 20; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.height = '4px';
+                visualizerEl.appendChild(bar);
+            }
+        }
+
+        // Update visualizer
+        function updateVisualizer(dataArray) {
+            const bars = visualizerEl.querySelectorAll('.bar');
+            const step = Math.floor(dataArray.length / bars.length);
+            
+            bars.forEach((bar, i) => {
+                const value = dataArray[i * step];
+                const height = Math.max(4, (value / 255) * 60);
+                bar.style.height = `${height}px`;
+            });
+        }
+
+        // Initialize AssemblyAI WebSocket connection
+        async function initAssemblyAI() {
+            const response = await fetch('https://api.assemblyai.com/v2/realtime/token', {
+                method: 'POST',
+                headers: {
+                    'authorization': token,
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({ expires_in: 3600 })
+            });
+
+            const data = await response.json();
+            const sessionToken = data.token;
+
+            socket = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000&token=${sessionToken}`);
+
+            socket.onopen = () => {
+                console.log('WebSocket connected');
+                statusEl.textContent = 'Ready to record';
+                recordBtn.disabled = false;
+            };
+
+            socket.onmessage = (message) => {
+                const res = JSON.parse(message.data);
+                if (res.message_type === 'FinalTranscript') {
+                    transcriptText += res.text + ' ';
+                    transcriptEl.textContent = transcriptText;
+                    
+                    // Reset silence timer
+                    if (silenceTimer) {
+                        clearTimeout(silenceTimer);
+                    }
+                    
+                    // Auto-stop on silence
+                    if (autoStopTimeout > 0) {
+                        silenceTimer = setTimeout(() => {
+                            stopRecording();
+                            if (autoSend && transcriptText.trim()) {
+                                sendTranscript();
+                            }
+                        }, autoStopTimeout);
+                    }
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                statusEl.textContent = 'Connection error';
+            };
+
+            socket.onclose = () => {
+                console.log('WebSocket closed');
+            };
+        }
+
+        // Start recording
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                isRecording = true;
+                recordBtn.classList.add('recording');
+                recordBtnText.textContent = 'Stop Recording';
+                statusEl.textContent = 'Recording...';
+                visualizerEl.style.display = 'flex';
+                
+                // Set up audio context for visualization
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
+                
+                analyser.smoothingTimeConstant = 0.8;
+                analyser.fftSize = 256;
+                
+                microphone.connect(analyser);
+                analyser.connect(javascriptNode);
+                javascriptNode.connect(audioContext.destination);
+                
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                javascriptNode.onaudioprocess = () => {
+                    if (isRecording) {
+                        analyser.getByteFrequencyData(dataArray);
+                        updateVisualizer(dataArray);
+                    }
+                };
+
+                // Set up media recorder for AssemblyAI
+                if (provider === 'assemblyai') {
+                    const audioContext = new AudioContext({ sampleRate: 16000 });
+                    const source = audioContext.createMediaStreamSource(stream);
+                    const processor = audioContext.createScriptProcessor(1024, 1, 1);
+                    
+                    source.connect(processor);
+                    processor.connect(audioContext.destination);
+                    
+                    processor.onaudioprocess = (e) => {
+                        if (!isRecording) return;
+                        
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const output = new Int16Array(inputData.length);
+                        
+                        for (let i = 0; i < inputData.length; i++) {
+                            output[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+                        }
+                        
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(output.buffer);
+                        }
+                    };
+                }
+                
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                statusEl.textContent = 'Microphone access denied';
+            }
+        }
+
+        // Stop recording
+        function stopRecording() {
+            isRecording = false;
+            recordBtn.classList.remove('recording');
+            recordBtnText.textContent = 'Start Recording';
+            statusEl.textContent = 'Recording stopped';
+            visualizerEl.style.display = 'none';
+            
+            if (silenceTimer) {
+                clearTimeout(silenceTimer);
+            }
+            
+            if (microphone) {
+                microphone.disconnect();
+            }
+            if (javascriptNode) {
+                javascriptNode.disconnect();
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+            
+            if (transcriptText.trim()) {
+                sendBtn.style.display = 'inline-flex';
+            }
+        }
+
+        // Send transcript back to VS Code
+        function sendTranscript() {
+            if (!transcriptText.trim()) {
+                statusEl.textContent = 'No transcript to send';
+                return;
+            }
+            
+            // Send via callback URL
+            if (callbackUrl) {
+                const fullCallbackUrl = `${callbackUrl}?transcript=${encodeURIComponent(transcriptText.trim())}`;
+                window.location.href = fullCallbackUrl;
+            }
+            
+            statusEl.textContent = 'Transcript sent!';
+            setTimeout(() => {
+                window.close();
+            }, 1000);
+        }
+
+        // Event listeners
+        recordBtn.addEventListener('click', () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendTranscript);
+
+        // Initialize based on provider
+        if (provider === 'assemblyai') {
+            initVisualizer();
+            initAssemblyAI();
+        } else {
+            statusEl.textContent = `Provider ${provider} not yet implemented`;
+        }
+
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            if (socket) {
+                socket.close();
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+        });
+    </script>
+</body>
+</html>

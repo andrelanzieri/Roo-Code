@@ -181,6 +181,13 @@ const baseProviderSettingsSchema = z.object({
 
 	// Model verbosity.
 	verbosity: verbosityLevelsSchema.optional(),
+
+	// Speech-to-Text settings.
+	sttEnabled: z.boolean().optional(),
+	sttProvider: z.enum(["assemblyai", "openai-whisper", "none"]).optional(),
+	sttAutoStopTimeout: z.number().min(1).max(30).optional(),
+	sttAutoSend: z.boolean().optional(),
+	sttLanguage: z.string().optional(),
 })
 
 // Several of the providers share common model config properties.
@@ -193,6 +200,9 @@ const anthropicSchema = apiModelIdProviderModelSchema.extend({
 	anthropicBaseUrl: z.string().optional(),
 	anthropicUseAuthToken: z.boolean().optional(),
 	anthropicBeta1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
+	// STT settings for Anthropic provider
+	sttAssemblyAiApiKey: z.string().optional(),
+	sttOpenAiWhisperApiKey: z.string().optional(),
 })
 
 const claudeCodeSchema = apiModelIdProviderModelSchema.extend({
@@ -297,6 +307,9 @@ const openAiNativeSchema = apiModelIdProviderModelSchema.extend({
 	// OpenAI Responses API service tier for openai-native provider only.
 	// UI should only expose this when the selected model supports flex/priority.
 	openAiNativeServiceTier: serviceTierSchema.optional(),
+	// STT settings for OpenAI Native provider
+	sttAssemblyAiApiKey: z.string().optional(),
+	sttOpenAiWhisperApiKey: z.string().optional(),
 })
 
 const mistralSchema = apiModelIdProviderModelSchema.extend({
@@ -405,6 +418,9 @@ const qwenCodeSchema = apiModelIdProviderModelSchema.extend({
 
 const rooSchema = apiModelIdProviderModelSchema.extend({
 	// No additional fields needed - uses cloud authentication.
+	// STT settings for Roo provider
+	sttAssemblyAiApiKey: z.string().optional(),
+	sttOpenAiWhisperApiKey: z.string().optional(),
 })
 
 const vercelAiGatewaySchema = baseProviderSettingsSchema.extend({

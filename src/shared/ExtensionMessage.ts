@@ -101,6 +101,13 @@ export interface ExtensionMessage {
 		| "remoteBrowserEnabled"
 		| "ttsStart"
 		| "ttsStop"
+		| "sttStart"
+		| "sttStop"
+		| "sttTranscript"
+		| "sttError"
+		| "sttTokenReady"
+		| "sttCaptureStarted"
+		| "sttCaptureStopped"
 		| "maxReadFileLine"
 		| "fileSearchResults"
 		| "toggleApiConfigPin"
@@ -211,6 +218,10 @@ export interface ExtensionMessage {
 	queuedMessages?: QueuedMessage[]
 	list?: string[] // For dismissedUpsells
 	organizationId?: string | null // For organizationSwitchResult
+	transcript?: string // For STT transcript
+	sttError?: string // For STT errors
+	sttToken?: string // For temporary STT token
+	sttCaptureUrl?: string // URL for browser-based capture
 }
 
 export type ExtensionState = Pick<
