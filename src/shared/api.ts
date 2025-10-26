@@ -116,13 +116,21 @@ export const getModelMaxOutputTokens = ({
 	}
 
 	// If model has explicit maxTokens, clamp it to 20% of the context window
-	// Exception: GPT-5 models should use their exact configured max output tokens
+	// Exception 1: GPT-5 models should use their exact configured max output tokens
+	// Exception 2: OpenAI Compatible providers should use their exact configured max output tokens
 	if (model.maxTokens) {
 		// Check if this is a GPT-5 model (case-insensitive)
 		const isGpt5Model = modelId.toLowerCase().includes("gpt-5")
 
-		// GPT-5 models bypass the 20% cap and use their full configured max tokens
-		if (isGpt5Model) {
+		// Check if this is an OpenAI Compatible provider
+		// OpenAI Compatible uses apiProvider "openai" with a custom baseUrl
+		const isOpenAiCompatible =
+			settings?.apiProvider === "openai" &&
+			settings?.openAiBaseUrl &&
+			settings.openAiBaseUrl !== "https://api.openai.com/v1"
+
+		// GPT-5 models and OpenAI Compatible providers bypass the 20% cap and use their full configured max tokens
+		if (isGpt5Model || isOpenAiCompatible) {
 			return model.maxTokens
 		}
 

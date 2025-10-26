@@ -310,6 +310,86 @@ describe("getModelMaxOutputTokens", () => {
 
 		expect(getModelMaxOutputTokens({ modelId: "test", model, settings })).toBe(16_384)
 	})
+
+	it("should return full maxTokens for OpenAI Compatible providers without clamping", () => {
+		const model: ModelInfo = {
+			supportsPromptCache: false,
+			maxTokens: 128_000, // 64% of context window
+			contextWindow: 200_000,
+			supportsImages: false,
+		}
+
+		// Test with custom OpenAI baseUrl (OpenAI Compatible)
+		const settings: ProviderSettings = {
+			apiProvider: "openai",
+			openAiBaseUrl: "https://custom-api.example.com/v1",
+		}
+
+		// Should return full 128_000 without clamping to 20%
+		expect(getModelMaxOutputTokens({ modelId: "glm-4.6", model, settings })).toBe(128_000)
+	})
+
+	it("should apply 20% clamping for regular OpenAI provider", () => {
+		const model: ModelInfo = {
+			supportsPromptCache: false,
+			maxTokens: 128_000, // 64% of context window
+			contextWindow: 200_000,
+			supportsImages: false,
+		}
+
+		// Test with default OpenAI baseUrl (regular OpenAI)
+		const settings: ProviderSettings = {
+			apiProvider: "openai",
+			openAiBaseUrl: "https://api.openai.com/v1",
+		}
+
+		// Should clamp to 20% of context window: 200_000 * 0.2 = 40_000
+		expect(getModelMaxOutputTokens({ modelId: "some-model", model, settings })).toBe(40_000)
+	})
+
+	it("should apply 20% clamping when openAiBaseUrl is not set", () => {
+		const model: ModelInfo = {
+			supportsPromptCache: false,
+			maxTokens: 128_000, // 64% of context window
+			contextWindow: 200_000,
+			supportsImages: false,
+		}
+
+		// Test without openAiBaseUrl (defaults to regular OpenAI)
+		const settings: ProviderSettings = {
+			apiProvider: "openai",
+		}
+
+		// Should clamp to 20% of context window: 200_000 * 0.2 = 40_000
+		expect(getModelMaxOutputTokens({ modelId: "some-model", model, settings })).toBe(40_000)
+	})
+
+	it("should handle OpenAI Compatible with various base URLs", () => {
+		const model: ModelInfo = {
+			supportsPromptCache: false,
+			maxTokens: 100_000,
+			contextWindow: 128_000,
+			supportsImages: false,
+		}
+
+		// Test with various custom URLs that indicate OpenAI Compatible
+		const customUrls = [
+			"http://localhost:11434/v1",
+			"https://api.groq.com/openai/v1",
+			"https://api.together.xyz/v1",
+			"https://api.deepinfra.com/v1/openai",
+		]
+
+		customUrls.forEach((url) => {
+			const settings: ProviderSettings = {
+				apiProvider: "openai",
+				openAiBaseUrl: url,
+			}
+
+			// Should return full maxTokens without clamping
+			expect(getModelMaxOutputTokens({ modelId: "test-model", model, settings })).toBe(100_000)
+		})
+	})
 })
 
 describe("shouldUseReasoningBudget", () => {
