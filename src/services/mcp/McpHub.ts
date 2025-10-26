@@ -759,8 +759,8 @@ export class McpHub {
 				} else {
 					console.error(`No stderr stream for ${name}`)
 				}
-			} else if (configInjected.type === "http" || configInjected.type === "streamable-http") {
-				// HTTP connection (streamable-http is mapped to http for backward compatibility)
+			} else if (configInjected.type === "http") {
+				// HTTP connection (streamable-http is normalized to http by schema transformation)
 				transport = new StreamableHTTPClientTransport(new URL(configInjected.url), {
 					requestInit: {
 						headers: configInjected.headers,
