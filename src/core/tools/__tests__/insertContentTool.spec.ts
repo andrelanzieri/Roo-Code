@@ -5,6 +5,7 @@ import type { MockedFunction } from "vitest"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { ToolUse, ToolResponse } from "../../../shared/tools"
 import { insertContentTool } from "../insertContentTool"
+import { experiments } from "../../../shared/experiments"
 
 // Helper to normalize paths to POSIX format for cross-platform testing
 const toPosix = (filePath: string) => filePath.replace(/\\/g, "/")
@@ -21,6 +22,22 @@ vi.mock("delay", () => ({
 
 vi.mock("../../../utils/fs", () => ({
 	fileExistsAtPath: vi.fn().mockResolvedValue(false),
+}))
+
+vi.mock("../../../shared/experiments", () => ({
+	experiments: {
+		isEnabled: vi.fn().mockReturnValue(false),
+	},
+	EXPERIMENT_IDS: {
+		PREVENT_FOCUS_DISRUPTION: "preventFocusDisruption",
+	},
+}))
+
+vi.mock("../../../utils/activity-detector", () => ({
+	getActivityDetector: vi.fn().mockReturnValue({
+		isUserActive: vi.fn().mockReturnValue(false),
+		waitForInactivity: vi.fn().mockResolvedValue(true),
+	}),
 }))
 
 vi.mock("../../prompts/responses", () => ({
@@ -63,6 +80,9 @@ describe("insertContentTool", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+
+		// Mock experiments to be disabled by default for tests
+		vi.mocked(experiments).isEnabled.mockReturnValue(false)
 
 		mockedFileExistsAtPath.mockResolvedValue(true) // Assume file exists by default for insert
 		mockedFsReadFile.mockResolvedValue("") // Default empty file content

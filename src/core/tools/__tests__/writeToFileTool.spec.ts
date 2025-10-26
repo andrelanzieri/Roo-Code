@@ -10,6 +10,7 @@ import { unescapeHtmlEntities } from "../../../utils/text-normalization"
 import { everyLineHasLineNumbers, stripLineNumbers } from "../../../integrations/misc/extract-text"
 import { ToolUse, ToolResponse } from "../../../shared/tools"
 import { writeToFileTool } from "../writeToFileTool"
+import { experiments } from "../../../shared/experiments"
 
 vi.mock("path", async () => {
 	const originalPath = await vi.importActual("path")
@@ -92,6 +93,15 @@ vi.mock("../../ignore/RooIgnoreController", () => ({
 	},
 }))
 
+vi.mock("../../../shared/experiments", () => ({
+	EXPERIMENT_IDS: {
+		PREVENT_FOCUS_DISRUPTION: "preventFocusDisruption",
+	},
+	experiments: {
+		isEnabled: vi.fn().mockReturnValue(false), // Default to disabled for tests
+	},
+}))
+
 describe("writeToFileTool", () => {
 	// Test data
 	const testFilePath = "test/file.txt"
@@ -118,6 +128,9 @@ describe("writeToFileTool", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
+
+		// Mock experiments to be disabled by default for tests
+		vi.mocked(experiments.isEnabled).mockReturnValue(false)
 
 		mockedPathResolve.mockReturnValue(absoluteFilePath)
 		mockedFileExistsAtPath.mockResolvedValue(false)

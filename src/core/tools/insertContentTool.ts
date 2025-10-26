@@ -1,6 +1,7 @@
 import delay from "delay"
 import fs from "fs/promises"
 import path from "path"
+import * as vscode from "vscode"
 
 import { getReadablePath } from "../../utils/path"
 import { Task } from "../task/Task"
@@ -12,6 +13,7 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { insertGroups } from "../diff/insert-groups"
 import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
+import { getActivityDetector } from "../../utils/activity-detector"
 
 export async function insertContentTool(
 	cline: Task,
@@ -150,6 +152,30 @@ export async function insertContentTool(
 			await cline.diffViewProvider.open(relPath)
 			await cline.diffViewProvider.update(updatedContent, true)
 			cline.diffViewProvider.scrollToFirstDiff()
+		} else {
+			// Wait for user to become inactive before proceeding with file operations
+			const activityDetector = getActivityDetector()
+			if (activityDetector.isUserActive()) {
+				// Wait up to 10 seconds for user to become inactive
+				const becameInactive = await activityDetector.waitForInactivity(10000)
+
+				if (!becameInactive) {
+					// User is still active after timeout, ask for permission to proceed
+					const shouldProceed = await vscode.window.showWarningMessage(
+						"You appear to be actively editing. Would you like Roo Code to proceed with file changes anyway?",
+						"Proceed",
+						"Cancel",
+					)
+
+					if (shouldProceed !== "Proceed") {
+						pushToolResult(
+							formatResponse.toolError("File operation cancelled to avoid disrupting active editing."),
+						)
+						await cline.diffViewProvider.reset()
+						return
+					}
+				}
+			}
 		}
 
 		// Ask for approval (same for both flows)

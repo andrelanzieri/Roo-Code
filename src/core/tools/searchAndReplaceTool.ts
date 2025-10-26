@@ -2,6 +2,7 @@
 import path from "path"
 import fs from "fs/promises"
 import delay from "delay"
+import * as vscode from "vscode"
 
 // Internal imports
 import { Task } from "../task/Task"
@@ -13,6 +14,7 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
+import { getActivityDetector } from "../../utils/activity-detector"
 
 /**
  * Tool for performing search and replace operations on files
@@ -221,6 +223,30 @@ export async function searchAndReplaceTool(
 			await cline.diffViewProvider.open(validRelPath)
 			await cline.diffViewProvider.update(newContent, true)
 			cline.diffViewProvider.scrollToFirstDiff()
+		} else {
+			// Wait for user to become inactive before proceeding with file operations
+			const activityDetector = getActivityDetector()
+			if (activityDetector.isUserActive()) {
+				// Wait up to 10 seconds for user to become inactive
+				const becameInactive = await activityDetector.waitForInactivity(10000)
+
+				if (!becameInactive) {
+					// User is still active after timeout, ask for permission to proceed
+					const shouldProceed = await vscode.window.showWarningMessage(
+						"You appear to be actively editing. Would you like Roo Code to proceed with file changes anyway?",
+						"Proceed",
+						"Cancel",
+					)
+
+					if (shouldProceed !== "Proceed") {
+						pushToolResult(
+							formatResponse.toolError("File operation cancelled to avoid disrupting active editing."),
+						)
+						await cline.diffViewProvider.reset()
+						return
+					}
+				}
+			}
 		}
 
 		const didApprove = await askApproval("tool", completeMessage, undefined, isWriteProtected)
