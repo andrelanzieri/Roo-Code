@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger, StandardTooltip, ToggleSwitch 
 import { AutoApproveSetting, autoApproveSettingsConfig } from "../settings/AutoApproveToggle"
 import { useAutoApprovalToggles } from "@/hooks/useAutoApprovalToggles"
 import { useAutoApprovalState } from "@/hooks/useAutoApprovalState"
+import { ShortcutHint } from "./ShortcutHint"
 
 interface AutoApproveDropdownProps {
 	disabled?: boolean
@@ -222,6 +223,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 						<p className="m-0 text-xs text-vscode-descriptionForeground">
 							{t("chat:autoApprove.description")}
 						</p>
+						<ShortcutHint translationKey={"chat:autoApprove.toggleShortcut"} />
 					</div>
 					<div className="grid grid-cols-1 min-[340px]:grid-cols-2 gap-x-2 gap-y-2 p-3">
 						{settingsArray.map(({ key, labelKey, descriptionKey, icon }) => {
