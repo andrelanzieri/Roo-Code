@@ -181,6 +181,10 @@
 		"task_prompt": "What should Roo do?",
 		"task_placeholder": "Type your task here"
 	},
+	"chat": {
+		"quotePreview": "Quote",
+		"quoteSelection": "Quote"
+	},
 	"customModes": {
 		"errors": {
 			"yamlParseError": "Invalid YAML in .roomodes file at line {{line}}. Please check for:\n• Proper indentation (use spaces, not tabs)\n• Matching quotes and brackets\n• Valid YAML syntax",

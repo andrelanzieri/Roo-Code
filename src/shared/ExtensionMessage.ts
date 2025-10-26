@@ -70,6 +70,7 @@ export interface ExtensionMessage {
 		| "theme"
 		| "workspaceUpdated"
 		| "invoke"
+		| "addQuoteToComposer"
 		| "messageUpdated"
 		| "mcpServers"
 		| "enhancedPrompt"

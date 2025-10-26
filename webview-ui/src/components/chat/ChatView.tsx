@@ -197,6 +197,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	>(undefined)
 	const [isCondensing, setIsCondensing] = useState<boolean>(false)
 	const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
+	const [quotedText, setQuotedText] = useState<string>("")
 	const everVisibleMessagesTsRef = useRef<LRUCache<number, boolean>>(
 		new LRUCache({
 			max: 100,
@@ -783,6 +784,17 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			const message: ExtensionMessage = e.data
 
 			switch (message.type) {
+				case "addQuoteToComposer":
+					// Handle quote from message selection
+					if (message.text) {
+						// Format the quoted text with [context] wrapper
+						const formattedQuote = `[context]\n${message.text
+							.split("\n")
+							.map((line) => `> ${line}`)
+							.join("\n")}\n[/context]\n`
+						setQuotedText(formattedQuote)
+					}
+					break
 				case "action":
 					switch (message.action!) {
 						case "didBecomeVisible":
@@ -1720,6 +1732,28 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// Add keyboard event handler
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent) => {
+			// Check for Command/Ctrl + Shift + Q for quote selection
+			if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "q") {
+				event.preventDefault()
+
+				// Get current text selection
+				const selection = window.getSelection()
+				if (selection && !selection.isCollapsed) {
+					const selectedText = selection.toString().trim()
+					if (selectedText) {
+						// Format the quoted text with [context] wrapper
+						const formattedQuote = `[context]\n${selectedText
+							.split("\n")
+							.map((line) => `> ${line}`)
+							.join("\n")}\n[/context]\n`
+						setQuotedText(formattedQuote)
+
+						// Clear the selection
+						selection.removeAllRanges()
+					}
+				}
+			}
+
 			// Check for Command/Ctrl + Period (with or without Shift)
 			// Using event.key to respect keyboard layouts (e.g., Dvorak)
 			if ((event.metaKey || event.ctrlKey) && event.key === ".") {
@@ -1992,7 +2026,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				placeholderText={placeholderText}
 				selectedImages={selectedImages}
 				setSelectedImages={setSelectedImages}
-				onSend={() => handleSendMessage(inputValue, selectedImages)}
+				onSend={() => {
+					// Include quoted text when sending
+					const finalMessage = quotedText ? quotedText + inputValue : inputValue
+					handleSendMessage(finalMessage, selectedImages)
+					setQuotedText("") // Clear quote after sending
+				}}
 				onSelectImages={selectImages}
 				shouldDisableImages={shouldDisableImages}
 				onHeightChange={() => {
@@ -2003,6 +2042,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				mode={mode}
 				setMode={setMode}
 				modeShortcutText={modeShortcutText}
+				quotedText={quotedText}
+				onClearQuote={() => setQuotedText("")}
 			/>
 
 			{isProfileDisabled && (

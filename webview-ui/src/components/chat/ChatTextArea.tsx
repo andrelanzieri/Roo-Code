@@ -51,6 +51,9 @@ interface ChatTextAreaProps {
 	// Edit mode props
 	isEditMode?: boolean
 	onCancel?: () => void
+	// Quote selection props
+	quotedText?: string
+	onClearQuote?: () => void
 }
 
 export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
@@ -71,6 +74,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			modeShortcutText,
 			isEditMode = false,
 			onCancel,
+			quotedText,
+			onClearQuote,
 		},
 		ref,
 	) => {
@@ -913,6 +918,31 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					"flex flex-col gap-1 bg-editor-background outline-none border border-none box-border",
 					isEditMode ? "p-2 w-full" : "relative px-1.5 pb-1 w-[calc(100%-16px)] ml-auto mr-auto",
 				)}>
+				{/* Quote preview above text area */}
+				{quotedText && !isEditMode && (
+					<div className="mx-1.5 mb-1 p-2 bg-vscode-textCodeBlock-background rounded border border-vscode-widget-border relative">
+						<button
+							className="absolute top-1 right-1 p-1 hover:bg-vscode-toolbar-hoverBackground rounded"
+							onClick={() => onClearQuote?.()}
+							aria-label="Clear quote">
+							<span className="codicon codicon-close text-xs" />
+						</button>
+						<div className="text-xs text-vscode-descriptionForeground mb-1">{t("chat:quotePreview")}</div>
+						<div className="text-xs max-h-20 overflow-y-auto pr-6">
+							{quotedText
+								.split("\n")
+								.slice(0, 3)
+								.map((line, idx) => (
+									<div key={idx} className="text-vscode-foreground opacity-75">
+										{line}
+									</div>
+								))}
+							{quotedText.split("\n").length > 3 && (
+								<div className="text-vscode-descriptionForeground">...</div>
+							)}
+						</div>
+					</div>
+				)}
 				<div className={cn(!isEditMode && "relative")}>
 					<div
 						className={cn("chat-text-area", !isEditMode && "relative", "flex", "flex-col", "outline-none")}

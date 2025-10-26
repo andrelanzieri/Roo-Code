@@ -35,6 +35,7 @@ export interface WebviewMessage {
 		| "deleteApiConfiguration"
 		| "loadApiConfiguration"
 		| "loadApiConfigurationById"
+		| "addQuoteToComposer"
 		| "renameApiConfiguration"
 		| "getListApiConfiguration"
 		| "customInstructions"
