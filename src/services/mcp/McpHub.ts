@@ -66,17 +66,19 @@ const BaseConfigSchema = z.object({
 })
 
 // Custom error messages for better user feedback
-const typeErrorMessage = "Server type must be 'stdio', 'sse', or 'streamable-http'"
+const typeErrorMessage = "Server type must be 'stdio', 'sse', or 'http' (preferred) / 'streamable-http' (deprecated)"
 const stdioFieldsErrorMessage =
 	"For 'stdio' type servers, you must provide a 'command' field and can optionally include 'args' and 'env'"
 const sseFieldsErrorMessage =
 	"For 'sse' type servers, you must provide a 'url' field and can optionally include 'headers'"
+const httpFieldsErrorMessage =
+	"For 'http' type servers, you must provide a 'url' field and can optionally include 'headers'"
 const streamableHttpFieldsErrorMessage =
-	"For 'streamable-http' type servers, you must provide a 'url' field and can optionally include 'headers'"
+	"For 'http'/'streamable-http' type servers, you must provide a 'url' field and can optionally include 'headers'"
 const mixedFieldsErrorMessage =
-	"Cannot mix 'stdio' and ('sse' or 'streamable-http') fields. For 'stdio' use 'command', 'args', and 'env'. For 'sse'/'streamable-http' use 'url' and 'headers'"
+	"Cannot mix 'stdio' and ('sse' or 'http') fields. For 'stdio' use 'command', 'args', and 'env'. For 'sse'/'http' use 'url' and 'headers'"
 const missingFieldsErrorMessage =
-	"Server configuration must include either 'command' (for stdio) or 'url' (for sse/streamable-http) and a corresponding 'type' if 'url' is used."
+	"Server configuration must include either 'command' (for stdio) or 'url' (for sse/http) and a corresponding 'type' if 'url' is used."
 
 // Helper function to create a refined schema with better error messages
 const createServerTypeSchema = () => {
@@ -112,7 +114,24 @@ const createServerTypeSchema = () => {
 				type: "sse" as const,
 			}))
 			.refine((data) => data.type === undefined || data.type === "sse", { message: typeErrorMessage }),
-		// StreamableHTTP config (has url field)
+		// HTTP config (preferred, has url field)
+		BaseConfigSchema.extend({
+			type: z.enum(["http"]).optional(),
+			url: z.string().url("URL must be a valid URL format"),
+			headers: z.record(z.string()).optional(),
+			// Ensure no stdio fields are present
+			command: z.undefined().optional(),
+			args: z.undefined().optional(),
+			env: z.undefined().optional(),
+		})
+			.transform((data) => ({
+				...data,
+				type: "http" as const,
+			}))
+			.refine((data) => data.type === undefined || data.type === "http", {
+				message: typeErrorMessage,
+			}),
+		// StreamableHTTP config (deprecated but supported for backward compatibility)
 		BaseConfigSchema.extend({
 			type: z.enum(["streamable-http"]).optional(),
 			url: z.string().url("URL must be a valid URL format"),
@@ -124,9 +143,11 @@ const createServerTypeSchema = () => {
 		})
 			.transform((data) => ({
 				...data,
-				type: "streamable-http" as const,
+				// Normalize streamable-http to http internally
+				type: "http" as const,
 			}))
-			.refine((data) => data.type === undefined || data.type === "streamable-http", {
+			.refine((data) => true, {
+				// Always pass since we're transforming to http
 				message: typeErrorMessage,
 			}),
 	])
@@ -194,7 +215,7 @@ export class McpHub {
 	private validateServerConfig(config: any, serverName?: string): z.infer<typeof ServerConfigSchema> {
 		// Detect configuration issues before validation
 		const hasStdioFields = config.command !== undefined
-		const hasUrlFields = config.url !== undefined // Covers sse and streamable-http
+		const hasUrlFields = config.url !== undefined // Covers sse, http, and streamable-http
 
 		// Check for mixed fields (stdio vs url-based)
 		if (hasStdioFields && hasUrlFields) {
@@ -208,11 +229,13 @@ export class McpHub {
 
 		// For url-based configs, type must be provided by the user
 		if (hasUrlFields && !config.type) {
-			throw new Error("Configuration with 'url' must explicitly specify 'type' as 'sse' or 'streamable-http'.")
+			throw new Error(
+				"Configuration with 'url' must explicitly specify 'type' as 'sse' or 'http' (preferred) / 'streamable-http' (deprecated).",
+			)
 		}
 
 		// Validate type if provided
-		if (config.type && !["stdio", "sse", "streamable-http"].includes(config.type)) {
+		if (config.type && !["stdio", "sse", "http", "streamable-http"].includes(config.type)) {
 			throw new Error(typeErrorMessage)
 		}
 
@@ -222,6 +245,9 @@ export class McpHub {
 		}
 		if (config.type === "sse" && !hasUrlFields) {
 			throw new Error(sseFieldsErrorMessage)
+		}
+		if (config.type === "http" && !hasUrlFields) {
+			throw new Error(httpFieldsErrorMessage)
 		}
 		if (config.type === "streamable-http" && !hasUrlFields) {
 			throw new Error(streamableHttpFieldsErrorMessage)
@@ -733,17 +759,17 @@ export class McpHub {
 				} else {
 					console.error(`No stderr stream for ${name}`)
 				}
-			} else if (configInjected.type === "streamable-http") {
-				// Streamable HTTP connection
+			} else if (configInjected.type === "http" || configInjected.type === "streamable-http") {
+				// HTTP connection (streamable-http is mapped to http for backward compatibility)
 				transport = new StreamableHTTPClientTransport(new URL(configInjected.url), {
 					requestInit: {
 						headers: configInjected.headers,
 					},
 				})
 
-				// Set up Streamable HTTP specific error handling
+				// Set up HTTP specific error handling
 				transport.onerror = async (error) => {
-					console.error(`Transport error for "${name}" (streamable-http):`, error)
+					console.error(`Transport error for "${name}" (http):`, error)
 					const connection = this.findConnection(name, source)
 					if (connection) {
 						connection.server.status = "disconnected"

@@ -2147,4 +2147,217 @@ describe("McpHub", () => {
 			)
 		})
 	})
+
+	describe("HTTP type standardization", () => {
+		let StdioClientTransport: ReturnType<typeof vi.fn>
+		let Client: ReturnType<typeof vi.fn>
+		let mockTransport: any
+		let mockClient: any
+
+		beforeEach(async () => {
+			// Reset mocks
+			vi.clearAllMocks()
+
+			// Get references to the mocked constructors
+			const stdioModule = await import("@modelcontextprotocol/sdk/client/stdio.js")
+			const clientModule = await import("@modelcontextprotocol/sdk/client/index.js")
+			StdioClientTransport = stdioModule.StdioClientTransport as ReturnType<typeof vi.fn>
+			Client = clientModule.Client as ReturnType<typeof vi.fn>
+
+			// Setup mock transport
+			mockTransport = {
+				start: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+				stderr: {
+					on: vi.fn(),
+				},
+				onerror: null,
+				onclose: null,
+			}
+
+			// Setup mock client
+			mockClient = {
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+				getInstructions: vi.fn().mockReturnValue("test instructions"),
+				request: vi.fn().mockResolvedValue({ tools: [], resources: [], resourceTemplates: [] }),
+			}
+
+			Client.mockImplementation(() => mockClient)
+		})
+
+		it("should accept 'http' as the primary type", async () => {
+			// Mock the config file read with 'http' type
+			vi.mocked(fs.readFile).mockResolvedValue(
+				JSON.stringify({
+					mcpServers: {
+						"http-test-server": {
+							type: "http",
+							url: "https://api.example.com/mcp",
+							headers: {
+								Authorization: "Bearer token",
+							},
+						},
+					},
+				}),
+			)
+
+			// Create McpHub and let it initialize
+			const mcpHub = new McpHub(mockProvider as ClineProvider)
+			await new Promise((resolve) => setTimeout(resolve, 100))
+
+			// Find the connection
+			const connection = mcpHub.connections.find((conn) => conn.server.name === "http-test-server")
+			expect(connection).toBeDefined()
+
+			// Type guard check - should be connected
+			if (connection && connection.type === "connected") {
+				expect(connection.client).toBeDefined()
+				expect(connection.transport).toBeDefined()
+				expect(connection.server.status).toBe("connected")
+			} else {
+				throw new Error("Connection should be of type 'connected'")
+			}
+		})
+
+		it("should accept 'streamable-http' for backward compatibility and map it to 'http'", async () => {
+			// Mock the config file read with 'streamable-http' type (backward compatibility)
+			vi.mocked(fs.readFile).mockResolvedValue(
+				JSON.stringify({
+					mcpServers: {
+						"legacy-http-server": {
+							type: "streamable-http",
+							url: "https://api.example.com/mcp",
+							headers: {
+								Authorization: "Bearer token",
+							},
+						},
+					},
+				}),
+			)
+
+			// Create McpHub and let it initialize
+			const mcpHub = new McpHub(mockProvider as ClineProvider)
+			await new Promise((resolve) => setTimeout(resolve, 100))
+
+			// Find the connection
+			const connection = mcpHub.connections.find((conn) => conn.server.name === "legacy-http-server")
+			expect(connection).toBeDefined()
+
+			// Type guard check - should be connected
+			if (connection && connection.type === "connected") {
+				expect(connection.client).toBeDefined()
+				expect(connection.transport).toBeDefined()
+				expect(connection.server.status).toBe("connected")
+			} else {
+				throw new Error("Connection should be of type 'connected'")
+			}
+		})
+
+		it("should validate 'http' type configurations", () => {
+			// Test valid http config
+			const validHttpConfig = {
+				type: "http",
+				url: "https://api.example.com/mcp",
+				headers: {
+					Authorization: "Bearer token",
+				},
+				timeout: 60,
+			}
+			expect(() => ServerConfigSchema.parse(validHttpConfig)).not.toThrow()
+
+			// Test invalid http config (missing url)
+			const invalidHttpConfig = {
+				type: "http",
+				headers: {
+					Authorization: "Bearer token",
+				},
+			}
+			expect(() => ServerConfigSchema.parse(invalidHttpConfig)).toThrow()
+		})
+
+		it("should validate 'streamable-http' type configurations for backward compatibility", () => {
+			// Test valid streamable-http config
+			const validStreamableHttpConfig = {
+				type: "streamable-http",
+				url: "https://api.example.com/mcp",
+				headers: {
+					Authorization: "Bearer token",
+				},
+				timeout: 60,
+			}
+			expect(() => ServerConfigSchema.parse(validStreamableHttpConfig)).not.toThrow()
+
+			// Test invalid streamable-http config (missing url)
+			const invalidStreamableHttpConfig = {
+				type: "streamable-http",
+				headers: {
+					Authorization: "Bearer token",
+				},
+			}
+			expect(() => ServerConfigSchema.parse(invalidStreamableHttpConfig)).toThrow()
+		})
+
+		it("should normalize 'streamable-http' to 'http' internally", () => {
+			const streamableHttpConfig = {
+				type: "streamable-http",
+				url: "https://api.example.com/mcp",
+			}
+
+			// Parse the config through the schema
+			const parsed = ServerConfigSchema.parse(streamableHttpConfig)
+
+			// Should be normalized to 'http'
+			expect(parsed.type).toBe("http")
+		})
+
+		it("should update error messages to reflect new 'http' type", async () => {
+			// Create McpHub instance
+			const mcpHub = new McpHub(mockProvider as ClineProvider)
+
+			// Test invalid type error
+			const invalidConfig = {
+				type: "invalid-type",
+				url: "https://api.example.com/mcp",
+			}
+
+			// Try to validate the config
+			expect(() => mcpHub["validateServerConfig"](invalidConfig)).toThrow(
+				"Server type must be 'stdio', 'sse', or 'http' (preferred) / 'streamable-http' (deprecated)",
+			)
+		})
+
+		it("should require explicit type for url-based configs", async () => {
+			// Create McpHub instance
+			const mcpHub = new McpHub(mockProvider as ClineProvider)
+
+			// Test config with url but no type
+			const configWithoutType = {
+				url: "https://api.example.com/mcp",
+			}
+
+			// Try to validate the config
+			expect(() => mcpHub["validateServerConfig"](configWithoutType)).toThrow(
+				"Configuration with 'url' must explicitly specify 'type' as 'sse' or 'http' (preferred) / 'streamable-http' (deprecated).",
+			)
+		})
+
+		it("should provide appropriate error for http configs missing url", async () => {
+			// Create McpHub instance
+			const mcpHub = new McpHub(mockProvider as ClineProvider)
+
+			// Test http config without url
+			const httpConfigWithoutUrl = {
+				type: "http",
+				headers: {
+					Authorization: "Bearer token",
+				},
+			}
+
+			// Try to validate the config
+			expect(() => mcpHub["validateServerConfig"](httpConfigWithoutUrl)).toThrow(
+				"For 'http' type servers, you must provide a 'url' field and can optionally include 'headers'",
+			)
+		})
+	})
 })
