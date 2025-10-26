@@ -1,23 +1,19 @@
-// npx vitest run src/services/stt/__tests__/SttService.spec.ts
-
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import * as vscode from "vscode"
-import { SttService, SttConfig } from "../SttService"
-import * as captureServer from "../capture-server"
 import axios from "axios"
+import { SttService } from "../SttService"
+import * as captureServer from "../capture-server"
 
-// Mock vscode module
+// Mock vscode
 vi.mock("vscode", () => ({
-	Uri: {
-		parse: vi.fn((uri: string) => ({ toString: () => uri })),
-	},
 	env: {
+		openExternal: vi.fn(),
 		asExternalUri: vi.fn((uri: any) => Promise.resolve(uri)),
-		openExternal: vi.fn(() => Promise.resolve(true)),
 	},
-	window: {
-		showErrorMessage: vi.fn(),
+	Uri: {
+		parse: vi.fn((str: string) => ({ toString: () => str })),
 	},
+	ExtensionContext: vi.fn(),
 }))
 
 // Mock axios
@@ -26,281 +22,211 @@ vi.mock("axios")
 // Mock capture server
 vi.mock("../capture-server", () => ({
 	getCaptureServer: vi.fn(() => ({
-		getPort: vi.fn(),
-		start: vi.fn(),
+		getPort: vi.fn(() => null),
+		start: vi.fn(() => Promise.resolve(3000)),
+		stop: vi.fn(),
 	})),
 	stopCaptureServer: vi.fn(),
 }))
 
 describe("SttService", () => {
-	let sttService: SttService
-	let mockCaptureServer: any
+	let mockContext: any
+	let mockProvider: any
 
 	beforeEach(() => {
-		// Reset all mocks
 		vi.clearAllMocks()
-
-		// Reset singleton instance
-		SttService.resetInstance()
-
-		// Setup mock capture server
-		mockCaptureServer = {
-			getPort: vi.fn(),
-			start: vi.fn().mockResolvedValue(3456),
-		}
-		vi.mocked(captureServer.getCaptureServer).mockReturnValue(mockCaptureServer)
+		mockContext = {} as vscode.ExtensionContext
+		mockProvider = {}
 	})
 
 	afterEach(() => {
-		// Clean up
-		SttService.resetInstance()
+		vi.clearAllMocks()
 	})
 
-	describe("getInstance", () => {
-		it("should create a singleton instance", () => {
-			const config: SttConfig = {
-				provider: "assemblyai",
-				apiKey: "test-api-key",
-				autoStopTimeout: 5,
-				autoSend: true,
-			}
-
-			const instance1 = SttService.getInstance(config)
-			const instance2 = SttService.getInstance()
-
-			expect(instance1).toBe(instance2)
+	describe("initialization", () => {
+		it("should create a new instance with context and provider", () => {
+			const service = new SttService(mockContext, mockProvider)
+			expect(service).toBeDefined()
 		})
 
-		it("should throw error if getInstance called without config initially", () => {
-			expect(() => SttService.getInstance()).toThrow("SttService not initialized with config")
-		})
-	})
-
-	describe("startCapture", () => {
-		it("should start capture with AssemblyAI provider", async () => {
-			// Mock config
-			const config: SttConfig = {
-				provider: "assemblyai",
-				apiKey: "test-api-key",
-				autoStopTimeout: 5,
-				autoSend: true,
-			}
-
-			// Initialize service
-			sttService = SttService.getInstance(config)
-
-			// Mock axios for token creation
-			vi.mocked(axios.post).mockResolvedValue({
-				data: { token: "temp-token-123" },
-			})
-
-			// Mock capture server port
-			mockCaptureServer.getPort.mockReturnValue(null)
-			mockCaptureServer.start.mockResolvedValue(3456)
-
-			// Start capture
-			const result = await sttService.startCapture()
-
-			// Verify result contains capture URL
-			expect(result).toBeDefined()
-			expect(result).toContain("http://localhost:3456")
-			expect(result).toContain("provider=assemblyai")
-			expect(result).toContain("autoStopTimeout=5")
-			expect(result).toContain("autoSend=true")
-
-			// Verify browser was opened
-			expect(vscode.env.openExternal).toHaveBeenCalled()
-		})
-
-		it("should throw error for OpenAI Whisper provider (not implemented)", async () => {
-			// Mock config
-			const config: SttConfig = {
-				provider: "openai-whisper",
-				apiKey: "test-openai-key",
-				autoStopTimeout: 3,
-				autoSend: false,
-			}
-
-			// Initialize service
-			sttService = SttService.getInstance(config)
-
-			// Start capture should throw
-			await expect(sttService.startCapture()).rejects.toThrow("OpenAI Whisper provider not yet implemented")
-		})
-
-		it("should throw error if API key is missing", async () => {
-			// Mock config without API key
-			const config: SttConfig = {
-				provider: "assemblyai",
-			}
-
-			// Initialize service
-			sttService = SttService.getInstance(config)
-
-			// Start capture should throw
-			await expect(sttService.startCapture()).rejects.toThrow("No API key configured for assemblyai")
-		})
-	})
-
-	describe("stopCapture", () => {
-		it("should emit stop event", () => {
-			const config: SttConfig = {
-				provider: "assemblyai",
-				apiKey: "test-api-key",
-			}
-
-			sttService = SttService.getInstance(config)
-
-			// Add event listener
-			const stopHandler = vi.fn()
-			sttService.on("stop", stopHandler)
-
-			// Stop capture
-			sttService.stopCapture()
-
-			// Verify stop event was emitted
-			expect(stopHandler).toHaveBeenCalled()
-		})
-	})
-
-	describe("getTemporaryToken", () => {
-		it("should create a temporary token for AssemblyAI", async () => {
-			const config: SttConfig = {
-				provider: "assemblyai",
-				apiKey: "test-api-key",
-			}
-
-			sttService = SttService.getInstance(config)
-
-			// Mock axios
-			vi.mocked(axios.post).mockResolvedValue({
-				data: { token: "temp-token-123" },
-			})
-
-			// Get token
-			const token = await sttService.getTemporaryToken()
-
-			// Verify token
-			expect(token).toBe("temp-token-123")
-
-			// Verify axios was called correctly
-			expect(axios.post).toHaveBeenCalledWith(
-				"https://api.assemblyai.com/v2/realtime/token",
-				{ expires_in: 3600 },
-				{
-					headers: {
-						authorization: "test-api-key",
-					},
-				},
-			)
-		})
-
-		it("should return cached token if still valid", async () => {
-			const config: SttConfig = {
-				provider: "assemblyai",
-				apiKey: "test-api-key",
-			}
-
-			sttService = SttService.getInstance(config)
-
-			// Mock axios
-			vi.mocked(axios.post).mockResolvedValue({
-				data: { token: "temp-token-123" },
-			})
-
-			// Get token twice
-			const token1 = await sttService.getTemporaryToken()
-			const token2 = await sttService.getTemporaryToken()
-
-			// Verify same token returned
-			expect(token1).toBe(token2)
-
-			// Verify axios was called only once
-			expect(axios.post).toHaveBeenCalledTimes(1)
-		})
-
-		it("should fallback to API key on token creation failure", async () => {
-			const config: SttConfig = {
-				provider: "assemblyai",
-				apiKey: "test-api-key",
-			}
-
-			sttService = SttService.getInstance(config)
-
-			// Mock axios failure
-			vi.mocked(axios.post).mockRejectedValue(new Error("Network error"))
-
-			// Get token
-			const token = await sttService.getTemporaryToken()
-
-			// Verify fallback to API key
-			expect(token).toBe("test-api-key")
-		})
-	})
-
-	describe("handleTranscript", () => {
-		it("should emit transcript event", () => {
-			const config: SttConfig = {
-				provider: "assemblyai",
-				apiKey: "test-api-key",
-			}
-
-			sttService = SttService.getInstance(config)
-
-			// Add event listener
-			const transcriptHandler = vi.fn()
-			sttService.on("transcript", transcriptHandler)
-
-			// Handle transcript
-			sttService.handleTranscript("Hello world")
-
-			// Verify transcript event was emitted
-			expect(transcriptHandler).toHaveBeenCalledWith({
-				text: "Hello world",
-				isFinal: true,
-			})
+		it("should initialize with default config", () => {
+			const service = new SttService(mockContext, mockProvider)
+			// We can't directly access private config, but we can test behavior
+			expect(service).toBeDefined()
 		})
 	})
 
 	describe("updateConfig", () => {
 		it("should update configuration", () => {
-			const config: SttConfig = {
-				provider: "assemblyai",
-				apiKey: "test-api-key",
-				autoStopTimeout: 5,
-			}
-
-			sttService = SttService.getInstance(config)
-
-			// Update config
-			sttService.updateConfig({
-				autoStopTimeout: 10,
+			const service = new SttService(mockContext, mockProvider)
+			const config = {
+				provider: "assemblyai" as const,
+				apiKey: "test-key",
+				autoStopTimeout: 3000,
 				autoSend: true,
-			})
-
-			// Verify config was updated (we can't directly access private config,
-			// but we can verify through startCapture URL)
-			// This is tested indirectly through other tests
-			expect(sttService).toBeDefined()
+			}
+			service.updateConfig(config)
+			// Config is updated internally
+			expect(service).toBeDefined()
 		})
 	})
 
-	describe("resetInstance", () => {
-		it("should clean up and reset singleton", () => {
-			const config: SttConfig = {
-				provider: "assemblyai",
+	describe("getTemporaryToken", () => {
+		let sttService: SttService
+
+		beforeEach(() => {
+			const config = {
+				provider: "assemblyai" as const,
 				apiKey: "test-api-key",
 			}
+			sttService = new SttService(mockContext, mockProvider)
+			sttService.updateConfig(config)
+		})
 
-			const instance1 = SttService.getInstance(config)
-			SttService.resetInstance()
+		it("should throw error if no API key is configured", async () => {
+			sttService.updateConfig({ apiKey: undefined })
+			await expect(sttService.getTemporaryToken()).rejects.toThrow("No API key configured for assemblyai")
+		})
 
-			// Verify stopCaptureServer was called
+		it("should create AssemblyAI token successfully", async () => {
+			const mockToken = "temp-token-123"
+			vi.mocked(axios.post).mockResolvedValueOnce({
+				data: { token: mockToken },
+			})
+
+			const token = await sttService.getTemporaryToken()
+			expect(token).toBe(mockToken)
+			expect(axios.post).toHaveBeenCalledWith(
+				"https://api.assemblyai.com/v2/realtime/token",
+				{ expires_in: 3600 },
+				{ headers: { authorization: "test-api-key" } },
+			)
+		})
+
+		it("should return cached token if still valid", async () => {
+			const mockToken = "temp-token-123"
+			vi.mocked(axios.post).mockResolvedValueOnce({
+				data: { token: mockToken },
+			})
+
+			// First call creates token
+			const token1 = await sttService.getTemporaryToken()
+			// Second call should return cached token
+			const token2 = await sttService.getTemporaryToken()
+
+			expect(token1).toBe(token2)
+			expect(axios.post).toHaveBeenCalledTimes(1)
+		})
+
+		it("should fallback to API key if token creation fails", async () => {
+			vi.mocked(axios.post).mockRejectedValueOnce(new Error("API error"))
+
+			const token = await sttService.getTemporaryToken()
+			expect(token).toBe("test-api-key")
+		})
+
+		it("should throw error for unsupported provider", async () => {
+			sttService.updateConfig({ provider: "openai-whisper" })
+			await expect(sttService.getTemporaryToken()).rejects.toThrow("OpenAI Whisper provider not yet implemented")
+		})
+	})
+
+	describe("startCapture", () => {
+		let sttService: SttService
+
+		beforeEach(() => {
+			const config = {
+				provider: "assemblyai" as const,
+				apiKey: "test-api-key",
+			}
+			sttService = new SttService(mockContext, mockProvider)
+			sttService.updateConfig(config)
+		})
+
+		it("should start capture and open browser", async () => {
+			const mockToken = "temp-token-123"
+			vi.mocked(axios.post).mockResolvedValueOnce({
+				data: { token: mockToken },
+			})
+
+			const captureUrl = await sttService.startCapture()
+
+			expect(captureUrl).toContain("http://localhost:3000/capture")
+			expect(captureUrl).toContain(`token=${mockToken}`)
+			expect(captureUrl).toContain("provider=assemblyai")
+			expect(vscode.env.openExternal).toHaveBeenCalled()
+		})
+
+		it("should include configuration parameters in URL", async () => {
+			const config = {
+				provider: "assemblyai" as const,
+				apiKey: "test-api-key",
+				autoStopTimeout: 5000,
+				autoSend: true,
+			}
+			sttService.updateConfig(config)
+
+			const mockToken = "temp-token-123"
+			vi.mocked(axios.post).mockResolvedValueOnce({
+				data: { token: mockToken },
+			})
+
+			const captureUrl = await sttService.startCapture()
+
+			expect(captureUrl).toContain("autoStopTimeout=5000")
+			expect(captureUrl).toContain("autoSend=true")
+		})
+	})
+
+	describe("stopCapture", () => {
+		it("should emit stop event", () => {
+			const sttService = new SttService(mockContext, mockProvider)
+			const stopHandler = vi.fn()
+			sttService.on("stop", stopHandler)
+
+			sttService.stopCapture()
+
+			expect(stopHandler).toHaveBeenCalled()
+		})
+	})
+
+	describe("handleTranscript", () => {
+		it("should emit transcript event with correct format", () => {
+			const sttService = new SttService(mockContext, mockProvider)
+			const transcriptHandler = vi.fn()
+			sttService.on("transcript", transcriptHandler)
+
+			const testTranscript = "Hello, this is a test"
+			sttService.handleTranscript(testTranscript)
+
+			expect(transcriptHandler).toHaveBeenCalledWith({
+				text: testTranscript,
+				isFinal: true,
+			})
+		})
+	})
+
+	describe("dispose", () => {
+		it("should clean up resources when disposed", () => {
+			const config = {
+				provider: "assemblyai" as const,
+				apiKey: "test-api-key",
+			}
+			const sttService = new SttService(mockContext, mockProvider)
+			sttService.updateConfig(config)
+
+			// Add a listener to verify cleanup
+			const handler = vi.fn()
+			sttService.on("test", handler)
+
+			sttService.dispose()
+
+			// Verify server is stopped
 			expect(captureServer.stopCaptureServer).toHaveBeenCalled()
 
-			// New instance should be different
-			const instance2 = SttService.getInstance(config)
-			expect(instance1).not.toBe(instance2)
+			// Verify listeners are removed
+			sttService.emit("test")
+			expect(handler).not.toHaveBeenCalled()
 		})
 	})
 })

@@ -17,31 +17,22 @@ export interface SttTranscript {
 }
 
 export class SttService extends EventEmitter {
-	private static instance: SttService | null = null
 	private config: SttConfig
 	private captureServer = getCaptureServer()
 	private temporaryToken: string | null = null
 	private tokenExpiresAt: number = 0
 
-	private constructor(config: SttConfig) {
+	constructor(
+		private context: vscode.ExtensionContext,
+		private provider: any,
+	) {
 		super()
-		this.config = config
-	}
-
-	public static getInstance(config?: SttConfig): SttService {
-		if (!SttService.instance && config) {
-			SttService.instance = new SttService(config)
-		}
-		if (!SttService.instance) {
-			throw new Error("SttService not initialized with config")
-		}
-		return SttService.instance
-	}
-
-	public static resetInstance(): void {
-		if (SttService.instance) {
-			SttService.instance.cleanup()
-			SttService.instance = null
+		// Initialize with default config
+		this.config = {
+			provider: "assemblyai",
+			apiKey: undefined,
+			autoStopTimeout: 2000,
+			autoSend: false,
 		}
 	}
 
@@ -172,5 +163,12 @@ export class SttService extends EventEmitter {
 		this.temporaryToken = null
 		this.tokenExpiresAt = 0
 		stopCaptureServer()
+	}
+
+	/**
+	 * Dispose of the service and clean up resources
+	 */
+	public dispose(): void {
+		this.cleanup()
 	}
 }

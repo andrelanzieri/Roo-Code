@@ -70,6 +70,7 @@ import { ShadowCheckpointService } from "../../services/checkpoints/ShadowCheckp
 import { CodeIndexManager } from "../../services/code-index/manager"
 import type { IndexProgressUpdate } from "../../services/code-index/interfaces/manager"
 import { MdmService } from "../../services/mdm/MdmService"
+import { SttService } from "../../services/stt/SttService"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { setTtsEnabled, setTtsSpeed } from "../../utils/tts"
