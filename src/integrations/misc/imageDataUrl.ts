@@ -54,21 +54,34 @@ function webviewUriToFilePath(webviewUri: string): string {
 	}
 
 	// Handle VS Code webview URIs that contain encoded paths
-	if (webviewUri.includes("vscode-userdata") || webviewUri.includes("vscode-cdn.net")) {
-		// Try to decode the URI and extract the file path
-		const decoded = decodeURIComponent(webviewUri)
+	// Use strict prefix matching to prevent arbitrary host injection
+	if (
+		webviewUri.startsWith("vscode-resource://vscode-webview/") &&
+		(webviewUri.includes("vscode-userdata") || webviewUri.includes("vscode-cdn.net"))
+	) {
+		try {
+			// Decode safely with length limits
+			if (webviewUri.length > 2048) {
+				throw new Error("URI too long")
+			}
 
-		// Use safer, non-polynomial regex patterns
-		// Look for Unix-style paths first
-		let pathMatch = decoded.match(/\/Users\/[^?#]*\.(?:png|jpg|jpeg|gif|webp)/i)
-		if (pathMatch) {
-			return pathMatch[0]
-		}
+			const decoded = decodeURIComponent(webviewUri)
 
-		// Look for Windows-style paths with bounded length to prevent polynomial behavior
-		pathMatch = decoded.match(/C:\\[^?#]{0,500}\.(?:png|jpg|jpeg|gif|webp)/i)
-		if (pathMatch) {
-			return pathMatch[0]
+			// Use specific, bounded patterns to prevent ReDoS
+			// Match exact patterns without backtracking
+			const unixMatch = decoded.match(
+				/^[^?#]*\/Users\/[a-zA-Z0-9._-]{1,50}\/[^?#]{1,300}\.(png|jpg|jpeg|gif|webp)$/i,
+			)
+			if (unixMatch) {
+				return unixMatch[0]
+			}
+
+			const windowsMatch = decoded.match(/^[^?#]*C:\\[a-zA-Z0-9._\\-]{1,300}\.(png|jpg|jpeg|gif|webp)$/i)
+			if (windowsMatch) {
+				return windowsMatch[0]
+			}
+		} catch (error) {
+			console.error("Failed to decode webview URI:", error)
 		}
 	}
 
