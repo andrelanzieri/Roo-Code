@@ -146,6 +146,17 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 				)
 			}
 
+			// Remove any existing gitlinks from the index before staging
+			for (const repoPath of nestedRepos) {
+				try {
+					await git.raw(["rm", "--cached", "--ignore-unmatch", "-r", repoPath])
+				} catch (error) {
+					this.log(
+						`[${this.constructor.name}#stageAll] failed to remove cached gitlink ${repoPath}: ${error instanceof Error ? error.message : String(error)}`,
+					)
+				}
+			}
+
 			// Build add command with pathspec excludes
 			const addArgs: string[] = ["-A", ":/"]
 			for (const repoPath of nestedRepos) {
@@ -155,10 +166,24 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			// Stage files
 			await git.add(addArgs)
 
-			// Safety check: ensure no submodule changes staged
-			const diffSummary = await git.raw(["diff", "--cached", "--summary"])
-			if (diffSummary.includes("Submodule")) {
-				throw new Error("Submodule changes detected in staging area - this should not happen")
+			// Enhanced safety check: verify no mode 160000 entries in staging area
+			const stagedFiles = await git.raw(["ls-files", "-s", "--cached"])
+			const gitlinkEntries = stagedFiles
+				.split("\n")
+				.filter((line) => line.startsWith("160000"))
+				.map((line) => line.split(/\s+/)[3])
+				.filter(Boolean)
+
+			if (gitlinkEntries.length > 0) {
+				throw new Error(
+					`Gitlink entries detected in staging area: ${gitlinkEntries.join(", ")} - this should not happen`,
+				)
+			}
+
+			// Additional check for .gitmodules changes
+			const diffSummary = await git.raw(["diff", "--cached", "--name-only"])
+			if (diffSummary.includes(".gitmodules")) {
+				this.log(`[${this.constructor.name}#stageAll] warning: .gitmodules changes detected in staging area`)
 			}
 		} catch (error) {
 			this.log(
@@ -178,8 +203,13 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 				const match = line.match(/submodule\..*\.path\s+(.+)/)
 				if (match) nestedRepos.add(match[1])
 			}
-		} catch {
-			// No .gitmodules file or error reading it
+		} catch (error) {
+			// No .gitmodules file is expected in most cases, only log if it's a real error
+			if (error instanceof Error && !error.message.includes("exit code 1")) {
+				this.log(
+					`[${this.constructor.name}#findNestedRepos] warning: failed to read .gitmodules: ${error.message}`,
+				)
+			}
 		}
 
 		// 2. From index (gitlinks with mode 160000)
@@ -191,8 +221,10 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 					if (parts[3]) nestedRepos.add(parts[3])
 				}
 			}
-		} catch {
-			// Ignore errors
+		} catch (error) {
+			this.log(
+				`[${this.constructor.name}#findNestedRepos] warning: failed to list files from index: ${error instanceof Error ? error.message : String(error)}`,
+			)
 		}
 
 		// 3. From filesystem (any nested .git directory or worktree)
@@ -244,8 +276,10 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 								const repoDir = path.dirname(result.path)
 								nestedRepos.add(repoDir)
 							}
-						} catch {
-							// Ignore errors reading .git file
+						} catch (error) {
+							this.log(
+								`[${this.constructor.name}#findNestedRepos] warning: failed to read .git file at ${result.path}: ${error instanceof Error ? error.message : String(error)}`,
+							)
 						}
 					}
 				}
