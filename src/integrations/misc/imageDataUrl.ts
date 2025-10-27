@@ -57,7 +57,7 @@ function webviewUriToFilePath(webviewUri: string): string {
 	// Use strict prefix matching to prevent arbitrary host injection
 	if (
 		webviewUri.startsWith("vscode-resource://vscode-webview/") &&
-		(webviewUri.includes("vscode-userdata") || webviewUri.includes("vscode-cdn.net"))
+		(webviewUri.includes("vscode-userdata") || isValidVsCodeCdnHost(webviewUri))
 	) {
 		try {
 			// Decode safely with length limits
@@ -92,6 +92,20 @@ function webviewUriToFilePath(webviewUri: string): string {
 /**
  * Gets the MIME type from a file path
  */
+/**
+ * Safely validates if a webview URI is from the trusted vscode-cdn.net host
+ * Prevents host injection attacks by properly parsing the URL
+ */
+function isValidVsCodeCdnHost(webviewUri: string): boolean {
+	try {
+		const url = new URL(webviewUri)
+		return url.host === "vscode-cdn.net"
+	} catch {
+		// URL parsing failed - not a valid URL
+		return false
+	}
+}
+
 function getMimeTypeFromPath(filePath: string): string {
 	const ext = path.extname(filePath).toLowerCase()
 
