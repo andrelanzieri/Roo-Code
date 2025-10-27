@@ -35,7 +35,21 @@
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-      </details>
+  </details>
+
+---
+
+## 🎉 Free Trial
+
+Get started with Roo Code **immediately** - no credit card required!
+
+→ **[Free Trial Setup Guide](FREE_TRIAL_SETUP.md)** - Start coding with AI in under 2 minutes
+
+Choose from multiple providers offering free credits:
+
+- **OpenRouter**: $1 free credits (easiest setup)
+- **Google Gemini**: Generous free tier with Gemini Flash
+- **Groq**: Free tier with lightning-fast responses
 
 ---
 
