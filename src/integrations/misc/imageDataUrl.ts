@@ -57,11 +57,18 @@ function webviewUriToFilePath(webviewUri: string): string {
 	if (webviewUri.includes("vscode-userdata") || webviewUri.includes("vscode-cdn.net")) {
 		// Try to decode the URI and extract the file path
 		const decoded = decodeURIComponent(webviewUri)
-		// Look for a file path pattern in the decoded URI
-		const pathMatch = decoded.match(/(?:Users|C:)([^?#]+\.(?:png|jpg|jpeg|gif|webp))/i)
+
+		// Use safer, non-polynomial regex patterns
+		// Look for Unix-style paths first
+		let pathMatch = decoded.match(/\/Users\/[^?#]*\.(?:png|jpg|jpeg|gif|webp)/i)
 		if (pathMatch) {
-			const extractedPath = pathMatch[0]
-			return extractedPath
+			return pathMatch[0]
+		}
+
+		// Look for Windows-style paths with bounded length to prevent polynomial behavior
+		pathMatch = decoded.match(/C:\\[^?#]{0,500}\.(?:png|jpg|jpeg|gif|webp)/i)
+		if (pathMatch) {
+			return pathMatch[0]
 		}
 	}
 
