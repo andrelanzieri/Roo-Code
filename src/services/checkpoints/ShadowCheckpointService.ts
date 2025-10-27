@@ -10,7 +10,6 @@ import * as vscode from "vscode"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { executeRipgrep } from "../../services/search/file-search"
-import { t } from "../../i18n"
 
 import { CheckpointDiff, CheckpointResult, CheckpointEventMap } from "./types"
 import { getExcludePatterns } from "./excludes"
@@ -68,20 +67,6 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 	public async initShadowGit(onInit?: () => Promise<void>) {
 		if (this.git) {
 			throw new Error("Shadow git repo already initialized")
-		}
-
-		const nestedGitPath = await this.getNestedGitRepository()
-
-		if (nestedGitPath) {
-			// Show persistent error message with the offending path
-			const relativePath = path.relative(this.workspaceDir, nestedGitPath)
-			const message = t("common:errors.nested_git_repos_warning", { path: relativePath })
-			vscode.window.showErrorMessage(message)
-
-			throw new Error(
-				`Checkpoints are disabled because a nested git repository was detected at: ${relativePath}. ` +
-					"Please remove or relocate nested git repositories to use the checkpoints feature.",
-			)
 		}
 
 		await fs.mkdir(this.checkpointsDir, { recursive: true })
@@ -152,63 +137,126 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 
 	private async stageAll(git: SimpleGit) {
 		try {
-			await git.add([".", "--ignore-errors"])
+			// Find all nested repos to exclude
+			const nestedRepos = await this.findNestedRepos(git)
+
+			if (nestedRepos.length > 0) {
+				this.log(
+					`[${this.constructor.name}#stageAll] excluding ${nestedRepos.length} nested repos: ${nestedRepos.join(", ")}`,
+				)
+			}
+
+			// Build add command with pathspec excludes
+			const addArgs: string[] = ["-A", ":/"]
+			for (const repoPath of nestedRepos) {
+				addArgs.push(`:(exclude)${repoPath}/`)
+			}
+
+			// Stage files
+			await git.add(addArgs)
+
+			// Safety check: ensure no submodule changes staged
+			const diffSummary = await git.raw(["diff", "--cached", "--summary"])
+			if (diffSummary.includes("Submodule")) {
+				throw new Error("Submodule changes detected in staging area - this should not happen")
+			}
 		} catch (error) {
 			this.log(
 				`[${this.constructor.name}#stageAll] failed to add files to git: ${error instanceof Error ? error.message : String(error)}`,
 			)
+			throw error
 		}
 	}
 
-	private async getNestedGitRepository(): Promise<string | null> {
+	private async findNestedRepos(git: SimpleGit): Promise<string[]> {
+		const nestedRepos = new Set<string>()
+
+		// 1. From .gitmodules (declared submodules)
 		try {
-			// Find all .git/HEAD files that are not at the root level.
-			const args = ["--files", "--hidden", "--follow", "-g", "**/.git/HEAD", this.workspaceDir]
+			const config = await git.raw(["config", "-f", ".gitmodules", "--get-regexp", "^submodule\\..*\\.path$"])
+			for (const line of config.split("\n")) {
+				const match = line.match(/submodule\..*\.path\s+(.+)/)
+				if (match) nestedRepos.add(match[1])
+			}
+		} catch {
+			// No .gitmodules file or error reading it
+		}
 
-			const gitPaths = await executeRipgrep({ args, workspacePath: this.workspaceDir })
+		// 2. From index (gitlinks with mode 160000)
+		try {
+			const lsFiles = await git.raw(["ls-files", "-s"])
+			for (const line of lsFiles.split("\n")) {
+				if (line.startsWith("160000")) {
+					const parts = line.split(/\s+/)
+					if (parts[3]) nestedRepos.add(parts[3])
+				}
+			}
+		} catch {
+			// Ignore errors
+		}
 
-			// Filter to only include nested git directories (not the root .git).
-			// Since we're searching for HEAD files, we expect type to be "file"
-			const nestedGitPaths = gitPaths.filter(({ type, path: filePath }) => {
-				// Check if it's a file and is a nested .git/HEAD (not at root)
-				if (type !== "file") return false
-
-				// Ensure it's a .git/HEAD file and not the root one
-				const normalizedPath = filePath.replace(/\\/g, "/")
-				return (
-					normalizedPath.includes(".git/HEAD") &&
-					!normalizedPath.startsWith(".git/") &&
-					normalizedPath !== ".git/HEAD"
-				)
+		// 3. From filesystem (any nested .git directory or worktree)
+		try {
+			const gitDirs = await executeRipgrep({
+				args: ["--files", "--hidden", "--follow", "-g", "**/.git/HEAD", this.workspaceDir],
+				workspacePath: this.workspaceDir,
 			})
 
-			if (nestedGitPaths.length > 0) {
-				// Get the first nested git repository path
-				// Remove .git/HEAD from the path to get the repository directory
-				const headPath = nestedGitPaths[0].path
-
-				// Use path module to properly extract the repository directory
-				// The HEAD file is at .git/HEAD, so we need to go up two directories
-				const gitDir = path.dirname(headPath) // removes HEAD, gives us .git
-				const repoDir = path.dirname(gitDir) // removes .git, gives us the repo directory
-
-				const absolutePath = path.join(this.workspaceDir, repoDir)
-
-				this.log(
-					`[${this.constructor.name}#getNestedGitRepository] found ${nestedGitPaths.length} nested git repositories, first at: ${repoDir}`,
-				)
-				return absolutePath
+			for (const result of gitDirs) {
+				if (result.type === "file") {
+					const normalizedPath = result.path.replace(/\\/g, "/")
+					if (
+						normalizedPath.includes(".git/HEAD") &&
+						!normalizedPath.startsWith(".git/") &&
+						normalizedPath !== ".git/HEAD"
+					) {
+						// Extract repo directory (remove .git/HEAD)
+						const gitDir = path.dirname(result.path)
+						const repoDir = path.dirname(gitDir)
+						nestedRepos.add(repoDir)
+					}
+				}
 			}
-
-			return null
 		} catch (error) {
 			this.log(
-				`[${this.constructor.name}#getNestedGitRepository] failed to check for nested git repos: ${error instanceof Error ? error.message : String(error)}`,
+				`[${this.constructor.name}#findNestedRepos] failed to search filesystem: ${error instanceof Error ? error.message : String(error)}`,
 			)
-
-			// If we can't check, assume there are no nested repos to avoid blocking the feature.
-			return null
 		}
+
+		// 4. From filesystem (git worktrees - .git files pointing to worktree)
+		try {
+			const gitFiles = await executeRipgrep({
+				args: ["--files", "--hidden", "--follow", "-g", "**/.git", this.workspaceDir],
+				workspacePath: this.workspaceDir,
+			})
+
+			for (const result of gitFiles) {
+				if (result.type === "file") {
+					const normalizedPath = result.path.replace(/\\/g, "/")
+					// Check if this is a .git file (not directory) and not the root
+					if (normalizedPath.endsWith("/.git") && normalizedPath !== ".git") {
+						try {
+							// Read the .git file to check if it's a worktree
+							const gitFilePath = path.join(this.workspaceDir, result.path)
+							const content = await fs.readFile(gitFilePath, "utf8")
+							if (content.trim().startsWith("gitdir:")) {
+								// This is a worktree - exclude its directory
+								const repoDir = path.dirname(result.path)
+								nestedRepos.add(repoDir)
+							}
+						} catch {
+							// Ignore errors reading .git file
+						}
+					}
+				}
+			}
+		} catch (error) {
+			this.log(
+				`[${this.constructor.name}#findNestedRepos] failed to search for worktrees: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		}
+
+		return Array.from(nestedRepos).filter((p) => p && p !== ".")
 	}
 
 	private async getShadowGitConfigWorktree(git: SimpleGit) {
