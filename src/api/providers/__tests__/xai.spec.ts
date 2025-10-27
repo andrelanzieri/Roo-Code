@@ -77,7 +77,7 @@ describe("XAIHandler", () => {
 		expect(model.id).toBe(testModelId)
 		expect(model.info).toEqual(xaiModels[testModelId])
 		expect(model.info.contextWindow).toBe(2_000_000)
-		expect(model.info.maxTokens).toBe(30_000)
+		expect(model.info.maxTokens).toBe(8192)
 	})
 
 	it("should include reasoning_effort parameter for mini models", async () => {
