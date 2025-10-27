@@ -207,7 +207,7 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 
 	// Add context tokens information (if enabled).
 	if (includeCurrentCost) {
-		const { contextTokens, totalCost } = getApiMetrics(cline.clineMessages)
+		const { totalCost } = getApiMetrics(cline.clineMessages)
 		details += `\n\n# Current Cost\n${totalCost !== null ? `$${totalCost.toFixed(2)}` : "(Not available)"}`
 	}
 
