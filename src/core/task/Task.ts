@@ -1215,7 +1215,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		await this.say("text", task, images)
 		this.isInitialized = true
 
-		let imageBlocks: Anthropic.ImageBlockParam[] = formatResponse.imageBlocks(images)
+		// Convert webview URIs to base64 for backend storage
+		const { formatImagesIntoBlocksAsync } = await import("../prompts/responses")
+		let imageBlocks: Anthropic.ImageBlockParam[] = await formatImagesIntoBlocksAsync(images)
 
 		// Task starting
 
@@ -1480,7 +1482,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		if (responseImages && responseImages.length > 0) {
-			newUserContent.push(...formatResponse.imageBlocks(responseImages))
+			// Convert webview URIs to base64 for backend storage
+			const { formatImagesIntoBlocksAsync } = await import("../prompts/responses")
+			const responseImageBlocks = await formatImagesIntoBlocksAsync(responseImages)
+			newUserContent.push(...responseImageBlocks)
 		}
 
 		// Ensure we have at least some content to send to the API.

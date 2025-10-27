@@ -3,6 +3,7 @@ import * as path from "path"
 import * as diff from "diff"
 import { RooIgnoreController, LOCK_TEXT_SYMBOL } from "../ignore/RooIgnoreController"
 import { RooProtectedController } from "../protect/RooProtectedController"
+import { normalizeImageRefsToDataUrls } from "../../integrations/misc/imageDataUrl"
 
 export const formatResponse = {
 	toolDenied: () => `The user denied this operation.`,
@@ -198,6 +199,23 @@ const formatImagesIntoBlocks = (images?: string[]): Anthropic.ImageBlockParam[] 
 				} as Anthropic.ImageBlockParam
 			})
 		: []
+}
+
+/**
+ * Async version that converts webview URIs to base64 data URLs before creating image blocks
+ * This is the missing piece from PR #8225 - allows frontend to use webview URIs while
+ * backend stores base64 for API calls.
+ */
+export const formatImagesIntoBlocksAsync = async (images?: string[]): Promise<Anthropic.ImageBlockParam[]> => {
+	if (!images || images.length === 0) {
+		return []
+	}
+
+	// Convert any webview URIs to base64 data URLs
+	const dataUrls = await normalizeImageRefsToDataUrls(images)
+
+	// Now use the regular function to create image blocks
+	return formatImagesIntoBlocks(dataUrls)
 }
 
 const toolUseInstructionsReminder = `# Reminder: Instructions for Tool Use
