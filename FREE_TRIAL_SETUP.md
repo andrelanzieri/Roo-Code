@@ -1,4 +1,4 @@
-# 🚀 Free Trial Setup Guide
+# Free Trial Setup Guide
 
 Get started with Roo Code in minutes using free AI provider trials! No credit card required for initial setup.
 
@@ -15,7 +15,7 @@ OpenRouter offers **$1 in free credits** upon signup - enough for hundreds of in
     - Type "Roo Code: Open Settings"
     - Select "OpenRouter" as your provider
     - Paste your API key
-    - Choose a model (we recommend `claude-3.5-sonnet` for best results)
+    - Choose a model (we recommend `anthropic/claude-3.5-sonnet` for best results)
 
 ### Option 2: Google Gemini (Most Generous Free Tier)
 
@@ -43,17 +43,17 @@ Groq provides **free tier access** with extremely fast inference speeds.
     - Type "Roo Code: Open Settings"
     - Select "Groq" as your provider
     - Paste your API key
-    - Choose `llama-3.1-70b` for best performance
+    - Choose `llama-3.3-70b-versatile` for best performance
 
 ## Provider Comparison
 
 | Provider          | Free Credits           | Best For              | Setup Difficulty |
 | ----------------- | ---------------------- | --------------------- | ---------------- |
-| **OpenRouter**    | $1 free credits        | Trying premium models | ⭐ Easiest       |
-| **Google Gemini** | Generous free tier     | Extended usage        | ⭐⭐ Easy        |
-| **Groq**          | Free tier              | Fast responses        | ⭐⭐ Easy        |
-| **Anthropic**     | $5 free (with phone)   | Claude models         | ⭐⭐⭐ Moderate  |
-| **OpenAI**        | $5 free (new accounts) | GPT models            | ⭐⭐⭐ Moderate  |
+| **OpenRouter**    | $1 free credits        | Trying premium models | Easiest          |
+| **Google Gemini** | Generous free tier     | Extended usage        | Easy             |
+| **Groq**          | Free tier              | Fast responses        | Easy             |
+| **Anthropic**     | $5 free (with phone)   | Claude models         | Moderate         |
+| **OpenAI**        | $5 free (new accounts) | GPT models            | Moderate         |
 
 ## Configuration Tips
 
@@ -62,7 +62,7 @@ Groq provides **free tier access** with extremely fast inference speeds.
 1. After adding your API key, Roo Code will show available models
 2. For best results, we recommend:
     - **Code generation**: Claude 3.5 Sonnet or GPT-4
-    - **Quick tasks**: Gemini 1.5 Flash or Llama 3.1
+    - **Quick tasks**: Gemini 1.5 Flash or Llama 3.3
     - **Budget-conscious**: Gemini Flash (free) or Claude Haiku
 
 ### Switching Between Providers
@@ -109,4 +109,4 @@ Once configured, try these to get started:
 
 ---
 
-💡 **Pro Tip**: Start with OpenRouter for the easiest setup experience. You can always add more providers later!
+**Pro Tip**: Start with OpenRouter for the easiest setup experience. You can always add more providers later!

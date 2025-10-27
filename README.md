@@ -35,11 +35,11 @@
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
 - ...
-  </details>
+    </details>
 
 ---
 
-## 🎉 Free Trial
+## Free Trial
 
 Get started with Roo Code **immediately** - no credit card required!
 
