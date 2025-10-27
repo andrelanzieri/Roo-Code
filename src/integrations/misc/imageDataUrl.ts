@@ -3,6 +3,7 @@ import * as path from "path"
 
 /**
  * Converts webview URIs to base64 data URLs for API calls.
+ * Simple fallback for cases where base64 isn't already stored in messages.
  * This is the missing piece from PR #8225 that allows webview URIs
  * to be used in frontend while converting to base64 for API calls.
  */

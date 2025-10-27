@@ -1212,15 +1212,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		await this.providerRef.deref()?.postStateToWebview()
 
-		await this.say("text", task, images)
+		// Convert webview URIs to base64 data URLs for backend storage (one-time conversion)
+		const { normalizeImageRefsToDataUrls } = await import("../../integrations/misc/imageDataUrl")
+		const base64Images = images ? await normalizeImageRefsToDataUrls(images) : undefined
+
+		await this.say("text", task, base64Images) // Store base64 in backend messages
 		this.isInitialized = true
 
-		// Convert webview URIs to base64 for backend storage
-		const { formatImagesIntoBlocksAsync } = await import("../prompts/responses")
-		let imageBlocks: Anthropic.ImageBlockParam[] = await formatImagesIntoBlocksAsync(images)
+		// Convert base64 to image blocks for API (no conversion needed, already base64)
+		const { formatResponse } = await import("../prompts/responses")
+		let imageBlocks: Anthropic.ImageBlockParam[] = formatResponse.imageBlocks(base64Images)
 
 		// Task starting
-
 		await this.initiateTaskLoop([
 			{
 				type: "text",
@@ -1482,9 +1485,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		if (responseImages && responseImages.length > 0) {
-			// Convert webview URIs to base64 for backend storage
-			const { formatImagesIntoBlocksAsync } = await import("../prompts/responses")
-			const responseImageBlocks = await formatImagesIntoBlocksAsync(responseImages)
+			// Convert webview URIs to base64 data URLs for backend storage (one-time conversion)
+			const { normalizeImageRefsToDataUrls } = await import("../../integrations/misc/imageDataUrl")
+			const base64ResponseImages = await normalizeImageRefsToDataUrls(responseImages)
+
+			// Convert base64 to image blocks for API (no conversion needed, already base64)
+			const { formatResponse } = await import("../prompts/responses")
+			const responseImageBlocks = formatResponse.imageBlocks(base64ResponseImages)
 			newUserContent.push(...responseImageBlocks)
 		}
 
