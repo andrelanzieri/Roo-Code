@@ -8,6 +8,8 @@ export function getSimpleReadFileDescription(args: ToolArgs): string {
 	return `## read_file
 Description: Request to read the contents of a file. The tool outputs line-numbered content (e.g. "1 | const x = 1") for easy reference when discussing code.
 
+**IMPORTANT: This tool can only read ONE file at a time. Multiple file reads are not supported in this format.**
+
 Parameters:
 - path: (required) File path (relative to workspace directory ${args.cwd})
 
@@ -31,5 +33,7 @@ Examples:
 3. Reading a markdown file:
 <read_file>
 <path>README.md</path>
-</read_file>`
+</read_file>
+
+Note: To read multiple files, you must use separate read_file tool calls for each file.`
 }
