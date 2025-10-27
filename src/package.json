@@ -179,6 +179,12 @@
 				"command": "roo-cline.toggleAutoApprove",
 				"title": "%command.toggleAutoApprove.title%",
 				"category": "%configuration.title%"
+			},
+			{
+				"command": "roo-cline.generateCommitMessage",
+				"title": "%command.generateCommitMessage.title%",
+				"category": "%configuration.title%",
+				"icon": "$(sparkle)"
 			}
 		],
 		"menus": {
@@ -304,6 +310,13 @@
 					"command": "roo-cline.popoutButtonClicked",
 					"group": "overflow@4",
 					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
+				}
+			],
+			"scm/title": [
+				{
+					"command": "roo-cline.generateCommitMessage",
+					"group": "navigation",
+					"when": "scmProvider == git"
 				}
 			]
 		},
