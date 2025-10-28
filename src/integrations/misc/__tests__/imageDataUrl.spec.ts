@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { normalizeImageRefsToDataUrls } from "../imageDataUrl"
 import * as fs from "fs/promises"
+import * as path from "path"
 
 // Mock fs module
 vi.mock("fs/promises")
@@ -28,7 +29,8 @@ describe("normalizeImageRefsToDataUrls", () => {
 
 		expect(result).toHaveLength(1)
 		expect(result[0]).toMatch(/^data:image\/png;base64,/)
-		expect(fs.readFile).toHaveBeenCalledWith("/path/to/test.png")
+		const expectedPath = path.normalize("/path/to/test.png")
+		expect(fs.readFile).toHaveBeenCalledWith(expectedPath)
 	})
 
 	it("should handle mixed arrays of data URLs and CDN URIs", async () => {
