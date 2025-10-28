@@ -42,5 +42,9 @@
 	"settings.useAgentRules.description": "Enable loading of AGENTS.md files for agent-specific rules (see https://agent-rules.org/)",
 	"settings.apiRequestTimeout.description": "Maximum time in seconds to wait for API responses (0 = no timeout, 1-3600s, default: 600s). Higher values are recommended for local providers like LM Studio and Ollama that may need more processing time.",
 	"settings.newTaskRequireTodos.description": "Require todos parameter when creating new tasks with the new_task tool",
-	"settings.codeIndex.embeddingBatchSize.description": "The batch size for embedding operations during code indexing. Adjust this based on your API provider's limits. Default is 60."
+	"settings.codeIndex.embeddingBatchSize.description": "The batch size for embedding operations during code indexing. Adjust this based on your API provider's limits. Default is 60.",
+	"settings.codeIndex.parsingConcurrency.description": "Maximum number of files to parse concurrently during code indexing. Lower values reduce memory and CPU usage. Default is 10.",
+	"settings.codeIndex.batchProcessingConcurrency.description": "Maximum number of embedding batches to process concurrently. Lower values reduce API load and memory usage. Default is 10.",
+	"settings.codeIndex.maxPendingBatches.description": "Maximum number of pending batches before throttling. Lower values reduce memory usage. Default is 20.",
+	"settings.codeIndex.lowResourceMode.description": "Enable low resource mode for better performance on modest hardware. This reduces concurrency, batch sizes, and memory usage."
 }

@@ -5,6 +5,7 @@ import {
 	BATCH_SEGMENT_THRESHOLD,
 	MAX_BATCH_RETRIES,
 	INITIAL_RETRY_DELAY_MS,
+	LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD,
 } from "../constants"
 import { createHash } from "crypto"
 import { RooIgnoreController } from "../../../core/ignore/RooIgnoreController"
@@ -38,7 +39,7 @@ export class FileWatcher implements IFileWatcher {
 	private accumulatedEvents: Map<string, { uri: vscode.Uri; type: "create" | "change" | "delete" }> = new Map()
 	private batchProcessDebounceTimer?: NodeJS.Timeout
 	private readonly BATCH_DEBOUNCE_DELAY_MS = 500
-	private readonly FILE_PROCESSING_CONCURRENCY_LIMIT = 10
+	private readonly FILE_PROCESSING_CONCURRENCY_LIMIT: number
 	private readonly batchSegmentThreshold: number
 
 	private readonly _onDidStartBatchProcessing = new vscode.EventEmitter<string[]>()
@@ -86,19 +87,27 @@ export class FileWatcher implements IFileWatcher {
 		if (ignoreInstance) {
 			this.ignoreInstance = ignoreInstance
 		}
-		// Get the configurable batch size from VSCode settings, fallback to default
-		// If not provided in constructor, try to get from VSCode settings
-		if (batchSegmentThreshold !== undefined) {
-			this.batchSegmentThreshold = batchSegmentThreshold
-		} else {
-			try {
-				this.batchSegmentThreshold = vscode.workspace
-					.getConfiguration(Package.name)
-					.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
-			} catch {
-				// In test environment, vscode.workspace might not be available
-				this.batchSegmentThreshold = BATCH_SEGMENT_THRESHOLD
+		// Get configurable settings from VSCode
+		try {
+			const config = vscode.workspace.getConfiguration(Package.name)
+			const isLowResourceMode = config.get<boolean>("codeIndex.lowResourceMode", false)
+
+			if (isLowResourceMode) {
+				this.batchSegmentThreshold =
+					batchSegmentThreshold ??
+					config.get<number>("codeIndex.embeddingBatchSize", LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD)
+				// Reduce file processing concurrency in low resource mode
+				this.FILE_PROCESSING_CONCURRENCY_LIMIT = 2
+			} else {
+				this.batchSegmentThreshold =
+					batchSegmentThreshold ?? config.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
+				// Normal concurrency for file processing
+				this.FILE_PROCESSING_CONCURRENCY_LIMIT = 10
 			}
+		} catch {
+			// In test environment, vscode.workspace might not be available
+			this.batchSegmentThreshold = batchSegmentThreshold ?? BATCH_SEGMENT_THRESHOLD
+			this.FILE_PROCESSING_CONCURRENCY_LIMIT = 10
 		}
 	}
 

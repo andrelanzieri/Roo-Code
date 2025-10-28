@@ -24,6 +24,10 @@ import {
 	PARSING_CONCURRENCY,
 	BATCH_PROCESSING_CONCURRENCY,
 	MAX_PENDING_BATCHES,
+	LOW_RESOURCE_PARSING_CONCURRENCY,
+	LOW_RESOURCE_BATCH_PROCESSING_CONCURRENCY,
+	LOW_RESOURCE_MAX_PENDING_BATCHES,
+	LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD,
 } from "../constants"
 import { isPathInIgnoredDirectory } from "../../glob/ignore-utils"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -33,6 +37,9 @@ import { Package } from "../../../shared/package"
 
 export class DirectoryScanner implements IDirectoryScanner {
 	private readonly batchSegmentThreshold: number
+	private readonly parsingConcurrency: number
+	private readonly batchProcessingConcurrency: number
+	private readonly maxPendingBatches: number
 
 	constructor(
 		private readonly embedder: IEmbedder,
@@ -41,20 +48,49 @@ export class DirectoryScanner implements IDirectoryScanner {
 		private readonly cacheManager: CacheManager,
 		private readonly ignoreInstance: Ignore,
 		batchSegmentThreshold?: number,
+		parsingConcurrency?: number,
+		batchProcessingConcurrency?: number,
+		maxPendingBatches?: number,
 	) {
-		// Get the configurable batch size from VSCode settings, fallback to default
-		// If not provided in constructor, try to get from VSCode settings
-		if (batchSegmentThreshold !== undefined) {
-			this.batchSegmentThreshold = batchSegmentThreshold
-		} else {
-			try {
-				this.batchSegmentThreshold = vscode.workspace
-					.getConfiguration(Package.name)
-					.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
-			} catch {
-				// In test environment, vscode.workspace might not be available
-				this.batchSegmentThreshold = BATCH_SEGMENT_THRESHOLD
+		// Get configuration from VSCode settings
+		try {
+			const config = vscode.workspace.getConfiguration(Package.name)
+			const isLowResourceMode = config.get<boolean>("codeIndex.lowResourceMode", false)
+
+			// Apply low resource mode defaults if enabled
+			if (isLowResourceMode) {
+				this.batchSegmentThreshold =
+					batchSegmentThreshold ??
+					config.get<number>("codeIndex.embeddingBatchSize", LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD)
+				this.parsingConcurrency =
+					parsingConcurrency ??
+					config.get<number>("codeIndex.parsingConcurrency", LOW_RESOURCE_PARSING_CONCURRENCY)
+				this.batchProcessingConcurrency =
+					batchProcessingConcurrency ??
+					config.get<number>(
+						"codeIndex.batchProcessingConcurrency",
+						LOW_RESOURCE_BATCH_PROCESSING_CONCURRENCY,
+					)
+				this.maxPendingBatches =
+					maxPendingBatches ??
+					config.get<number>("codeIndex.maxPendingBatches", LOW_RESOURCE_MAX_PENDING_BATCHES)
+			} else {
+				this.batchSegmentThreshold =
+					batchSegmentThreshold ?? config.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
+				this.parsingConcurrency =
+					parsingConcurrency ?? config.get<number>("codeIndex.parsingConcurrency", PARSING_CONCURRENCY)
+				this.batchProcessingConcurrency =
+					batchProcessingConcurrency ??
+					config.get<number>("codeIndex.batchProcessingConcurrency", BATCH_PROCESSING_CONCURRENCY)
+				this.maxPendingBatches =
+					maxPendingBatches ?? config.get<number>("codeIndex.maxPendingBatches", MAX_PENDING_BATCHES)
 			}
+		} catch {
+			// In test environment, vscode.workspace might not be available
+			this.batchSegmentThreshold = batchSegmentThreshold ?? BATCH_SEGMENT_THRESHOLD
+			this.parsingConcurrency = parsingConcurrency ?? PARSING_CONCURRENCY
+			this.batchProcessingConcurrency = batchProcessingConcurrency ?? BATCH_PROCESSING_CONCURRENCY
+			this.maxPendingBatches = maxPendingBatches ?? MAX_PENDING_BATCHES
 		}
 	}
 
@@ -108,9 +144,9 @@ export class DirectoryScanner implements IDirectoryScanner {
 		let processedCount = 0
 		let skippedCount = 0
 
-		// Initialize parallel processing tools
-		const parseLimiter = pLimit(PARSING_CONCURRENCY) // Concurrency for file parsing
-		const batchLimiter = pLimit(BATCH_PROCESSING_CONCURRENCY) // Concurrency for batch processing
+		// Initialize parallel processing tools with configurable concurrency
+		const parseLimiter = pLimit(this.parsingConcurrency) // Concurrency for file parsing
+		const batchLimiter = pLimit(this.batchProcessingConcurrency) // Concurrency for batch processing
 		const mutex = new Mutex()
 
 		// Shared batch accumulators (protected by mutex)
@@ -174,7 +210,7 @@ export class DirectoryScanner implements IDirectoryScanner {
 									// Check if batch threshold is met
 									if (currentBatchBlocks.length >= this.batchSegmentThreshold) {
 										// Wait if we've reached the maximum pending batches
-										while (pendingBatchCount >= MAX_PENDING_BATCHES) {
+										while (pendingBatchCount >= this.maxPendingBatches) {
 											// Wait for at least one batch to complete
 											await Promise.race(activeBatchPromises)
 										}

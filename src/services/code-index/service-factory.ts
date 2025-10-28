@@ -17,7 +17,16 @@ import { t } from "../../i18n"
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
 import { Package } from "../../shared/package"
-import { BATCH_SEGMENT_THRESHOLD } from "./constants"
+import {
+	BATCH_SEGMENT_THRESHOLD,
+	PARSING_CONCURRENCY,
+	BATCH_PROCESSING_CONCURRENCY,
+	MAX_PENDING_BATCHES,
+	LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD,
+	LOW_RESOURCE_PARSING_CONCURRENCY,
+	LOW_RESOURCE_BATCH_PROCESSING_CONCURRENCY,
+	LOW_RESOURCE_MAX_PENDING_BATCHES,
+} from "./constants"
 
 /**
  * Factory class responsible for creating and configuring code indexing service dependencies.
@@ -158,17 +167,54 @@ export class CodeIndexServiceFactory {
 		parser: ICodeParser,
 		ignoreInstance: Ignore,
 	): DirectoryScanner {
-		// Get the configurable batch size from VSCode settings
+		// Get configurable settings from VSCode
 		let batchSize: number
+		let parsingConcurrency: number
+		let batchProcessingConcurrency: number
+		let maxPendingBatches: number
+
 		try {
-			batchSize = vscode.workspace
-				.getConfiguration(Package.name)
-				.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
+			const config = vscode.workspace.getConfiguration(Package.name)
+			const isLowResourceMode = config.get<boolean>("codeIndex.lowResourceMode", false)
+
+			if (isLowResourceMode) {
+				batchSize = config.get<number>("codeIndex.embeddingBatchSize", LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD)
+				parsingConcurrency = config.get<number>(
+					"codeIndex.parsingConcurrency",
+					LOW_RESOURCE_PARSING_CONCURRENCY,
+				)
+				batchProcessingConcurrency = config.get<number>(
+					"codeIndex.batchProcessingConcurrency",
+					LOW_RESOURCE_BATCH_PROCESSING_CONCURRENCY,
+				)
+				maxPendingBatches = config.get<number>("codeIndex.maxPendingBatches", LOW_RESOURCE_MAX_PENDING_BATCHES)
+			} else {
+				batchSize = config.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
+				parsingConcurrency = config.get<number>("codeIndex.parsingConcurrency", PARSING_CONCURRENCY)
+				batchProcessingConcurrency = config.get<number>(
+					"codeIndex.batchProcessingConcurrency",
+					BATCH_PROCESSING_CONCURRENCY,
+				)
+				maxPendingBatches = config.get<number>("codeIndex.maxPendingBatches", MAX_PENDING_BATCHES)
+			}
 		} catch {
 			// In test environment, vscode.workspace might not be available
 			batchSize = BATCH_SEGMENT_THRESHOLD
+			parsingConcurrency = PARSING_CONCURRENCY
+			batchProcessingConcurrency = BATCH_PROCESSING_CONCURRENCY
+			maxPendingBatches = MAX_PENDING_BATCHES
 		}
-		return new DirectoryScanner(embedder, vectorStore, parser, this.cacheManager, ignoreInstance, batchSize)
+		return new DirectoryScanner(
+			embedder,
+			vectorStore,
+			parser,
+			this.cacheManager,
+			ignoreInstance,
+			batchSize,
+			parsingConcurrency,
+			batchProcessingConcurrency,
+			maxPendingBatches,
+		)
 	}
 
 	/**
@@ -182,12 +228,18 @@ export class CodeIndexServiceFactory {
 		ignoreInstance: Ignore,
 		rooIgnoreController?: RooIgnoreController,
 	): IFileWatcher {
-		// Get the configurable batch size from VSCode settings
+		// Get configurable settings from VSCode
 		let batchSize: number
+
 		try {
-			batchSize = vscode.workspace
-				.getConfiguration(Package.name)
-				.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
+			const config = vscode.workspace.getConfiguration(Package.name)
+			const isLowResourceMode = config.get<boolean>("codeIndex.lowResourceMode", false)
+
+			if (isLowResourceMode) {
+				batchSize = config.get<number>("codeIndex.embeddingBatchSize", LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD)
+			} else {
+				batchSize = config.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
+			}
 		} catch {
 			// In test environment, vscode.workspace might not be available
 			batchSize = BATCH_SEGMENT_THRESHOLD

@@ -429,6 +429,32 @@
 					"minimum": 1,
 					"maximum": 200,
 					"description": "%settings.codeIndex.embeddingBatchSize.description%"
+				},
+				"roo-cline.codeIndex.parsingConcurrency": {
+					"type": "number",
+					"default": 10,
+					"minimum": 1,
+					"maximum": 50,
+					"description": "%settings.codeIndex.parsingConcurrency.description%"
+				},
+				"roo-cline.codeIndex.batchProcessingConcurrency": {
+					"type": "number",
+					"default": 10,
+					"minimum": 1,
+					"maximum": 50,
+					"description": "%settings.codeIndex.batchProcessingConcurrency.description%"
+				},
+				"roo-cline.codeIndex.maxPendingBatches": {
+					"type": "number",
+					"default": 20,
+					"minimum": 1,
+					"maximum": 100,
+					"description": "%settings.codeIndex.maxPendingBatches.description%"
+				},
+				"roo-cline.codeIndex.lowResourceMode": {
+					"type": "boolean",
+					"default": false,
+					"description": "%settings.codeIndex.lowResourceMode.description%"
 				}
 			}
 		}
