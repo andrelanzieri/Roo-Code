@@ -1,5 +1,6 @@
 import * as fs from "fs/promises"
 import * as path from "path"
+import { getImageBase64ForPath } from "./image-cache"
 
 /**
  * Converts webview URIs to base64 data URLs for API calls.
@@ -20,6 +21,14 @@ export async function normalizeImageRefsToDataUrls(imageRefs: string[]): Promise
 		// Convert webview URI to file path and then to base64
 		try {
 			const filePath = webviewUriToFilePath(imageRef)
+
+			// If the image originated from the UI as base64 and was cached, use it to avoid re-encoding
+			const cached = getImageBase64ForPath(filePath)
+			if (cached) {
+				results.push(cached)
+				continue
+			}
+
 			const buffer = await fs.readFile(filePath)
 			const base64 = buffer.toString("base64")
 			const mimeType = getMimeTypeFromPath(filePath)
@@ -52,54 +61,9 @@ function webviewUriToFilePath(webviewUri: string): string {
 				return path.normalize(decodeURIComponent(p))
 			}
 		} catch {
-			// fall through if not a valid URL or not the expected host
+			throw new Error("Invalid URL")
 		}
 	}
-
-	// Handle vscode-resource URIs like:
-	// vscode-resource://vscode-webview/path/to/file
-	if (webviewUri.includes("vscode-resource://")) {
-		// Extract the path portion after vscode-resource://vscode-webview/
-		const match = webviewUri.match(/vscode-resource:\/\/[^\/]+(.+)/)
-		if (match) {
-			return decodeURIComponent(match[1])
-		}
-	}
-
-	// Handle file:// URIs
-	if (webviewUri.startsWith("file://")) {
-		return decodeURIComponent(webviewUri.substring(7))
-	}
-
-	// Handle VS Code webview URIs that contain encoded paths
-	// Use strict prefix matching to prevent arbitrary host injection
-	if (webviewUri.startsWith("vscode-resource://vscode-webview/") && webviewUri.includes("vscode-userdata")) {
-		try {
-			// Decode safely with length limits
-			if (webviewUri.length > 2048) {
-				throw new Error("URI too long")
-			}
-
-			const decoded = decodeURIComponent(webviewUri)
-
-			// Use specific, bounded patterns to prevent ReDoS
-			// Match exact patterns without backtracking
-			const unixMatch = decoded.match(
-				/^[^?#]*\/(?:Users|home|root|var|tmp|opt)\/[^?#]{1,300}\.(png|jpg|jpeg|gif|webp)$/i,
-			)
-			if (unixMatch) {
-				return unixMatch[0]
-			}
-
-			const windowsMatch = decoded.match(/^[^?#]*[A-Za-z]:\\[^?#]{1,300}\.(png|jpg|jpeg|gif|webp)$/i)
-			if (windowsMatch) {
-				return windowsMatch[0]
-			}
-		} catch (error) {
-			console.error("Failed to decode webview URI:", error)
-		}
-	}
-
 	// As a last resort, try treating it as a file path
 	return webviewUri
 }

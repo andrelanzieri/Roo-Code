@@ -4,6 +4,8 @@ import * as vscode from "vscode"
 import * as fs from "fs/promises"
 import { getWorkspacePath } from "../../utils/path"
 import { t } from "../../i18n"
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+import { setImageBase64ForPath } from "./image-cache"
 
 export async function openImage(dataUriOrPath: string, options?: { values?: { action?: string } }) {
 	// Minimal handling for VS Code webview CDN URLs:
@@ -187,6 +189,14 @@ export async function savePastedImageToTemp(
 	}
 
 	const [, format, base64Data] = matches
+	// Enforce a 10MB/image limit (approximate from base64 length)
+	{
+		const approxBytes = Math.floor((base64Data.replace(/=+$/, "").length * 3) / 4)
+		if (approxBytes > MAX_IMAGE_BYTES) {
+			console.error("Pasted image exceeds 10MB limit")
+			return null
+		}
+	}
 	const imageBuffer = Buffer.from(base64Data, "base64")
 
 	// Determine storage directory
@@ -222,6 +232,10 @@ export async function savePastedImageToTemp(
 	try {
 		// Write the image to the file
 		await fs.writeFile(imagePath, imageBuffer)
+
+		// Since this image originated as base64 from the UI, cache the dataUrl to avoid future re-encoding
+		// Reconstruct the full data URL using the original input
+		setImageBase64ForPath(imagePath, dataUri)
 
 		// Convert to webview URI if provider is available
 		let imageUri = provider?.convertToWebviewUri?.(imagePath) ?? vscode.Uri.file(imagePath).toString()

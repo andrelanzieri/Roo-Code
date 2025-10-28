@@ -730,8 +730,21 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					const dataUrls = imageDataArray.filter((dataUrl): dataUrl is string => dataUrl !== null)
 
 					if (dataUrls.length > 0) {
-						// Process each image: send to backend to save as temp file
+						// Process each image: enforce 10MB limit and send to backend to save as temp file
 						for (const dataUrl of dataUrls) {
+							// Approximate bytes from base64 (ignore header and padding)
+							const commaIdx = dataUrl.indexOf(",")
+							let tooLarge = false
+							if (commaIdx !== -1) {
+								const base64 = dataUrl.slice(commaIdx + 1).replace(/=+$/, "")
+								const approxBytes = Math.floor((base64.length * 3) / 4)
+								if (approxBytes > 10 * 1024 * 1024) {
+									console.warn("Pasted image exceeds 10MB; skipping")
+									tooLarge = true
+								}
+							}
+							if (tooLarge) continue
+
 							const requestId = Math.random().toString(36).substring(2, 9)
 
 							// Track request ID only; never store base64
@@ -895,8 +908,21 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						const dataUrls = imageDataArray.filter((dataUrl): dataUrl is string => dataUrl !== null)
 
 						if (dataUrls.length > 0) {
-							// Process each dropped image: send to backend to save as temp file
+							// Process each dropped image: enforce 10MB limit and send to backend to save as temp file
 							for (const dataUrl of dataUrls) {
+								// Approximate bytes from base64 (ignore header and padding)
+								const commaIdx = dataUrl.indexOf(",")
+								let tooLarge = false
+								if (commaIdx !== -1) {
+									const base64 = dataUrl.slice(commaIdx + 1).replace(/=+$/, "")
+									const approxBytes = Math.floor((base64.length * 3) / 4)
+									if (approxBytes > 10 * 1024 * 1024) {
+										console.warn("Dropped image exceeds 10MB; skipping")
+										tooLarge = true
+									}
+								}
+								if (tooLarge) continue
+
 								const requestId = Math.random().toString(36).substring(2, 9)
 
 								// Track request ID only; never store base64
