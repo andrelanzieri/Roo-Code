@@ -1614,6 +1614,15 @@ export class ClineProvider
 		await this.postStateToWebview()
 	}
 
+	async handleWorkspaceFoldersChanged() {
+		// Update the current workspace path when folders change
+		this.currentWorkspacePath = getWorkspacePath()
+		// Notify the webview about the state change
+		await this.postStateToWebview()
+		// Log the workspace change for debugging
+		this.log("Workspace folders changed - updated workspace path and notified webview")
+	}
+
 	async postStateToWebview() {
 		const state = await this.getStateToPostToWebview()
 		this.postMessageToWebview({ type: "state", state })

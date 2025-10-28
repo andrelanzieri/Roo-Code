@@ -101,27 +101,68 @@ export async function activate(context: vscode.ExtensionContext) {
 	const contextProxy = await ContextProxy.getInstance(context)
 
 	// Initialize code index managers for all workspace folders.
-	const codeIndexManagers: CodeIndexManager[] = []
+	const codeIndexManagers: Map<string, CodeIndexManager> = new Map()
 
-	if (vscode.workspace.workspaceFolders) {
-		for (const folder of vscode.workspace.workspaceFolders) {
-			const manager = CodeIndexManager.getInstance(context, folder.uri.fsPath)
+	// Helper function to initialize a CodeIndexManager for a folder
+	async function initializeCodeIndexManagerForFolder(folder: vscode.WorkspaceFolder): Promise<void> {
+		const manager = CodeIndexManager.getInstance(context, folder.uri.fsPath)
 
-			if (manager) {
-				codeIndexManagers.push(manager)
+		if (manager) {
+			codeIndexManagers.set(folder.uri.fsPath, manager)
 
-				try {
-					await manager.initialize(contextProxy)
-				} catch (error) {
-					outputChannel.appendLine(
-						`[CodeIndexManager] Error during background CodeIndexManager configuration/indexing for ${folder.uri.fsPath}: ${error.message || error}`,
-					)
-				}
-
-				context.subscriptions.push(manager)
+			try {
+				await manager.initialize(contextProxy)
+			} catch (error) {
+				outputChannel.appendLine(
+					`[CodeIndexManager] Error during background CodeIndexManager configuration/indexing for ${folder.uri.fsPath}: ${error.message || error}`,
+				)
 			}
+
+			context.subscriptions.push(manager)
 		}
 	}
+
+	// Initialize managers for existing workspace folders
+	if (vscode.workspace.workspaceFolders) {
+		for (const folder of vscode.workspace.workspaceFolders) {
+			await initializeCodeIndexManagerForFolder(folder)
+		}
+	}
+
+	// Listen for workspace folder changes
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeWorkspaceFolders(async (event) => {
+			// Handle removed folders
+			for (const removedFolder of event.removed) {
+				const manager = codeIndexManagers.get(removedFolder.uri.fsPath)
+				if (manager) {
+					outputChannel.appendLine(
+						`[CodeIndexManager] Removing CodeIndexManager for removed folder: ${removedFolder.uri.fsPath}`,
+					)
+					// Dispose the manager
+					manager.dispose()
+					// Remove from our map
+					codeIndexManagers.delete(removedFolder.uri.fsPath)
+					// Remove from context subscriptions
+					const index = context.subscriptions.indexOf(manager)
+					if (index > -1) {
+						context.subscriptions.splice(index, 1)
+					}
+				}
+			}
+
+			// Handle added folders
+			for (const addedFolder of event.added) {
+				outputChannel.appendLine(
+					`[CodeIndexManager] Adding CodeIndexManager for new folder: ${addedFolder.uri.fsPath}`,
+				)
+				await initializeCodeIndexManagerForFolder(addedFolder)
+			}
+
+			// Notify the provider about workspace changes
+			provider.handleWorkspaceFoldersChanged()
+		}),
+	)
 
 	// Initialize the provider *before* the Roo Code Cloud service.
 	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy, mdmService)
