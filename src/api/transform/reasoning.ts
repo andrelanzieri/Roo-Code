@@ -54,11 +54,6 @@ export const getRooReasoning = ({
 		return undefined
 	}
 
-	// If enableReasoningEffort is explicitly false, return enabled: false
-	if (settings.enableReasoningEffort === false) {
-		return { enabled: false }
-	}
-
 	// If reasoning effort is provided, return it with enabled: true
 	if (reasoningEffort && reasoningEffort !== "minimal") {
 		return { enabled: true, effort: reasoningEffort }
