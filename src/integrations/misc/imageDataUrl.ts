@@ -85,7 +85,7 @@ function webviewUriToFilePath(webviewUri: string): string {
 			// Use specific, bounded patterns to prevent ReDoS
 			// Match exact patterns without backtracking
 			const unixMatch = decoded.match(
-				/^[^?#]*\/Users\/[a-zA-Z0-9._-]{1,50}\/[^?#]{1,300}\.(png|jpg|jpeg|gif|webp)$/i,
+				/^[^?#]*\/(?:Users|home|root|var|tmp|opt)\/[^?#]{1,300}\.(png|jpg|jpeg|gif|webp)$/i,
 			)
 			if (unixMatch) {
 				return unixMatch[0]
