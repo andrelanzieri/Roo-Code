@@ -652,6 +652,15 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		// This ensures the frontend never retains image data URLs
 		const pendingImageUploadsRef = useRef<Set<string>>(new Set())
 
+		// Cleanup pending uploads on unmount to prevent leaks
+		useEffect(() => {
+			// Capture ref value to avoid stale closure
+			const uploads = pendingImageUploadsRef.current
+			return () => {
+				uploads.clear()
+			}
+		}, [])
+
 		const handlePaste = useCallback(
 			async (e: React.ClipboardEvent) => {
 				const items = e.clipboardData.items

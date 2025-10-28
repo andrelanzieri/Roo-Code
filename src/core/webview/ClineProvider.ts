@@ -2790,13 +2790,11 @@ export class ClineProvider
 	}
 
 	/**
-	 * Convert a file path to a webview-accessible URI
-	 * This method safely converts file paths to URIs that can be loaded in the webview
+	 * Convert a file path to a webview-accessible URI.
+	 * Safely returns a string and does not throw; logs errors and falls back to a file: URI when conversion is not possible.
 	 *
 	 * @param filePath - The absolute file path to convert
-	 * @returns The webview URI string, or the original file URI if conversion fails
-	 * @throws {Error} When webview is not available
-	 * @throws {TypeError} When file path is invalid
+	 * @returns The webview URI string when a webview is available; otherwise a file: URI string
 	 */
 	public convertToWebviewUri(filePath: string): string {
 		try {
