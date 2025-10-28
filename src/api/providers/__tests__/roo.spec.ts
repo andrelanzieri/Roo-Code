@@ -368,6 +368,33 @@ describe("RooHandler", () => {
 				expect(modelInfo.info.contextWindow).toBeDefined()
 			}
 		})
+
+		it("should migrate deprecated code-supernova model ID to code-supernova-1-million", () => {
+			const handlerWithDeprecatedModel = new RooHandler({
+				apiModelId: "roo/code-supernova",
+			})
+			const modelInfo = handlerWithDeprecatedModel.getModel()
+			// Should return the migrated model ID
+			expect(modelInfo.id).toBe("roo/code-supernova-1-million")
+			expect(modelInfo.info).toBeDefined()
+		})
+
+		it("should not migrate non-deprecated model IDs", () => {
+			const testCases = [
+				"roo/code-supernova-1-million", // Already migrated
+				"xai/grok-code-fast-1", // Different model
+				"roo/sonic", // Different model
+				"unknown-model", // Unknown model
+			]
+
+			for (const modelId of testCases) {
+				const handlerWithModel = new RooHandler({ apiModelId: modelId })
+				const modelInfo = handlerWithModel.getModel()
+				// Should return the same model ID without migration
+				expect(modelInfo.id).toBe(modelId)
+				expect(modelInfo.info).toBeDefined()
+			}
+		})
 	})
 
 	describe("temperature and model configuration", () => {

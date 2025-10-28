@@ -210,7 +210,17 @@ export class RooHandler extends BaseOpenAiCompatibleProvider<string> {
 	}
 
 	override getModel() {
-		const modelId = this.options.apiModelId || rooDefaultModelId
+		let modelId = this.options.apiModelId || rooDefaultModelId
+
+		// Migrate deprecated model IDs to their new versions
+		const modelMigrations: Record<string, string> = {
+			"roo/code-supernova": "roo/code-supernova-1-million",
+		}
+
+		// Apply migration if needed
+		if (modelMigrations[modelId]) {
+			modelId = modelMigrations[modelId]
+		}
 
 		// Get models from shared cache
 		const models = getModelsFromCache("roo") || {}
