@@ -104,6 +104,9 @@ export async function attemptCompletionTool(
 					return
 				}
 
+				// Return the completion content as a tool result for the child task before finishing
+				pushToolResult(formatResponse.toolResult(result))
+
 				// tell the provider to remove the current subtask and resume the previous task in the stack
 				await cline.providerRef.deref()?.finishSubTask(result)
 				return

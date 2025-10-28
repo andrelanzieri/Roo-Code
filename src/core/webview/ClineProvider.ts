@@ -485,6 +485,7 @@ export class ClineProvider
 		// Get the current task before removing it from the stack
 		const currentTask = this.getCurrentTask()
 		const parentTaskId = currentTask?.parentTaskId
+		let didRestoreParentFromHistory = false
 
 		// Remove the last cline instance from the stack (this is the finished
 		// subtask).
@@ -500,6 +501,7 @@ export class ClineProvider
 				// Restore the parent task from history
 				const { historyItem } = await this.getTaskWithId(parentTaskId)
 				parentTask = await this.createTaskWithHistoryItem(historyItem)
+				didRestoreParentFromHistory = true
 				this.log(`[finishSubTask] Restored parent task ${parentTaskId} from history to receive subtask result`)
 			} catch (error) {
 				this.log(
@@ -513,6 +515,26 @@ export class ClineProvider
 
 		// Resume the parent task with the subtask result
 		await parentTask?.completeSubtask(lastMessage)
+
+		// If the parent was restored from history, auto-approve the resume prompt so execution continues
+		if (didRestoreParentFromHistory && parentTask) {
+			try {
+				await pWaitFor(
+					() => {
+						const ask = parentTask!.taskAsk
+						return !!ask && (ask.ask === "resume_task" || ask.ask === "resume_completed_task")
+					},
+					{ timeout: 3000 },
+				).catch(() => undefined)
+				parentTask.approveAsk()
+			} catch (error) {
+				this.log(
+					`[finishSubTask] Auto-approve resume failed for parent ${parentTask.taskId}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+			}
+		}
 	}
 	// Pending Edit Operations Management
 
