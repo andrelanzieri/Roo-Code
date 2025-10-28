@@ -6,6 +6,8 @@ import {
 	MAX_BATCH_RETRIES,
 	INITIAL_RETRY_DELAY_MS,
 	LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD,
+	FILE_PROCESSING_CONCURRENCY,
+	LOW_RESOURCE_FILE_PROCESSING_CONCURRENCY,
 } from "../constants"
 import { createHash } from "crypto"
 import { RooIgnoreController } from "../../../core/ignore/RooIgnoreController"
@@ -96,18 +98,24 @@ export class FileWatcher implements IFileWatcher {
 				this.batchSegmentThreshold =
 					batchSegmentThreshold ??
 					config.get<number>("codeIndex.embeddingBatchSize", LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD)
-				// Reduce file processing concurrency in low resource mode
-				this.FILE_PROCESSING_CONCURRENCY_LIMIT = 2
+				// Use configurable file processing concurrency with low resource default
+				this.FILE_PROCESSING_CONCURRENCY_LIMIT = config.get<number>(
+					"codeIndex.fileProcessingConcurrency",
+					LOW_RESOURCE_FILE_PROCESSING_CONCURRENCY,
+				)
 			} else {
 				this.batchSegmentThreshold =
 					batchSegmentThreshold ?? config.get<number>("codeIndex.embeddingBatchSize", BATCH_SEGMENT_THRESHOLD)
-				// Normal concurrency for file processing
-				this.FILE_PROCESSING_CONCURRENCY_LIMIT = 10
+				// Use configurable file processing concurrency with normal default
+				this.FILE_PROCESSING_CONCURRENCY_LIMIT = config.get<number>(
+					"codeIndex.fileProcessingConcurrency",
+					FILE_PROCESSING_CONCURRENCY,
+				)
 			}
 		} catch {
 			// In test environment, vscode.workspace might not be available
 			this.batchSegmentThreshold = batchSegmentThreshold ?? BATCH_SEGMENT_THRESHOLD
-			this.FILE_PROCESSING_CONCURRENCY_LIMIT = 10
+			this.FILE_PROCESSING_CONCURRENCY_LIMIT = FILE_PROCESSING_CONCURRENCY
 		}
 	}
 

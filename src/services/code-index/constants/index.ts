@@ -22,12 +22,14 @@ export const INITIAL_RETRY_DELAY_MS = 500
 export const PARSING_CONCURRENCY = 10 // Default number of files to parse concurrently
 export const MAX_PENDING_BATCHES = 20 // Default maximum number of batches to accumulate before waiting
 export const BATCH_PROCESSING_CONCURRENCY = 10 // Default number of batches to process concurrently
+export const FILE_PROCESSING_CONCURRENCY = 10 // Default number of files to process concurrently in file watcher
 
 /**Low Resource Mode Defaults */
 export const LOW_RESOURCE_PARSING_CONCURRENCY = 2 // Reduced concurrent file parsing for low-end hardware
 export const LOW_RESOURCE_BATCH_PROCESSING_CONCURRENCY = 2 // Reduced concurrent batch processing
 export const LOW_RESOURCE_MAX_PENDING_BATCHES = 5 // Reduced pending batches
 export const LOW_RESOURCE_BATCH_SEGMENT_THRESHOLD = 20 // Smaller batch size for low-end hardware
+export const LOW_RESOURCE_FILE_PROCESSING_CONCURRENCY = 2 // Reduced file processing concurrency for low-end hardware
 
 /**OpenAI Embedder */
 export const MAX_BATCH_TOKENS = 100000

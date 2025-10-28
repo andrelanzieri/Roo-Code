@@ -46,5 +46,6 @@
 	"settings.codeIndex.parsingConcurrency.description": "Maximum number of files to parse concurrently during code indexing. Lower values reduce memory and CPU usage. Default is 10.",
 	"settings.codeIndex.batchProcessingConcurrency.description": "Maximum number of embedding batches to process concurrently. Lower values reduce API load and memory usage. Default is 10.",
 	"settings.codeIndex.maxPendingBatches.description": "Maximum number of pending batches before throttling. Lower values reduce memory usage. Default is 20.",
-	"settings.codeIndex.lowResourceMode.description": "Enable low resource mode for better performance on modest hardware. This reduces concurrency, batch sizes, and memory usage."
+	"settings.codeIndex.lowResourceMode.description": "Enable low resource mode for better performance on modest hardware. This reduces concurrency, batch sizes, and memory usage.",
+	"settings.codeIndex.fileProcessingConcurrency.description": "Maximum number of files to process concurrently when watching for file changes. Lower values reduce CPU and memory usage. Default is 10."
 }

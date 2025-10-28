@@ -455,6 +455,13 @@
 					"type": "boolean",
 					"default": false,
 					"description": "%settings.codeIndex.lowResourceMode.description%"
+				},
+				"roo-cline.codeIndex.fileProcessingConcurrency": {
+					"type": "number",
+					"default": 10,
+					"minimum": 1,
+					"maximum": 50,
+					"description": "%settings.codeIndex.fileProcessingConcurrency.description%"
 				}
 			}
 		}
