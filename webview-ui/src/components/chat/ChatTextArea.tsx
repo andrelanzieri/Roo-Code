@@ -11,6 +11,7 @@ import { ExtensionMessage } from "@roo/ExtensionMessage"
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { MAX_IMAGE_BYTES, estimateBytesFromBase64DataUrl } from "@src/utils/image"
 import {
 	ContextMenuOptionType,
 	getContextMenuOptions,
@@ -732,18 +733,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					if (dataUrls.length > 0) {
 						// Process each image: enforce 10MB limit and send to backend to save as temp file
 						for (const dataUrl of dataUrls) {
-							// Approximate bytes from base64 (ignore header and padding)
-							const commaIdx = dataUrl.indexOf(",")
-							let tooLarge = false
-							if (commaIdx !== -1) {
-								const base64 = dataUrl.slice(commaIdx + 1).replace(/=+$/, "")
-								const approxBytes = Math.floor((base64.length * 3) / 4)
-								if (approxBytes > 10 * 1024 * 1024) {
-									console.warn("Pasted image exceeds 10MB; skipping")
-									tooLarge = true
-								}
+							const approxBytes = estimateBytesFromBase64DataUrl(dataUrl)
+							if (approxBytes > MAX_IMAGE_BYTES) {
+								console.warn("Pasted image exceeds 10MB; skipping")
+								continue
 							}
-							if (tooLarge) continue
 
 							const requestId = Math.random().toString(36).substring(2, 9)
 
@@ -910,18 +904,11 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						if (dataUrls.length > 0) {
 							// Process each dropped image: enforce 10MB limit and send to backend to save as temp file
 							for (const dataUrl of dataUrls) {
-								// Approximate bytes from base64 (ignore header and padding)
-								const commaIdx = dataUrl.indexOf(",")
-								let tooLarge = false
-								if (commaIdx !== -1) {
-									const base64 = dataUrl.slice(commaIdx + 1).replace(/=+$/, "")
-									const approxBytes = Math.floor((base64.length * 3) / 4)
-									if (approxBytes > 10 * 1024 * 1024) {
-										console.warn("Dropped image exceeds 10MB; skipping")
-										tooLarge = true
-									}
+								const approxBytes = estimateBytesFromBase64DataUrl(dataUrl)
+								if (approxBytes > MAX_IMAGE_BYTES) {
+									console.warn("Dropped image exceeds 10MB; skipping")
+									continue
 								}
-								if (tooLarge) continue
 
 								const requestId = Math.random().toString(36).substring(2, 9)
 
