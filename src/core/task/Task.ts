@@ -872,7 +872,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			throw new Error("Current ask promise was ignored")
 		}
 
-		const result = { response: this.askResponse!, text: this.askResponseText, images: this.askResponseImages }
+		let result: { response: ClineAskResponse; text?: string; images?: string[] } = {
+			response: this.askResponse!,
+			text: this.askResponseText,
+			images: this.askResponseImages,
+		}
+		// Normalize any image refs to base64 data URLs before handing back to callers
+		if (Array.isArray(result.images) && result.images.length > 0) {
+			try {
+				const { normalizeImageRefsToDataUrls } = await import("../../integrations/misc/imageDataUrl")
+				const normalized = await normalizeImageRefsToDataUrls(result.images)
+				result.images = normalized
+			} catch (e) {
+				console.error("[Task#ask] Failed to normalize image refs:", e)
+			}
+		}
 		this.askResponse = undefined
 		this.askResponseText = undefined
 		this.askResponseImages = undefined
@@ -1068,6 +1082,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	): Promise<undefined> {
 		if (this.abort) {
 			throw new Error(`[RooCode#say] task ${this.taskId}.${this.instanceId} aborted`)
+		}
+
+		// Ensure any image refs are normalized to base64 data URLs before persisting or sending to APIs
+		if (Array.isArray(images) && images.length > 0) {
+			try {
+				const { normalizeImageRefsToDataUrls } = await import("../../integrations/misc/imageDataUrl")
+				images = await normalizeImageRefsToDataUrls(images)
+			} catch (e) {
+				console.error("[Task#say] Failed to normalize image refs:", e)
+			}
 		}
 
 		if (partial !== undefined) {

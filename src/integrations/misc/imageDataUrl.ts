@@ -38,6 +38,24 @@ export async function normalizeImageRefsToDataUrls(imageRefs: string[]): Promise
  * Converts a webview URI to a file system path
  */
 function webviewUriToFilePath(webviewUri: string): string {
+	// Handle VS Code CDN-style webview URLs:
+	// Example: https://file+.vscode-resource.vscode-cdn.net/file/<absolute_path_to_image>
+	if (webviewUri.startsWith("https://")) {
+		try {
+			const u = new URL(webviewUri)
+			if (u.host === "vscode-cdn.net" || u.host.endsWith(".vscode-cdn.net")) {
+				// Path is like /file/<abs-path> - strip the /file/ prefix
+				let p = u.pathname || ""
+				if (p.startsWith("/file/")) {
+					p = p.slice("/file/".length)
+				}
+				return path.normalize(decodeURIComponent(p))
+			}
+		} catch {
+			// fall through if not a valid URL or not the expected host
+		}
+	}
+
 	// Handle vscode-resource URIs like:
 	// vscode-resource://vscode-webview/path/to/file
 	if (webviewUri.includes("vscode-resource://")) {
