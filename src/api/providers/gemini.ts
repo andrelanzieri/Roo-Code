@@ -60,6 +60,52 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 					: new GoogleGenAI({ apiKey })
 	}
 
+	/**
+	 * Detects if the conversation context suggests code generation.
+	 * This helps prevent Gemini's grounding feature from incorrectly
+	 * removing array indices like [0] which it may interpret as citations.
+	 */
+	private isCodeGenerationContext(messages: Anthropic.Messages.MessageParam[]): boolean {
+		// Keywords that strongly suggest code generation
+		const codeKeywords = [
+			"create.*(?:file|script|function|class|method|code|program)",
+			"write.*(?:file|script|function|class|method|code|program)",
+			"generate.*(?:file|script|function|class|method|code|program)",
+			"implement.*(?:function|class|method|algorithm)",
+			"python file",
+			"javascript file",
+			"typescript file",
+			"code snippet",
+			"code example",
+			"def\\s+\\w+\\s*\\(", // Python function definition
+			"function\\s+\\w+\\s*\\(", // JavaScript function
+			"class\\s+\\w+", // Class definition
+			"\\[\\d+\\]", // Array index patterns
+			"array\\[",
+			"list\\[",
+			"fruits\\[0\\]", // Specific to the reported issue
+		]
+
+		const codePattern = new RegExp(codeKeywords.join("|"), "i")
+
+		// Check recent messages for code-related content
+		const recentMessages = messages.slice(-5) // Check last 5 messages
+
+		for (const message of recentMessages) {
+			if (Array.isArray(message.content)) {
+				for (const block of message.content) {
+					if (block.type === "text" && codePattern.test(block.text)) {
+						return true
+					}
+				}
+			} else if (typeof message.content === "string" && codePattern.test(message.content)) {
+				return true
+			}
+		}
+
+		return false
+	}
+
 	async *createMessage(
 		systemInstruction: string,
 		messages: Anthropic.Messages.MessageParam[],
@@ -74,7 +120,10 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			tools.push({ urlContext: {} })
 		}
 
-		if (this.options.enableGrounding) {
+		// Only enable grounding if it's not a code generation context
+		// This prevents Gemini from misinterpreting array indices like [0] as citation markers
+		const isCodeContext = this.isCodeGenerationContext(messages)
+		if (this.options.enableGrounding && !isCodeContext) {
 			tools.push({ googleSearch: {} })
 		}
 
@@ -217,7 +266,13 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			if (this.options.enableUrlContext) {
 				tools.push({ urlContext: {} })
 			}
-			if (this.options.enableGrounding) {
+
+			// Check if the prompt suggests code generation
+			const isCodeContext = this.isCodeGenerationContext([
+				{ role: "user", content: [{ type: "text", text: prompt }] },
+			])
+
+			if (this.options.enableGrounding && !isCodeContext) {
 				tools.push({ googleSearch: {} })
 			}
 			const promptConfig: GenerateContentConfig = {
