@@ -12,8 +12,10 @@ import {
 	type TelemetrySetting,
 	TelemetryEventName,
 	UserSettingsConfig,
-	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 } from "@roo-code/types"
+
+// Default checkpoint timeout (from global-settings.ts)
+const DEFAULT_CHECKPOINT_TIMEOUT_SECONDS = 15
 import { CloudService } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -24,7 +26,7 @@ import { ClineProvider } from "./ClineProvider"
 import { handleCheckpointRestoreOperation } from "./checkpointRestoreHandler"
 import { changeLanguage, t } from "../../i18n"
 import { Package } from "../../shared/package"
-import { type RouterName, type ModelRecord, toRouterName } from "../../shared/api"
+import { type RouterName, type ModelRecord, isRouterName, toRouterName } from "../../shared/api"
 import { MessageEnhancer } from "./messageEnhancer"
 
 import {
@@ -57,6 +59,11 @@ import { generateSystemPrompt } from "./generateSystemPrompt"
 import { getCommand } from "../../utils/commands"
 
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
+
+// Phase 3: Debounce router model fetches to collapse rapid repeats
+const ROUTER_MODELS_DEBOUNCE_MS = process.env.NODE_ENV === "test" ? 0 : 400
+let lastRouterModelsRequestTime = 0
+let lastRouterModelsAllRequestTime = 0
 
 import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
 import { setPendingTodoList } from "../tools/updateTodoListTool"
@@ -499,6 +506,15 @@ export const webviewMessageHandler = async (
 			})
 
 			provider.isViewLaunched = true
+
+			// Phase 2: Warm caches on activation by fetching all providers once
+			// This happens in background without blocking the UI
+			webviewMessageHandler(provider, { type: "requestRouterModelsAll" }, marketplaceManager).catch((error) => {
+				provider.log(
+					`Background router models fetch on activation failed: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			})
+
 			break
 		case "newTask":
 			// Initializing new instance of Cline will make sure that any
@@ -754,10 +770,22 @@ export const webviewMessageHandler = async (
 			const routerNameFlush: RouterName = toRouterName(message.text)
 			await flushModels(routerNameFlush)
 			break
-		case "requestRouterModels":
-			const { apiConfiguration } = await provider.getState()
+		case "requestRouterModels": {
+			// Phase 3: Debounce to collapse rapid repeats
+			const now = Date.now()
+			if (now - lastRouterModelsRequestTime < ROUTER_MODELS_DEBOUNCE_MS) {
+				// Skip this request - too soon after last one
+				break
+			}
+			lastRouterModelsRequestTime = now
 
-			const routerModels: Record<RouterName, ModelRecord> = {
+			// Phase 2: Scope to active provider during chat/task flows
+			const { apiConfiguration } = await provider.getState()
+			const providerStr = apiConfiguration.apiProvider
+			const activeProvider: RouterName | undefined =
+				providerStr && isRouterName(providerStr) ? providerStr : undefined
+
+			const routerModels: any = {
 				openrouter: {},
 				"vercel-ai-gateway": {},
 				huggingface: {},
@@ -780,8 +808,135 @@ export const webviewMessageHandler = async (
 						`Failed to fetch models in webviewMessageHandler requestRouterModels for ${options.provider}:`,
 						error,
 					)
+					throw error
+				}
+			}
 
-					throw error // Re-throw to be caught by Promise.allSettled.
+			// Build full list then filter to active provider
+			const allFetches: { key: RouterName; options: GetModelsOptions }[] = [
+				{ key: "openrouter", options: { provider: "openrouter" } },
+				{
+					key: "requesty",
+					options: {
+						provider: "requesty",
+						apiKey: apiConfiguration.requestyApiKey,
+						baseUrl: apiConfiguration.requestyBaseUrl,
+					},
+				},
+				{ key: "glama", options: { provider: "glama" } },
+				{ key: "unbound", options: { provider: "unbound", apiKey: apiConfiguration.unboundApiKey } },
+				{ key: "vercel-ai-gateway", options: { provider: "vercel-ai-gateway" } },
+				{
+					key: "deepinfra",
+					options: {
+						provider: "deepinfra",
+						apiKey: apiConfiguration.deepInfraApiKey,
+						baseUrl: apiConfiguration.deepInfraBaseUrl,
+					},
+				},
+				{
+					key: "roo" as RouterName,
+					options: {
+						provider: "roo" as any,
+						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
+						apiKey: CloudService.hasInstance()
+							? CloudService.instance.authService?.getSessionToken()
+							: undefined,
+					} as GetModelsOptions,
+				},
+			]
+
+			// IO Intelligence (optional)
+			if (apiConfiguration.ioIntelligenceApiKey) {
+				allFetches.push({
+					key: "io-intelligence",
+					options: { provider: "io-intelligence", apiKey: apiConfiguration.ioIntelligenceApiKey },
+				})
+			}
+
+			// LiteLLM (optional)
+			const litellmApiKey = apiConfiguration.litellmApiKey || message?.values?.litellmApiKey
+			const litellmBaseUrl = apiConfiguration.litellmBaseUrl || message?.values?.litellmBaseUrl
+			if (litellmApiKey && litellmBaseUrl) {
+				allFetches.push({
+					key: "litellm",
+					options: { provider: "litellm", apiKey: litellmApiKey, baseUrl: litellmBaseUrl },
+				})
+			}
+
+			const modelFetchPromises = activeProvider
+				? allFetches.filter(({ key }) => key === activeProvider)
+				: allFetches
+
+			// If nothing matched (edge case), still post empty structure for stability
+			if (modelFetchPromises.length === 0) {
+				await provider.postMessageToWebview({ type: "routerModels", routerModels })
+				break
+			}
+
+			const results = await Promise.allSettled(
+				modelFetchPromises.map(async ({ key, options }) => {
+					const models = await safeGetModels(options)
+					return { key, models }
+				}),
+			)
+
+			results.forEach((result, index) => {
+				const routerName = modelFetchPromises[index].key
+				if (result.status === "fulfilled") {
+					routerModels[routerName] = result.value.models
+				} else {
+					const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
+					console.error(`Error fetching models for ${routerName}:`, result.reason)
+					routerModels[routerName] = {}
+					provider.postMessageToWebview({
+						type: "singleRouterModelFetchResponse",
+						success: false,
+						error: errorMessage,
+						values: { provider: routerName },
+					})
+				}
+			})
+
+			provider.postMessageToWebview({ type: "routerModels", routerModels })
+			break
+		}
+		case "requestRouterModelsAll": {
+			// Phase 3: Debounce to collapse rapid repeats
+			const now = Date.now()
+			if (now - lastRouterModelsAllRequestTime < ROUTER_MODELS_DEBOUNCE_MS) {
+				// Skip this request - too soon after last one
+				break
+			}
+			lastRouterModelsAllRequestTime = now
+
+			// Settings and activation: fetch all providers (legacy behavior)
+			const { apiConfiguration } = await provider.getState()
+
+			const routerModels: any = {
+				openrouter: {},
+				"vercel-ai-gateway": {},
+				huggingface: {},
+				litellm: {},
+				deepinfra: {},
+				"io-intelligence": {},
+				requesty: {},
+				unbound: {},
+				glama: {},
+				ollama: {},
+				lmstudio: {},
+				roo: {},
+			}
+
+			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
+				try {
+					return await getModels(options)
+				} catch (error) {
+					console.error(
+						`Failed to fetch models in webviewMessageHandler requestRouterModelsAll for ${options.provider}:`,
+						error,
+					)
+					throw error
 				}
 			}
 
@@ -807,20 +962,19 @@ export const webviewMessageHandler = async (
 					},
 				},
 				{
-					key: "roo",
+					key: "roo" as RouterName,
 					options: {
-						provider: "roo",
+						provider: "roo" as any,
 						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
 						apiKey: CloudService.hasInstance()
 							? CloudService.instance.authService?.getSessionToken()
 							: undefined,
-					},
+					} as GetModelsOptions,
 				},
 			]
 
 			// Add IO Intelligence if API key is provided.
 			const ioIntelligenceApiKey = apiConfiguration.ioIntelligenceApiKey
-
 			if (ioIntelligenceApiKey) {
 				modelFetchPromises.push({
 					key: "io-intelligence",
@@ -833,7 +987,6 @@ export const webviewMessageHandler = async (
 
 			const litellmApiKey = apiConfiguration.litellmApiKey || message?.values?.litellmApiKey
 			const litellmBaseUrl = apiConfiguration.litellmBaseUrl || message?.values?.litellmBaseUrl
-
 			if (litellmApiKey && litellmBaseUrl) {
 				modelFetchPromises.push({
 					key: "litellm",
@@ -844,7 +997,7 @@ export const webviewMessageHandler = async (
 			const results = await Promise.allSettled(
 				modelFetchPromises.map(async ({ key, options }) => {
 					const models = await safeGetModels(options)
-					return { key, models } // The key is `ProviderName` here.
+					return { key, models }
 				}),
 			)
 
@@ -871,7 +1024,7 @@ export const webviewMessageHandler = async (
 					const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
 					console.error(`Error fetching models for ${routerName}:`, result.reason)
 
-					routerModels[routerName] = {} // Ensure it's an empty object in the main routerModels message.
+					routerModels[routerName] = {}
 
 					provider.postMessageToWebview({
 						type: "singleRouterModelFetchResponse",
@@ -884,6 +1037,7 @@ export const webviewMessageHandler = async (
 
 			provider.postMessageToWebview({ type: "routerModels", routerModels })
 			break
+		}
 		case "requestOllamaModels": {
 			// Specific handler for Ollama models only.
 			const { apiConfiguration: ollamaApiConfig } = await provider.getState()
@@ -934,15 +1088,15 @@ export const webviewMessageHandler = async (
 			// Specific handler for Roo models only - flushes cache to ensure fresh auth token is used
 			try {
 				// Flush cache first to ensure fresh models with current auth state
-				await flushModels("roo")
+				await flushModels("roo" as RouterName)
 
 				const rooModels = await getModels({
-					provider: "roo",
+					provider: "roo" as any,
 					baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
 					apiKey: CloudService.hasInstance()
 						? CloudService.instance.authService?.getSessionToken()
 						: undefined,
-				})
+				} as GetModelsOptions)
 
 				// Always send a response, even if no models are returned
 				provider.postMessageToWebview({
@@ -1016,10 +1170,11 @@ export const webviewMessageHandler = async (
 			}
 			break
 		case "checkpointDiff":
-			const result = checkoutDiffPayloadSchema.safeParse(message.payload)
+			const diffResult = checkoutDiffPayloadSchema.safeParse(message.payload)
 
-			if (result.success) {
-				await provider.getCurrentTask()?.checkpointDiff(result.data)
+			if (diffResult.success) {
+				// Cast to the correct CheckpointDiffOptions type (mode can be "from-init" | "checkpoint" | "to-current" | "full")
+				await provider.getCurrentTask()?.checkpointDiff(diffResult.data as any)
 			}
 
 			break
@@ -1308,7 +1463,8 @@ export const webviewMessageHandler = async (
 			break
 		case "checkpointTimeout":
 			const checkpointTimeout = message.value ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS
-			await updateGlobalState("checkpointTimeout", checkpointTimeout)
+			// checkpointTimeout is in GlobalSettings but TypeScript inference has issues
+			await provider.contextProxy.setValue("checkpointTimeout" as any, checkpointTimeout)
 			await provider.postStateToWebview()
 			break
 		case "browserViewportSize":
@@ -1656,14 +1812,6 @@ export const webviewMessageHandler = async (
 			// Only apply default if the value is truly undefined (not false)
 			const includeValue = message.bool !== undefined ? message.bool : true
 			await updateGlobalState("includeDiagnosticMessages", includeValue)
-			await provider.postStateToWebview()
-			break
-		case "includeCurrentTime":
-			await updateGlobalState("includeCurrentTime", message.bool ?? true)
-			await provider.postStateToWebview()
-			break
-		case "includeCurrentCost":
-			await updateGlobalState("includeCurrentCost", message.bool ?? true)
 			await provider.postStateToWebview()
 			break
 		case "maxDiagnosticMessages":

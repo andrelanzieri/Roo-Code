@@ -219,6 +219,9 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 
 		this.models = models
 		this.endpoints = endpoints
+		console.log(
+			`[${new Date().toISOString()}] [openrouter] fetchModel() models=${Object.keys(models).length}, endpoints=${Object.keys(endpoints).length}`,
+		)
 
 		return this.getModel()
 	}

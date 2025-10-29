@@ -214,16 +214,18 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		mockGetModels.mockResolvedValue(mockModels)
 
 		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
+			type: "requestRouterModelsAll",
 		})
 
 		// Verify getModels was called for each provider
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "openrouter" })
-		expect(mockGetModels).toHaveBeenCalledWith({ provider: "requesty", apiKey: "requesty-key" })
+		expect(mockGetModels).toHaveBeenCalledWith(
+			expect.objectContaining({ provider: "requesty", apiKey: "requesty-key" }),
+		)
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "glama" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "unbound", apiKey: "unbound-key" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "vercel-ai-gateway" })
-		expect(mockGetModels).toHaveBeenCalledWith({ provider: "deepinfra" })
+		expect(mockGetModels).toHaveBeenCalledWith(expect.objectContaining({ provider: "deepinfra" }))
 		expect(mockGetModels).toHaveBeenCalledWith(
 			expect.objectContaining({
 				provider: "roo",
@@ -281,7 +283,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		mockGetModels.mockResolvedValue(mockModels)
 
 		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
+			type: "requestRouterModelsAll",
 			values: {
 				litellmApiKey: "message-litellm-key",
 				litellmBaseUrl: "http://message-url:4000",
@@ -319,7 +321,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		mockGetModels.mockResolvedValue(mockModels)
 
 		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
+			type: "requestRouterModelsAll",
 			// No values provided
 		})
 
@@ -372,7 +374,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
+			type: "requestRouterModelsAll",
 		})
 
 		// Verify successful providers are included
@@ -430,7 +432,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
+			type: "requestRouterModelsAll",
 		})
 
 		// Verify error handling for different error types
@@ -496,7 +498,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		mockGetModels.mockResolvedValue(mockModels)
 
 		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
+			type: "requestRouterModelsAll",
 			values: {
 				litellmApiKey: "message-key",
 				litellmBaseUrl: "http://message-url",

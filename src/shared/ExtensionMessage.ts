@@ -294,8 +294,6 @@ export type ExtensionState = Pick<
 	| "openRouterImageGenerationSelectedModel"
 	| "includeTaskHistoryInEnhance"
 	| "reasoningBlockCollapsed"
-	| "includeCurrentTime"
-	| "includeCurrentCost"
 > & {
 	version: string
 	clineMessages: ClineMessage[]
@@ -323,6 +321,9 @@ export type ExtensionState = Pick<
 
 	mcpEnabled: boolean
 	enableMcpServerCreation: boolean
+
+	includeCurrentTime?: boolean
+	includeCurrentCost?: boolean
 
 	mode: Mode
 	customModes: ModeConfig[]

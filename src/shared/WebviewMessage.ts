@@ -66,6 +66,7 @@ export interface WebviewMessage {
 		| "resetState"
 		| "flushRouterModels"
 		| "requestRouterModels"
+		| "requestRouterModelsAll"
 		| "requestOpenAiModels"
 		| "requestOllamaModels"
 		| "requestLmStudioModels"
