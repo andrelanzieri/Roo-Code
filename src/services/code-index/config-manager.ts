@@ -16,7 +16,7 @@ export class CodeIndexConfigManager {
 	private modelDimension?: number
 	private openAiOptions?: ApiHandlerOptions
 	private ollamaOptions?: ApiHandlerOptions
-	private openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
+	private openAiCompatibleOptions?: { baseUrl: string; apiKey: string; headers?: Record<string, string> }
 	private geminiOptions?: { apiKey: string }
 	private mistralOptions?: { apiKey: string }
 	private vercelAiGatewayOptions?: { apiKey: string }
@@ -68,6 +68,7 @@ export class CodeIndexConfigManager {
 		// Fix: Read OpenAI Compatible settings from the correct location within codebaseIndexConfig
 		const openAiCompatibleBaseUrl = codebaseIndexConfig.codebaseIndexOpenAiCompatibleBaseUrl ?? ""
 		const openAiCompatibleApiKey = this.contextProxy?.getSecret("codebaseIndexOpenAiCompatibleApiKey") ?? ""
+		const openAiCompatibleHeaders = codebaseIndexConfig.codebaseIndexOpenAiCompatibleHeaders ?? undefined
 		const geminiApiKey = this.contextProxy?.getSecret("codebaseIndexGeminiApiKey") ?? ""
 		const mistralApiKey = this.contextProxy?.getSecret("codebaseIndexMistralApiKey") ?? ""
 		const vercelAiGatewayApiKey = this.contextProxy?.getSecret("codebaseIndexVercelAiGatewayApiKey") ?? ""
@@ -123,6 +124,7 @@ export class CodeIndexConfigManager {
 				? {
 						baseUrl: openAiCompatibleBaseUrl,
 						apiKey: openAiCompatibleApiKey,
+						headers: openAiCompatibleHeaders,
 					}
 				: undefined
 
@@ -143,7 +145,7 @@ export class CodeIndexConfigManager {
 			modelDimension?: number
 			openAiOptions?: ApiHandlerOptions
 			ollamaOptions?: ApiHandlerOptions
-			openAiCompatibleOptions?: { baseUrl: string; apiKey: string }
+			openAiCompatibleOptions?: { baseUrl: string; apiKey: string; headers?: Record<string, string> }
 			geminiOptions?: { apiKey: string }
 			mistralOptions?: { apiKey: string }
 			vercelAiGatewayOptions?: { apiKey: string }

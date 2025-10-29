@@ -37,6 +37,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	private readonly defaultModelId: string
 	private readonly baseUrl: string
 	private readonly apiKey: string
+	private readonly customHeaders?: Record<string, string>
 	private readonly isFullUrl: boolean
 	private readonly maxItemTokens: number
 
@@ -56,8 +57,15 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	 * @param apiKey The API key for authentication
 	 * @param modelId Optional model identifier (defaults to "text-embedding-3-small")
 	 * @param maxItemTokens Optional maximum tokens per item (defaults to MAX_ITEM_TOKENS)
+	 * @param customHeaders Optional custom headers to include in requests
 	 */
-	constructor(baseUrl: string, apiKey: string, modelId?: string, maxItemTokens?: number) {
+	constructor(
+		baseUrl: string,
+		apiKey: string,
+		modelId?: string,
+		maxItemTokens?: number,
+		customHeaders?: Record<string, string>,
+	) {
 		if (!baseUrl) {
 			throw new Error(t("embeddings:validation.baseUrlRequired"))
 		}
@@ -67,13 +75,21 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 
 		this.baseUrl = baseUrl
 		this.apiKey = apiKey
+		this.customHeaders = customHeaders
 
 		// Wrap OpenAI client creation to handle invalid API key characters
 		try {
-			this.embeddingsClient = new OpenAI({
+			// If custom headers are provided, we need to use defaultHeaders in OpenAI config
+			const openAIConfig: any = {
 				baseURL: baseUrl,
 				apiKey: apiKey,
-			})
+			}
+
+			if (customHeaders) {
+				openAIConfig.defaultHeaders = customHeaders
+			}
+
+			this.embeddingsClient = new OpenAI(openAIConfig)
 		} catch (error) {
 			// Use the error handler to transform ByteString conversion errors
 			throw handleOpenAIError(error, "OpenAI Compatible")
@@ -204,15 +220,22 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 		batchTexts: string[],
 		model: string,
 	): Promise<OpenAIEmbeddingResponse> {
+		const headers: Record<string, string> = {
+			"Content-Type": "application/json",
+			// Azure OpenAI uses 'api-key' header, while OpenAI uses 'Authorization'
+			// We'll try 'api-key' first for Azure compatibility
+			"api-key": this.apiKey,
+			Authorization: `Bearer ${this.apiKey}`,
+		}
+
+		// Add custom headers if provided
+		if (this.customHeaders) {
+			Object.assign(headers, this.customHeaders)
+		}
+
 		const response = await fetch(url, {
 			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				// Azure OpenAI uses 'api-key' header, while OpenAI uses 'Authorization'
-				// We'll try 'api-key' first for Azure compatibility
-				"api-key": this.apiKey,
-				Authorization: `Bearer ${this.apiKey}`,
-			},
+			headers,
 			body: JSON.stringify({
 				input: batchTexts,
 				model: model,

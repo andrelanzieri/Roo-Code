@@ -112,6 +112,31 @@ describe("OpenAICompatibleEmbedder", () => {
 			expect(embedder).toBeDefined()
 		})
 
+		it("should create embedder with custom headers", () => {
+			const customHeaders = {
+				"X-Custom-Header": "custom-value",
+				"X-Another-Header": "another-value",
+			}
+			embedder = new OpenAICompatibleEmbedder(testBaseUrl, testApiKey, testModelId, undefined, customHeaders)
+
+			expect(MockedOpenAI).toHaveBeenCalledWith({
+				baseURL: testBaseUrl,
+				apiKey: testApiKey,
+				defaultHeaders: customHeaders,
+			})
+			expect(embedder).toBeDefined()
+		})
+
+		it("should create embedder without custom headers when not provided", () => {
+			embedder = new OpenAICompatibleEmbedder(testBaseUrl, testApiKey, testModelId, undefined, undefined)
+
+			expect(MockedOpenAI).toHaveBeenCalledWith({
+				baseURL: testBaseUrl,
+				apiKey: testApiKey,
+			})
+			expect(embedder).toBeDefined()
+		})
+
 		it("should throw error when baseUrl is missing", () => {
 			expect(() => new OpenAICompatibleEmbedder("", testApiKey, testModelId)).toThrow(
 				"embeddings:validation.baseUrlRequired",
@@ -811,6 +836,81 @@ describe("OpenAICompatibleEmbedder", () => {
 					expect(mockEmbeddingsCreate).toHaveBeenCalled()
 					expect(global.fetch).not.toHaveBeenCalled()
 					expect(baseResult.embeddings[0]).toEqual([0.4, 0.5, 0.6])
+				})
+
+				it("should include custom headers in direct fetch requests", async () => {
+					const testTexts = ["Test text"]
+					const customHeaders = {
+						"X-Custom-Header": "custom-value",
+						"X-API-Version": "v2",
+					}
+					const base64String = createBase64Embedding([0.1, 0.2, 0.3])
+
+					// Test Azure URL with custom headers (direct fetch)
+					const azureEmbedder = new OpenAICompatibleEmbedder(
+						azureUrl,
+						testApiKey,
+						testModelId,
+						undefined,
+						customHeaders,
+					)
+					const mockFetchResponse = createMockResponse({
+						data: [{ embedding: base64String }],
+						usage: { prompt_tokens: 10, total_tokens: 15 },
+					})
+					;(global.fetch as MockedFunction<typeof fetch>).mockResolvedValue(mockFetchResponse as any)
+
+					const azureResult = await azureEmbedder.createEmbeddings(testTexts)
+					expect(global.fetch).toHaveBeenCalledWith(
+						azureUrl,
+						expect.objectContaining({
+							method: "POST",
+							headers: expect.objectContaining({
+								"Content-Type": "application/json",
+								"api-key": testApiKey,
+								Authorization: `Bearer ${testApiKey}`,
+								"X-Custom-Header": "custom-value",
+								"X-API-Version": "v2",
+							}),
+						}),
+					)
+					expect(mockEmbeddingsCreate).not.toHaveBeenCalled()
+					expectEmbeddingValues(azureResult.embeddings[0], [0.1, 0.2, 0.3])
+				})
+
+				it("should handle custom headers that override default headers", async () => {
+					const testTexts = ["Test text"]
+					const customHeaders = {
+						"api-key": "override-key", // Override the default api-key
+						"X-Custom-Header": "custom-value",
+					}
+					const base64String = createBase64Embedding([0.1, 0.2, 0.3])
+
+					const azureEmbedder = new OpenAICompatibleEmbedder(
+						azureUrl,
+						testApiKey,
+						testModelId,
+						undefined,
+						customHeaders,
+					)
+					const mockFetchResponse = createMockResponse({
+						data: [{ embedding: base64String }],
+						usage: { prompt_tokens: 10, total_tokens: 15 },
+					})
+					;(global.fetch as MockedFunction<typeof fetch>).mockResolvedValue(mockFetchResponse as any)
+
+					const azureResult = await azureEmbedder.createEmbeddings(testTexts)
+					expect(global.fetch).toHaveBeenCalledWith(
+						azureUrl,
+						expect.objectContaining({
+							method: "POST",
+							headers: expect.objectContaining({
+								"api-key": "override-key", // Custom header overrides default
+								"X-Custom-Header": "custom-value",
+							}),
+						}),
+					)
+					expectEmbeddingValues(azureResult.embeddings[0], [0.1, 0.2, 0.3])
 				})
 
 				it.each([
