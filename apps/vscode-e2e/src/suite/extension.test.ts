@@ -17,8 +17,6 @@ suite("Roo Code Extension", function () {
 			"plusButtonClicked",
 			"mcpButtonClicked",
 			"promptsButtonClicked",
-			"popoutButtonClicked",
-			"openInNewTab",
 			"settingsButtonClicked",
 			"historyButtonClicked",
 			"showHumanRelayDialog",

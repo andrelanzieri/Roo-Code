@@ -37,11 +37,6 @@ describe("generatePackageJson", () => {
 							title: "%command.newTask.title%",
 							icon: "$(edit)",
 						},
-						{
-							command: "roo-cline.openInNewTab",
-							title: "%command.openInNewTab.title%",
-							category: "%configuration.title%",
-						},
 					],
 					menus: {
 						"editor/context": [
@@ -54,23 +49,6 @@ describe("generatePackageJson", () => {
 							{
 								command: "roo-cline.addToContext",
 								group: "1_actions@1",
-							},
-						],
-						"editor/title": [
-							{
-								command: "roo-cline.plusButtonClicked",
-								group: "navigation@1",
-								when: "activeWebviewPanelId == roo-cline.TabPanelProvider",
-							},
-							{
-								command: "roo-cline.settingsButtonClicked",
-								group: "navigation@6",
-								when: "activeWebviewPanelId == roo-cline.TabPanelProvider",
-							},
-							{
-								command: "roo-cline.accountButtonClicked",
-								group: "navigation@6",
-								when: "activeWebviewPanelId == roo-cline.TabPanelProvider",
 							},
 						],
 					},
@@ -150,11 +128,6 @@ describe("generatePackageJson", () => {
 						title: "%command.newTask.title%",
 						icon: "$(edit)",
 					},
-					{
-						command: "roo-code-nightly.openInNewTab",
-						title: "%command.openInNewTab.title%",
-						category: "%configuration.title%",
-					},
 				],
 				menus: {
 					"editor/context": [
@@ -167,23 +140,6 @@ describe("generatePackageJson", () => {
 						{
 							command: "roo-code-nightly.addToContext",
 							group: "1_actions@1",
-						},
-					],
-					"editor/title": [
-						{
-							command: "roo-code-nightly.plusButtonClicked",
-							group: "navigation@1",
-							when: "activeWebviewPanelId == roo-code-nightly.TabPanelProvider",
-						},
-						{
-							command: "roo-code-nightly.settingsButtonClicked",
-							group: "navigation@6",
-							when: "activeWebviewPanelId == roo-code-nightly.TabPanelProvider",
-						},
-						{
-							command: "roo-code-nightly.accountButtonClicked",
-							group: "navigation@6",
-							when: "activeWebviewPanelId == roo-code-nightly.TabPanelProvider",
 						},
 					],
 				},

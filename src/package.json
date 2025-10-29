@@ -96,11 +96,6 @@
 				"icon": "$(extensions)"
 			},
 			{
-				"command": "roo-cline.popoutButtonClicked",
-				"title": "%command.openInEditor.title%",
-				"icon": "$(link-external)"
-			},
-			{
 				"command": "roo-cline.cloudButtonClicked",
 				"title": "%command.cloud.title%",
 				"icon": "$(cloud)"
@@ -109,11 +104,6 @@
 				"command": "roo-cline.settingsButtonClicked",
 				"title": "%command.settings.title%",
 				"icon": "$(settings-gear)"
-			},
-			{
-				"command": "roo-cline.openInNewTab",
-				"title": "%command.openInNewTab.title%",
-				"category": "%configuration.title%"
 			},
 			{
 				"command": "roo-cline.explainCode",
@@ -257,53 +247,6 @@
 					"command": "roo-cline.mcpButtonClicked",
 					"group": "overflow@3",
 					"when": "view == roo-cline.SidebarProvider"
-				},
-				{
-					"command": "roo-cline.popoutButtonClicked",
-					"group": "overflow@4",
-					"when": "view == roo-cline.SidebarProvider"
-				}
-			],
-			"editor/title": [
-				{
-					"command": "roo-cline.plusButtonClicked",
-					"group": "navigation@1",
-					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
-				},
-				{
-					"command": "roo-cline.marketplaceButtonClicked",
-					"group": "navigation@2",
-					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
-				},
-				{
-					"command": "roo-cline.settingsButtonClicked",
-					"group": "navigation@3",
-					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
-				},
-				{
-					"command": "roo-cline.cloudButtonClicked",
-					"group": "navigation@4",
-					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
-				},
-				{
-					"command": "roo-cline.historyButtonClicked",
-					"group": "overflow@1",
-					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
-				},
-				{
-					"command": "roo-cline.promptsButtonClicked",
-					"group": "overflow@2",
-					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
-				},
-				{
-					"command": "roo-cline.mcpButtonClicked",
-					"group": "overflow@3",
-					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
-				},
-				{
-					"command": "roo-cline.popoutButtonClicked",
-					"group": "overflow@4",
-					"when": "activeWebviewPanelId == roo-cline.TabPanelProvider"
 				}
 			]
 		},

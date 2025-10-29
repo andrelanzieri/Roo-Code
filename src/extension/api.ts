@@ -23,7 +23,6 @@ import { IpcServer } from "@roo-code/ipc"
 
 import { Package } from "../shared/package"
 import { ClineProvider } from "../core/webview/ClineProvider"
-import { openClineInNewTab } from "../activate/registerCommands"
 
 export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	private readonly outputChannel: vscode.OutputChannel
@@ -118,17 +117,9 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	}) {
 		let provider: ClineProvider
 
-		if (newTab) {
-			await vscode.commands.executeCommand("workbench.action.files.revert")
-			await vscode.commands.executeCommand("workbench.action.closeAllEditors")
-
-			provider = await openClineInNewTab({ context: this.context, outputChannel: this.outputChannel })
-			this.registerListeners(provider)
-		} else {
-			await vscode.commands.executeCommand(`${Package.name}.SidebarProvider.focus`)
-
-			provider = this.sidebarProvider
-		}
+		// Always use the sidebar provider; "open in editor" tab mode has been removed
+		await vscode.commands.executeCommand(`${Package.name}.SidebarProvider.focus`)
+		provider = this.sidebarProvider
 
 		await provider.removeClineFromStack()
 		await provider.postStateToWebview()

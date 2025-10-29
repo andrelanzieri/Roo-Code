@@ -34,11 +34,8 @@ export const commandIds = [
 	"mcpButtonClicked",
 	"historyButtonClicked",
 	"marketplaceButtonClicked",
-	"popoutButtonClicked",
 	"cloudButtonClicked",
 	"settingsButtonClicked",
-
-	"openInNewTab",
 
 	"showHumanRelayDialog",
 	"registerHumanRelayCallback",
