@@ -5,8 +5,16 @@ import { ExtensionMessage } from "@roo/ExtensionMessage"
 
 import { vscode } from "@src/utils/vscode"
 
-const getRouterModels = async () =>
+type UseRouterModelsOptions = {
+	providers?: string[] // subset filter (e.g. ["roo"])
+	enabled?: boolean // gate fetching entirely
+}
+
+let __routerModelsRequestCount = 0
+
+const getRouterModels = async (providers?: string[]) =>
 	new Promise<RouterModels>((resolve, reject) => {
+		const requestId = ++__routerModelsRequestCount
 		const cleanup = () => {
 			window.removeEventListener("message", handler)
 		}
@@ -24,6 +32,10 @@ const getRouterModels = async () =>
 				cleanup()
 
 				if (message.routerModels) {
+					const keys = Object.keys(message.routerModels || {})
+					console.debug(
+						`[useRouterModels] response #${requestId} providers=${JSON.stringify(providers || "all")} keys=${keys.join(",")}`,
+					)
 					resolve(message.routerModels)
 				} else {
 					reject(new Error("No router models in response"))
@@ -32,7 +44,21 @@ const getRouterModels = async () =>
 		}
 
 		window.addEventListener("message", handler)
-		vscode.postMessage({ type: "requestRouterModels" })
+		console.debug(
+			`[useRouterModels] request #${requestId} providers=${JSON.stringify(providers && providers.length ? providers : "all")}`,
+		)
+		if (providers && providers.length > 0) {
+			vscode.postMessage({ type: "requestRouterModels", values: { providers } })
+		} else {
+			vscode.postMessage({ type: "requestRouterModels" })
+		}
 	})
 
-export const useRouterModels = () => useQuery({ queryKey: ["routerModels"], queryFn: getRouterModels })
+export const useRouterModels = (opts: UseRouterModelsOptions = {}) => {
+	const providers = opts.providers && opts.providers.length ? [...opts.providers] : undefined
+	return useQuery({
+		queryKey: ["routerModels", providers?.slice().sort().join(",") || "all"],
+		queryFn: () => getRouterModels(providers),
+		enabled: opts.enabled !== false,
+	})
+}
