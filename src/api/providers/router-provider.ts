@@ -1,3 +1,4 @@
+import * as vscode from "vscode"
 import OpenAI from "openai"
 
 import type { ModelInfo } from "@roo-code/types"
@@ -70,5 +71,13 @@ export abstract class RouterProvider extends BaseProvider {
 
 	protected supportsTemperature(modelId: string): boolean {
 		return !modelId.startsWith("openai/o3-mini")
+	}
+
+	protected override hasNativeToolCapability(): boolean {
+		// TODO: Read this from router model metadata instead of hardcoding
+		// For now, only enable for well-tested providers
+		const modelId = this.modelId ?? this.defaultModelId
+
+		return modelId.startsWith("anthropic/") || modelId.startsWith("openai/")
 	}
 }
