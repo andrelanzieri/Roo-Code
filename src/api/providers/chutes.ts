@@ -3,10 +3,12 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import type { ApiHandlerOptions } from "../../shared/api"
+import { getModelMaxOutputTokens } from "../../shared/api"
 import { XmlMatcher } from "../../utils/xml-matcher"
 import { convertToR1Format } from "../transform/r1-format"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
+import { getModelParams } from "../transform/model-params"
 
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
 
@@ -27,12 +29,18 @@ export class ChutesHandler extends BaseOpenAiCompatibleProvider<ChutesModelId> {
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
 	): OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming {
-		const {
-			id: model,
-			info: { maxTokens: max_tokens },
-		} = this.getModel()
+		const { id: model, info, reasoning } = this.getModel()
 
-		const temperature = this.options.modelTemperature ?? this.getModel().info.temperature
+		const temperature = this.options.modelTemperature ?? info.temperature
+
+		// Use centralized cap logic for max_tokens
+		const max_tokens =
+			getModelMaxOutputTokens({
+				modelId: model,
+				model: info,
+				settings: this.options,
+				format: "openai",
+			}) ?? undefined
 
 		return {
 			model,
@@ -41,6 +49,7 @@ export class ChutesHandler extends BaseOpenAiCompatibleProvider<ChutesModelId> {
 			messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
 			stream: true,
 			stream_options: { include_usage: true },
+			...(reasoning && reasoning),
 		}
 	}
 
@@ -85,19 +94,46 @@ export class ChutesHandler extends BaseOpenAiCompatibleProvider<ChutesModelId> {
 				yield processedChunk
 			}
 		} else {
-			yield* super.createMessage(systemPrompt, messages)
+			// For non-DeepSeek models, we need to handle reasoning effort
+			const stream = await this.client.chat.completions.create(this.getCompletionParams(systemPrompt, messages))
+
+			for await (const chunk of stream) {
+				const delta = chunk.choices[0]?.delta
+
+				if (delta?.content) {
+					yield {
+						type: "text",
+						text: delta.content,
+					}
+				}
+
+				if (chunk.usage) {
+					yield {
+						type: "usage",
+						inputTokens: chunk.usage.prompt_tokens || 0,
+						outputTokens: chunk.usage.completion_tokens || 0,
+					}
+				}
+			}
 		}
 	}
 
 	override getModel() {
 		const model = super.getModel()
 		const isDeepSeekR1 = model.id.includes("DeepSeek-R1")
+		const params = getModelParams({
+			format: "openai",
+			modelId: model.id,
+			model: model.info,
+			settings: this.options,
+		})
 		return {
 			...model,
 			info: {
 				...model.info,
 				temperature: isDeepSeekR1 ? DEEP_SEEK_DEFAULT_TEMPERATURE : this.defaultTemperature,
 			},
+			...params,
 		}
 	}
 }

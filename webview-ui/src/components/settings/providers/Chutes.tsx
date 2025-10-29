@@ -5,8 +5,10 @@ import type { ProviderSettings } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
+import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 
 import { inputEventTransform } from "../transforms"
+import { ThinkingBudget } from "../ThinkingBudget"
 
 type ChutesProps = {
 	apiConfiguration: ProviderSettings
@@ -15,6 +17,7 @@ type ChutesProps = {
 
 export const Chutes = ({ apiConfiguration, setApiConfigurationField }: ChutesProps) => {
 	const { t } = useAppTranslation()
+	const { info: modelInfo } = useSelectedModel(apiConfiguration)
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -45,6 +48,11 @@ export const Chutes = ({ apiConfiguration, setApiConfigurationField }: ChutesPro
 					{t("settings:providers.getChutesApiKey")}
 				</VSCodeButtonLink>
 			)}
+			<ThinkingBudget
+				apiConfiguration={apiConfiguration}
+				setApiConfigurationField={setApiConfigurationField}
+				modelInfo={modelInfo}
+			/>
 		</>
 	)
 }

@@ -503,6 +503,7 @@ describe("ChutesHandler", () => {
 				temperature: 0.6,
 				stream: true,
 				stream_options: { include_usage: true },
+				reasoning_effort: "medium", // DeepSeek R1 now supports reasoning effort with default "medium"
 			}),
 		)
 	})
@@ -540,7 +541,6 @@ describe("ChutesHandler", () => {
 				stream: true,
 				stream_options: { include_usage: true },
 			}),
-			undefined,
 		)
 	})
 
@@ -562,5 +562,156 @@ describe("ChutesHandler", () => {
 		})
 		const model = handlerWithModel.getModel()
 		expect(model.info.temperature).toBe(0.5)
+	})
+
+	describe("reasoning effort support", () => {
+		it("should pass reasoning effort for models that support it", async () => {
+			const modelId: ChutesModelId = "deepseek-ai/DeepSeek-R1"
+
+			// Clear previous mocks and set up new implementation
+			mockCreate.mockClear()
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { content: "test" } }], usage: null }
+				},
+			}))
+
+			const handlerWithModel = new ChutesHandler({
+				apiModelId: modelId,
+				chutesApiKey: "test-chutes-api-key",
+				enableReasoningEffort: true,
+				reasoningEffort: "high",
+			})
+
+			const systemPrompt = "Test system prompt"
+			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
+
+			const generator = handlerWithModel.createMessage(systemPrompt, messages)
+			await generator.next()
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					reasoning_effort: "high",
+				}),
+			)
+		})
+
+		it("should not pass reasoning effort for models that don't support it", async () => {
+			const modelId: ChutesModelId = "unsloth/Llama-3.3-70B-Instruct"
+
+			// Clear previous mocks and set up new implementation
+			mockCreate.mockClear()
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { content: "test" } }], usage: null }
+				},
+			}))
+
+			const handlerWithModel = new ChutesHandler({
+				apiModelId: modelId,
+				chutesApiKey: "test-chutes-api-key",
+				enableReasoningEffort: true,
+				reasoningEffort: "high",
+			})
+
+			const systemPrompt = "Test system prompt"
+			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
+
+			const generator = handlerWithModel.createMessage(systemPrompt, messages)
+			await generator.next()
+
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs).not.toHaveProperty("reasoning_effort")
+		})
+
+		it("should use model default reasoning effort when not explicitly set", async () => {
+			const modelId: ChutesModelId = "meituan-longcat/LongCat-Flash-Thinking-FP8"
+
+			// Clear previous mocks and set up new implementation
+			mockCreate.mockClear()
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { content: "test" } }], usage: null }
+				},
+			}))
+
+			const handlerWithModel = new ChutesHandler({
+				apiModelId: modelId,
+				chutesApiKey: "test-chutes-api-key",
+				// Not setting enableReasoningEffort or reasoningEffort to test model defaults
+			})
+
+			const systemPrompt = "Test system prompt"
+			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
+
+			const generator = handlerWithModel.createMessage(systemPrompt, messages)
+			await generator.next()
+
+			// Since we don't set enableReasoningEffort to true, and just rely on model defaults,
+			// the reasoning_effort will be included because the model has a default reasoningEffort
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					reasoning_effort: "medium", // Should use the model's default
+				}),
+			)
+		})
+
+		it("should not pass reasoning effort when disabled", async () => {
+			const modelId: ChutesModelId = "deepseek-ai/DeepSeek-R1"
+
+			// Clear previous mocks and set up new implementation
+			mockCreate.mockClear()
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { content: "test" } }], usage: null }
+				},
+			}))
+
+			const handlerWithModel = new ChutesHandler({
+				apiModelId: modelId,
+				chutesApiKey: "test-chutes-api-key",
+				enableReasoningEffort: false,
+				reasoningEffort: "high",
+			})
+
+			const systemPrompt = "Test system prompt"
+			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
+
+			const generator = handlerWithModel.createMessage(systemPrompt, messages)
+			await generator.next()
+
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs).not.toHaveProperty("reasoning_effort")
+		})
+
+		it("should pass reasoning effort for thinking models", async () => {
+			const modelId: ChutesModelId = "Qwen/Qwen3-235B-A22B-Thinking-2507"
+
+			// Clear previous mocks and set up new implementation
+			mockCreate.mockClear()
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { content: "test" } }], usage: null }
+				},
+			}))
+
+			const handlerWithModel = new ChutesHandler({
+				apiModelId: modelId,
+				chutesApiKey: "test-chutes-api-key",
+				reasoningEffort: "low", // Just set the reasoning effort, no need for enableReasoningEffort
+			})
+
+			const systemPrompt = "Test system prompt"
+			const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
+
+			const generator = handlerWithModel.createMessage(systemPrompt, messages)
+			await generator.next()
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					reasoning_effort: "low",
+				}),
+			)
+		})
 	})
 })
