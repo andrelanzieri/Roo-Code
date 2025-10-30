@@ -353,7 +353,7 @@ const fakeAiSchema = baseProviderSettingsSchema.extend({
 
 const xaiSchema = apiModelIdProviderModelSchema.extend({
 	xaiApiKey: z.string().optional(),
-	xaiModelContextWindow: z.number().optional(),
+	xaiModelContextWindow: z.number().int().min(1).optional(),
 })
 
 const groqSchema = apiModelIdProviderModelSchema.extend({
