@@ -17,7 +17,7 @@ import { getToolSpecs } from "./tool-specs"
 
 import { PromptVariables, loadSystemPromptFile } from "./sections/custom-system-prompt"
 
-import { getToolDescriptionsForMode } from "./tools"
+import { getToolDescriptionsForMode, filterToolsByAvailability } from "./tools"
 import {
 	getRulesSection,
 	getSystemInfoSection,
@@ -252,8 +252,12 @@ ${customInstructions}`,
 		// Remove duplicates
 		const uniqueToolNames = [...new Set(toolNames)]
 
+		// Apply centralized filtering to ensure consistency with XML tool mode
+		const codeIndexManager = CodeIndexManager.getInstance(context, cwd)
+		const filteredTools = filterToolsByAvailability(uniqueToolNames, codeIndexManager, settings, experiments)
+
 		// Get tool specifications
-		const tools = getToolSpecs(uniqueToolNames)
+		const tools = getToolSpecs(filteredTools)
 
 		return {
 			systemPrompt: basePrompt,
