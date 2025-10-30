@@ -3,8 +3,6 @@ import fs from "fs/promises"
 
 import NodeCache from "node-cache"
 
-import type { ProviderName } from "@roo-code/types"
-
 import { safeWriteJson } from "../../../utils/safeWriteJson"
 
 import { ContextProxy } from "../../../core/config/ContextProxy"
