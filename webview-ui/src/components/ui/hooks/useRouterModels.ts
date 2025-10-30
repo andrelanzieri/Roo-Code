@@ -28,6 +28,18 @@ const getRouterModels = async (providers?: string[]) =>
 			const message: ExtensionMessage = event.data
 
 			if (message.type === "routerModels") {
+				const msgProviders = message?.values?.providers as string[] | undefined
+				const requestedKey = providers && providers.length > 0 ? providers.slice().sort().join(",") : "all"
+				const responseKey =
+					Array.isArray(msgProviders) && msgProviders.length > 0
+						? msgProviders.slice().sort().join(",")
+						: "all"
+
+				if (requestedKey !== responseKey) {
+					// Not our response; ignore and wait for the matching one
+					return
+				}
+
 				clearTimeout(timeout)
 				cleanup()
 
