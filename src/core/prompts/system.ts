@@ -256,8 +256,8 @@ ${customInstructions}`,
 		const codeIndexManager = CodeIndexManager.getInstance(context, cwd)
 		const filteredTools = filterToolsByAvailability(uniqueToolNames, codeIndexManager, settings, experiments)
 
-		// Get tool specifications
-		const tools = getToolSpecs(filteredTools)
+		// Get tool specifications with settings for dynamic specs
+		const tools = getToolSpecs(filteredTools, settings)
 
 		return {
 			systemPrompt: basePrompt,

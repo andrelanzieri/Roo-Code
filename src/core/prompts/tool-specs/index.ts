@@ -1,8 +1,9 @@
 import type { ToolSpec } from "../../../api/transform/tool-converters"
 import type { ToolName } from "@roo-code/types"
+import type { SystemPromptSettings } from "../types"
 
-// Import all tool specifications
-import { readFileToolSpec } from "./read-file"
+// Import tool specifications (static for now, but wrapped in factories)
+import { getReadFileToolSpec } from "./read-file"
 import { writeToFileToolSpec } from "./write-to-file"
 import { applyDiffToolSpec } from "./apply-diff"
 import { executeCommandToolSpec } from "./execute-command"
@@ -25,11 +26,44 @@ import { generateImageToolSpec } from "./generate-image"
 import { fetchInstructionsToolSpec } from "./fetch-instructions"
 
 /**
- * Registry of all tool specifications
- * Maps tool names to their specifications
+ * Type for tool spec factories that can generate specs based on settings
+ */
+type ToolSpecFactory = (settings?: SystemPromptSettings) => ToolSpec
+
+/**
+ * Registry of all tool specification factories
+ * All tool specs are now generated dynamically to support future configuration needs
+ */
+const TOOL_SPEC_FACTORIES: Record<ToolName, ToolSpecFactory> = {
+	read_file: getReadFileToolSpec,
+	write_to_file: () => writeToFileToolSpec,
+	apply_diff: () => applyDiffToolSpec,
+	execute_command: () => executeCommandToolSpec,
+	list_files: () => listFilesToolSpec,
+	search_files: () => searchFilesToolSpec,
+	list_code_definition_names: () => listCodeDefinitionNamesToolSpec,
+	codebase_search: () => codebaseSearchToolSpec,
+	insert_content: () => insertContentToolSpec,
+	search_and_replace: () => searchAndReplaceToolSpec,
+	browser_action: () => browserActionToolSpec,
+	use_mcp_tool: () => useMcpToolToolSpec,
+	access_mcp_resource: () => accessMcpResourceToolSpec,
+	ask_followup_question: () => askFollowupQuestionToolSpec,
+	attempt_completion: () => attemptCompletionToolSpec,
+	switch_mode: () => switchModeToolSpec,
+	new_task: () => newTaskToolSpec,
+	update_todo_list: () => updateTodoListToolSpec,
+	run_slash_command: () => runSlashCommandToolSpec,
+	generate_image: () => generateImageToolSpec,
+	fetch_instructions: () => fetchInstructionsToolSpec,
+}
+
+/**
+ * Static registry for backward compatibility
+ * Maps tool names to their default specifications (generated without settings)
  */
 export const TOOL_SPECS: Record<ToolName, ToolSpec> = {
-	read_file: readFileToolSpec,
+	read_file: getReadFileToolSpec(),
 	write_to_file: writeToFileToolSpec,
 	apply_diff: applyDiffToolSpec,
 	execute_command: executeCommandToolSpec,
@@ -55,14 +89,20 @@ export const TOOL_SPECS: Record<ToolName, ToolSpec> = {
 /**
  * Get tool specifications for a specific set of tool names
  * @param toolNames - Array of tool names to get specs for
+ * @param settings - Optional settings to customize tool specs
  * @returns Array of tool specifications
  */
-export function getToolSpecs(toolNames: ToolName[]): ToolSpec[] {
-	return toolNames.map((name) => TOOL_SPECS[name]).filter((spec): spec is ToolSpec => spec !== undefined)
+export function getToolSpecs(toolNames: ToolName[], settings?: SystemPromptSettings): ToolSpec[] {
+	return toolNames
+		.map((name) => {
+			const factory = TOOL_SPEC_FACTORIES[name]
+			return factory ? factory(settings) : undefined
+		})
+		.filter((spec): spec is ToolSpec => spec !== undefined)
 }
 
 /**
- * Get all available tool specifications
+ * Get all available tool specifications with default settings
  * @returns Array of all tool specifications
  */
 export function getAllToolSpecs(): ToolSpec[] {
