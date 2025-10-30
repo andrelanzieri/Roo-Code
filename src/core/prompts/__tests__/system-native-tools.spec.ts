@@ -63,7 +63,6 @@ describe("SYSTEM_PROMPT with native tools", () => {
 			false,
 			{ ...defaultSettings, todoListEnabled: false },
 			undefined,
-			undefined,
 			true, // useNativeTools
 		)
 
@@ -99,7 +98,6 @@ describe("SYSTEM_PROMPT with native tools", () => {
 			false,
 			{ ...defaultSettings, todoListEnabled: true },
 			undefined,
-			undefined,
 			true, // useNativeTools
 		)
 
@@ -133,7 +131,6 @@ describe("SYSTEM_PROMPT with native tools", () => {
 			undefined,
 			undefined,
 			false,
-			undefined,
 			undefined,
 			undefined,
 			true, // useNativeTools
@@ -171,7 +168,6 @@ describe("SYSTEM_PROMPT with native tools", () => {
 			false,
 			undefined,
 			undefined,
-			undefined,
 			true, // useNativeTools
 		)
 
@@ -205,7 +201,6 @@ describe("SYSTEM_PROMPT with native tools", () => {
 			undefined,
 			undefined,
 			false,
-			undefined,
 			undefined,
 			undefined,
 			true, // useNativeTools

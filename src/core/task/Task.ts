@@ -2598,7 +2598,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					.getConfiguration("roo-cline")
 					.get<boolean>("newTaskRequireTodos", false),
 			},
-			undefined, // todoList
 			this.api.getModel().id,
 			useNativeTools,
 		)

@@ -62,8 +62,8 @@ async function generatePrompt(
 	rooIgnoreInstructions?: string,
 	partialReadsEnabled?: boolean,
 	settings?: SystemPromptSettings,
-	todoList?: TodoItem[],
 	modelId?: string,
+	useNativeTools?: boolean,
 ): Promise<string> {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
@@ -94,7 +94,7 @@ async function generatePrompt(
 
 ${markdownFormattingSection()}
 
-${getSharedToolUseSection()}
+${getSharedToolUseSection(useNativeTools)}
 
 ${getToolDescriptionsForMode(
 	mode,
@@ -112,7 +112,7 @@ ${getToolDescriptionsForMode(
 	modelId,
 )}
 
-${getToolUseGuidelinesSection(codeIndexManager)}
+${getToolUseGuidelinesSection(codeIndexManager, useNativeTools)}
 
 ${mcpServersSection}
 
@@ -153,7 +153,6 @@ export const SYSTEM_PROMPT = async (
 	rooIgnoreInstructions?: string,
 	partialReadsEnabled?: boolean,
 	settings?: SystemPromptSettings,
-	todoList?: TodoItem[],
 	modelId?: string,
 	useNativeTools?: boolean,
 ): Promise<{ systemPrompt: string; tools?: ToolSpec[] }> => {
@@ -228,8 +227,8 @@ ${customInstructions}`,
 		rooIgnoreInstructions,
 		partialReadsEnabled,
 		settings,
-		todoList,
 		modelId,
+		useNativeTools,
 	)
 
 	// If native tools are enabled, build tool specifications and return them with the prompt
