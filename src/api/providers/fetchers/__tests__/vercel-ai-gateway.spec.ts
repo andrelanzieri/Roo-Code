@@ -77,7 +77,9 @@ describe("Vercel AI Gateway Fetchers", () => {
 
 			const models = await getVercelAiGatewayModels()
 
-			expect(mockedAxios.get).toHaveBeenCalledWith("https://ai-gateway.vercel.sh/v1/models")
+			expect(mockedAxios.get).toHaveBeenCalledWith("https://ai-gateway.vercel.sh/v1/models", {
+				signal: undefined,
+			})
 			expect(Object.keys(models)).toHaveLength(2) // Only language models
 			expect(models["anthropic/claude-sonnet-4"]).toBeDefined()
 			expect(models["anthropic/claude-3.5-haiku"]).toBeDefined()

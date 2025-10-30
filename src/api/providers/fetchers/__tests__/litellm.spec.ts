@@ -35,7 +35,7 @@ describe("getLiteLLMModels", () => {
 				"Content-Type": "application/json",
 				...DEFAULT_HEADERS,
 			},
-			timeout: 5000,
+			signal: undefined,
 		})
 	})
 
@@ -56,7 +56,7 @@ describe("getLiteLLMModels", () => {
 				"Content-Type": "application/json",
 				...DEFAULT_HEADERS,
 			},
-			timeout: 5000,
+			signal: undefined,
 		})
 	})
 
@@ -77,7 +77,7 @@ describe("getLiteLLMModels", () => {
 				"Content-Type": "application/json",
 				...DEFAULT_HEADERS,
 			},
-			timeout: 5000,
+			signal: undefined,
 		})
 	})
 
@@ -98,7 +98,7 @@ describe("getLiteLLMModels", () => {
 				"Content-Type": "application/json",
 				...DEFAULT_HEADERS,
 			},
-			timeout: 5000,
+			signal: undefined,
 		})
 	})
 
@@ -119,7 +119,7 @@ describe("getLiteLLMModels", () => {
 				"Content-Type": "application/json",
 				...DEFAULT_HEADERS,
 			},
-			timeout: 5000,
+			signal: undefined,
 		})
 	})
 
@@ -140,7 +140,7 @@ describe("getLiteLLMModels", () => {
 				"Content-Type": "application/json",
 				...DEFAULT_HEADERS,
 			},
-			timeout: 5000,
+			signal: undefined,
 		})
 	})
 
@@ -161,7 +161,7 @@ describe("getLiteLLMModels", () => {
 				"Content-Type": "application/json",
 				...DEFAULT_HEADERS,
 			},
-			timeout: 5000,
+			signal: undefined,
 		})
 	})
 
@@ -213,7 +213,7 @@ describe("getLiteLLMModels", () => {
 				"Content-Type": "application/json",
 				...DEFAULT_HEADERS,
 			},
-			timeout: 5000,
+			signal: undefined,
 		})
 
 		expect(result).toEqual({
@@ -254,7 +254,7 @@ describe("getLiteLLMModels", () => {
 				"Content-Type": "application/json",
 				...DEFAULT_HEADERS,
 			},
-			timeout: 5000,
+			signal: undefined,
 		})
 	})
 
@@ -381,7 +381,7 @@ describe("getLiteLLMModels", () => {
 		expect(mockedAxios.get).toHaveBeenCalledWith(
 			"http://localhost:4000/v1/model/info",
 			expect.objectContaining({
-				timeout: 5000,
+				signal: undefined,
 			}),
 		)
 	})

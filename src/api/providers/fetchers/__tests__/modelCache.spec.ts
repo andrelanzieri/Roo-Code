@@ -69,7 +69,11 @@ describe("getModels with new GetModelsOptions", () => {
 			baseUrl: "http://localhost:4000",
 		})
 
-		expect(mockGetLiteLLMModels).toHaveBeenCalledWith("test-api-key", "http://localhost:4000")
+		expect(mockGetLiteLLMModels).toHaveBeenCalledWith(
+			"test-api-key",
+			"http://localhost:4000",
+			expect.any(AbortSignal),
+		)
 		expect(result).toEqual(mockModels)
 	})
 
@@ -103,7 +107,7 @@ describe("getModels with new GetModelsOptions", () => {
 
 		const result = await getModels({ provider: "requesty", apiKey: DUMMY_REQUESTY_KEY })
 
-		expect(mockGetRequestyModels).toHaveBeenCalledWith(undefined, DUMMY_REQUESTY_KEY)
+		expect(mockGetRequestyModels).toHaveBeenCalledWith(undefined, DUMMY_REQUESTY_KEY, expect.any(AbortSignal))
 		expect(result).toEqual(mockModels)
 	})
 
@@ -137,7 +141,7 @@ describe("getModels with new GetModelsOptions", () => {
 
 		const result = await getModels({ provider: "unbound", apiKey: DUMMY_UNBOUND_KEY })
 
-		expect(mockGetUnboundModels).toHaveBeenCalledWith(DUMMY_UNBOUND_KEY)
+		expect(mockGetUnboundModels).toHaveBeenCalledWith(DUMMY_UNBOUND_KEY, expect.any(AbortSignal))
 		expect(result).toEqual(mockModels)
 	})
 
