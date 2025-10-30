@@ -18,25 +18,30 @@ export const formatResponse = {
 	rooIgnoreError: (path: string) =>
 		`Access to ${path} is blocked by the .rooignore file settings. You must try to continue in the task without using this file, or ask the user to update the .rooignore file.`,
 
-	noToolsUsed: () =>
+	noToolsUsed: (useNativeTools: boolean = false) =>
 		`[ERROR] You did not use a tool in your previous response! Please retry with a tool use.
 
-${toolUseInstructionsReminder}
+${getToolUseInstructionsReminder(useNativeTools)}
 
 # Next Steps
 
-If you have completed the user's task, use the attempt_completion tool. 
-If you require additional information from the user, use the ask_followup_question tool. 
-Otherwise, if you have not completed the task and do not need additional information, then proceed with the next step of the task. 
+If you have completed the user's task, use the attempt_completion tool.
+If you require additional information from the user, use the ask_followup_question tool.
+Otherwise, if you have not completed the task and do not need additional information, then proceed with the next step of the task.
 (This is an automated message, so do not respond to it conversationally.)`,
 
 	tooManyMistakes: (feedback?: string) =>
 		`You seem to be having trouble proceeding. The user has provided the following feedback to help guide you:\n<feedback>\n${feedback}\n</feedback>`,
 
-	missingToolParameterError: (paramName: string) =>
-		`Missing value for required parameter '${paramName}'. Please retry with complete response.\n\n${toolUseInstructionsReminder}`,
+	missingToolParameterError: (paramName: string, useNativeTools: boolean = false) =>
+		`Missing value for required parameter '${paramName}'. Please retry with complete response.\n\n${getToolUseInstructionsReminder(useNativeTools)}`,
 
-	lineCountTruncationError: (actualLineCount: number, isNewFile: boolean, diffStrategyEnabled: boolean = false) => {
+	lineCountTruncationError: (
+		actualLineCount: number,
+		isNewFile: boolean,
+		diffStrategyEnabled: boolean = false,
+		useNativeTools: boolean = false,
+	) => {
 		const truncationMessage = `Note: Your response may have been truncated because it exceeded your output limit. You wrote ${actualLineCount} lines of content, but the line_count parameter was either missing or not included in your response.`
 
 		const newFileGuidance =
@@ -66,7 +71,7 @@ Otherwise, if you have not completed the task and do not need additional informa
 			`RECOMMENDED APPROACH:\n` +
 			`${existingFileApproaches.join("\n")}\n`
 
-		return `${isNewFile ? newFileGuidance : existingFileGuidance}\n${toolUseInstructionsReminder}`
+		return `${isNewFile ? newFileGuidance : existingFileGuidance}\n${getToolUseInstructionsReminder(useNativeTools)}`
 	},
 
 	invalidMcpToolArgumentError: (serverName: string, toolName: string) =>
@@ -200,7 +205,14 @@ const formatImagesIntoBlocks = (images?: string[]): Anthropic.ImageBlockParam[] 
 		: []
 }
 
-const toolUseInstructionsReminder = `# Reminder: Instructions for Tool Use
+export function getToolUseInstructionsReminder(useNativeTools: boolean = false): string {
+	if (useNativeTools) {
+		return `# Reminder: Instructions for Tool Use
+
+When using tools, ensure you provide all required parameters as specified in the tool's schema. The system will validate your tool calls and return errors if required parameters are missing or incorrectly formatted.`
+	}
+
+	return `# Reminder: Instructions for Tool Use
 
 Tool uses are formatted using XML-style tags. The tool name itself becomes the XML tag name. Each parameter is enclosed within its own set of tags. Here's the structure:
 
@@ -219,3 +231,7 @@ I have completed the task...
 </attempt_completion>
 
 Always use the actual tool name as the XML tag name for proper parsing and execution.`
+}
+
+// Default reminder for backward compatibility (XML mode)
+const toolUseInstructionsReminder = getToolUseInstructionsReminder()

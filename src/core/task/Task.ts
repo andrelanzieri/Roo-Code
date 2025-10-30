@@ -586,6 +586,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		return this._taskMode
 	}
 
+	/**
+	 * Returns whether native tool calling is enabled for this task
+	 * @returns True if using native tool calls, false for XML-based tools
+	 * @public
+	 */
+	public get isUsingNativeToolCalls(): boolean {
+		return this.useNativeToolCalls
+	}
+
 	static create(options: TaskOptions): [Task, Promise<void>] {
 		const instance = new Task({ ...options, startTask: false })
 		const { images, task, historyItem } = options
@@ -1218,7 +1227,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				relPath ? ` for '${relPath.toPosix()}'` : ""
 			} without value for required parameter '${paramName}'. Retrying...`,
 		)
-		return formatResponse.toolError(formatResponse.missingToolParameterError(paramName))
+		return formatResponse.toolError(
+			formatResponse.missingToolParameterError(paramName, this.isUsingNativeToolCalls),
+		)
 	}
 
 	// Lifecycle
@@ -1746,7 +1757,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// the user hits max requests and denies resetting the count.
 				break
 			} else {
-				nextUserContent = [{ type: "text", text: formatResponse.noToolsUsed() }]
+				nextUserContent = [{ type: "text", text: formatResponse.noToolsUsed(this.isUsingNativeToolCalls) }]
 				this.consecutiveMistakeCount++
 			}
 		}
@@ -2464,7 +2475,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					const didToolUse = this.assistantMessageContent.some((block) => block.type === "tool_use")
 
 					if (!didToolUse) {
-						this.userMessageContent.push({ type: "text", text: formatResponse.noToolsUsed() })
+						this.userMessageContent.push({
+							type: "text",
+							text: formatResponse.noToolsUsed(this.isUsingNativeToolCalls),
+						})
 						this.consecutiveMistakeCount++
 					}
 

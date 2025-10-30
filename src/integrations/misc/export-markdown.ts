@@ -48,15 +48,7 @@ export function formatContentBlockToMarkdown(block: Anthropic.Messages.ContentBl
 		case "image":
 			return `[Image]`
 		case "tool_use": {
-			let input: string
-			if (typeof block.input === "object" && block.input !== null) {
-				input = Object.entries(block.input)
-					.map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`)
-					.join("\n")
-			} else {
-				input = String(block.input)
-			}
-			return `[Tool Use: ${block.name}]\n${input}`
+			return `[Tool Use: ${block.name}]\n${JSON.stringify(block.input, null, 2)}`
 		}
 		case "tool_result": {
 			// For now we're not doing tool name lookup since we don't use tools anymore
