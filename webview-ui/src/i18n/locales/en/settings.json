@@ -775,6 +775,10 @@
 		"RUN_SLASH_COMMAND": {
 			"name": "Enable model-initiated slash commands",
 			"description": "When enabled, Roo can run your slash commands to execute workflows."
+		},
+		"RE_READ_AFTER_EDIT": {
+			"name": "Suggest review after file edits",
+			"description": "When enabled, Roo will suggest reviewing changes after editing files. This helps catch errors that might be introduced during editing by prompting to review the changes."
 		}
 	},
 	"promptCaching": {

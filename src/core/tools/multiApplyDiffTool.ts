@@ -676,8 +676,23 @@ ${errorDetails ? `\nTechnical details:\n${errorDetails}\n` : ""}
 				? "\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>"
 				: ""
 
+		// Check if RE_READ_AFTER_EDIT experiment is enabled
+		const provider = cline.providerRef.deref()
+		const state = await provider?.getState()
+		const isReReadAfterEditEnabled = experiments.isEnabled(
+			state?.experiments ?? {},
+			EXPERIMENT_IDS.RE_READ_AFTER_EDIT,
+		)
+
+		// Count how many files were successfully edited
+		const editedFiles = operationResults.filter((op) => op.status === "approved").length
+		const reReadSuggestion =
+			isReReadAfterEditEnabled && editedFiles > 0
+				? `\n\n<review_suggestion>${editedFiles === 1 ? "The file has" : `${editedFiles} files have`} been edited. Consider using the read_file tool to review the changes and ensure they are correct and complete.</review_suggestion>`
+				: ""
+
 		// Push the final result combining all operation results
-		pushToolResult(results.join("\n\n") + singleBlockNotice)
+		pushToolResult(results.join("\n\n") + singleBlockNotice + reReadSuggestion)
 		cline.processQueuedMessages()
 		return
 	} catch (error) {

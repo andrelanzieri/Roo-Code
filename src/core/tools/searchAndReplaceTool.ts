@@ -258,7 +258,17 @@ export async function searchAndReplaceTool(
 			false, // Always false for search_and_replace
 		)
 
-		pushToolResult(message)
+		// Check if RE_READ_AFTER_EDIT experiment is enabled
+		const isReReadAfterEditEnabled = experiments.isEnabled(
+			state?.experiments ?? {},
+			EXPERIMENT_IDS.RE_READ_AFTER_EDIT,
+		)
+
+		const reReadSuggestion = isReReadAfterEditEnabled
+			? `\n\n<review_suggestion>The file has been modified via search and replace. Consider using the read_file tool to review the changes and ensure they are correct and complete.</review_suggestion>`
+			: ""
+
+		pushToolResult(message + reReadSuggestion)
 
 		// Record successful tool usage and cleanup
 		cline.recordToolUsage("search_and_replace")
