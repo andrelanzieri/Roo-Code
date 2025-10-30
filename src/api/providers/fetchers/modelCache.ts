@@ -26,9 +26,6 @@ import { getRooModels } from "./roo"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
-// Coalesce concurrent fetches per provider within this extension host
-const inFlightModelFetches = new Map<RouterName, Promise<ModelRecord>>()
-
 async function writeModels(router: RouterName, data: ModelRecord) {
 	const filename = `${router}_models.json`
 	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
@@ -63,160 +60,75 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 		return cached
 	}
 
-	// 2) Try file cache snapshot (Option A), then kick off background refresh
+	// 2) Try file cache snapshot
 	try {
 		const file = await readModels(provider)
 		if (file && Object.keys(file).length > 0) {
 			memoryCache.set(provider, file)
-
-			// Start background refresh if not already in-flight (do not await)
-			if (!inFlightModelFetches.has(provider)) {
-				const signal = AbortSignal.timeout(30_000)
-				const bgPromise = (async (): Promise<ModelRecord> => {
-					let models: ModelRecord = {}
-					switch (provider) {
-						case "openrouter":
-							models = await getOpenRouterModels(undefined, signal)
-							break
-						case "requesty":
-							models = await getRequestyModels(options.baseUrl, options.apiKey, signal)
-							break
-						case "glama":
-							models = await getGlamaModels(signal)
-							break
-						case "unbound":
-							models = await getUnboundModels(options.apiKey, signal)
-							break
-						case "litellm":
-							models = await getLiteLLMModels(options.apiKey as string, options.baseUrl as string, signal)
-							break
-						case "ollama":
-							models = await getOllamaModels(options.baseUrl, options.apiKey, signal)
-							break
-						case "lmstudio":
-							models = await getLMStudioModels(options.baseUrl, signal)
-							break
-						case "deepinfra":
-							models = await getDeepInfraModels(options.apiKey, options.baseUrl, signal)
-							break
-						case "io-intelligence":
-							models = await getIOIntelligenceModels(options.apiKey, signal)
-							break
-						case "vercel-ai-gateway":
-							models = await getVercelAiGatewayModels(undefined, signal)
-							break
-						case "huggingface":
-							models = await getHuggingFaceModels(signal)
-							break
-						case "roo": {
-							const rooBaseUrl =
-								options.baseUrl ?? process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy"
-							models = await getRooModels(rooBaseUrl, options.apiKey, signal)
-							break
-						}
-						default:
-							throw new Error(`Unknown provider: ${provider}`)
-					}
-
-					memoryCache.set(provider, models)
-					await writeModels(provider, models).catch((err) => {
-						console.error(
-							`[modelCache] Error writing ${provider} to file cache during background refresh:`,
-							err instanceof Error ? err.message : String(err),
-						)
-					})
-					return models || {}
-				})()
-
-				inFlightModelFetches.set(provider, bgPromise)
-				Promise.resolve(bgPromise)
-					.catch((err) => {
-						console.error(
-							`[modelCache] Background refresh failed for ${provider}:`,
-							err instanceof Error ? err.message : String(err),
-						)
-					})
-					.finally(() => inFlightModelFetches.delete(provider))
-			}
-
 			return file
 		}
 	} catch {
-		// ignore file read errors; fall through to network/coalesce path
+		// ignore file read errors; fall through to network fetch
 	}
 
-	// 3) Coalesce concurrent fetches
-	const existing = inFlightModelFetches.get(provider)
-	if (existing) {
-		return existing
-	}
-
-	// 4) Network fetch wrapped as a single in-flight promise for this provider
+	// 3) Network fetch
 	const signal = AbortSignal.timeout(30_000)
-	const fetchPromise = (async (): Promise<ModelRecord> => {
-		let models: ModelRecord = {}
-		switch (provider) {
-			case "openrouter":
-				models = await getOpenRouterModels(undefined, signal)
-				break
-			case "requesty":
-				models = await getRequestyModels(options.baseUrl, options.apiKey, signal)
-				break
-			case "glama":
-				models = await getGlamaModels(signal)
-				break
-			case "unbound":
-				models = await getUnboundModels(options.apiKey, signal)
-				break
-			case "litellm":
-				models = await getLiteLLMModels(options.apiKey as string, options.baseUrl as string, signal)
-				break
-			case "ollama":
-				models = await getOllamaModels(options.baseUrl, options.apiKey, signal)
-				break
-			case "lmstudio":
-				models = await getLMStudioModels(options.baseUrl, signal)
-				break
-			case "deepinfra":
-				models = await getDeepInfraModels(options.apiKey, options.baseUrl, signal)
-				break
-			case "io-intelligence":
-				models = await getIOIntelligenceModels(options.apiKey, signal)
-				break
-			case "vercel-ai-gateway":
-				models = await getVercelAiGatewayModels(undefined, signal)
-				break
-			case "huggingface":
-				models = await getHuggingFaceModels(signal)
-				break
-			case "roo": {
-				const rooBaseUrl =
-					options.baseUrl ?? process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy"
-				models = await getRooModels(rooBaseUrl, options.apiKey, signal)
-				break
-			}
-			default: {
-				throw new Error(`Unknown provider: ${provider}`)
-			}
+	let models: ModelRecord = {}
+
+	switch (provider) {
+		case "openrouter":
+			models = await getOpenRouterModels(undefined, signal)
+			break
+		case "requesty":
+			models = await getRequestyModels(options.baseUrl, options.apiKey, signal)
+			break
+		case "glama":
+			models = await getGlamaModels(signal)
+			break
+		case "unbound":
+			models = await getUnboundModels(options.apiKey, signal)
+			break
+		case "litellm":
+			models = await getLiteLLMModels(options.apiKey as string, options.baseUrl as string, signal)
+			break
+		case "ollama":
+			models = await getOllamaModels(options.baseUrl, options.apiKey, signal)
+			break
+		case "lmstudio":
+			models = await getLMStudioModels(options.baseUrl, signal)
+			break
+		case "deepinfra":
+			models = await getDeepInfraModels(options.apiKey, options.baseUrl, signal)
+			break
+		case "io-intelligence":
+			models = await getIOIntelligenceModels(options.apiKey, signal)
+			break
+		case "vercel-ai-gateway":
+			models = await getVercelAiGatewayModels(undefined, signal)
+			break
+		case "huggingface":
+			models = await getHuggingFaceModels(signal)
+			break
+		case "roo": {
+			const rooBaseUrl = options.baseUrl ?? process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy"
+			models = await getRooModels(rooBaseUrl, options.apiKey, signal)
+			break
 		}
-		memoryCache.set(provider, models)
-
-		await writeModels(provider, models).catch((err) => {
-			console.error(
-				`[modelCache] Error writing ${provider} to file cache after network fetch:`,
-				err instanceof Error ? err.message : String(err),
-			)
-		})
-
-		return models || {}
-	})()
-
-	inFlightModelFetches.set(provider, fetchPromise)
-	try {
-		return await fetchPromise
-	} finally {
-		inFlightModelFetches.delete(provider)
+		default: {
+			throw new Error(`Unknown provider: ${provider}`)
+		}
 	}
+
+	memoryCache.set(provider, models)
+
+	await writeModels(provider, models).catch((err) => {
+		console.error(
+			`[modelCache] Error writing ${provider} to file cache after network fetch:`,
+			err instanceof Error ? err.message : String(err),
+		)
+	})
+
+	return models || {}
 }
 
 /**

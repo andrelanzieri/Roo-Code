@@ -832,6 +832,35 @@ export const webviewMessageHandler = async (
 				},
 			]
 
+			// Include local providers (ollama, lmstudio, huggingface) when they are the active provider
+			if (activeProvider === "ollama") {
+				allFetches.push({
+					key: "ollama",
+					options: {
+						provider: "ollama",
+						baseUrl: apiConfiguration.ollamaBaseUrl,
+						apiKey: apiConfiguration.ollamaApiKey,
+					},
+				})
+			}
+			if (activeProvider === "lmstudio") {
+				allFetches.push({
+					key: "lmstudio",
+					options: {
+						provider: "lmstudio",
+						baseUrl: apiConfiguration.lmStudioBaseUrl,
+					},
+				})
+			}
+			if (activeProvider === "huggingface") {
+				allFetches.push({
+					key: "huggingface",
+					options: {
+						provider: "huggingface",
+					},
+				})
+			}
+
 			// IO Intelligence (optional)
 			if (apiConfiguration.ioIntelligenceApiKey) {
 				allFetches.push({
