@@ -47,6 +47,8 @@ describe("TerminalRegistry", () => {
 				env: {
 					PAGER,
 					VTE_VERSION: "0",
+					LANG: "en_US.UTF-8",
+					LC_ALL: "en_US.UTF-8",
 					PROMPT_EOL_MARK: "",
 				},
 			})
@@ -66,8 +68,10 @@ describe("TerminalRegistry", () => {
 					iconPath: expect.any(Object),
 					env: {
 						PAGER,
-						PROMPT_COMMAND: "sleep 0.05",
 						VTE_VERSION: "0",
+						LANG: "en_US.UTF-8",
+						LC_ALL: "en_US.UTF-8",
+						PROMPT_COMMAND: "sleep 0.05",
 						PROMPT_EOL_MARK: "",
 					},
 				})
@@ -89,8 +93,10 @@ describe("TerminalRegistry", () => {
 					env: {
 						PAGER,
 						VTE_VERSION: "0",
-						PROMPT_EOL_MARK: "",
+						LANG: "en_US.UTF-8",
+						LC_ALL: "en_US.UTF-8",
 						ITERM_SHELL_INTEGRATION_INSTALLED: "Yes",
+						PROMPT_EOL_MARK: "",
 					},
 				})
 			} finally {
@@ -110,8 +116,10 @@ describe("TerminalRegistry", () => {
 					env: {
 						PAGER,
 						VTE_VERSION: "0",
-						PROMPT_EOL_MARK: "",
+						LANG: "en_US.UTF-8",
+						LC_ALL: "en_US.UTF-8",
 						POWERLEVEL9K_TERM_SHELL_INTEGRATION: "true",
+						PROMPT_EOL_MARK: "",
 					},
 				})
 			} finally {
