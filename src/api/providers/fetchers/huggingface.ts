@@ -107,7 +107,7 @@ function parseHuggingFaceModel(model: HuggingFaceModel, provider?: HuggingFacePr
  * @returns A promise that resolves to a record of model IDs to model info
  * @throws Will throw an error if the request fails
  */
-export async function getHuggingFaceModels(): Promise<ModelRecord> {
+export async function getHuggingFaceModels(signal?: AbortSignal): Promise<ModelRecord> {
 	const now = Date.now()
 
 	if (cache && now - cache.timestamp < HUGGINGFACE_CACHE_DURATION) {
@@ -128,7 +128,7 @@ export async function getHuggingFaceModels(): Promise<ModelRecord> {
 				Pragma: "no-cache",
 				"Cache-Control": "no-cache",
 			},
-			timeout: 10000,
+			signal,
 		})
 
 		const result = huggingFaceApiResponseSchema.safeParse(response.data)
@@ -236,7 +236,7 @@ export async function getHuggingFaceModelsWithMetadata(): Promise<HuggingFaceMod
 				Pragma: "no-cache",
 				"Cache-Control": "no-cache",
 			},
-			timeout: 10000,
+			signal: AbortSignal.timeout(30000),
 		})
 
 		const models = response.data?.data || []

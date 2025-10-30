@@ -17,19 +17,6 @@ const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 // Coalesce concurrent endpoint fetches per (router,modelId)
 const inFlightEndpointFetches = new Map<string, Promise<ModelRecord>>()
 
-function withTimeout<T>(p: Promise<T>, ms: number, label = "getModelEndpoints"): Promise<T> {
-	return new Promise<T>((resolve, reject) => {
-		const t = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)
-		p.then((v) => {
-			clearTimeout(t)
-			resolve(v)
-		}).catch((e) => {
-			clearTimeout(t)
-			reject(e)
-		})
-	})
-}
-
 const getCacheKey = (router: RouterName, modelId: string) => sanitize(`${router}_${modelId}`)
 
 async function writeModelEndpoints(key: string, data: ModelRecord) {
@@ -66,6 +53,7 @@ export const getModelEndpoints = async ({
 	// 1) Try memory cache
 	const cached = memoryCache.get<ModelRecord>(key)
 	if (cached) {
+		// Using console.log for cache layer logging (no provider access in utility functions)
 		console.log(`[endpointCache] cache_hit: ${key} (${Object.keys(cached).length} endpoints)`)
 		return cached
 	}
@@ -74,37 +62,44 @@ export const getModelEndpoints = async ({
 	try {
 		const file = await readModelEndpoints(key)
 		if (file && Object.keys(file).length > 0) {
+			// Using console.log for cache layer logging (no provider access in utility functions)
 			console.log(`[endpointCache] file_hit: ${key} (${Object.keys(file).length} endpoints, bg_refresh queued)`)
 			// Populate memory cache immediately
 			memoryCache.set(key, file)
 
 			// Start background refresh if not already in-flight (do not await)
 			if (!inFlightEndpointFetches.has(key)) {
+				const signal = AbortSignal.timeout(30_000)
 				const bgPromise = (async (): Promise<ModelRecord> => {
-					try {
-						const modelProviders = await getOpenRouterModelEndpoints(modelId)
-						if (Object.keys(modelProviders).length > 0) {
-							console.log(
-								`[endpointCache] bg_refresh_done: ${key} (${Object.keys(modelProviders).length} endpoints)`,
+					const modelProviders = await getOpenRouterModelEndpoints(modelId, undefined, signal)
+					if (Object.keys(modelProviders).length > 0) {
+						console.log(
+							`[endpointCache] bg_refresh_done: ${key} (${Object.keys(modelProviders).length} endpoints)`,
+						)
+						memoryCache.set(key, modelProviders)
+						try {
+							await writeModelEndpoints(key, modelProviders)
+						} catch (error) {
+							console.error(
+								`[endpointCache] Error writing ${key} to file cache during background refresh:`,
+								error instanceof Error ? error.message : String(error),
 							)
-							memoryCache.set(key, modelProviders)
-							try {
-								await writeModelEndpoints(key, modelProviders)
-							} catch (error) {
-								console.error(`[endpointCache] Error writing ${key} to file cache`, error)
-							}
-							return modelProviders
 						}
-						return {}
-					} catch (e) {
-						console.error(`[endpointCache] bg_refresh_failed: ${key}`, e)
-						throw e
+						return modelProviders
 					}
+					return {}
 				})()
 
-				const timedBg = withTimeout(bgPromise, 30_000, `getModelEndpoints(background:${key})`)
-				inFlightEndpointFetches.set(key, timedBg)
-				Promise.resolve(timedBg).finally(() => inFlightEndpointFetches.delete(key))
+				inFlightEndpointFetches.set(key, bgPromise)
+				Promise.resolve(bgPromise)
+					.catch((err) => {
+						// Log background refresh failures for monitoring
+						console.error(
+							`[endpointCache] Background refresh failed for ${key}:`,
+							err instanceof Error ? err.message : String(err),
+						)
+					})
+					.finally(() => inFlightEndpointFetches.delete(key))
 			}
 
 			return file
@@ -116,50 +111,47 @@ export const getModelEndpoints = async ({
 	// 3) Coalesce concurrent fetches
 	const inFlight = inFlightEndpointFetches.get(key)
 	if (inFlight) {
+		// Using console.log for cache layer logging (no provider access in utility functions)
 		console.log(`[endpointCache] coalesced_wait: ${key}`)
 		return inFlight
 	}
 
 	// 4) Single network fetch for this key
+	const signal = AbortSignal.timeout(30_000)
 	const fetchPromise = (async (): Promise<ModelRecord> => {
 		let modelProviders: ModelRecord = {}
-		try {
-			modelProviders = await getOpenRouterModelEndpoints(modelId)
+		modelProviders = await getOpenRouterModelEndpoints(modelId, undefined, signal)
 
-			if (Object.keys(modelProviders).length > 0) {
-				console.log(
-					`[endpointCache] network_fetch_done: ${key} (${Object.keys(modelProviders).length} endpoints)`,
-				)
-				// Update memory cache first
-				memoryCache.set(key, modelProviders)
+		if (Object.keys(modelProviders).length > 0) {
+			console.log(`[endpointCache] network_fetch_done: ${key} (${Object.keys(modelProviders).length} endpoints)`)
+			// Update memory cache first
+			memoryCache.set(key, modelProviders)
 
-				// Best-effort persist
-				try {
-					await writeModelEndpoints(key, modelProviders)
-				} catch (error) {
-					console.error(`[endpointCache] Error writing ${key} to file cache`, error)
-				}
-
-				return modelProviders
-			}
-
-			// Fallback to file cache if network returned empty (rare)
+			// Best-effort persist
 			try {
-				const file = await readModelEndpoints(key)
-				return file ?? {}
-			} catch {
-				return {}
+				await writeModelEndpoints(key, modelProviders)
+			} catch (error) {
+				console.error(
+					`[endpointCache] Error writing ${key} to file cache after network fetch:`,
+					error instanceof Error ? error.message : String(error),
+				)
 			}
-		} catch (error) {
-			console.error(`[endpointCache] network_fetch_failed: ${key}`, error)
-			throw error
+
+			return modelProviders
+		}
+
+		// Fallback to file cache if network returned empty (rare)
+		try {
+			const file = await readModelEndpoints(key)
+			return file ?? {}
+		} catch {
+			return {}
 		}
 	})()
 
-	const timed = withTimeout(fetchPromise, 30_000, `getModelEndpoints(${key})`)
-	inFlightEndpointFetches.set(key, timed)
+	inFlightEndpointFetches.set(key, fetchPromise)
 	try {
-		return await timed
+		return await fetchPromise
 	} finally {
 		inFlightEndpointFetches.delete(key)
 	}

@@ -56,6 +56,7 @@ export const parseOllamaModel = (rawModel: OllamaModelInfoResponse): ModelInfo =
 export async function getOllamaModels(
 	baseUrl = "http://localhost:11434",
 	apiKey?: string,
+	signal?: AbortSignal,
 ): Promise<Record<string, ModelInfo>> {
 	const models: Record<string, ModelInfo> = {}
 
@@ -73,7 +74,7 @@ export async function getOllamaModels(
 			headers["Authorization"] = `Bearer ${apiKey}`
 		}
 
-		const response = await axios.get<OllamaModelsResponse>(`${baseUrl}/api/tags`, { headers })
+		const response = await axios.get<OllamaModelsResponse>(`${baseUrl}/api/tags`, { headers, signal })
 		const parsedResponse = OllamaModelsResponseSchema.safeParse(response.data)
 		let modelInfoPromises = []
 
@@ -86,7 +87,7 @@ export async function getOllamaModels(
 							{
 								model: ollamaModel.model,
 							},
-							{ headers },
+							{ headers, signal },
 						)
 						.then((ollamaModelInfo) => {
 							models[ollamaModel.name] = parseOllamaModel(ollamaModelInfo.data)

@@ -35,6 +35,7 @@ const DeepInfraModelsResponseSchema = z.object({ data: z.array(DeepInfraModelSch
 export async function getDeepInfraModels(
 	apiKey?: string,
 	baseUrl: string = "https://api.deepinfra.com/v1/openai",
+	signal?: AbortSignal,
 ): Promise<Record<string, ModelInfo>> {
 	const headers: Record<string, string> = { ...DEFAULT_HEADERS }
 	if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`
@@ -42,7 +43,7 @@ export async function getDeepInfraModels(
 	const url = `${baseUrl.replace(/\/$/, "")}/models`
 	const models: Record<string, ModelInfo> = {}
 
-	const response = await axios.get(url, { headers })
+	const response = await axios.get(url, { headers, signal })
 	const parsed = DeepInfraModelsResponseSchema.safeParse(response.data)
 	const data = parsed.success ? parsed.data.data : response.data?.data || []
 

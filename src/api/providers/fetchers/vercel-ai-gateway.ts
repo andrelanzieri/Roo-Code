@@ -52,12 +52,15 @@ type VercelAiGatewayModelsResponse = z.infer<typeof vercelAiGatewayModelsRespons
  * getVercelAiGatewayModels
  */
 
-export async function getVercelAiGatewayModels(options?: ApiHandlerOptions): Promise<Record<string, ModelInfo>> {
+export async function getVercelAiGatewayModels(
+	options?: ApiHandlerOptions,
+	signal?: AbortSignal,
+): Promise<Record<string, ModelInfo>> {
 	const models: Record<string, ModelInfo> = {}
 	const baseURL = "https://ai-gateway.vercel.sh/v1"
 
 	try {
-		const response = await axios.get<VercelAiGatewayModelsResponse>(`${baseURL}/models`)
+		const response = await axios.get<VercelAiGatewayModelsResponse>(`${baseURL}/models`, { signal })
 		const result = vercelAiGatewayModelsResponseSchema.safeParse(response.data)
 		const data = result.success ? result.data.data : response.data.data
 

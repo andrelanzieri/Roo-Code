@@ -83,7 +83,7 @@ function parseIOIntelligenceModel(model: IOIntelligenceModel): ModelInfo {
  * Fetches available models from IO Intelligence
  * <mcreference link="https://docs.io.net/reference/get-started-with-io-intelligence-api" index="1">1</mcreference>
  */
-export async function getIOIntelligenceModels(apiKey?: string): Promise<ModelRecord> {
+export async function getIOIntelligenceModels(apiKey?: string, signal?: AbortSignal): Promise<ModelRecord> {
 	const now = Date.now()
 
 	if (cache && now - cache.timestamp < IO_INTELLIGENCE_CACHE_DURATION) {
@@ -108,7 +108,7 @@ export async function getIOIntelligenceModels(apiKey?: string): Promise<ModelRec
 			"https://api.intelligence.io.solutions/api/v1/models",
 			{
 				headers,
-				timeout: 10_000,
+				signal,
 			},
 		)
 

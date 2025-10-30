@@ -11,7 +11,7 @@ import { DEFAULT_HEADERS } from "../constants"
  * @returns A promise that resolves to a record of model IDs to model info
  * @throws Will throw an error if the request fails or the response is not as expected.
  */
-export async function getLiteLLMModels(apiKey: string, baseUrl: string): Promise<ModelRecord> {
+export async function getLiteLLMModels(apiKey: string, baseUrl: string, signal?: AbortSignal): Promise<ModelRecord> {
 	try {
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
@@ -27,8 +27,7 @@ export async function getLiteLLMModels(apiKey: string, baseUrl: string): Promise
 		// Normalize the pathname by removing trailing slashes and multiple slashes
 		urlObj.pathname = urlObj.pathname.replace(/\/+$/, "").replace(/\/+/g, "/") + "/v1/model/info"
 		const url = urlObj.href
-		// Added timeout to prevent indefinite hanging
-		const response = await axios.get(url, { headers, timeout: 5000 })
+		const response = await axios.get(url, { headers, signal })
 		const models: ModelRecord = {}
 
 		// Process the model info from the response

@@ -49,7 +49,10 @@ export const parseLMStudioModel = (rawModel: LLMInstanceInfo | LLMInfo): ModelIn
 	return modelInfo
 }
 
-export async function getLMStudioModels(baseUrl = "http://localhost:1234"): Promise<Record<string, ModelInfo>> {
+export async function getLMStudioModels(
+	baseUrl = "http://localhost:1234",
+	signal?: AbortSignal,
+): Promise<Record<string, ModelInfo>> {
 	// clear the set of models that have full details loaded
 	modelsWithLoadedDetails.clear()
 	// clearing the input can leave an empty string; use the default in that case
@@ -66,7 +69,7 @@ export async function getLMStudioModels(baseUrl = "http://localhost:1234"): Prom
 
 		// test the connection to LM Studio first
 		// errors will be caught further down
-		await axios.get(`${baseUrl}/v1/models`)
+		await axios.get(`${baseUrl}/v1/models`, { signal })
 
 		const client = new LMStudioClient({ baseUrl: lmsUrl })
 

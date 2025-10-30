@@ -26,7 +26,7 @@ import { ClineProvider } from "./ClineProvider"
 import { handleCheckpointRestoreOperation } from "./checkpointRestoreHandler"
 import { changeLanguage, t } from "../../i18n"
 import { Package } from "../../shared/package"
-import { type RouterName, type ModelRecord, isRouterName, toRouterName } from "../../shared/api"
+import { type RouterName, type ModelRecord, type RouterModels, isRouterName, toRouterName } from "../../shared/api"
 import { MessageEnhancer } from "./messageEnhancer"
 
 import {
@@ -59,11 +59,6 @@ import { generateSystemPrompt } from "./generateSystemPrompt"
 import { getCommand } from "../../utils/commands"
 
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
-
-// Phase 3: Debounce router model fetches to collapse rapid repeats
-const ROUTER_MODELS_DEBOUNCE_MS = process.env.NODE_ENV === "test" ? 0 : 400
-let lastRouterModelsRequestTime = 0
-let lastRouterModelsAllRequestTime = 0
 
 import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
 import { setPendingTodoList } from "../tools/updateTodoListTool"
@@ -771,21 +766,13 @@ export const webviewMessageHandler = async (
 			await flushModels(routerNameFlush)
 			break
 		case "requestRouterModels": {
-			// Phase 3: Debounce to collapse rapid repeats
-			const now = Date.now()
-			if (now - lastRouterModelsRequestTime < ROUTER_MODELS_DEBOUNCE_MS) {
-				// Skip this request - too soon after last one
-				break
-			}
-			lastRouterModelsRequestTime = now
-
 			// Phase 2: Scope to active provider during chat/task flows
 			const { apiConfiguration } = await provider.getState()
 			const providerStr = apiConfiguration.apiProvider
 			const activeProvider: RouterName | undefined =
 				providerStr && isRouterName(providerStr) ? providerStr : undefined
 
-			const routerModels: any = {
+			const routerModels: Partial<Record<RouterName, ModelRecord>> = {
 				openrouter: {},
 				"vercel-ai-gateway": {},
 				huggingface: {},
@@ -804,9 +791,8 @@ export const webviewMessageHandler = async (
 				try {
 					return await getModels(options)
 				} catch (error) {
-					console.error(
-						`Failed to fetch models in webviewMessageHandler requestRouterModels for ${options.provider}:`,
-						error,
+					provider.log(
+						`Failed to fetch models in webviewMessageHandler requestRouterModels for ${options.provider}: ${error instanceof Error ? error.message : String(error)}`,
 					)
 					throw error
 				}
@@ -835,14 +821,14 @@ export const webviewMessageHandler = async (
 					},
 				},
 				{
-					key: "roo" as RouterName,
+					key: "roo",
 					options: {
-						provider: "roo" as any,
+						provider: "roo",
 						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
 						apiKey: CloudService.hasInstance()
 							? CloudService.instance.authService?.getSessionToken()
 							: undefined,
-					} as GetModelsOptions,
+					},
 				},
 			]
 
@@ -870,7 +856,10 @@ export const webviewMessageHandler = async (
 
 			// If nothing matched (edge case), still post empty structure for stability
 			if (modelFetchPromises.length === 0) {
-				await provider.postMessageToWebview({ type: "routerModels", routerModels })
+				await provider.postMessageToWebview({
+					type: "routerModels",
+					routerModels: routerModels as RouterModels,
+				})
 				break
 			}
 
@@ -887,7 +876,7 @@ export const webviewMessageHandler = async (
 					routerModels[routerName] = result.value.models
 				} else {
 					const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
-					console.error(`Error fetching models for ${routerName}:`, result.reason)
+					provider.log(`Error fetching models for ${routerName}: ${errorMessage}`)
 					routerModels[routerName] = {}
 					provider.postMessageToWebview({
 						type: "singleRouterModelFetchResponse",
@@ -898,22 +887,14 @@ export const webviewMessageHandler = async (
 				}
 			})
 
-			provider.postMessageToWebview({ type: "routerModels", routerModels })
+			provider.postMessageToWebview({ type: "routerModels", routerModels: routerModels as RouterModels })
 			break
 		}
 		case "requestRouterModelsAll": {
-			// Phase 3: Debounce to collapse rapid repeats
-			const now = Date.now()
-			if (now - lastRouterModelsAllRequestTime < ROUTER_MODELS_DEBOUNCE_MS) {
-				// Skip this request - too soon after last one
-				break
-			}
-			lastRouterModelsAllRequestTime = now
-
 			// Settings and activation: fetch all providers (legacy behavior)
 			const { apiConfiguration } = await provider.getState()
 
-			const routerModels: any = {
+			const routerModels: Partial<Record<RouterName, ModelRecord>> = {
 				openrouter: {},
 				"vercel-ai-gateway": {},
 				huggingface: {},
@@ -932,9 +913,8 @@ export const webviewMessageHandler = async (
 				try {
 					return await getModels(options)
 				} catch (error) {
-					console.error(
-						`Failed to fetch models in webviewMessageHandler requestRouterModelsAll for ${options.provider}:`,
-						error,
+					provider.log(
+						`Failed to fetch models in webviewMessageHandler requestRouterModelsAll for ${options.provider}: ${error instanceof Error ? error.message : String(error)}`,
 					)
 					throw error
 				}
@@ -962,14 +942,14 @@ export const webviewMessageHandler = async (
 					},
 				},
 				{
-					key: "roo" as RouterName,
+					key: "roo",
 					options: {
-						provider: "roo" as any,
+						provider: "roo",
 						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
 						apiKey: CloudService.hasInstance()
 							? CloudService.instance.authService?.getSessionToken()
 							: undefined,
-					} as GetModelsOptions,
+					},
 				},
 			]
 
@@ -1022,7 +1002,7 @@ export const webviewMessageHandler = async (
 				} else {
 					// Handle rejection: Post a specific error message for this provider.
 					const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
-					console.error(`Error fetching models for ${routerName}:`, result.reason)
+					provider.log(`Error fetching models for ${routerName}: ${errorMessage}`)
 
 					routerModels[routerName] = {}
 
@@ -1035,7 +1015,7 @@ export const webviewMessageHandler = async (
 				}
 			})
 
-			provider.postMessageToWebview({ type: "routerModels", routerModels })
+			provider.postMessageToWebview({ type: "routerModels", routerModels: routerModels as RouterModels })
 			break
 		}
 		case "requestOllamaModels": {
@@ -1055,7 +1035,8 @@ export const webviewMessageHandler = async (
 					provider.postMessageToWebview({ type: "ollamaModels", ollamaModels: ollamaModels })
 				}
 			} catch (error) {
-				// Silently fail - user hasn't configured Ollama yet
+				// Silently fail - user hasn't configured Ollama yet (debug level only)
+				// Using console.debug since this is expected when Ollama isn't configured
 				console.debug("Ollama models fetch failed:", error)
 			}
 			break
@@ -1079,7 +1060,8 @@ export const webviewMessageHandler = async (
 					})
 				}
 			} catch (error) {
-				// Silently fail - user hasn't configured LM Studio yet.
+				// Silently fail - user hasn't configured LM Studio yet (debug level only)
+				// Using console.debug since this is expected when LM Studio isn't configured
 				console.debug("LM Studio models fetch failed:", error)
 			}
 			break
@@ -1088,15 +1070,15 @@ export const webviewMessageHandler = async (
 			// Specific handler for Roo models only - flushes cache to ensure fresh auth token is used
 			try {
 				// Flush cache first to ensure fresh models with current auth state
-				await flushModels("roo" as RouterName)
+				await flushModels("roo")
 
 				const rooModels = await getModels({
-					provider: "roo" as any,
+					provider: "roo",
 					baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
 					apiKey: CloudService.hasInstance()
 						? CloudService.instance.authService?.getSessionToken()
 						: undefined,
-				} as GetModelsOptions)
+				})
 
 				// Always send a response, even if no models are returned
 				provider.postMessageToWebview({
@@ -1144,7 +1126,9 @@ export const webviewMessageHandler = async (
 					huggingFaceModels: huggingFaceModelsResponse.models,
 				})
 			} catch (error) {
-				console.error("Failed to fetch Hugging Face models:", error)
+				provider.log(
+					`Failed to fetch Hugging Face models: ${error instanceof Error ? error.message : String(error)}`,
+				)
 				provider.postMessageToWebview({ type: "huggingFaceModels", huggingFaceModels: [] })
 			}
 			break
@@ -1463,8 +1447,7 @@ export const webviewMessageHandler = async (
 			break
 		case "checkpointTimeout":
 			const checkpointTimeout = message.value ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS
-			// checkpointTimeout is in GlobalSettings but TypeScript inference has issues
-			await provider.contextProxy.setValue("checkpointTimeout" as any, checkpointTimeout)
+			await provider.contextProxy.setValue("checkpointTimeout", checkpointTimeout)
 			await provider.postStateToWebview()
 			break
 		case "browserViewportSize":
@@ -1847,6 +1830,14 @@ export const webviewMessageHandler = async (
 			break
 		case "includeTaskHistoryInEnhance":
 			await updateGlobalState("includeTaskHistoryInEnhance", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "includeCurrentTime":
+			await updateGlobalState("includeCurrentTime", message.bool ?? true)
+			await provider.postStateToWebview()
+			break
+		case "includeCurrentCost":
+			await updateGlobalState("includeCurrentCost", message.bool ?? true)
 			await provider.postStateToWebview()
 			break
 		case "condensingApiConfigId":

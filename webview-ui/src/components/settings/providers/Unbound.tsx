@@ -100,11 +100,11 @@ export const Unbound = ({
 			window.addEventListener("message", messageHandler)
 		})
 
-		vscode.postMessage({ type: "requestRouterModels" })
+		vscode.postMessage({ type: "requestRouterModelsAll" })
 
 		await modelsPromise
 
-		await queryClient.invalidateQueries({ queryKey: ["routerModels"] })
+		await queryClient.invalidateQueries({ queryKey: ["routerModelsAll"] })
 
 		// After refreshing models, check if current model is in the updated list
 		// If not, select the first available model
