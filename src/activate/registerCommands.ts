@@ -97,9 +97,6 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		await visibleProvider.removeClineFromStack()
 		await visibleProvider.refreshWorkspace()
 		await visibleProvider.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
-		// Send focusInput action immediately after chatButtonClicked
-		// This ensures the focus happens after the view has switched
-		await visibleProvider.postMessageToWebview({ type: "action", action: "focusInput" })
 	},
 	mcpButtonClicked: () => {
 		const visibleProvider = getVisibleProviderOrLog(outputChannel)
@@ -197,9 +194,13 @@ const getCommandsMap = ({ context, outputChannel, provider }: RegisterCommandOpt
 		try {
 			await focusPanel(tabPanel, sidebarPanel)
 
-			// Send focus input message only for sidebar panels
-			if (sidebarPanel && getPanel() === sidebarPanel) {
-				provider.postMessageToWebview({ type: "action", action: "focusInput" })
+			// Send focus input message to webview after panel becomes focusable
+			// Use setTimeout to defer until after the panel reveal/focus completes
+			const activePanel = getPanel()
+			if (activePanel) {
+				setTimeout(() => {
+					provider.postMessageToWebview({ type: "action", action: "focusInput" })
+				}, 0)
 			}
 		} catch (error) {
 			outputChannel.appendLine(`Error focusing input: ${error}`)

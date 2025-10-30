@@ -787,11 +787,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					switch (message.action!) {
 						case "didBecomeVisible":
 							if (!isHidden && !sendingDisabled && !enableButtons) {
-								textAreaRef.current?.focus()
+								requestAnimationFrame(() => {
+									textAreaRef.current?.focus()
+								})
 							}
 							break
 						case "focusInput":
-							textAreaRef.current?.focus()
+							requestAnimationFrame(() => {
+								textAreaRef.current?.focus()
+							})
 							break
 					}
 					break
