@@ -139,11 +139,4 @@ export class VercelAiGatewayHandler extends RouterProvider implements SingleComp
 			throw error
 		}
 	}
-
-	protected override hasNativeToolCapability(): boolean {
-		// Enable for Anthropic and OpenAI models routed through Vercel AI Gateway
-		const modelId = this.options.vercelAiGatewayModelId ?? vercelAiGatewayDefaultModelId
-
-		return modelId.startsWith("anthropic/") || modelId.startsWith("openai/")
-	}
 }

@@ -1413,8 +1413,4 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			throw error
 		}
 	}
-
-	protected override hasNativeToolCapability(): boolean {
-		return true
-	}
 }

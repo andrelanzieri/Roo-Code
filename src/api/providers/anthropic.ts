@@ -361,8 +361,4 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			return super.countTokens(content)
 		}
 	}
-
-	protected override hasNativeToolCapability(): boolean {
-		return true
-	}
 }

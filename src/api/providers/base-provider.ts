@@ -35,26 +35,19 @@ export abstract class BaseProvider implements ApiHandler {
 	}
 
 	/**
-	 * Returns whether this provider has the capability to support native tool calling.
-	 * Default implementation returns false (no native tool support).
-	 * Providers that DO support native tools should override this to return true.
+	 * Returns whether native tool calling is supported for the current model AND enabled by user.
+	 * Checks the model's supportsNativeToolCalling property and the user setting.
 	 *
-	 * @returns false by default
-	 */
-	protected hasNativeToolCapability(): boolean {
-		return false
-	}
-
-	/**
-	 * Returns whether this provider supports native tool calling AND the user has enabled it.
-	 * Combines provider capability with user setting.
-	 *
-	 * @returns true if provider supports it AND setting is enabled, false otherwise
+	 * @returns true if model supports it AND setting is enabled, false otherwise
 	 */
 	supportsNativeTools(): boolean {
-		if (!this.hasNativeToolCapability()) {
+		const model = this.getModel()
+		const modelSupportsNativeTools = model.info.supportsNativeToolCalling ?? false
+
+		if (!modelSupportsNativeTools) {
 			return false
 		}
+
 		return vscode.workspace.getConfiguration("roo-cline").get<boolean>("nativeToolCalling", false)
 	}
 }

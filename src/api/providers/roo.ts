@@ -262,12 +262,4 @@ export class RooHandler extends BaseOpenAiCompatibleProvider<string> {
 			},
 		}
 	}
-
-	protected override hasNativeToolCapability(): boolean {
-		// TODO: Read this from Roo model metadata instead of hardcoding
-		// For now, only enable for well-tested providers
-		const modelId = this.options.apiModelId ?? rooDefaultModelId
-
-		return modelId.startsWith("anthropic/") || modelId.startsWith("openai/")
-	}
 }

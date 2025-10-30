@@ -427,11 +427,4 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			}
 		}
 	}
-	protected override hasNativeToolCapability(): boolean {
-		// TODO: Read this from OpenRouter model metadata instead of hardcoding
-		// For now, only enable for well-tested providers
-		const modelId = this.options.openRouterModelId ?? openRouterDefaultModelId
-
-		return modelId.startsWith("anthropic/") || modelId.startsWith("openai/")
-	}
 }
