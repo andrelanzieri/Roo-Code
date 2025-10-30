@@ -58,13 +58,10 @@ async function readModels(router: RouterName): Promise<ModelRecord | undefined> 
  */
 export const getModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
 	const { provider } = options
-	const providerStr = String(provider)
 
 	// 1) Try memory cache
 	const cached = getModelsFromCache(provider)
 	if (cached) {
-		// Using console.log for cache layer logging (no provider access in utility functions)
-		console.log(`[modelCache] cache_hit: ${providerStr} (${Object.keys(cached).length} models)`)
 		return cached
 	}
 
@@ -72,9 +69,6 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 	try {
 		const file = await readModels(provider)
 		if (file && Object.keys(file).length > 0) {
-			// Using console.log for cache layer logging (no provider access in utility functions)
-			console.log(`[modelCache] file_hit: ${providerStr} (${Object.keys(file).length} models, bg_refresh queued)`)
-			// Populate memory cache immediately so follow-up callers are instant
 			memoryCache.set(provider, file)
 
 			// Start background refresh if not already in-flight (do not await)
@@ -82,7 +76,7 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 				const signal = AbortSignal.timeout(30_000)
 				const bgPromise = (async (): Promise<ModelRecord> => {
 					let models: ModelRecord = {}
-					switch (providerStr) {
+					switch (provider) {
 						case "openrouter":
 							models = await getOpenRouterModels(undefined, signal)
 							break
@@ -123,16 +117,13 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 							break
 						}
 						default:
-							throw new Error(`Unknown provider: ${providerStr}`)
+							throw new Error(`Unknown provider: ${provider}`)
 					}
 
-					console.log(
-						`[modelCache] bg_refresh_done: ${providerStr} (${Object.keys(models || {}).length} models)`,
-					)
 					memoryCache.set(provider, models)
 					await writeModels(provider, models).catch((err) => {
 						console.error(
-							`[modelCache] Error writing ${providerStr} to file cache during background refresh:`,
+							`[modelCache] Error writing ${provider} to file cache during background refresh:`,
 							err instanceof Error ? err.message : String(err),
 						)
 					})
@@ -142,16 +133,14 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 				inFlightModelFetches.set(provider, bgPromise)
 				Promise.resolve(bgPromise)
 					.catch((err) => {
-						// Log background refresh failures for monitoring
 						console.error(
-							`[modelCache] Background refresh failed for ${providerStr}:`,
+							`[modelCache] Background refresh failed for ${provider}:`,
 							err instanceof Error ? err.message : String(err),
 						)
 					})
 					.finally(() => inFlightModelFetches.delete(provider))
 			}
 
-			// Return the file snapshot immediately
 			return file
 		}
 	} catch {
@@ -161,8 +150,6 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 	// 3) Coalesce concurrent fetches
 	const existing = inFlightModelFetches.get(provider)
 	if (existing) {
-		// Using console.log for cache layer logging (no provider access in utility functions)
-		console.log(`[modelCache] coalesced_wait: ${providerStr}`)
 		return existing
 	}
 
@@ -170,7 +157,7 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 	const signal = AbortSignal.timeout(30_000)
 	const fetchPromise = (async (): Promise<ModelRecord> => {
 		let models: ModelRecord = {}
-		switch (providerStr) {
+		switch (provider) {
 			case "openrouter":
 				models = await getOpenRouterModels(undefined, signal)
 				break
@@ -211,28 +198,21 @@ export const getModels = async (options: GetModelsOptions): Promise<ModelRecord>
 				break
 			}
 			default: {
-				throw new Error(`Unknown provider: ${providerStr}`)
+				throw new Error(`Unknown provider: ${provider}`)
 			}
 		}
-
-		console.log(`[modelCache] network_fetch_done: ${providerStr} (${Object.keys(models || {}).length} models)`)
-
-		// Update memory cache first so waiters get immediate hits
 		memoryCache.set(provider, models)
 
-		// Persist to file cache (best-effort)
 		await writeModels(provider, models).catch((err) => {
 			console.error(
-				`[modelCache] Error writing ${providerStr} to file cache after network fetch:`,
+				`[modelCache] Error writing ${provider} to file cache after network fetch:`,
 				err instanceof Error ? err.message : String(err),
 			)
 		})
 
-		// Return models as-is (skip immediate re-read)
 		return models || {}
 	})()
 
-	// Register and await; ensure cleanup
 	inFlightModelFetches.set(provider, fetchPromise)
 	try {
 		return await fetchPromise
