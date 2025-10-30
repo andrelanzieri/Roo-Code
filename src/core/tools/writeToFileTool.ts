@@ -304,10 +304,10 @@ export async function writeToFileTool(
 			// Get the formatted response message
 			const message = await cline.diffViewProvider.pushToolWriteResult(cline, cline.cwd, !fileExists)
 
-			// Check if RE_READ_AFTER_EDIT experiment is enabled
-			const isReReadAfterEditEnabled = experiments.isEnabled(
+			// Check if RE_READ_AFTER_EDIT experiment is enabled for writeToFile
+			const isReReadAfterEditEnabled = experiments.isReReadAfterEditEnabled(
 				state?.experiments ?? {},
-				EXPERIMENT_IDS.RE_READ_AFTER_EDIT,
+				"writeToFile",
 			)
 
 			const reReadSuggestion = isReReadAfterEditEnabled

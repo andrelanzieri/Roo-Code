@@ -1,6 +1,6 @@
 import { render, screen, act } from "@/utils/test-utils"
 
-import { ProviderSettings, ExperimentId, DEFAULT_CHECKPOINT_TIMEOUT_SECONDS } from "@roo-code/types"
+import { ProviderSettings, DEFAULT_CHECKPOINT_TIMEOUT_SECONDS } from "@roo-code/types"
 
 import { ExtensionState } from "@roo/ExtensionMessage"
 
@@ -192,7 +192,7 @@ describe("mergeExtensionState", () => {
 			writeDelayMs: 1000,
 			requestDelaySeconds: 5,
 			mode: "default",
-			experiments: {} as Record<ExperimentId, boolean>,
+			experiments: {} as any,
 			customModes: [],
 			maxOpenTabsContext: 20,
 			maxWorkspaceFiles: 100,
@@ -220,7 +220,7 @@ describe("mergeExtensionState", () => {
 		const prevState: ExtensionState = {
 			...baseState,
 			apiConfiguration: { modelMaxTokens: 1234, modelMaxThinkingTokens: 123 },
-			experiments: {} as Record<ExperimentId, boolean>,
+			experiments: {} as any,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS - 5,
 		}
 
@@ -238,7 +238,14 @@ describe("mergeExtensionState", () => {
 				imageGeneration: false,
 				runSlashCommand: false,
 				reReadAfterEdit: false,
-			} as Record<ExperimentId, boolean>,
+				reReadAfterEditGranular: {
+					applyDiff: false,
+					multiApplyDiff: false,
+					writeToFile: false,
+					insertContent: false,
+					searchAndReplace: false,
+				},
+			} as any,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS + 5,
 		}
 
@@ -260,6 +267,13 @@ describe("mergeExtensionState", () => {
 			imageGeneration: false,
 			runSlashCommand: false,
 			reReadAfterEdit: false,
+			reReadAfterEditGranular: {
+				applyDiff: false,
+				multiApplyDiff: false,
+				writeToFile: false,
+				insertContent: false,
+				searchAndReplace: false,
+			},
 		})
 	})
 })

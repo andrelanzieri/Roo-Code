@@ -779,6 +779,16 @@
 		"RE_READ_AFTER_EDIT": {
 			"name": "Suggest review after file edits",
 			"description": "When enabled, Roo will suggest reviewing changes after editing files. This helps catch errors that might be introduced during editing by prompting to review the changes."
+		},
+		"RE_READ_AFTER_EDIT_GRANULAR": {
+			"name": "Suggest review after file edits",
+			"description": "Select which edit operations should prompt Roo to review changes. This helps catch errors introduced during editing.",
+			"selectEditTypes": "Choose edit types to review:",
+			"applyDiff": "Apply Diff (search and replace blocks)",
+			"multiApplyDiff": "Multi-file Apply Diff",
+			"writeToFile": "Write to File (complete file rewrites)",
+			"insertContent": "Insert Content (add lines to files)",
+			"searchAndReplace": "Search and Replace (find and replace text)"
 		}
 	},
 	"promptCaching": {

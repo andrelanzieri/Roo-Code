@@ -258,10 +258,10 @@ export async function searchAndReplaceTool(
 			false, // Always false for search_and_replace
 		)
 
-		// Check if RE_READ_AFTER_EDIT experiment is enabled
-		const isReReadAfterEditEnabled = experiments.isEnabled(
+		// Check if RE_READ_AFTER_EDIT experiment is enabled for searchAndReplace
+		const isReReadAfterEditEnabled = experiments.isReReadAfterEditEnabled(
 			state?.experiments ?? {},
-			EXPERIMENT_IDS.RE_READ_AFTER_EDIT,
+			"searchAndReplace",
 		)
 
 		const reReadSuggestion = isReReadAfterEditEnabled

@@ -238,11 +238,8 @@ export async function applyDiffToolLegacy(
 					? "\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>"
 					: ""
 
-			// Check if RE_READ_AFTER_EDIT experiment is enabled
-			const isReReadAfterEditEnabled = experiments.isEnabled(
-				state?.experiments ?? {},
-				EXPERIMENT_IDS.RE_READ_AFTER_EDIT,
-			)
+			// Check if RE_READ_AFTER_EDIT experiment is enabled for applyDiff
+			const isReReadAfterEditEnabled = experiments.isReReadAfterEditEnabled(state?.experiments ?? {}, "applyDiff")
 
 			const reReadSuggestion = isReReadAfterEditEnabled
 				? `\n\n<review_suggestion>The file has been edited. Consider using the read_file tool to review the changes and ensure they are correct and complete.</review_suggestion>`

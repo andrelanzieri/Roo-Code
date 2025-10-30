@@ -184,11 +184,8 @@ export async function insertContentTool(
 		// Get the formatted response message
 		const message = await cline.diffViewProvider.pushToolWriteResult(cline, cline.cwd, !fileExists)
 
-		// Check if RE_READ_AFTER_EDIT experiment is enabled
-		const isReReadAfterEditEnabled = experiments.isEnabled(
-			state?.experiments ?? {},
-			EXPERIMENT_IDS.RE_READ_AFTER_EDIT,
-		)
+		// Check if RE_READ_AFTER_EDIT experiment is enabled for insertContent
+		const isReReadAfterEditEnabled = experiments.isReReadAfterEditEnabled(state?.experiments ?? {}, "insertContent")
 
 		const reReadSuggestion = isReReadAfterEditEnabled
 			? `\n\n<review_suggestion>Content has been inserted into the file. Consider using the read_file tool to review the changes and ensure they are correct and complete.</review_suggestion>`

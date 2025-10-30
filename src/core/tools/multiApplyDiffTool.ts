@@ -676,12 +676,12 @@ ${errorDetails ? `\nTechnical details:\n${errorDetails}\n` : ""}
 				? "\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>"
 				: ""
 
-		// Check if RE_READ_AFTER_EDIT experiment is enabled
+		// Check if RE_READ_AFTER_EDIT experiment is enabled for multiApplyDiff
 		const provider = cline.providerRef.deref()
 		const state = await provider?.getState()
-		const isReReadAfterEditEnabled = experiments.isEnabled(
+		const isReReadAfterEditEnabled = experiments.isReReadAfterEditEnabled(
 			state?.experiments ?? {},
-			EXPERIMENT_IDS.RE_READ_AFTER_EDIT,
+			"multiApplyDiff",
 		)
 
 		// Count how many files were successfully edited

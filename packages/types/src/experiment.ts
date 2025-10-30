@@ -13,6 +13,7 @@ export const experimentIds = [
 	"imageGeneration",
 	"runSlashCommand",
 	"reReadAfterEdit",
+	"reReadAfterEditGranular",
 ] as const
 
 export const experimentIdsSchema = z.enum(experimentIds)
@@ -23,6 +24,17 @@ export type ExperimentId = z.infer<typeof experimentIdsSchema>
  * Experiments
  */
 
+// Schema for granular re-read after edit settings
+export const reReadAfterEditGranularSchema = z.object({
+	applyDiff: z.boolean().optional(),
+	multiApplyDiff: z.boolean().optional(),
+	writeToFile: z.boolean().optional(),
+	insertContent: z.boolean().optional(),
+	searchAndReplace: z.boolean().optional(),
+})
+
+export type ReReadAfterEditGranular = z.infer<typeof reReadAfterEditGranularSchema>
+
 export const experimentsSchema = z.object({
 	powerSteering: z.boolean().optional(),
 	multiFileApplyDiff: z.boolean().optional(),
@@ -30,6 +42,7 @@ export const experimentsSchema = z.object({
 	imageGeneration: z.boolean().optional(),
 	runSlashCommand: z.boolean().optional(),
 	reReadAfterEdit: z.boolean().optional(),
+	reReadAfterEditGranular: reReadAfterEditGranularSchema.optional(),
 })
 
 export type Experiments = z.infer<typeof experimentsSchema>

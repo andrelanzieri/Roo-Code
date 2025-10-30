@@ -1,7 +1,7 @@
 import { HTMLAttributes } from "react"
 import { FlaskConical } from "lucide-react"
 
-import type { Experiments } from "@roo-code/types"
+import type { Experiments, ReReadAfterEditGranular } from "@roo-code/types"
 
 import { EXPERIMENT_IDS, experimentConfigsMap } from "@roo/experiments"
 
@@ -13,10 +13,12 @@ import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { ExperimentalFeature } from "./ExperimentalFeature"
 import { ImageGenerationSettings } from "./ImageGenerationSettings"
+import { ReReadAfterEditGranularSettings } from "./ReReadAfterEditGranularSettings"
 
 type ExperimentalSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	experiments: Experiments
 	setExperimentEnabled: SetExperimentEnabled
+	setReReadAfterEditGranular?: (settings: ReReadAfterEditGranular) => void
 	apiConfiguration?: any
 	setApiConfigurationField?: any
 	openRouterImageApiKey?: string
@@ -28,6 +30,7 @@ type ExperimentalSettingsProps = HTMLAttributes<HTMLDivElement> & {
 export const ExperimentalSettings = ({
 	experiments,
 	setExperimentEnabled,
+	setReReadAfterEditGranular,
 	apiConfiguration,
 	setApiConfigurationField,
 	openRouterImageApiKey,
@@ -83,19 +86,38 @@ export const ExperimentalSettings = ({
 								/>
 							)
 						}
-						return (
-							<ExperimentalFeature
-								key={config[0]}
-								experimentKey={config[0]}
-								enabled={experiments[EXPERIMENT_IDS[config[0] as keyof typeof EXPERIMENT_IDS]] ?? false}
-								onChange={(enabled) =>
-									setExperimentEnabled(
-										EXPERIMENT_IDS[config[0] as keyof typeof EXPERIMENT_IDS],
-										enabled,
-									)
-								}
-							/>
-						)
+						// Show granular settings for RE_READ_AFTER_EDIT
+						if (config[0] === "RE_READ_AFTER_EDIT_GRANULAR" && setReReadAfterEditGranular) {
+							return (
+								<ReReadAfterEditGranularSettings
+									key={config[0]}
+									enabled={experiments[EXPERIMENT_IDS.RE_READ_AFTER_EDIT] ?? false}
+									granularSettings={experiments[EXPERIMENT_IDS.RE_READ_AFTER_EDIT_GRANULAR]}
+									onChange={(enabled) =>
+										setExperimentEnabled(EXPERIMENT_IDS.RE_READ_AFTER_EDIT, enabled)
+									}
+									onGranularChange={setReReadAfterEditGranular}
+								/>
+							)
+						}
+						// Skip the legacy RE_READ_AFTER_EDIT if granular is available
+						if (config[0] === "RE_READ_AFTER_EDIT" && setReReadAfterEditGranular) {
+							return null
+						}
+						const experimentId = EXPERIMENT_IDS[config[0] as keyof typeof EXPERIMENT_IDS]
+						const value = experiments[experimentId]
+						// Only render if it's a boolean (not granular settings object)
+						if (typeof value === "boolean" || value === undefined) {
+							return (
+								<ExperimentalFeature
+									key={config[0]}
+									experimentKey={config[0]}
+									enabled={value ?? false}
+									onChange={(enabled) => setExperimentEnabled(experimentId, enabled)}
+								/>
+							)
+						}
+						return null
 					})}
 			</Section>
 		</div>

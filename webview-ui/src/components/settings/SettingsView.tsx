@@ -27,7 +27,7 @@ import {
 	Glasses,
 } from "lucide-react"
 
-import type { ProviderSettings, ExperimentId, TelemetrySetting } from "@roo-code/types"
+import type { ProviderSettings, ExperimentId, TelemetrySetting, ReReadAfterEditGranular } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { cn } from "@src/lib/utils"
@@ -269,6 +269,26 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 			setChangeDetected(true)
 			return { ...prevState, experiments: { ...prevState.experiments, [id]: enabled } }
+		})
+	}, [])
+
+	const setReReadAfterEditGranular = useCallback((settings: ReReadAfterEditGranular) => {
+		setCachedState((prevState) => {
+			// Only set change detected if value actually changed
+			const previousStr = JSON.stringify(prevState.experiments?.reReadAfterEditGranular)
+			const newStr = JSON.stringify(settings)
+
+			if (previousStr !== newStr) {
+				setChangeDetected(true)
+			}
+
+			return {
+				...prevState,
+				experiments: {
+					...prevState.experiments,
+					reReadAfterEditGranular: settings,
+				},
+			}
 		})
 	}, [])
 
@@ -799,6 +819,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					{activeTab === "experimental" && (
 						<ExperimentalSettings
 							setExperimentEnabled={setExperimentEnabled}
+							setReReadAfterEditGranular={setReReadAfterEditGranular}
 							experiments={experiments}
 							apiConfiguration={apiConfiguration}
 							setApiConfigurationField={setApiConfigurationField}
