@@ -619,55 +619,55 @@
 		},
 		"advanced": {
 			"label": "Terminal Settings: Advanced",
-			"description": "The following options may require a terminal restart to apply the setting."
+			"description": "These settings apply only when 'Use Inline Terminal' is disabled."
 		},
 		"outputLineLimit": {
 			"label": "Terminal output limit",
-			"description": "Keeps the beginning and end of command output and drops the middle when needed to stay under the limit. Lower to save tokens; raise if you need more middle content. <0>Learn more</0>"
+			"description": "Keeps the first and last lines and drops the middle to stay under the limit. Lower to save tokens; raise to give Roo more middle detail. Roo sees a placeholder where the content is skipped.<0>Learn more</0>"
 		},
 		"outputCharacterLimit": {
 			"label": "Terminal character limit",
-			"description": "Hard cap on output size. Keeps the beginning and end and omits the middle if needed. Overrides the line limit to prevent memory issues from very long lines. <0>Learn more</0>"
+			"description": "Overrides the line limit to prevent memory issues by enforcing a hard cap on output size. If exceeded, keeps the beginning and end and shows a placeholder to Roo where content is skipped. <0>Learn more</0>"
 		},
 		"shellIntegrationTimeout": {
 			"label": "Terminal shell integration timeout",
-			"description": "How long to wait for VS Code shell integration before running commands. Increase if you see 'Shell Integration Unavailable' errors. Only applies when using the VS Code terminal. <0>Learn more</0>"
+			"description": "How long to wait for VS Code shell integration before running commands. Raise if your shell starts slowly or you see 'Shell Integration Unavailable' errors. <0>Learn more</0>"
 		},
 		"shellIntegrationDisabled": {
 			"label": "Use Inline Terminal (recommended)",
-			"description": "Run commands in a background process and stream output in chat (outside the VS Code terminal). Avoids shell profiles and shell integration, improving reliability and preventing 'Shell Integration Unavailable' errors. Recommended. <0>Learn more</0>"
+			"description": "Run commands in the Inline Terminal (chat) to bypasses shell profiles/integration for faster, more reliable runs. When disabled Roo uses the VS Code terminal with your shell profile, prompts, and plugins. <0>Learn more</0>"
 		},
 		"commandDelay": {
 			"label": "Terminal command delay",
-			"description": "Adds a small delay after each command to help VS Code terminals flush all output. Set to 0 to disable. Workaround for terminal timing issues; usually not needed. <0>Learn more</0>"
+			"description": "Adds a short pause after each command so the VS Code terminal can flush all output (bash/zsh: PROMPT_COMMAND sleep; PowerShell: start-sleep). Use only if you see missing tail output; otherwise leave at 0. VS Code terminal only. <0>Learn more</0>"
 		},
 		"compressProgressBar": {
 			"label": "Compress progress bar output",
-			"description": "Recommended. Processes carriage returns (\\r) and backspaces (\\b) so progress bars and spinners render like a real terminal and only the final state is kept. Saves tokens; disable only when you need to inspect intermediate updates. <0>Learn more</0>"
+			"description": "Collapses progress bars/spinners so only the final state is kept (saves tokens). <0>Learn more</0>"
 		},
 		"powershellCounter": {
 			"label": "Enable PowerShell counter workaround",
-			"description": "Adds a small counter to PowerShell commands to work around missing output or repeated-command issues on some setups. <0>Learn more</0>"
+			"description": "Turn this on when PowerShell output is missing or duplicated; it appends a tiny counter to each command to stabilize output. Keep this off if output already looks correct. <0>Learn more</0>"
 		},
 		"zshClearEolMark": {
 			"label": "Clear ZSH EOL mark",
-			"description": "Clears ZSH's end-of-line mark (%) so output is parsed correctly. <0>Learn more</0>"
+			"description": "Turn this on when you see stray % at the end of lines or parsing looks wrong; it omits Zsh’s end‑of‑line mark (%).  <0>Learn more</0>"
 		},
 		"zshOhMy": {
 			"label": "Enable Oh My Zsh integration",
-			"description": "Enables Oh My Zsh shell integration detection. May require restarting the IDE. <0>Learn more</0>"
+			"description": "Turn this on when your Oh My Zsh theme/plugins expect shell integration; it sets ITERM_SHELL_INTEGRATION_INSTALLED=Yes. Turn this off to avoid setting that variable. VS Code terminal (zsh) only. May require restarting the IDE. <0>Learn more</0>"
 		},
 		"zshP10k": {
 			"label": "Enable Powerlevel10k integration",
-			"description": "Enables Powerlevel10k shell integration detection. <0>Learn more</0>"
+			"description": "Turn this on when using Powerlevel10k shell integration. <0>Learn more</0>"
 		},
 		"zdotdir": {
 			"label": "Enable ZDOTDIR handling",
-			"description": "Uses a temporary ZDOTDIR so VS Code shell integration works with zsh while preserving your config. <0>Learn more</0>"
+			"description": "Turn this on when zsh shell integration fails or conflicts with your dotfiles.<0>Learn more</0>"
 		},
 		"inheritEnv": {
 			"label": "Inherit environment variables",
-			"description": "Let the terminal inherit environment variables from the parent VS Code process. Toggles VS Code setting 'terminal.integrated.inheritEnv'. <0>Learn more</0>"
+			"description": "Turn this to inherit environment variables from the parent VS Code process.<0>Learn more</0>"
 		}
 	},
 	"advancedSettings": {
