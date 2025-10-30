@@ -54,9 +54,9 @@ import { openMention } from "../mentions"
 import { getWorkspacePath } from "../../utils/path"
 import { Mode, defaultModeSlug } from "../../shared/modes"
 import { getModels, flushModels } from "../../api/providers/fetchers/modelCache"
-import { GetModelsOptions } from "../../shared/api"
 import { generateSystemPrompt } from "./generateSystemPrompt"
 import { getCommand } from "../../utils/commands"
+import { fetchRouterModels } from "../../services/router-models"
 
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
@@ -768,152 +768,27 @@ export const webviewMessageHandler = async (
 		case "requestRouterModels": {
 			// Phase 2: Scope to active provider during chat/task flows
 			const { apiConfiguration } = await provider.getState()
-			const providerStr = apiConfiguration.apiProvider
-			const activeProvider: RouterName | undefined =
-				providerStr && isRouterName(providerStr) ? providerStr : undefined
 
-			const routerModels: Partial<Record<RouterName, ModelRecord>> = {
-				openrouter: {},
-				"vercel-ai-gateway": {},
-				huggingface: {},
-				litellm: {},
-				deepinfra: {},
-				"io-intelligence": {},
-				requesty: {},
-				unbound: {},
-				glama: {},
-				ollama: {},
-				lmstudio: {},
-				roo: {},
-			}
+			const { routerModels, errors } = await fetchRouterModels({
+				apiConfiguration,
+				activeProviderOnly: true,
+				litellmOverrides: message?.values
+					? {
+							apiKey: message.values.litellmApiKey,
+							baseUrl: message.values.litellmBaseUrl,
+						}
+					: undefined,
+			})
 
-			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
-				try {
-					return await getModels(options)
-				} catch (error) {
-					provider.log(
-						`Failed to fetch models in webviewMessageHandler requestRouterModels for ${options.provider}: ${error instanceof Error ? error.message : String(error)}`,
-					)
-					throw error
-				}
-			}
-
-			// Build full list then filter to active provider
-			const allFetches: { key: RouterName; options: GetModelsOptions }[] = [
-				{ key: "openrouter", options: { provider: "openrouter" } },
-				{
-					key: "requesty",
-					options: {
-						provider: "requesty",
-						apiKey: apiConfiguration.requestyApiKey,
-						baseUrl: apiConfiguration.requestyBaseUrl,
-					},
-				},
-				{ key: "glama", options: { provider: "glama" } },
-				{ key: "unbound", options: { provider: "unbound", apiKey: apiConfiguration.unboundApiKey } },
-				{ key: "vercel-ai-gateway", options: { provider: "vercel-ai-gateway" } },
-				{
-					key: "deepinfra",
-					options: {
-						provider: "deepinfra",
-						apiKey: apiConfiguration.deepInfraApiKey,
-						baseUrl: apiConfiguration.deepInfraBaseUrl,
-					},
-				},
-				{
-					key: "roo",
-					options: {
-						provider: "roo",
-						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
-						apiKey: CloudService.hasInstance()
-							? CloudService.instance.authService?.getSessionToken()
-							: undefined,
-					},
-				},
-			]
-
-			// Include local providers (ollama, lmstudio, huggingface) when they are the active provider
-			if (activeProvider === "ollama") {
-				allFetches.push({
-					key: "ollama",
-					options: {
-						provider: "ollama",
-						baseUrl: apiConfiguration.ollamaBaseUrl,
-						apiKey: apiConfiguration.ollamaApiKey,
-					},
+			// Send error notifications for failed providers
+			errors.forEach((err) => {
+				provider.log(`Error fetching models for ${err.provider}: ${err.error}`)
+				provider.postMessageToWebview({
+					type: "singleRouterModelFetchResponse",
+					success: false,
+					error: err.error,
+					values: { provider: err.provider },
 				})
-			}
-			if (activeProvider === "lmstudio") {
-				allFetches.push({
-					key: "lmstudio",
-					options: {
-						provider: "lmstudio",
-						baseUrl: apiConfiguration.lmStudioBaseUrl,
-					},
-				})
-			}
-			if (activeProvider === "huggingface") {
-				allFetches.push({
-					key: "huggingface",
-					options: {
-						provider: "huggingface",
-					},
-				})
-			}
-
-			// IO Intelligence (optional)
-			if (apiConfiguration.ioIntelligenceApiKey) {
-				allFetches.push({
-					key: "io-intelligence",
-					options: { provider: "io-intelligence", apiKey: apiConfiguration.ioIntelligenceApiKey },
-				})
-			}
-
-			// LiteLLM (optional)
-			const litellmApiKey = apiConfiguration.litellmApiKey || message?.values?.litellmApiKey
-			const litellmBaseUrl = apiConfiguration.litellmBaseUrl || message?.values?.litellmBaseUrl
-			if (litellmApiKey && litellmBaseUrl) {
-				allFetches.push({
-					key: "litellm",
-					options: { provider: "litellm", apiKey: litellmApiKey, baseUrl: litellmBaseUrl },
-				})
-			}
-
-			const modelFetchPromises = activeProvider
-				? allFetches.filter(({ key }) => key === activeProvider)
-				: allFetches
-
-			// If nothing matched (edge case), still post empty structure for stability
-			if (modelFetchPromises.length === 0) {
-				await provider.postMessageToWebview({
-					type: "routerModels",
-					routerModels: routerModels as RouterModels,
-				})
-				break
-			}
-
-			const results = await Promise.allSettled(
-				modelFetchPromises.map(async ({ key, options }) => {
-					const models = await safeGetModels(options)
-					return { key, models }
-				}),
-			)
-
-			results.forEach((result, index) => {
-				const routerName = modelFetchPromises[index].key
-				if (result.status === "fulfilled") {
-					routerModels[routerName] = result.value.models
-				} else {
-					const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
-					provider.log(`Error fetching models for ${routerName}: ${errorMessage}`)
-					routerModels[routerName] = {}
-					provider.postMessageToWebview({
-						type: "singleRouterModelFetchResponse",
-						success: false,
-						error: errorMessage,
-						values: { provider: routerName },
-					})
-				}
 			})
 
 			provider.postMessageToWebview({ type: "routerModels", routerModels: routerModels as RouterModels })
@@ -923,126 +798,41 @@ export const webviewMessageHandler = async (
 			// Settings and activation: fetch all providers (legacy behavior)
 			const { apiConfiguration } = await provider.getState()
 
-			const routerModels: Partial<Record<RouterName, ModelRecord>> = {
-				openrouter: {},
-				"vercel-ai-gateway": {},
-				huggingface: {},
-				litellm: {},
-				deepinfra: {},
-				"io-intelligence": {},
-				requesty: {},
-				unbound: {},
-				glama: {},
-				ollama: {},
-				lmstudio: {},
-				roo: {},
-			}
-
-			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
-				try {
-					return await getModels(options)
-				} catch (error) {
-					provider.log(
-						`Failed to fetch models in webviewMessageHandler requestRouterModelsAll for ${options.provider}: ${error instanceof Error ? error.message : String(error)}`,
-					)
-					throw error
-				}
-			}
-
-			const modelFetchPromises: { key: RouterName; options: GetModelsOptions }[] = [
-				{ key: "openrouter", options: { provider: "openrouter" } },
-				{
-					key: "requesty",
-					options: {
-						provider: "requesty",
-						apiKey: apiConfiguration.requestyApiKey,
-						baseUrl: apiConfiguration.requestyBaseUrl,
-					},
-				},
-				{ key: "glama", options: { provider: "glama" } },
-				{ key: "unbound", options: { provider: "unbound", apiKey: apiConfiguration.unboundApiKey } },
-				{ key: "vercel-ai-gateway", options: { provider: "vercel-ai-gateway" } },
-				{
-					key: "deepinfra",
-					options: {
-						provider: "deepinfra",
-						apiKey: apiConfiguration.deepInfraApiKey,
-						baseUrl: apiConfiguration.deepInfraBaseUrl,
-					},
-				},
-				{
-					key: "roo",
-					options: {
-						provider: "roo",
-						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
-						apiKey: CloudService.hasInstance()
-							? CloudService.instance.authService?.getSessionToken()
-							: undefined,
-					},
-				},
-			]
-
-			// Add IO Intelligence if API key is provided.
-			const ioIntelligenceApiKey = apiConfiguration.ioIntelligenceApiKey
-			if (ioIntelligenceApiKey) {
-				modelFetchPromises.push({
-					key: "io-intelligence",
-					options: { provider: "io-intelligence", apiKey: ioIntelligenceApiKey },
-				})
-			}
-
-			// Don't fetch Ollama and LM Studio models by default anymore.
-			// They have their own specific handlers: requestOllamaModels and requestLmStudioModels.
-
-			const litellmApiKey = apiConfiguration.litellmApiKey || message?.values?.litellmApiKey
-			const litellmBaseUrl = apiConfiguration.litellmBaseUrl || message?.values?.litellmBaseUrl
-			if (litellmApiKey && litellmBaseUrl) {
-				modelFetchPromises.push({
-					key: "litellm",
-					options: { provider: "litellm", apiKey: litellmApiKey, baseUrl: litellmBaseUrl },
-				})
-			}
-
-			const results = await Promise.allSettled(
-				modelFetchPromises.map(async ({ key, options }) => {
-					const models = await safeGetModels(options)
-					return { key, models }
-				}),
-			)
-
-			results.forEach((result, index) => {
-				const routerName = modelFetchPromises[index].key
-
-				if (result.status === "fulfilled") {
-					routerModels[routerName] = result.value.models
-
-					// Ollama and LM Studio settings pages still need these events.
-					if (routerName === "ollama" && Object.keys(result.value.models).length > 0) {
-						provider.postMessageToWebview({
-							type: "ollamaModels",
-							ollamaModels: result.value.models,
-						})
-					} else if (routerName === "lmstudio" && Object.keys(result.value.models).length > 0) {
-						provider.postMessageToWebview({
-							type: "lmStudioModels",
-							lmStudioModels: result.value.models,
-						})
-					}
-				} else {
-					// Handle rejection: Post a specific error message for this provider.
-					const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
-					provider.log(`Error fetching models for ${routerName}: ${errorMessage}`)
-
-					routerModels[routerName] = {}
-
-					provider.postMessageToWebview({
-						type: "singleRouterModelFetchResponse",
-						success: false,
-						error: errorMessage,
-						values: { provider: routerName },
-					})
-				}
+			const { routerModels, errors } = await fetchRouterModels({
+				apiConfiguration,
+				activeProviderOnly: false,
+				litellmOverrides: message?.values
+					? {
+							apiKey: message.values.litellmApiKey,
+							baseUrl: message.values.litellmBaseUrl,
+						}
+					: undefined,
 			})
+
+			// Send error notifications for failed providers
+			errors.forEach((err) => {
+				provider.log(`Error fetching models for ${err.provider}: ${err.error}`)
+				provider.postMessageToWebview({
+					type: "singleRouterModelFetchResponse",
+					success: false,
+					error: err.error,
+					values: { provider: err.provider },
+				})
+			})
+
+			// Send ollama/lmstudio-specific messages if models were fetched
+			if (routerModels.ollama && Object.keys(routerModels.ollama).length > 0) {
+				provider.postMessageToWebview({
+					type: "ollamaModels",
+					ollamaModels: routerModels.ollama,
+				})
+			}
+			if (routerModels.lmstudio && Object.keys(routerModels.lmstudio).length > 0) {
+				provider.postMessageToWebview({
+					type: "lmStudioModels",
+					lmStudioModels: routerModels.lmstudio,
+				})
+			}
 
 			provider.postMessageToWebview({ type: "routerModels", routerModels: routerModels as RouterModels })
 			break
