@@ -305,7 +305,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Native Tool Calling
 	private useNativeToolCalls: boolean = false
 	private toolUseHandler: ToolUseHandler
-	private toolUseIdMap = new Map<string, string>()
 
 	// Token Usage Cache
 	private tokenUsageSnapshot?: TokenUsage
@@ -1955,7 +1954,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.presentAssistantMessageHasPendingUpdates = false
 				this.assistantMessageParser.reset()
 				this.toolUseHandler.reset()
-				this.toolUseIdMap.clear()
 
 				await this.diffViewProvider.reset()
 
@@ -2023,11 +2021,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 									name: chunk.tool_call.function?.name,
 									input: chunk.tool_call.function?.arguments,
 								})
-
-								// Extract and store tool_use_id for creating proper ToolResultBlockParam
-								if (chunk.tool_call.function?.id && chunk.tool_call.function?.name) {
-									this.toolUseIdMap.set(chunk.tool_call.function.name, chunk.tool_call.function.id)
-								}
 
 								const prevLength = this.assistantMessageContent.length
 
