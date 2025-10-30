@@ -17,6 +17,7 @@ import {
 } from "../../shared/tools"
 import { formatResponse } from "../prompts/responses"
 import { Package } from "../../shared/package"
+import { getModeConfig } from "../../shared/modes"
 
 export async function attemptCompletionTool(
 	cline: Task,
@@ -94,6 +95,52 @@ export async function attemptCompletionTool(
 			await cline.say("completion_result", result, undefined, false)
 			TelemetryService.instance.captureTaskCompleted(cline.taskId)
 			cline.emit(RooCodeEventName.TaskCompleted, cline.taskId, cline.getTokenUsage(), cline.toolUsage)
+
+			// Check for onComplete actions in the current mode configuration
+			const provider = cline.providerRef.deref()
+			if (provider) {
+				const state = await provider.getState()
+				const currentMode = state?.mode || "code"
+				const customModes = state?.customModes || []
+
+				try {
+					const modeConfig = getModeConfig(currentMode, customModes)
+
+					if (modeConfig.onComplete) {
+						const { switchToMode, runCommand, includeSummary } = modeConfig.onComplete
+
+						// Prepare context for onComplete actions
+						const context = includeSummary ? result : undefined
+
+						// Execute mode switch if specified
+						if (switchToMode) {
+							await cline.say("text", `Automatically switching to ${switchToMode} mode as configured...`)
+							await provider.handleModeSwitch(switchToMode)
+						}
+
+						// Execute command if specified
+						if (runCommand) {
+							await cline.say("text", `Automatically executing command: ${runCommand}`)
+
+							// Create a new message with the command, optionally including the summary
+							let commandMessage = runCommand
+							if (context) {
+								commandMessage = `${runCommand}\n\nContext from previous task:\n${context}`
+							}
+
+							// Send the command as a new user message
+							await provider.postMessageToWebview({
+								type: "invoke",
+								invoke: "sendMessage",
+								text: commandMessage,
+							})
+						}
+					}
+				} catch (error) {
+					// Log error but don't fail the completion
+					console.error("Failed to execute onComplete actions:", error)
+				}
+			}
 
 			if (cline.parentTask) {
 				const didApprove = await askFinishSubTaskApproval()
