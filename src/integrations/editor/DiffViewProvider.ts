@@ -485,10 +485,13 @@ export class DiffViewProvider {
 		return new Promise<vscode.TextEditor>((resolve, reject) => {
 			const fileName = path.basename(uri.fsPath)
 			const fileExists = this.editType === "modify"
-			const DIFF_EDITOR_TIMEOUT = 10_000 // ms
+			const DIFF_EDITOR_TIMEOUT = 15_000 // Increased from 10s to 15s to accommodate slower systems
+			const MAX_RETRIES = 2 // Allow up to 2 retries on timeout
 
+			let currentRetry = 0
 			let timeoutId: NodeJS.Timeout | undefined
-			const disposables: vscode.Disposable[] = []
+			let disposables: vscode.Disposable[] = []
+			let isResolved = false
 
 			const cleanup = () => {
 				if (timeoutId) {
@@ -499,77 +502,122 @@ export class DiffViewProvider {
 				disposables.length = 0
 			}
 
-			// Set timeout for the entire operation
-			timeoutId = setTimeout(() => {
-				cleanup()
-				reject(
-					new Error(
-						`Failed to open diff editor for ${uri.fsPath} within ${DIFF_EDITOR_TIMEOUT / 1000} seconds. The editor may be blocked or VS Code may be unresponsive.`,
-					),
+			const attemptOpenDiffEditor = () => {
+				// Set timeout for the current attempt
+				timeoutId = setTimeout(() => {
+					if (!isResolved) {
+						cleanup()
+
+						// Try retrying if we haven't exceeded MAX_RETRIES
+						if (currentRetry < MAX_RETRIES) {
+							currentRetry++
+							console.warn(
+								`[DiffViewProvider] Diff editor timeout for ${uri.fsPath}, retrying... (attempt ${currentRetry + 1}/${MAX_RETRIES + 1})`,
+							)
+							// Reset and retry
+							disposables = []
+							attemptOpenDiffEditor()
+						} else {
+							// All retries exhausted
+							isResolved = true
+							reject(
+								new Error(
+									`Failed to open diff editor for ${uri.fsPath} after ${MAX_RETRIES + 1} attempts (${DIFF_EDITOR_TIMEOUT / 1000}s timeout each). The editor may be blocked or VS Code may be unresponsive.`,
+								),
+							)
+						}
+					}
+				}, DIFF_EDITOR_TIMEOUT)
+
+				// Listen for document open events - more efficient than scanning all tabs
+				disposables.push(
+					vscode.workspace.onDidOpenTextDocument(async (document) => {
+						if (isResolved) return
+
+						// Only match file:// scheme documents to avoid git diffs
+						if (document.uri.scheme === "file" && arePathsEqual(document.uri.fsPath, uri.fsPath)) {
+							// Wait a tick for the editor to be available
+							await new Promise((r) => setTimeout(r, 50)) // Slightly longer wait
+
+							// Find the editor for this document
+							const editor = vscode.window.visibleTextEditors.find(
+								(e) =>
+									e.document.uri.scheme === "file" &&
+									arePathsEqual(e.document.uri.fsPath, uri.fsPath),
+							)
+
+							if (editor && !isResolved) {
+								isResolved = true
+								cleanup()
+								resolve(editor)
+							}
+						}
+					}),
 				)
-			}, DIFF_EDITOR_TIMEOUT)
 
-			// Listen for document open events - more efficient than scanning all tabs
-			disposables.push(
-				vscode.workspace.onDidOpenTextDocument(async (document) => {
-					// Only match file:// scheme documents to avoid git diffs
-					if (document.uri.scheme === "file" && arePathsEqual(document.uri.fsPath, uri.fsPath)) {
-						// Wait a tick for the editor to be available
-						await new Promise((r) => setTimeout(r, 0))
+				// Also listen for visible editor changes as a fallback
+				disposables.push(
+					vscode.window.onDidChangeVisibleTextEditors((editors) => {
+						if (isResolved) return
 
-						// Find the editor for this document
-						const editor = vscode.window.visibleTextEditors.find(
-							(e) => e.document.uri.scheme === "file" && arePathsEqual(e.document.uri.fsPath, uri.fsPath),
-						)
-
-						if (editor) {
+						const editor = editors.find((e) => {
+							const isFileScheme = e.document.uri.scheme === "file"
+							const pathMatches = arePathsEqual(e.document.uri.fsPath, uri.fsPath)
+							return isFileScheme && pathMatches
+						})
+						if (editor && !isResolved) {
+							isResolved = true
 							cleanup()
 							resolve(editor)
 						}
-					}
-				}),
-			)
-
-			// Also listen for visible editor changes as a fallback
-			disposables.push(
-				vscode.window.onDidChangeVisibleTextEditors((editors) => {
-					const editor = editors.find((e) => {
-						const isFileScheme = e.document.uri.scheme === "file"
-						const pathMatches = arePathsEqual(e.document.uri.fsPath, uri.fsPath)
-						return isFileScheme && pathMatches
-					})
-					if (editor) {
-						cleanup()
-						resolve(editor)
-					}
-				}),
-			)
-
-			// Pre-open the file as a text document to ensure it doesn't open in preview mode
-			// This fixes issues with files that have custom editor associations (like markdown preview)
-			vscode.window
-				.showTextDocument(uri, { preview: false, viewColumn: vscode.ViewColumn.Active, preserveFocus: true })
-				.then(() => {
-					// Execute the diff command after ensuring the file is open as text
-					return vscode.commands.executeCommand(
-						"vscode.diff",
-						vscode.Uri.parse(`${DIFF_VIEW_URI_SCHEME}:${fileName}`).with({
-							query: Buffer.from(this.originalContent ?? "").toString("base64"),
-						}),
-						uri,
-						`${fileName}: ${fileExists ? `${DIFF_VIEW_LABEL_CHANGES}` : "New File"} (Editable)`,
-						{ preserveFocus: true },
-					)
-				})
-				.then(
-					() => {
-						// Command executed successfully, now wait for the editor to appear
-					},
-					(err: any) => {
-						cleanup()
-						reject(new Error(`Failed to execute diff command for ${uri.fsPath}: ${err.message}`))
-					},
+					}),
 				)
+
+				// Pre-open the file as a text document to ensure it doesn't open in preview mode
+				// This fixes issues with files that have custom editor associations (like markdown preview)
+				// Use setImmediate to avoid blocking other operations
+				setImmediate(() => {
+					if (isResolved) return
+
+					vscode.window
+						.showTextDocument(uri, {
+							preview: false,
+							viewColumn: vscode.ViewColumn.Active,
+							preserveFocus: true,
+						})
+						.then(() => {
+							if (isResolved) return
+
+							// Execute the diff command after ensuring the file is open as text
+							return vscode.commands.executeCommand(
+								"vscode.diff",
+								vscode.Uri.parse(`${DIFF_VIEW_URI_SCHEME}:${fileName}`).with({
+									query: Buffer.from(this.originalContent ?? "").toString("base64"),
+								}),
+								uri,
+								`${fileName}: ${fileExists ? `${DIFF_VIEW_LABEL_CHANGES}` : "New File"} (Editable)`,
+								{ preserveFocus: true },
+							)
+						})
+						.then(
+							() => {
+								// Command executed successfully, now wait for the editor to appear
+							},
+							(err: any) => {
+								if (!isResolved) {
+									isResolved = true
+									cleanup()
+									reject(
+										new Error(`Failed to execute diff command for ${uri.fsPath}: ${err.message}`),
+									)
+								}
+							},
+						)
+				})
+			}
+
+			// Start the first attempt
+			attemptOpenDiffEditor()
 		})
 	}
 

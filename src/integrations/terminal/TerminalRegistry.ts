@@ -47,25 +47,35 @@ export class TerminalRegistry {
 
 		try {
 			const startDisposable = vscode.window.onDidStartTerminalShellExecution?.(
-				async (e: vscode.TerminalShellExecutionStartEvent) => {
-					// Get a handle to the stream as early as possible:
-					const stream = e.execution.read()
-					const terminal = this.getTerminalByVSCETerminal(e.terminal)
+				(e: vscode.TerminalShellExecutionStartEvent) => {
+					// Process the event asynchronously to avoid blocking
+					setImmediate(async () => {
+						try {
+							// Get a handle to the stream as early as possible:
+							const stream = e.execution.read()
+							const terminal = this.getTerminalByVSCETerminal(e.terminal)
 
-					console.info("[onDidStartTerminalShellExecution]", {
-						command: e.execution?.commandLine?.value,
-						terminalId: terminal?.id,
+							console.info("[onDidStartTerminalShellExecution]", {
+								command: e.execution?.commandLine?.value,
+								terminalId: terminal?.id,
+							})
+
+							if (terminal) {
+								terminal.setActiveStream(stream)
+								terminal.busy = true // Mark terminal as busy when shell execution starts
+							} else {
+								// Only log as debug to avoid spamming logs for non-Roo terminals
+								console.debug(
+									"[onDidStartTerminalShellExecution] Shell execution started from non-Roo terminal",
+								)
+							}
+						} catch (error) {
+							console.error(
+								"[onDidStartTerminalShellExecution] Error handling shell execution start:",
+								error,
+							)
+						}
 					})
-
-					if (terminal) {
-						terminal.setActiveStream(stream)
-						terminal.busy = true // Mark terminal as busy when shell execution starts
-					} else {
-						console.error(
-							"[onDidStartTerminalShellExecution] Shell execution started, but not from a Roo-registered terminal:",
-							e,
-						)
-					}
 				},
 			)
 
@@ -74,48 +84,54 @@ export class TerminalRegistry {
 			}
 
 			const endDisposable = vscode.window.onDidEndTerminalShellExecution?.(
-				async (e: vscode.TerminalShellExecutionEndEvent) => {
-					const terminal = this.getTerminalByVSCETerminal(e.terminal)
-					const process = terminal?.process
-					const exitDetails = TerminalProcess.interpretExitCode(e.exitCode)
+				(e: vscode.TerminalShellExecutionEndEvent) => {
+					// Process the event asynchronously to avoid blocking
+					setImmediate(async () => {
+						try {
+							const terminal = this.getTerminalByVSCETerminal(e.terminal)
+							const process = terminal?.process
+							const exitDetails = TerminalProcess.interpretExitCode(e.exitCode)
 
-					console.info("[onDidEndTerminalShellExecution]", {
-						command: e.execution?.commandLine?.value,
-						terminalId: terminal?.id,
-						...exitDetails,
+							console.info("[onDidEndTerminalShellExecution]", {
+								command: e.execution?.commandLine?.value,
+								terminalId: terminal?.id,
+								...exitDetails,
+							})
+
+							if (!terminal) {
+								// Only log as debug to avoid spamming logs for non-Roo terminals
+								console.debug(
+									"[onDidEndTerminalShellExecution] Shell execution ended from non-Roo terminal",
+								)
+								return
+							}
+
+							if (!terminal.running) {
+								console.warn(
+									"[TerminalRegistry] Shell execution end event received, but process is not running for terminal:",
+									{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
+								)
+
+								terminal.busy = false
+								return
+							}
+
+							if (!process) {
+								console.error(
+									"[TerminalRegistry] Shell execution end event received on running terminal, but process is undefined:",
+									{ terminalId: terminal.id, exitCode: e.exitCode },
+								)
+
+								return
+							}
+
+							// Signal completion to any waiting processes.
+							terminal.shellExecutionComplete(exitDetails)
+							terminal.busy = false // Mark terminal as not busy when shell execution ends
+						} catch (error) {
+							console.error("[onDidEndTerminalShellExecution] Error handling shell execution end:", error)
+						}
 					})
-
-					if (!terminal) {
-						console.error(
-							"[onDidEndTerminalShellExecution] Shell execution ended, but not from a Roo-registered terminal:",
-							e,
-						)
-
-						return
-					}
-
-					if (!terminal.running) {
-						console.error(
-							"[TerminalRegistry] Shell execution end event received, but process is not running for terminal:",
-							{ terminalId: terminal?.id, command: process?.command, exitCode: e.exitCode },
-						)
-
-						terminal.busy = false
-						return
-					}
-
-					if (!process) {
-						console.error(
-							"[TerminalRegistry] Shell execution end event received on running terminal, but process is undefined:",
-							{ terminalId: terminal.id, exitCode: e.exitCode },
-						)
-
-						return
-					}
-
-					// Signal completion to any waiting processes.
-					terminal.shellExecutionComplete(exitDetails)
-					terminal.busy = false // Mark terminal as not busy when shell execution ends
 				},
 			)
 
@@ -161,6 +177,7 @@ export class TerminalRegistry {
 		// matching directory.
 		if (taskId) {
 			terminal = terminals.find((t) => {
+				// Only reuse terminals that belong to this specific task
 				if (t.busy || t.taskId !== taskId || t.provider !== provider) {
 					return false
 				}
@@ -175,8 +192,27 @@ export class TerminalRegistry {
 			})
 		}
 
-		// Second priority: Find any available terminal with matching directory.
-		if (!terminal) {
+		// Second priority: Find any available terminal with matching directory
+		// BUT only if it has no task assignment (to avoid cross-task interference)
+		if (!terminal && taskId) {
+			terminal = terminals.find((t) => {
+				// Only use unassigned terminals to prevent cross-task issues
+				if (t.busy || t.taskId !== undefined || t.provider !== provider) {
+					return false
+				}
+
+				const terminalCwd = t.getCurrentWorkingDirectory()
+
+				if (!terminalCwd) {
+					return false
+				}
+
+				return arePathsEqual(vscode.Uri.file(cwd).fsPath, terminalCwd)
+			})
+		}
+
+		// For non-task terminals, allow reuse of any available terminal
+		if (!terminal && !taskId) {
 			terminal = terminals.find((t) => {
 				if (t.busy || t.provider !== provider) {
 					return false
@@ -197,6 +233,7 @@ export class TerminalRegistry {
 			terminal = this.createTerminal(cwd, provider)
 		}
 
+		// Assign the task ID to ensure proper isolation
 		terminal.taskId = taskId
 
 		return terminal
@@ -284,7 +321,14 @@ export class TerminalRegistry {
 	public static releaseTerminalsForTask(taskId: string): void {
 		this.terminals.forEach((terminal) => {
 			if (terminal.taskId === taskId) {
+				// Mark the terminal as not busy to allow reuse
+				terminal.busy = false
+				// Clear the task association
 				terminal.taskId = undefined
+				// Clear any active process to prevent interference
+				if (terminal.process) {
+					terminal.process = undefined
+				}
 			}
 		})
 	}
@@ -311,7 +355,15 @@ export class TerminalRegistry {
 	 * @returns The Terminal object, or undefined if not found
 	 */
 	private static getTerminalByVSCETerminal(vsceTerminal: vscode.Terminal): RooTerminal | undefined {
-		const found = this.terminals.find((t) => t instanceof Terminal && t.terminal === vsceTerminal)
+		// Filter to only our Terminal instances (not ExecaTerminal)
+		const found = this.terminals.find((t) => {
+			// Must be a Terminal instance (not ExecaTerminal)
+			if (!(t instanceof Terminal)) {
+				return false
+			}
+			// Must match the VSCode terminal instance
+			return t.terminal === vsceTerminal
+		})
 
 		if (found?.isClosed()) {
 			this.removeTerminal(found.id)
