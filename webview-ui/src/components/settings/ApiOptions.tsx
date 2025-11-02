@@ -741,6 +741,11 @@ const ApiOptions = ({
 						<ApiErrorMessage errorMessage={t("settings:validation.modelDeprecated")} />
 					)}
 
+					{/* Show performance warning if model has one */}
+					{selectedModelInfo?.performanceWarning && !selectedModelInfo.deprecated && (
+						<ApiErrorMessage errorMessage={selectedModelInfo.performanceWarning} />
+					)}
+
 					{selectedProvider === "bedrock" && selectedModelId === "custom-arn" && (
 						<BedrockCustomArn
 							apiConfiguration={apiConfiguration}

@@ -80,6 +80,8 @@ export const modelInfoSchema = z.object({
 	cachableFields: z.array(z.string()).optional(),
 	// Flag to indicate if the model is deprecated and should not be used
 	deprecated: z.boolean().optional(),
+	// Performance warning message to display when this model is selected
+	performanceWarning: z.string().optional(),
 	// Flag to indicate if the model is free (no cost)
 	isFree: z.boolean().optional(),
 	/**

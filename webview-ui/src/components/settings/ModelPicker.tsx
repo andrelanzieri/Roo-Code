@@ -246,6 +246,9 @@ export const ModelPicker = ({
 			{selectedModelInfo?.deprecated && (
 				<ApiErrorMessage errorMessage={t("settings:validation.modelDeprecated")} />
 			)}
+			{selectedModelInfo?.performanceWarning && !selectedModelInfo.deprecated && (
+				<ApiErrorMessage errorMessage={selectedModelInfo.performanceWarning} />
+			)}
 			{selectedModelId && selectedModelInfo && !selectedModelInfo.deprecated && (
 				<ModelInfoView
 					apiProvider={apiConfiguration.apiProvider}

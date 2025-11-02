@@ -81,6 +81,8 @@ export const openAiNativeModels = {
 		outputPrice: 10.0,
 		cacheReadsPrice: 0.13,
 		description: "GPT-5-Codex: A version of GPT-5 optimized for agentic coding in Codex",
+		performanceWarning:
+			"GPT-5-Codex performs poorly with Roo's tool call functionality. Consider using standard GPT-5 models instead for better performance.",
 		supportsVerbosity: true,
 		supportsTemperature: false,
 	},
