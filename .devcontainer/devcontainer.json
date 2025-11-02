@@ -1,0 +1,73 @@
+{
+	"name": "Roo Code Dev Container",
+	"dockerFile": "Dockerfile",
+
+	// Features to add to the dev container
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+
+	// Configure tool-specific properties
+	"customizations": {
+		"vscode": {
+			// Add the extensions from .vscode/extensions.json
+			"extensions": [
+				"dbaeumer.vscode-eslint",
+				"esbenp.prettier-vscode",
+				"csstools.postcss",
+				"bradlc.vscode-tailwindcss",
+				"connor4312.esbuild-problem-matchers",
+				"yoavbls.pretty-ts-errors"
+			],
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "bash",
+				"terminal.integrated.profiles.linux": {
+					"bash": {
+						"path": "/bin/bash",
+						"icon": "terminal-bash"
+					}
+				},
+				"editor.formatOnSave": true,
+				"editor.defaultFormatter": "esbenp.prettier-vscode",
+				"eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+				"typescript.tsdk": "node_modules/typescript/lib"
+			}
+		}
+	},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally
+	"forwardPorts": [],
+
+	// Use 'postCreateCommand' to run commands after the container is created
+	"postCreateCommand": "pnpm install --frozen-lockfile",
+
+	// Use 'postStartCommand' to run commands after the container starts
+	"postStartCommand": "echo '🎉 Dev container is ready!'",
+
+	// Configure mounts for better performance and caching
+	"mounts": [
+		// Mount pnpm store as a volume for caching
+		"source=pnpm-store,target=/pnpm,type=volume",
+		// Mount node_modules as volumes for better performance
+		"source=node-modules,target=/workspace/node_modules,type=volume",
+		"source=src-node-modules,target=/workspace/src/node_modules,type=volume",
+		"source=webview-ui-node-modules,target=/workspace/webview-ui/node_modules,type=volume"
+	],
+
+	// Environment variables
+	"containerEnv": {
+		"PNPM_HOME": "/pnpm",
+		"PATH": "/pnpm:${localEnv:PATH}"
+	},
+
+	// Run as non-root user
+	"remoteUser": "node",
+
+	// Uncomment to connect as root instead
+	// "remoteUser": "root",
+
+	// Additional options
+	"updateRemoteUserUID": true,
+	"shutdownAction": "stopContainer"
+}
