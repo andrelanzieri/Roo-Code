@@ -40,7 +40,7 @@
 	"forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created
-	"postCreateCommand": "pnpm install --frozen-lockfile",
+	"postCreateCommand": "pnpm config set store-dir /pnpm/store && pnpm install --frozen-lockfile",
 
 	// Use 'postStartCommand' to run commands after the container starts
 	"postStartCommand": "echo '🎉 Dev container is ready!'",
@@ -49,16 +49,13 @@
 	"mounts": [
 		// Mount pnpm store as a volume for caching
 		"source=pnpm-store,target=/pnpm,type=volume",
-		// Mount node_modules as volumes for better performance
-		"source=node-modules,target=/workspace/node_modules,type=volume",
-		"source=src-node-modules,target=/workspace/src/node_modules,type=volume",
-		"source=webview-ui-node-modules,target=/workspace/webview-ui/node_modules,type=volume"
+		// Mount root node_modules as volume for better performance
+		"source=node-modules,target=/workspace/node_modules,type=volume"
 	],
 
 	// Environment variables
 	"containerEnv": {
-		"PNPM_HOME": "/pnpm",
-		"PATH": "/pnpm:${localEnv:PATH}"
+		"PNPM_HOME": "/pnpm"
 	},
 
 	// Run as non-root user

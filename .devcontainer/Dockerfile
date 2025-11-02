@@ -35,6 +35,3 @@ RUN mkdir -p /pnpm /workspace \
 
 # Switch to non-root user
 USER $USERNAME
-
-# Set the working directory
-WORKDIR /workspace
