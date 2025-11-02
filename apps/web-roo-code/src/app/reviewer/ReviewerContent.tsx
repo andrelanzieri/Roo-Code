@@ -11,6 +11,7 @@ import {
 	MessageSquareCode,
 } from "lucide-react"
 import Image from "next/image"
+import { useCallback } from "react"
 
 import { Button } from "@/components/ui"
 import { AnimatedBackground } from "@/components/homepage"
@@ -77,6 +78,30 @@ const howItWorks: Feature[] = [
 import hero from "/public/heroes/agent-reviewer.png"
 
 export function ReviewerContent() {
+	// Track the conversion with enhanced data when user clicks to start trial
+	const handleTrialSignupClick = useCallback(async (_e: React.MouseEvent<HTMLAnchorElement>) => {
+		// Don't prevent default - let the link work normally
+
+		// Track enhanced conversion for trial signup
+		// Using async function to allow proper event tracking before navigation
+		try {
+			await trackGoogleAdsConversion(
+				"VtOZCJe_77MbEInXkOVA", // PR Reviewer trial signup conversion label
+				10.0, // Trial value
+				// Enhanced conversion data can be added here when available
+				// For example, if user data is available from context:
+				// {
+				//   email: userEmail,
+				//   firstName: userFirstName,
+				//   lastName: userLastName
+				// }
+			)
+		} catch (error) {
+			// Don't block navigation if tracking fails
+			console.error("Conversion tracking error:", error)
+		}
+	}, [])
+
 	return (
 		<>
 			<section className="relative flex md:h-[calc(70vh-theme(spacing.12))] items-center overflow-hidden">
@@ -110,7 +135,7 @@ export function ReviewerContent() {
 										href={EXTERNAL_LINKS.CLOUD_APP_SIGNUP_PRO}
 										target="_blank"
 										rel="noopener noreferrer"
-										onClick={trackGoogleAdsConversion}
+										onClick={handleTrialSignupClick}
 										className="flex w-full items-center justify-center">
 										Start 14-day Free Trial
 										<ArrowRight className="ml-2" />
@@ -264,7 +289,7 @@ export function ReviewerContent() {
 									href={EXTERNAL_LINKS.CLOUD_APP_SIGNUP_PRO}
 									target="_blank"
 									rel="noopener noreferrer"
-									onClick={trackGoogleAdsConversion}
+									onClick={handleTrialSignupClick}
 									className="flex items-center justify-center">
 									Start 14-day Free Trial
 									<ArrowRight className="ml-2 h-4 w-4" />
