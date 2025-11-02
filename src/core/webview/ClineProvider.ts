@@ -143,6 +143,10 @@ export class ClineProvider
 	private pendingOperations: Map<string, PendingEditOperation> = new Map()
 	private static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
 
+	// Transactional state posting
+	private uiUpdatePaused: boolean = false
+	private pendingState: ExtensionState | null = null
+
 	public isViewLaunched = false
 	public settingsImportedAt?: number
 	public readonly latestAnnouncementId = "oct-2025-v3.29.0-cloud-agents" // v3.29.0 Cloud Agents announcement
@@ -1614,8 +1618,26 @@ export class ClineProvider
 		await this.postStateToWebview()
 	}
 
+	public beginStateTransaction(): void {
+		this.uiUpdatePaused = true
+	}
+
+	public async endStateTransaction(): Promise<void> {
+		this.uiUpdatePaused = false
+		if (this.pendingState) {
+			await this.view?.webview.postMessage({ type: "state", state: this.pendingState })
+			this.pendingState = null
+		}
+	}
+
 	async postStateToWebview() {
 		const state = await this.getStateToPostToWebview()
+
+		if (this.uiUpdatePaused) {
+			this.pendingState = state
+			return
+		}
+
 		this.postMessageToWebview({ type: "state", state })
 
 		// Check MDM compliance and send user to account tab if not compliant
@@ -2607,24 +2629,13 @@ export class ClineProvider
 
 		console.log(`[cancelTask] cancelling task ${task.taskId}.${task.instanceId}`)
 
-		const { historyItem, uiMessagesFilePath } = await this.getTaskWithId(task.taskId)
-
-		// Preserve parent and root task information for history item.
-		const rootTask = task.rootTask
-		const parentTask = task.parentTask
-
-		// Mark this as a user-initiated cancellation so provider-only rehydration can occur
+		// Mark this as a user-initiated cancellation
 		task.abortReason = "user_cancelled"
 
-		// Capture the current instance to detect if rehydrate already occurred elsewhere
-		const originalInstanceId = task.instanceId
+		// Soft abort (isAbandoned = false) to keep the instance alive
+		await task.abortTask(false)
 
-		// Begin abort (non-blocking)
-		task.abortTask()
-
-		// Immediately mark the original instance as abandoned to prevent any residual activity
-		task.abandoned = true
-
+		// Wait for abort to complete
 		await pWaitFor(
 			() =>
 				this.getCurrentTask()! === undefined ||
@@ -2641,28 +2652,49 @@ export class ClineProvider
 			console.error("Failed to abort task")
 		})
 
-		// Defensive safeguard: if current instance already changed, skip rehydrate
-		const current = this.getCurrentTask()
-		if (current && current.instanceId !== originalInstanceId) {
-			this.log(
-				`[cancelTask] Skipping rehydrate: current instance ${current.instanceId} != original ${originalInstanceId}`,
-			)
-			return
-		}
-
-		// Final race check before rehydrate to avoid duplicate rehydration
-		{
-			const currentAfterCheck = this.getCurrentTask()
-			if (currentAfterCheck && currentAfterCheck.instanceId !== originalInstanceId) {
-				this.log(
-					`[cancelTask] Skipping rehydrate after final check: current instance ${currentAfterCheck.instanceId} != original ${originalInstanceId}`,
-				)
-				return
+		// Deterministic spinner stop: If the last api_req_started has no cost and no cancelReason,
+		// inject cancelReason to stop the spinner
+		try {
+			let lastApiReqStartedIndex = -1
+			for (let i = task.clineMessages.length - 1; i >= 0; i--) {
+				if (task.clineMessages[i].type === "say" && task.clineMessages[i].say === "api_req_started") {
+					lastApiReqStartedIndex = i
+					break
+				}
 			}
+
+			if (lastApiReqStartedIndex !== -1) {
+				const lastApiReqStarted = task.clineMessages[lastApiReqStartedIndex]
+				const apiReqInfo = JSON.parse(lastApiReqStarted.text || "{}")
+
+				if (apiReqInfo.cost === undefined && apiReqInfo.cancelReason === undefined) {
+					apiReqInfo.cancelReason = "user_cancelled"
+					lastApiReqStarted.text = JSON.stringify(apiReqInfo)
+					await task.overwriteClineMessages([...task.clineMessages])
+					console.log(`[cancelTask] Injected cancelReason for deterministic spinner stop`)
+				}
+			}
+		} catch (error) {
+			console.error(`[cancelTask] Failed to inject cancelReason:`, error)
 		}
 
-		// Clears task again, so we need to abortTask manually above.
-		await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
+		// Update UI immediately to reflect current state
+		await this.postStateToWebview()
+
+		// Schedule non-blocking resumption to present "Resume Task" ask
+		// Use setImmediate to avoid blocking the webview handler
+		setImmediate(() => {
+			if (task && !task.abandoned) {
+				// Present a resume ask without rehydrating - just show the Resume/Terminate UI
+				task.presentResumableAsk().catch((error) => {
+					console.error(
+						`[cancelTask] Failed to present resume ask: ${
+							error instanceof Error ? error.message : String(error)
+						}`,
+					)
+				})
+			}
+		})
 	}
 
 	// Clear the current task without treating it as a subtask.

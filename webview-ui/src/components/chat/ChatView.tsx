@@ -547,9 +547,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				lastApiReqStarted.text !== undefined &&
 				lastApiReqStarted.say === "api_req_started"
 			) {
-				const cost = JSON.parse(lastApiReqStarted.text).cost
+				const info = JSON.parse(lastApiReqStarted.text)
 
-				if (cost === undefined) {
+				// If cancelReason is defined, the stream has been cancelled (terminal state)
+				if (info.cancelReason !== undefined) {
+					return false
+				}
+
+				// Otherwise, check if cost is defined to determine if streaming is complete
+				if (info.cost === undefined) {
 					return true // API request has not finished yet.
 				}
 			}
