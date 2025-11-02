@@ -6,6 +6,55 @@ export interface ApiCostResult {
 	totalCost: number
 }
 
+/**
+ * Finds the appropriate pricing tier based on the total input tokens.
+ * Returns the prices from the matching tier, or the base prices if no tiers are defined.
+ */
+function getTieredPricing(
+	modelInfo: ModelInfo,
+	totalInputTokens: number,
+): {
+	inputPrice: number | undefined
+	outputPrice: number | undefined
+	cacheWritesPrice: number | undefined
+	cacheReadsPrice: number | undefined
+} {
+	// If there are no tiers defined, use the base prices
+	if (!modelInfo.tiers || modelInfo.tiers.length === 0) {
+		return {
+			inputPrice: modelInfo.inputPrice,
+			outputPrice: modelInfo.outputPrice,
+			cacheWritesPrice: modelInfo.cacheWritesPrice,
+			cacheReadsPrice: modelInfo.cacheReadsPrice,
+		}
+	}
+
+	// Find the appropriate tier based on the total input tokens
+	// Tiers are checked in order, and we use the first tier where the token count
+	// is less than or equal to the tier's context window
+	const tier = modelInfo.tiers.find((tier) => totalInputTokens <= tier.contextWindow)
+
+	if (tier) {
+		// Use tier prices, falling back to base prices if not defined in the tier
+		return {
+			inputPrice: tier.inputPrice ?? modelInfo.inputPrice,
+			outputPrice: tier.outputPrice ?? modelInfo.outputPrice,
+			cacheWritesPrice: tier.cacheWritesPrice ?? modelInfo.cacheWritesPrice,
+			cacheReadsPrice: tier.cacheReadsPrice ?? modelInfo.cacheReadsPrice,
+		}
+	}
+
+	// If no tier matches (all tiers have smaller context windows than the token count),
+	// use the last (highest) tier's prices
+	const lastTier = modelInfo.tiers[modelInfo.tiers.length - 1]
+	return {
+		inputPrice: lastTier.inputPrice ?? modelInfo.inputPrice,
+		outputPrice: lastTier.outputPrice ?? modelInfo.outputPrice,
+		cacheWritesPrice: lastTier.cacheWritesPrice ?? modelInfo.cacheWritesPrice,
+		cacheReadsPrice: lastTier.cacheReadsPrice ?? modelInfo.cacheReadsPrice,
+	}
+}
+
 function calculateApiCostInternal(
 	modelInfo: ModelInfo,
 	inputTokens: number,
@@ -15,10 +64,13 @@ function calculateApiCostInternal(
 	totalInputTokens: number,
 	totalOutputTokens: number,
 ): ApiCostResult {
-	const cacheWritesCost = ((modelInfo.cacheWritesPrice || 0) / 1_000_000) * cacheCreationInputTokens
-	const cacheReadsCost = ((modelInfo.cacheReadsPrice || 0) / 1_000_000) * cacheReadInputTokens
-	const baseInputCost = ((modelInfo.inputPrice || 0) / 1_000_000) * inputTokens
-	const outputCost = ((modelInfo.outputPrice || 0) / 1_000_000) * outputTokens
+	// Get the appropriate prices based on the total input tokens (for tiered pricing)
+	const { inputPrice, outputPrice, cacheWritesPrice, cacheReadsPrice } = getTieredPricing(modelInfo, totalInputTokens)
+
+	const cacheWritesCost = ((cacheWritesPrice || 0) / 1_000_000) * cacheCreationInputTokens
+	const cacheReadsCost = ((cacheReadsPrice || 0) / 1_000_000) * cacheReadInputTokens
+	const baseInputCost = ((inputPrice || 0) / 1_000_000) * inputTokens
+	const outputCost = ((outputPrice || 0) / 1_000_000) * outputTokens
 	const totalCost = cacheWritesCost + cacheReadsCost + baseInputCost + outputCost
 
 	return {
