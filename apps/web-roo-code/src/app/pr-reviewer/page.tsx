@@ -6,8 +6,8 @@ import { PRReviewerContent } from "./PRReviewerContent"
 
 const TITLE = "PR Reviewer"
 const DESCRIPTION =
-	"Your AI wrote the code. Roo made sure it's safe to ship. AI-generated commits are flooding PRs. Roo PR Reviewer catches what slipped through before it hits prod."
-const OG_DESCRIPTION = "Your AI wrote the code. Roo made sure it's safe to ship."
+	"Get AI-powered PR reviews that catch what other tools miss. Roo uses advanced reasoning models and full repository context to find logic bugs, security issues, and architectural problems—not just lint errors."
+const OG_DESCRIPTION = "Code reviews that catch what other AI tools miss"
 const PATH = "/pr-reviewer"
 
 export const metadata: Metadata = {
@@ -46,17 +46,17 @@ export const metadata: Metadata = {
 		"AI code review",
 		"GitHub PR review",
 		"automated code review",
-		"AI-generated code",
-		"security review",
-		"JWT verification",
-		"regex security",
-		"billing errors",
-		"logic bugs",
-		"AI hallucinations",
-		"senior developer",
-		"paranoid code review",
+		"repository-aware review",
 		"bring your own key",
 		"BYOK AI",
+		"code quality",
+		"development workflow",
+		"cloud agents",
+		"AI development team",
+		"logic bugs",
+		"security vulnerabilities",
+		"business logic review",
+		"advanced reasoning",
 	],
 }
 

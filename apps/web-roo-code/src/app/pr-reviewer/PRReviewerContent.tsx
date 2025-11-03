@@ -1,6 +1,15 @@
 "use client"
 
-import { ArrowRight, AlertTriangle, Bot, Shield, Brain, Zap, CheckCircle2 } from "lucide-react"
+import {
+	ArrowRight,
+	Blocks,
+	BookMarked,
+	ListChecks,
+	LucideIcon,
+	GitPullRequest,
+	Key,
+	MessageSquareCode,
+} from "lucide-react"
 import Image from "next/image"
 
 import { Button } from "@/components/ui"
@@ -9,31 +18,89 @@ import { AgentCarousel } from "@/components/reviewer/agent-carousel"
 import { EXTERNAL_LINKS } from "@/lib/constants"
 import { trackGoogleAdsConversion } from "@/lib/analytics/google-ads"
 
+interface Feature {
+	icon: LucideIcon
+	title: string
+	description: string | React.ReactNode
+	logos?: string[]
+}
+
+const workflowSteps: Feature[] = [
+	{
+		icon: GitPullRequest,
+		title: "1. Connect Your Repository",
+		description: "Link your GitHub repository and configure which branches and pull requests should be reviewed.",
+	},
+	{
+		icon: Key,
+		title: "2. Add Your API Key",
+		description:
+			"Provide your AI provider API key and set your review preferences, custom rules, and quality standards.",
+	},
+	{
+		icon: MessageSquareCode,
+		title: "3. Get Review Comments",
+		description:
+			"Every pull request gets detailed GitHub comments in minutes from a Roo Code agent highlighting issues and suggesting improvements.",
+	},
+]
+
+const howItWorks: Feature[] = [
+	{
+		icon: Blocks,
+		title: "Bring your own key, get uncompromised reviews",
+		description: (
+			<>
+				<p>
+					Most AI review tools use fixed pricing, which means they skimp on tokens to protect their margins.
+					That leads to shallow analysis and missed issues.
+				</p>
+				<p>
+					With Roo, you bring your own API key. We optimize prompts for depth, not cost-cutting, so reviews
+					focus on real problems like business logic, security vulnerabilities, and architectural issues.
+				</p>
+			</>
+		),
+	},
+	{
+		icon: ListChecks,
+		title: "Advanced reasoning that understands what matters",
+		description:
+			"We leverage state-of-the-art reasoning models with sophisticated workflows: diff analysis, context gathering, impact mapping, and contract validation. This catches the subtle bugs that surface-level tools miss—misunderstood requirements, edge cases, and integration risks.",
+	},
+	{
+		icon: BookMarked,
+		title: "Repository-aware, not snippet-aware",
+		description:
+			"Roo analyzes your entire codebase context—dependency graphs, code ownership, team conventions, and historical patterns. It understands how changes interact with existing systems, not just whether individual lines look correct.",
+	},
+]
+
 // Workaround for next/image choking on these for some reason
 import hero from "/public/heroes/agent-reviewer.png"
 
 export function PRReviewerContent() {
 	return (
 		<>
-			{/* Hero Section */}
 			<section className="relative flex md:h-[calc(70vh-theme(spacing.12))] items-center overflow-hidden">
 				<AnimatedBackground />
 				<div className="container relative flex items-center h-full z-10 mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="grid h-full relative gap-4 md:gap-20 lg:grid-cols-2">
 						<div className="flex flex-col px-4 justify-center space-y-6 sm:space-y-8">
 							<div>
-								<h1 className="text-3xl font-bold tracking-tight mt-8 md:text-left md:text-4xl lg:text-5xl lg:mt-0">
-									Your AI wrote the code. Roo made sure it&apos;s safe to ship.
+								<h1 className="text-3xl font-bold tracking-tight mt-8  md:text-left md:text-4xl lg:text-5xl lg:mt-0">
+									Code reviews that catch what other AI&nbsp;tools&nbsp;miss.
 								</h1>
 								<div className="mt-4 max-w-lg space-y-4 text-base text-muted-foreground md:text-left sm:mt-6">
 									<p>
-										AI-generated commits are flooding PRs. Some are fine. Some disable JWT
-										verification. Roo PR Reviewer catches what slipped through before it hits prod.
+										AI code review tools often catch syntax errors and style issues while missing
+										the bugs that actually matter: logic flaws, security vulnerabilities, and
+										misunderstood requirements.
 									</p>
-									<blockquote className="italic border-l-4 border-muted-foreground/30 pl-4 text-sm">
-										&quot;Bold strategy: a trust-based JWT system. What could possibly go
-										wrong?&quot;
-									</blockquote>
+									<p>
+										Roo Code&apos;s PR Reviewer uses advanced reasoning models and full repository
+										context to find the issues that slip through—before they reach production.
+									</p>
 								</div>
 							</div>
 							<div className="flex flex-col space-y-3 sm:flex-row sm:space-x-4 sm:space-y-0 md:items-center">
@@ -47,10 +114,13 @@ export function PRReviewerContent() {
 										rel="noopener noreferrer"
 										onClick={trackGoogleAdsConversion}
 										className="flex w-full items-center justify-center">
-										Try Roo Reviewer Free
+										Start 14-day Free Trial
 										<ArrowRight className="ml-2" />
 									</a>
 								</Button>
+								<span className="text-sm text-center md:text-left text-muted-foreground md:ml-2">
+									(cancel anytime)
+								</span>
 							</div>
 						</div>
 						<div className="flex items-center justify-end mx-auto h-full mt-8 lg:mt-0">
@@ -70,244 +140,124 @@ export function PRReviewerContent() {
 				</div>
 			</section>
 
-			{/* The Problem Section */}
-			<section className="relative overflow-hidden border-t border-border py-20">
+			{/* How It Works Section */}
+			<section className="relative overflow-hidden border-t border-border py-32">
 				<div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="mx-auto max-w-4xl">
-						<div className="flex items-center gap-3 mb-6">
-							<AlertTriangle className="size-8 text-amber-500" />
-							<h2 className="text-3xl font-bold tracking-tight sm:text-4xl">The Problem</h2>
+					<div className="mx-auto mb-12 md:mb-24 max-w-5xl text-center">
+						<div>
+							<h2 className="text-4xl font-bold tracking-tight sm:text-5xl">How It Works</h2>
 						</div>
-						<div className="space-y-4 text-lg text-muted-foreground">
-							<p>
-								AI&apos;s writing more code than ever — and most of it <em>looks</em> right. But beneath
-								that green diff are:
-							</p>
-							<ul className="space-y-3 ml-6">
-								<li className="flex items-start gap-2">
-									<span className="text-red-500 mt-1">•</span>
-									<span>silent security holes</span>
-								</li>
-								<li className="flex items-start gap-2">
-									<span className="text-red-500 mt-1">•</span>
-									<span>rounding bugs that eat customer money</span>
-								</li>
-								<li className="flex items-start gap-2">
-									<span className="text-red-500 mt-1">•</span>
-									<span>regexes that backtrack until your weekend&apos;s gone</span>
-								</li>
-							</ul>
-							<p className="font-semibold text-foreground pt-4">
-								Your team is reviewing more code than ever, but catching less.
-							</p>
-						</div>
+					</div>
+
+					<div className="relative mx-auto md:max-w-[1200px]">
+						<ul className="grid grid-cols-1 place-items-center gap-6 md:grid-cols-3 lg:gap-8">
+							{workflowSteps.map((step, index) => {
+								const Icon = step.icon
+								return (
+									<li
+										key={index}
+										className="relative h-full border border-border rounded-2xl bg-background p-8 transition-all duration-300 hover:shadow-lg">
+										<Icon className="size-6 text-foreground/80" />
+										<h3 className="mb-3 mt-3 text-xl font-semibold text-foreground">
+											{step.title}
+										</h3>
+										<div className="leading-relaxed font-light text-muted-foreground">
+											{step.description}
+										</div>
+									</li>
+								)
+							})}
+						</ul>
 					</div>
 				</div>
 			</section>
 
-			{/* The Roo Fix Section */}
-			<section className="relative overflow-hidden border-t border-border py-20">
+			<section className="relative overflow-hidden border-t border-border py-32">
 				<div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="mx-auto max-w-4xl">
-						<div className="flex items-center gap-3 mb-6">
-							<Bot className="size-8 text-blue-500" />
-							<h2 className="text-3xl font-bold tracking-tight sm:text-4xl">The Roo Fix</h2>
+					<div className="mx-auto mb-12 md:mb-24 max-w-5xl text-center">
+						<div>
+							<h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
+								Why Roo&apos;s PR Reviewer is different
+							</h2>
 						</div>
-						<div className="space-y-4 text-lg text-muted-foreground">
-							<p>
-								<strong className="text-foreground">Roo PR Reviewer</strong> fights AI chaos with AI
-								precision.
-							</p>
-							<p>
-								It reads your PRs like a senior engineer — not a spellchecker. It flags the real
-								problems and skips the noise.
-							</p>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-								<div className="flex items-start gap-3">
-									<CheckCircle2 className="size-5 text-green-500 mt-1 flex-shrink-0" />
-									<span>Detects logic and security issues (not just lint)</span>
-								</div>
-								<div className="flex items-start gap-3">
-									<CheckCircle2 className="size-5 text-green-500 mt-1 flex-shrink-0" />
-									<span>
-										Explains <em>why</em> the change is wrong, not just <em>what</em>
-									</span>
-								</div>
-								<div className="flex items-start gap-3">
-									<CheckCircle2 className="size-5 text-green-500 mt-1 flex-shrink-0" />
-									<span>Integrates directly in GitHub PRs</span>
-								</div>
-								<div className="flex items-start gap-3">
-									<CheckCircle2 className="size-5 text-green-500 mt-1 flex-shrink-0" />
-									<span>Bring-your-own-API-key — no token limits, no model throttling</span>
-								</div>
-							</div>
-						</div>
+					</div>
+
+					<div className="relative mx-auto md:max-w-[1200px]">
+						<ul className="grid grid-cols-1 place-items-center gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+							{howItWorks.map((feature, index) => {
+								const Icon = feature.icon
+								return (
+									<li
+										key={index}
+										className="relative h-full border border-border rounded-2xl bg-background p-8 transition-all duration-300">
+										<Icon className="size-6 text-foreground/80" />
+										<h3 className="mb-3 mt-3 text-xl font-semibold text-foreground">
+											{feature.title}
+										</h3>
+										<div className="leading-relaxed font-light text-muted-foreground space-y-2">
+											{feature.description}
+										</div>
+										{feature.logos && (
+											<div className="mt-4 flex flex-wrap items-center gap-4">
+												{feature.logos.map((logo) => (
+													<Image
+														key={logo}
+														width={20}
+														height={20}
+														className="w-5 h-5 overflow-clip opacity-50 dark:invert"
+														src={`/logos/${logo.toLowerCase()}.svg`}
+														alt={`${logo} Logo`}
+													/>
+												))}
+											</div>
+										)}
+									</li>
+								)
+							})}
+						</ul>
 					</div>
 				</div>
 			</section>
 
-			{/* How It Feels Section */}
-			<section className="relative overflow-hidden border-t border-border py-20">
-				<div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="mx-auto max-w-4xl">
-						<div className="flex items-center gap-3 mb-6">
-							<Zap className="size-8 text-purple-500" />
-							<h2 className="text-3xl font-bold tracking-tight sm:text-4xl">How It Feels to Use Roo</h2>
-						</div>
-						<div className="space-y-4 text-lg text-muted-foreground">
-							<p>You open a PR, and Roo leaves comments like:</p>
-							<div className="space-y-4 mt-6">
-								<blockquote className="border-l-4 border-blue-500 bg-blue-500/5 p-4 italic">
-									&quot;Great news: &apos;1000&apos; is now cheaper than &apos;200&apos;. Sort
-									numerically; keep values as numbers.&quot;
-								</blockquote>
-								<blockquote className="border-l-4 border-amber-500 bg-amber-500/5 p-4 italic">
-									&quot;This regex can spend the weekend backtracking. Use a safe validator.&quot;
-								</blockquote>
-								<blockquote className="border-l-4 border-red-500 bg-red-500/5 p-4 italic">
-									&quot;Rounding errors become billing errors. Use `Decimal` end-to-end.&quot;
-								</blockquote>
-							</div>
-							<p className="font-semibold text-foreground pt-4">
-								It&apos;s like having that one paranoid senior dev back on your team — but this one
-								never sleeps.
-							</p>
-						</div>
-					</div>
-				</div>
-			</section>
-
-			{/* Why Engineers Love It Section */}
-			<section className="relative overflow-hidden border-t border-border py-20">
-				<div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="mx-auto max-w-4xl">
-						<div className="flex items-center gap-3 mb-6">
-							<Brain className="size-8 text-green-500" />
-							<h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Why Engineers Love It</h2>
-						</div>
-						<div className="space-y-4 text-lg">
-							<div className="space-y-3">
-								<div className="flex items-start gap-3">
-									<span className="text-green-500 font-bold">•</span>
-									<div>
-										<strong className="text-foreground">Fewer false positives</strong> —
-										<span className="text-muted-foreground ml-1">
-											Roo comments are focused, not fluffy.
-										</span>
-									</div>
-								</div>
-								<div className="flex items-start gap-3">
-									<span className="text-green-500 font-bold">•</span>
-									<div>
-										<strong className="text-foreground">Understands your context</strong> —
-										<span className="text-muted-foreground ml-1">
-											reads your repo, not a random snippet.
-										</span>
-									</div>
-								</div>
-								<div className="flex items-start gap-3">
-									<span className="text-green-500 font-bold">•</span>
-									<div>
-										<strong className="text-foreground">Catches what humans miss</strong> —
-										<span className="text-muted-foreground ml-1">
-											subtle bugs, security drift, AI hallucinations.
-										</span>
-									</div>
-								</div>
-							</div>
-							<p className="font-semibold text-foreground pt-4 text-center italic">
-								Engineers call it &quot;the only AI review that doesn&apos;t make me dumber.&quot;
-							</p>
-						</div>
-					</div>
-				</div>
-			</section>
-
-			{/* Try It Section */}
-			<section className="relative overflow-hidden border-t border-border py-20">
-				<div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="mx-auto max-w-4xl">
-						<div className="flex items-center gap-3 mb-6">
-							<Shield className="size-8 text-indigo-500" />
-							<h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Try It on Your Next PR</h2>
-						</div>
-						<div className="space-y-4">
-							<ol className="space-y-4 text-lg">
-								<li className="flex items-start gap-3">
-									<span className="flex-shrink-0 bg-indigo-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm">
-										1
-									</span>
-									<span className="text-muted-foreground">
-										Add Roo to your repo (takes 3 minutes).
-									</span>
-								</li>
-								<li className="flex items-start gap-3">
-									<span className="flex-shrink-0 bg-indigo-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm">
-										2
-									</span>
-									<span className="text-muted-foreground">Push a PR — Roo reviews instantly.</span>
-								</li>
-								<li className="flex items-start gap-3">
-									<span className="flex-shrink-0 bg-indigo-500 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold text-sm">
-										3
-									</span>
-									<span className="text-muted-foreground">
-										Watch it flag the stuff your AI or teammate didn&apos;t notice.
-									</span>
-								</li>
-							</ol>
-							<div className="mt-8 flex justify-center">
-								<Button
-									size="lg"
-									className="bg-black text-white hover:bg-gray-800 hover:shadow-lg hover:shadow-black/20 dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:hover:shadow-white/20 transition-all duration-300"
-									asChild>
-									<a
-										href={EXTERNAL_LINKS.CLOUD_APP_SIGNUP_PRO}
-										target="_blank"
-										rel="noopener noreferrer"
-										onClick={trackGoogleAdsConversion}
-										className="flex items-center justify-center">
-										Try Roo Reviewer Free
-										<ArrowRight className="ml-2 h-4 w-4" />
-									</a>
-								</Button>
-							</div>
-						</div>
-					</div>
-				</div>
-			</section>
-
-			{/* Agent Team Section */}
 			<section className="relative overflow-hidden border-t border-border py-32">
 				<div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
 					<div className="mx-auto mb-12 max-w-4xl text-center">
-						<h2 className="text-4xl font-bold tracking-tight sm:text-5xl mb-6">
-							The first member of a whole new team
-						</h2>
-						<p className="text-lg text-muted-foreground">
-							Architecture, coding, reviewing, testing, debugging, documenting, designing –{" "}
-							<em>almost everything</em> we do today is mostly through our agents. Now we&apos;re bringing
-							them to you.
-						</p>
-						<p className="mt-4 text-lg text-muted-foreground">
-							Roo&apos;s PR Reviewer isn&apos;t yet another single-purpose tool to add to your already
-							complicated stack. It&apos;s the first member of your AI-powered development team. More
-							agents are shipping soon.
-						</p>
+						<div>
+							<h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
+								The first member of a whole new team
+							</h2>
+
+							<p className="mt-6 text-lg text-muted-foreground">
+								Architecture, coding, reviewing, testing, debugging, documenting, designing –{" "}
+								<em>almost everything</em> we do today is mostly through our agents. Now we&apos;re
+								bringing them to you.
+							</p>
+							<p className="mt-2 text-lg text-muted-foreground">
+								Roo&apos;s PR Reviewer isn&apos;t yet another single-purpose tool to add to your already
+								complicated stack.
+								<br />
+								It&apos;s the first member of your AI-powered development team. More agents are shipping
+								soon.
+							</p>
+						</div>
 					</div>
+
 					<div className="relative mx-auto md:max-w-[1200px]">
 						<AgentCarousel />
 					</div>
 				</div>
 			</section>
 
-			{/* Footer CTA */}
+			{/* CTA Section */}
 			<section className="py-20">
 				<div className="container mx-auto px-4 sm:px-6 lg:px-8">
-					<div className="mx-auto max-w-4xl rounded-3xl border border-border/50 bg-gradient-to-br from-red-500/5 via-amber-500/5 to-blue-500/5 p-8 text-center shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-gradient-to-br dark:from-gray-800 dark:via-gray-900 dark:to-black sm:p-12">
-						<p className="text-2xl font-bold mb-8 italic text-foreground">
-							AI is writing your code. Roo makes sure it&apos;s still safe to ship.
+					<div className="mx-auto max-w-4xl rounded-3xl border border-border/50 bg-gradient-to-br from-blue-500/5 via-cyan-500/5 to-purple-500/5 p-8 text-center shadow-2xl backdrop-blur-xl dark:border-white/20 dark:bg-gradient-to-br dark:from-gray-800 dark:via-gray-900 dark:to-black sm:p-12">
+						<h2 className="mb-4 text-3xl font-bold tracking-tight sm:text-4xl">
+							Ready for better code reviews?
+						</h2>
+						<p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground">
+							Start finding the issues that matter with AI-powered reviews built for depth, not
+							cost-cutting.
 						</p>
 						<div className="flex flex-col justify-center space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
 							<Button
@@ -320,7 +270,7 @@ export function PRReviewerContent() {
 									rel="noopener noreferrer"
 									onClick={trackGoogleAdsConversion}
 									className="flex items-center justify-center">
-									Try Roo Reviewer Free
+									Start 14-day Free Trial
 									<ArrowRight className="ml-2 h-4 w-4" />
 								</a>
 							</Button>
