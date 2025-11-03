@@ -428,8 +428,12 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	private _isNvidiaApi(baseUrl?: string): boolean {
 		const urlHost = this._getUrlHost(baseUrl)
-		// NVIDIA API endpoints typically use integrate.api.nvidia.com or build.nvidia.com
-		return urlHost.includes("nvidia.com")
+		// NVIDIA API endpoints for AI models
+		return (
+			urlHost === "integrate.api.nvidia.com" ||
+			urlHost === "build.nvidia.com" ||
+			urlHost.endsWith(".api.nvidia.com")
+		)
 	}
 
 	/**
