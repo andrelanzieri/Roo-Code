@@ -13,6 +13,7 @@ import {
 	VertexHandler,
 	AnthropicVertexHandler,
 	OpenAiHandler,
+	OpenAiCompatibleHandler,
 	LmStudioHandler,
 	GeminiHandler,
 	OpenAiNativeHandler,
@@ -168,6 +169,8 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new VercelAiGatewayHandler(options)
 		case "minimax":
 			return new MiniMaxHandler(options)
+		case "openai-compatible":
+			return new OpenAiCompatibleHandler(options)
 		default:
 			apiProvider satisfies "gemini-cli" | undefined
 			return new AnthropicHandler(options)

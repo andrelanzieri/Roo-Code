@@ -132,6 +132,7 @@ export const providerNames = [
 	"mistral",
 	"moonshot",
 	"minimax",
+	"openai-compatible",
 	"openai-native",
 	"qwen-code",
 	"roo",
@@ -420,6 +421,11 @@ const vercelAiGatewaySchema = baseProviderSettingsSchema.extend({
 	vercelAiGatewayModelId: z.string().optional(),
 })
 
+const openAiCompatibleSchema = apiModelIdProviderModelSchema.extend({
+	openAiCompatibleBaseUrl: z.string().optional(),
+	openAiCompatibleApiKey: z.string().optional(),
+})
+
 const defaultSchema = z.object({
 	apiProvider: z.undefined(),
 })
@@ -462,6 +468,7 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 	qwenCodeSchema.merge(z.object({ apiProvider: z.literal("qwen-code") })),
 	rooSchema.merge(z.object({ apiProvider: z.literal("roo") })),
 	vercelAiGatewaySchema.merge(z.object({ apiProvider: z.literal("vercel-ai-gateway") })),
+	openAiCompatibleSchema.merge(z.object({ apiProvider: z.literal("openai-compatible") })),
 	defaultSchema,
 ])
 
@@ -504,6 +511,7 @@ export const providerSettingsSchema = z.object({
 	...qwenCodeSchema.shape,
 	...rooSchema.shape,
 	...vercelAiGatewaySchema.shape,
+	...openAiCompatibleSchema.shape,
 	...codebaseIndexProviderSchema.shape,
 })
 
@@ -590,6 +598,7 @@ export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
 	"io-intelligence": "ioIntelligenceModelId",
 	roo: "apiModelId",
 	"vercel-ai-gateway": "vercelAiGatewayModelId",
+	"openai-compatible": "apiModelId",
 }
 
 /**
@@ -626,7 +635,7 @@ export const getApiProtocol = (provider: ProviderName | undefined, modelId?: str
  */
 
 export const MODELS_BY_PROVIDER: Record<
-	Exclude<ProviderName, "fake-ai" | "human-relay" | "gemini-cli" | "openai">,
+	Exclude<ProviderName, "fake-ai" | "human-relay" | "gemini-cli" | "openai" | "openai-compatible">,
 	{ id: ProviderName; label: string; models: string[] }
 > = {
 	anthropic: {
