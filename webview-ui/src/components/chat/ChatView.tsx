@@ -558,7 +558,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 					// Otherwise, check if cost is defined to determine if streaming is complete
 					if ("cost" in info && info.cost !== undefined) {
-						return true // API request has not finished yet.
+						return false // API request has finished.
 					}
 				}
 			}
