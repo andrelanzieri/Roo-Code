@@ -118,23 +118,6 @@ describe("normalizeDataUrlsToFilePaths", () => {
 		expect(result[1]).toMatch(/\.jpeg$/) // Correct extension from MIME type
 	})
 
-	it("should reuse cached file paths for same data URL", async () => {
-		const dataUrl = "data:image/png;base64,test123"
-
-		// First call - should write file
-		const result1 = await normalizeDataUrlsToFilePaths([dataUrl], testGlobalStoragePath)
-		expect(fs.writeFile).toHaveBeenCalledTimes(1)
-
-		// Mock file exists for second call
-		vi.mocked(fs.access).mockResolvedValue(undefined)
-
-		// Second call - should use cached path
-		const result2 = await normalizeDataUrlsToFilePaths([dataUrl], testGlobalStoragePath)
-
-		expect(result1[0]).toBe(result2[0]) // Same path returned
-		expect(fs.writeFile).toHaveBeenCalledTimes(1) // Not written again
-	})
-
 	it("should handle errors gracefully", async () => {
 		const dataUrl = "data:image/png;base64,test"
 

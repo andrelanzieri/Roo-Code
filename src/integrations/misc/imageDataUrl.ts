@@ -45,15 +45,12 @@ export async function normalizeImageRefsToDataUrls(imageRefs: string[]): Promise
 }
 
 /**
- * Cache mapping base64 data URLs to their temporary file paths
- * This prevents writing the same image multiple times
- */
-const base64ToFilePathCache = new Map<string, string>()
-
-/**
  * Converts base64 data URLs to file paths suitable for webview URIs.
  * Writes base64 images to temporary files and returns their paths.
- * This is the reverse of normalizeImageRefsToDataUrls.
+ *
+ * NOTE: This function is primarily used for testing. In production, the dual-storage
+ * approach (images + imagesBase64 in ClineMessage) eliminates the need for this conversion.
+ * No caching is implemented since this is a test utility.
  */
 export async function normalizeDataUrlsToFilePaths(dataUrls: string[], globalStoragePath: string): Promise<string[]> {
 	const results: string[] = []
@@ -75,22 +72,6 @@ export async function normalizeDataUrlsToFilePaths(dataUrls: string[], globalSto
 		}
 
 		try {
-			// Check cache first
-			const hash = crypto.createHash("md5").update(dataUrl).digest("hex")
-			let filePath = base64ToFilePathCache.get(hash)
-
-			if (filePath) {
-				// Check if file still exists
-				try {
-					await fs.access(filePath)
-					results.push(filePath)
-					continue
-				} catch {
-					// File was deleted, need to recreate
-					base64ToFilePathCache.delete(hash)
-				}
-			}
-
 			// Extract base64 data and MIME type
 			const commaIndex = dataUrl.indexOf(",")
 			if (commaIndex === -1) {
@@ -105,15 +86,15 @@ export async function normalizeDataUrlsToFilePaths(dataUrls: string[], globalSto
 			const mimeMatch = header.match(/data:image\/([^;]+)/)
 			const extension = mimeMatch ? `.${mimeMatch[1]}` : ".png"
 
+			// Create a unique hash for this image
+			const hash = crypto.createHash("md5").update(dataUrl).digest("hex")
+
 			// Write to temp file
-			filePath = path.join(tempDir, `${hash}${extension}`)
+			const filePath = path.join(tempDir, `${hash}${extension}`)
 			const buffer = Buffer.from(base64Data, "base64")
 			await fs.writeFile(filePath, buffer)
 
-			// Cache the mapping
-			base64ToFilePathCache.set(hash, filePath)
-
-			// Also cache in the image cache for reverse lookups
+			// Cache the reverse mapping for image-cache lookups
 			setImageBase64ForPath(filePath, dataUrl)
 
 			results.push(filePath)
