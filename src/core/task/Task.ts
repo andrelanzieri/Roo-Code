@@ -1475,7 +1475,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (responseText) {
 			newUserContent.push({
 				type: "text",
-				text: `\n\nNew instructions for task continuation:\n<user_message>\n${responseText}\n</user_message>`,
+				text: `\n\nNew instructions for task continuation:\n${responseText}`,
 			})
 		}
 
