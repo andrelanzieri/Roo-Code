@@ -367,6 +367,18 @@ function getSelectedModel({
 			const info = routerModels["vercel-ai-gateway"]?.[id]
 			return { id, info }
 		}
+		case "openai-compatible": {
+			// OpenAI Compatible provider uses custom configuration
+			const id = apiConfiguration.apiModelId ?? "default"
+			// Basic model info for OpenAI compatible APIs
+			const info: ModelInfo = {
+				maxTokens: 128000,
+				contextWindow: 128000,
+				supportsPromptCache: false,
+				supportsImages: false,
+			}
+			return { id, info }
+		}
 		// case "anthropic":
 		// case "human-relay":
 		// case "fake-ai":
