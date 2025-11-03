@@ -93,10 +93,19 @@ describe("OpenRouter API", () => {
 					inputPrice: 1.25,
 					outputPrice: 10,
 					cacheWritesPrice: 1.625,
-					cacheReadsPrice: 0.31,
+					cacheReadsPrice: 0.125,
 					description: undefined,
 					supportsReasoningEffort: undefined,
 					supportedParameters: undefined,
+					tiers: [
+						{
+							contextWindow: 1_000_000,
+							inputPrice: 2.5,
+							outputPrice: 15,
+							cacheReadsPrice: 0.25,
+							cacheWritesPrice: 2.875,
+						},
+					],
 				},
 				"google-ai-studio": {
 					maxTokens: 65536,
@@ -107,10 +116,19 @@ describe("OpenRouter API", () => {
 					inputPrice: 1.25,
 					outputPrice: 10,
 					cacheWritesPrice: 1.625,
-					cacheReadsPrice: 0.31,
+					cacheReadsPrice: 0.125,
 					description: undefined,
 					supportsReasoningEffort: undefined,
 					supportedParameters: undefined,
+					tiers: [
+						{
+							contextWindow: 1_000_000,
+							inputPrice: 2.5,
+							outputPrice: 15,
+							cacheReadsPrice: 0.25,
+							cacheWritesPrice: 2.875,
+						},
+					],
 				},
 			})
 
