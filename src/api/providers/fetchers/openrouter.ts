@@ -263,5 +263,56 @@ export const parseOpenRouterModel = ({
 		modelInfo.maxTokens = 32768
 	}
 
+	// Add tiered pricing for Gemini 2.5 Pro models on OpenRouter
+	if (id.includes("gemini-2.5-pro") || id.includes("gemini/2.5-pro")) {
+		modelInfo.inputPrice = 1.25
+		modelInfo.outputPrice = 10
+		modelInfo.cacheReadsPrice = 0.125
+		modelInfo.cacheWritesPrice = 1.625
+		modelInfo.tiers = [
+			{
+				contextWindow: 1_000_000,
+				inputPrice: 2.5,
+				outputPrice: 15,
+				cacheReadsPrice: 0.25,
+				cacheWritesPrice: 2.875,
+			},
+		]
+	}
+
+	// Add tiered pricing for Claude Sonnet 4 and 4.5 on OpenRouter
+	if (id === "anthropic/claude-sonnet-4" || id === "anthropic/claude-sonnet-4.5") {
+		modelInfo.inputPrice = 3.0
+		modelInfo.outputPrice = 15.0
+		modelInfo.cacheWritesPrice = 3.75
+		modelInfo.cacheReadsPrice = 0.3
+		modelInfo.tiers = [
+			{
+				contextWindow: 1_000_000,
+				inputPrice: 6.0,
+				outputPrice: 22.5,
+				cacheWritesPrice: 7.5,
+				cacheReadsPrice: 0.6,
+			},
+		]
+	}
+
+	// Add tiered pricing for Qwen 3 Max on OpenRouter
+	if (id.toLowerCase().includes("qwen") && id.toLowerCase().includes("max")) {
+		modelInfo.inputPrice = 1.2
+		modelInfo.outputPrice = 6
+		modelInfo.cacheReadsPrice = 0.24
+		modelInfo.cacheWritesPrice = 0 // Free
+		modelInfo.tiers = [
+			{
+				contextWindow: 1_000_000,
+				inputPrice: 3,
+				outputPrice: 15,
+				cacheReadsPrice: 0.6,
+				cacheWritesPrice: 0, // Free
+			},
+		]
+	}
+
 	return modelInfo
 }

@@ -26,6 +26,15 @@ export const bedrockModels = {
 		minTokensPerCachePoint: 1024,
 		maxCachePoints: 4,
 		cachableFields: ["system", "messages", "tools"],
+		tiers: [
+			{
+				contextWindow: 1_000_000,
+				inputPrice: 6.0,
+				outputPrice: 22.5,
+				cacheWritesPrice: 7.5,
+				cacheReadsPrice: 0.6,
+			},
+		],
 	},
 	"amazon.nova-pro-v1:0": {
 		maxTokens: 5000,
@@ -90,6 +99,15 @@ export const bedrockModels = {
 		minTokensPerCachePoint: 1024,
 		maxCachePoints: 4,
 		cachableFields: ["system", "messages", "tools"],
+		tiers: [
+			{
+				contextWindow: 1_000_000,
+				inputPrice: 6.0,
+				outputPrice: 22.5,
+				cacheWritesPrice: 7.5,
+				cacheReadsPrice: 0.6,
+			},
+		],
 	},
 	"anthropic.claude-opus-4-1-20250805-v1:0": {
 		maxTokens: 8192,

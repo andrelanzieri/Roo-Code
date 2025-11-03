@@ -138,24 +138,19 @@ export const geminiModels = {
 		contextWindow: 1_048_576,
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
-		outputPrice: 15,
-		cacheReadsPrice: 0.625,
-		cacheWritesPrice: 4.5,
+		inputPrice: 1.25, // Base price for ≤200k tokens
+		outputPrice: 10,
+		cacheReadsPrice: 0.125,
+		cacheWritesPrice: 1.625,
 		maxThinkingTokens: 32_768,
 		supportsReasoningBudget: true,
 		tiers: [
 			{
-				contextWindow: 200_000,
-				inputPrice: 1.25,
-				outputPrice: 10,
-				cacheReadsPrice: 0.31,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 2.5,
+				contextWindow: 1_000_000,
+				inputPrice: 2.5, // >200k tokens
 				outputPrice: 15,
-				cacheReadsPrice: 0.625,
+				cacheReadsPrice: 0.25,
+				cacheWritesPrice: 2.875,
 			},
 		],
 	},
@@ -164,22 +159,17 @@ export const geminiModels = {
 		contextWindow: 1_048_576,
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
-		outputPrice: 15,
-		cacheReadsPrice: 0.625,
-		cacheWritesPrice: 4.5,
+		inputPrice: 1.25, // Base price for ≤200k tokens
+		outputPrice: 10,
+		cacheReadsPrice: 0.125,
+		cacheWritesPrice: 1.625,
 		tiers: [
 			{
-				contextWindow: 200_000,
-				inputPrice: 1.25,
-				outputPrice: 10,
-				cacheReadsPrice: 0.31,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 2.5,
+				contextWindow: 1_000_000,
+				inputPrice: 2.5, // >200k tokens
 				outputPrice: 15,
-				cacheReadsPrice: 0.625,
+				cacheReadsPrice: 0.25,
+				cacheWritesPrice: 2.875,
 			},
 		],
 	},
@@ -188,24 +178,19 @@ export const geminiModels = {
 		contextWindow: 1_048_576,
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
-		outputPrice: 15,
-		cacheReadsPrice: 0.625,
-		cacheWritesPrice: 4.5,
+		inputPrice: 1.25, // Base price for ≤200k tokens
+		outputPrice: 10,
+		cacheReadsPrice: 0.125,
+		cacheWritesPrice: 1.625,
 		maxThinkingTokens: 32_768,
 		supportsReasoningBudget: true,
 		tiers: [
 			{
-				contextWindow: 200_000,
-				inputPrice: 1.25,
-				outputPrice: 10,
-				cacheReadsPrice: 0.31,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 2.5,
+				contextWindow: 1_000_000,
+				inputPrice: 2.5, // >200k tokens
 				outputPrice: 15,
-				cacheReadsPrice: 0.625,
+				cacheReadsPrice: 0.25,
+				cacheWritesPrice: 2.875,
 			},
 		],
 	},
@@ -222,25 +207,20 @@ export const geminiModels = {
 		contextWindow: 1_048_576,
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 2.5, // This is the pricing for prompts above 200k tokens.
-		outputPrice: 15,
-		cacheReadsPrice: 0.625,
-		cacheWritesPrice: 4.5,
+		inputPrice: 1.25, // Base price for ≤200k tokens
+		outputPrice: 10,
+		cacheReadsPrice: 0.125,
+		cacheWritesPrice: 1.625,
 		maxThinkingTokens: 32_768,
 		supportsReasoningBudget: true,
 		requiredReasoningBudget: true,
 		tiers: [
 			{
-				contextWindow: 200_000,
-				inputPrice: 1.25,
-				outputPrice: 10,
-				cacheReadsPrice: 0.31,
-			},
-			{
-				contextWindow: Infinity,
-				inputPrice: 2.5,
+				contextWindow: 1_000_000,
+				inputPrice: 2.5, // >200k tokens
 				outputPrice: 15,
-				cacheReadsPrice: 0.625,
+				cacheReadsPrice: 0.25,
+				cacheWritesPrice: 2.875,
 			},
 		],
 	},
