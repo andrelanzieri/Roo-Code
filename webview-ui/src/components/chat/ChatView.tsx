@@ -58,6 +58,7 @@ import { QueuedMessages } from "./QueuedMessages"
 import DismissibleUpsell from "../common/DismissibleUpsell"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { Cloud } from "lucide-react"
+import { safeJsonParse } from "../../../../src/shared/safeJsonParse"
 
 export interface ChatViewProps {
 	isHidden: boolean
@@ -547,16 +548,18 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				lastApiReqStarted.text !== undefined &&
 				lastApiReqStarted.say === "api_req_started"
 			) {
-				const info = JSON.parse(lastApiReqStarted.text)
+				const info = safeJsonParse(lastApiReqStarted.text)
 
 				// If cancelReason is defined, the stream has been cancelled (terminal state)
-				if (info.cancelReason !== undefined) {
-					return false
-				}
+				if (typeof info === "object" && info !== null) {
+					if ("cancelReason" in info && info.cancelReason !== undefined) {
+						return false
+					}
 
-				// Otherwise, check if cost is defined to determine if streaming is complete
-				if (info.cost === undefined) {
-					return true // API request has not finished yet.
+					// Otherwise, check if cost is defined to determine if streaming is complete
+					if ("cost" in info && info.cost !== undefined) {
+						return true // API request has not finished yet.
+					}
 				}
 			}
 		}
