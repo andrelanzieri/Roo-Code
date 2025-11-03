@@ -29,6 +29,16 @@ function getTieredPricing(
 		}
 	}
 
+	// If within base context window, use base prices
+	if (totalInputTokens <= modelInfo.contextWindow) {
+		return {
+			inputPrice: modelInfo.inputPrice,
+			outputPrice: modelInfo.outputPrice,
+			cacheWritesPrice: modelInfo.cacheWritesPrice,
+			cacheReadsPrice: modelInfo.cacheReadsPrice,
+		}
+	}
+
 	// Find the appropriate tier based on the total input tokens
 	// Tiers are checked in order, and we use the first tier where the token count
 	// is less than or equal to the tier's context window
