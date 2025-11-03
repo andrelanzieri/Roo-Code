@@ -123,6 +123,19 @@ const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 const FORCED_CONTEXT_REDUCTION_PERCENT = 75 // Keep 75% of context (remove 25%) on context window errors
 const MAX_CONTEXT_WINDOW_RETRIES = 3 // Maximum retries for context window errors
 
+interface RetryStatusPayload {
+	type: "retry_status"
+	status: "waiting" | "retrying" | "cancelled"
+	remainingSeconds?: number
+	attempt?: number
+	maxAttempts?: number
+	origin: "pre_request" | "retry_attempt"
+	detail?: string
+	cause: "rate_limit" | "backoff"
+	rateLimitSeconds?: number
+}
+
+// Legacy interface for backward compatibility
 interface RateLimitRetryPayload {
 	type: "rate_limit_retry"
 	status: "waiting" | "retrying" | "cancelled"
@@ -1110,7 +1123,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (partial !== undefined) {
 			const lastMessage = this.clineMessages.at(-1)
 
-			const isRateLimitUpdate = type === "api_req_retry_delayed" && options.metadata?.rateLimitRetry !== undefined
+			const isRateLimitUpdate =
+				type === "api_req_retry_delayed" &&
+				(options.metadata?.retryStatus !== undefined || options.metadata?.rateLimitRetry !== undefined)
 			const isUpdatingPreviousPartial =
 				lastMessage &&
 				lastMessage.type === "say" &&
@@ -2677,11 +2692,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		let rateLimitDelay = 0
 
-		const sendRateLimitUpdate = async (payload: RateLimitRetryPayload, isPartial: boolean): Promise<void> => {
+		const sendRetryStatusUpdate = async (payload: RetryStatusPayload, isPartial: boolean): Promise<void> => {
 			await this.say("api_req_retry_delayed", undefined, undefined, isPartial, undefined, undefined, {
 				isNonInteractive: true,
-				metadata: { rateLimitRetry: payload },
+				metadata: {
+					retryStatus: payload,
+					rateLimitRetry:
+						payload.cause === "rate_limit" ? { ...payload, type: "rate_limit_retry" as const } : undefined,
+				},
 			})
+		}
+
+		// Legacy function for backward compatibility
+		const sendRateLimitUpdate = async (payload: RateLimitRetryPayload, isPartial: boolean): Promise<void> => {
+			const retryPayload: RetryStatusPayload = { ...payload, type: "retry_status", cause: "rate_limit" }
+			await sendRetryStatusUpdate(retryPayload, isPartial)
 		}
 
 		const runRateLimitCountdown = async ({
@@ -2690,41 +2715,47 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			attempt,
 			maxAttempts,
 			detail,
+			rateLimitSeconds,
 		}: {
 			seconds: number
-			origin: RateLimitRetryPayload["origin"]
+			origin: RetryStatusPayload["origin"]
 			attempt?: number
 			maxAttempts?: number
 			detail?: string
+			rateLimitSeconds?: number
 		}): Promise<boolean> => {
 			const normalizedSeconds = Math.max(0, Math.ceil(seconds))
 
 			if (normalizedSeconds <= 0) {
 				if (this.abort) {
-					await sendRateLimitUpdate(
+					await sendRetryStatusUpdate(
 						{
-							type: "rate_limit_retry",
+							type: "retry_status",
 							status: "cancelled",
 							remainingSeconds: 0,
 							attempt,
 							maxAttempts,
 							origin,
 							detail,
+							cause: "rate_limit",
+							rateLimitSeconds,
 						},
 						false,
 					)
 					return false
 				}
 
-				await sendRateLimitUpdate(
+				await sendRetryStatusUpdate(
 					{
-						type: "rate_limit_retry",
+						type: "retry_status",
 						status: "retrying",
 						remainingSeconds: 0,
 						attempt,
 						maxAttempts,
 						origin,
 						detail,
+						cause: "rate_limit",
+						rateLimitSeconds,
 					},
 					false,
 				)
@@ -2733,30 +2764,34 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			for (let i = normalizedSeconds; i > 0; i--) {
 				if (this.abort) {
-					await sendRateLimitUpdate(
+					await sendRetryStatusUpdate(
 						{
-							type: "rate_limit_retry",
+							type: "retry_status",
 							status: "cancelled",
 							remainingSeconds: i,
 							attempt,
 							maxAttempts,
 							origin,
 							detail,
+							cause: "rate_limit",
+							rateLimitSeconds,
 						},
 						false,
 					)
 					return false
 				}
 
-				await sendRateLimitUpdate(
+				await sendRetryStatusUpdate(
 					{
-						type: "rate_limit_retry",
+						type: "retry_status",
 						status: "waiting",
 						remainingSeconds: i,
 						attempt,
 						maxAttempts,
 						origin,
 						detail,
+						cause: "rate_limit",
+						rateLimitSeconds,
 					},
 					true,
 				)
@@ -2765,30 +2800,34 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 
 			if (this.abort) {
-				await sendRateLimitUpdate(
+				await sendRetryStatusUpdate(
 					{
-						type: "rate_limit_retry",
+						type: "retry_status",
 						status: "cancelled",
 						remainingSeconds: 0,
 						attempt,
 						maxAttempts,
 						origin,
 						detail,
+						cause: "rate_limit",
+						rateLimitSeconds,
 					},
 					false,
 				)
 				return false
 			}
 
-			await sendRateLimitUpdate(
+			await sendRetryStatusUpdate(
 				{
-					type: "rate_limit_retry",
+					type: "retry_status",
 					status: "retrying",
 					remainingSeconds: 0,
 					attempt,
 					maxAttempts,
 					origin,
 					detail,
+					cause: "rate_limit",
+					rateLimitSeconds,
 				},
 				false,
 			)
@@ -2807,10 +2846,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Only show rate limiting message if we're not retrying. If retrying, we'll include the delay there.
 		if (rateLimitDelay > 0 && retryAttempt === 0) {
+			const rateLimit = apiConfiguration?.rateLimitSeconds || 0
 			const countdownCompleted = await runRateLimitCountdown({
 				seconds: rateLimitDelay,
 				origin: "pre_request",
 				attempt: 1,
+				rateLimitSeconds: rateLimit,
 			})
 
 			if (!countdownCompleted) {
@@ -3086,40 +3127,57 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				return firstLine.length > 160 ? `${firstLine.slice(0, 157)}…` : firstLine
 			})()
 
-			// Helper to send rate limit updates with structured metadata
-			const sendRateLimitUpdate = async (payload: RateLimitRetryPayload, isPartial: boolean): Promise<void> => {
+			// Helper to send retry status updates with structured metadata
+			const sendRetryStatusUpdate = async (payload: RetryStatusPayload, isPartial: boolean): Promise<void> => {
 				await this.say("api_req_retry_delayed", undefined, undefined, isPartial, undefined, undefined, {
 					isNonInteractive: true,
-					metadata: { rateLimitRetry: payload },
+					metadata: {
+						retryStatus: payload,
+						rateLimitRetry:
+							payload.cause === "rate_limit"
+								? { ...payload, type: "rate_limit_retry" as const }
+								: undefined,
+					},
 				})
 			}
+
+			// Determine the cause based on error type
+			const cause: "rate_limit" | "backoff" = error?.status === 429 ? "rate_limit" : "backoff"
+
+			// For rate limit errors, include the rate limit setting
+			const rateLimitSetting = state?.apiConfiguration?.rateLimitSeconds || 0
+			const rateLimitSeconds = cause === "rate_limit" ? rateLimitSetting : undefined
 
 			// Show countdown timer with exponential backoff using structured metadata
 			for (let i = finalDelay; i > 0; i--) {
 				// Check abort flag during countdown to allow early exit
 				if (this.abort) {
-					await sendRateLimitUpdate(
+					await sendRetryStatusUpdate(
 						{
-							type: "rate_limit_retry",
+							type: "retry_status",
 							status: "cancelled",
 							remainingSeconds: i,
 							attempt: retryAttempt + 1,
 							origin: "retry_attempt",
 							detail: sanitizedDetail,
+							cause,
+							rateLimitSeconds,
 						},
 						false,
 					)
 					throw new Error(`[Task#${this.taskId}] Aborted during retry countdown`)
 				}
 
-				await sendRateLimitUpdate(
+				await sendRetryStatusUpdate(
 					{
-						type: "rate_limit_retry",
+						type: "retry_status",
 						status: "waiting",
 						remainingSeconds: i,
 						attempt: retryAttempt + 1,
 						origin: "retry_attempt",
 						detail: sanitizedDetail,
+						cause,
+						rateLimitSeconds,
 					},
 					true,
 				)
@@ -3128,28 +3186,32 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			// Final check before retrying
 			if (this.abort) {
-				await sendRateLimitUpdate(
+				await sendRetryStatusUpdate(
 					{
-						type: "rate_limit_retry",
+						type: "retry_status",
 						status: "cancelled",
 						remainingSeconds: 0,
 						attempt: retryAttempt + 1,
 						origin: "retry_attempt",
 						detail: sanitizedDetail,
+						cause,
+						rateLimitSeconds,
 					},
 					false,
 				)
 				throw new Error(`[Task#${this.taskId}] Aborted during retry countdown`)
 			}
 
-			await sendRateLimitUpdate(
+			await sendRetryStatusUpdate(
 				{
-					type: "rate_limit_retry",
+					type: "retry_status",
 					status: "retrying",
 					remainingSeconds: 0,
 					attempt: retryAttempt + 1,
 					origin: "retry_attempt",
 					detail: sanitizedDetail,
+					cause,
+					rateLimitSeconds,
 				},
 				false,
 			)

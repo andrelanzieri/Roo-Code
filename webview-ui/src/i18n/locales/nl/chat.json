@@ -138,6 +138,14 @@
 		"cancelled": "API-verzoek geannuleerd",
 		"streamingFailed": "API-streaming mislukt"
 	},
+	"retryStatus": {
+		"title": "Verzoek vertraagd — even geduld a.u.b.",
+		"waiting": "Opnieuw proberen over {{seconds}}s",
+		"waitingWithAttempt": "Opnieuw proberen over {{seconds}}s (poging {{attempt}})",
+		"waitingWithAttemptMax": "Opnieuw proberen over {{seconds}}s (poging {{attempt}}/{{maxAttempts}})",
+		"retrying": "Nu opnieuw proberen…",
+		"cancelled": "Herpoging geannuleerd"
+	},
 	"rateLimitRetry": {
 		"title": "Snelheidslimiet bereikt — even geduld a.u.b.",
 		"waiting": "Opnieuw proberen over {{seconds}}s",

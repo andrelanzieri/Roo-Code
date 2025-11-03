@@ -152,6 +152,14 @@
 		"cancelled": "Permintaan API Dibatalkan",
 		"streamingFailed": "Streaming API Gagal"
 	},
+	"retryStatus": {
+		"title": "Permintaan tertunda — mohon tunggu.",
+		"waiting": "Mencoba lagi dalam {{seconds}}s",
+		"waitingWithAttempt": "Mencoba lagi dalam {{seconds}}s (percobaan {{attempt}})",
+		"waitingWithAttemptMax": "Mencoba lagi dalam {{seconds}}s (percobaan {{attempt}}/{{maxAttempts}})",
+		"retrying": "Mencoba sekarang…",
+		"cancelled": "Percobaan ulang dibatalkan"
+	},
 	"rateLimitRetry": {
 		"title": "Batas kecepatan tercapai — mohon tunggu.",
 		"waiting": "Mencoba lagi dalam {{seconds}}dtk",

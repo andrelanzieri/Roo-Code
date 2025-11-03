@@ -143,6 +143,14 @@
 		"cancelled": "Zapytanie API anulowane",
 		"streamingFailed": "Strumieniowanie API nie powiodło się"
 	},
+	"retryStatus": {
+		"title": "Żądanie opóźnione — proszę czekać.",
+		"waiting": "Ponowna próba za {{seconds}}s",
+		"waitingWithAttempt": "Ponowna próba za {{seconds}}s (próba {{attempt}})",
+		"waitingWithAttemptMax": "Ponowna próba za {{seconds}}s (próba {{attempt}}/{{maxAttempts}})",
+		"retrying": "Ponawiam teraz…",
+		"cancelled": "Ponowna próba anulowana"
+	},
 	"rateLimitRetry": {
 		"title": "Osiągnięto limit szybkości — proszę czekać.",
 		"waiting": "Ponawianie za {{seconds}}s",

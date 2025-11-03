@@ -149,6 +149,22 @@
 		"cancelled": "API Request Cancelled",
 		"streamingFailed": "API Streaming Failed"
 	},
+	"retryStatus": {
+		"rateLimit": {
+			"title": "Rate limit set to {{rateLimitSeconds}} seconds",
+			"waiting": "Waiting {{seconds}} seconds",
+			"proceeding": "Proceeding now…",
+			"cancelled": "Request cancelled"
+		},
+		"backoff": {
+			"title": "Request failed",
+			"waiting": "Trying in {{seconds}} seconds",
+			"waitingWithAttempt": "Trying in {{seconds}} seconds (attempt #{{attempt}})",
+			"waitingWithAttemptMax": "Trying in {{seconds}} seconds (attempt #{{attempt}}/{{maxAttempts}})",
+			"retrying": "Trying now…",
+			"cancelled": "Retry cancelled"
+		}
+	},
 	"rateLimitRetry": {
 		"title": "Rate limit triggered — please wait.",
 		"waiting": "Retrying in {{seconds}}s",

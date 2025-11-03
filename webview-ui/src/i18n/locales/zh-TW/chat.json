@@ -149,6 +149,14 @@
 		"cancelled": "API 請求已取消",
 		"streamingFailed": "API 串流處理失敗"
 	},
+	"retryStatus": {
+		"title": "請求已延遲 — 請稍候。",
+		"waiting": "{{seconds}}秒後重試",
+		"waitingWithAttempt": "{{seconds}}秒後重試（第 {{attempt}} 次嘗試）",
+		"waitingWithAttemptMax": "{{seconds}}秒後重試（第 {{attempt}}/{{maxAttempts}} 次嘗試）",
+		"retrying": "正在重試…",
+		"cancelled": "重試已取消"
+	},
 	"rateLimitRetry": {
 		"title": "已觸發速率限制 — 請稍候。",
 		"waiting": "正在 {{seconds}} 秒後重試",

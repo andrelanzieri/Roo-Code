@@ -162,6 +162,14 @@
 		},
 		"current": "Mevcut"
 	},
+	"retryStatus": {
+		"title": "İstek gecikti — lütfen bekleyin.",
+		"waiting": "{{seconds}}s içinde yeniden deneniyor",
+		"waitingWithAttempt": "{{seconds}}s içinde yeniden deneniyor (deneme {{attempt}})",
+		"waitingWithAttemptMax": "{{seconds}}s içinde yeniden deneniyor (deneme {{attempt}}/{{maxAttempts}})",
+		"retrying": "Şimdi yeniden deneniyor…",
+		"cancelled": "Yeniden deneme iptal edildi"
+	},
 	"rateLimitRetry": {
 		"title": "Hız limiti tetiklendi — lütfen bekleyin.",
 		"waiting": "{{seconds}}s içinde tekrar deniyor",

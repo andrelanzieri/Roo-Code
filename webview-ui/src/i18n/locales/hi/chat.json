@@ -143,6 +143,14 @@
 		"cancelled": "API अनुरोध रद्द किया गया",
 		"streamingFailed": "API स्ट्रीमिंग विफल हुई"
 	},
+	"retryStatus": {
+		"title": "अनुरोध में देरी — कृपया प्रतीक्षा करें।",
+		"waiting": "{{seconds}}s में पुनः प्रयास",
+		"waitingWithAttempt": "{{seconds}}s में पुनः प्रयास (प्रयास {{attempt}})",
+		"waitingWithAttemptMax": "{{seconds}}s में पुनः प्रयास (प्रयास {{attempt}}/{{maxAttempts}})",
+		"retrying": "अभी पुनः प्रयास कर रहे हैं…",
+		"cancelled": "पुनः प्रयास रद्द"
+	},
 	"rateLimitRetry": {
 		"title": "दर सीमा ट्रिगर हुई — कृपया प्रतीक्षा करें।",
 		"waiting": "{{seconds}}s में पुनः प्रयास कर रहा है",

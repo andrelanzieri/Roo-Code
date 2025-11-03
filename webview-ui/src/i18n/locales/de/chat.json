@@ -143,6 +143,14 @@
 		"cancelled": "API-Anfrage abgebrochen",
 		"streamingFailed": "API-Streaming fehlgeschlagen"
 	},
+	"retryStatus": {
+		"title": "Anfrage verzögert — bitte warten.",
+		"waiting": "Wiederholung in {{seconds}}s",
+		"waitingWithAttempt": "Wiederholung in {{seconds}}s (Versuch {{attempt}})",
+		"waitingWithAttemptMax": "Wiederholung in {{seconds}}s (Versuch {{attempt}}/{{maxAttempts}})",
+		"retrying": "Wird wiederholt…",
+		"cancelled": "Wiederholung abgebrochen"
+	},
 	"rateLimitRetry": {
 		"title": "Ratenlimit ausgelöst — bitte warten.",
 		"waiting": "Wiederholung in {{seconds}}s",

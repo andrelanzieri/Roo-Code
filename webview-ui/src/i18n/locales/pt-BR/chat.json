@@ -143,6 +143,14 @@
 		"cancelled": "Requisição API cancelada",
 		"streamingFailed": "Streaming API falhou"
 	},
+	"retryStatus": {
+		"title": "Solicitação atrasada — por favor, aguarde.",
+		"waiting": "Tentando novamente em {{seconds}}s",
+		"waitingWithAttempt": "Tentando novamente em {{seconds}}s (tentativa {{attempt}})",
+		"waitingWithAttemptMax": "Tentando novamente em {{seconds}}s (tentativa {{attempt}}/{{maxAttempts}})",
+		"retrying": "Tentando agora…",
+		"cancelled": "Tentativa cancelada"
+	},
 	"rateLimitRetry": {
 		"title": "Limite de taxa atingido — por favor, aguarde.",
 		"waiting": "Tentando novamente em {{seconds}}s",

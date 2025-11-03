@@ -162,6 +162,14 @@
 		},
 		"current": "Actuel"
 	},
+	"retryStatus": {
+		"title": "Requête retardée — veuillez patienter.",
+		"waiting": "Nouvelle tentative dans {{seconds}}s",
+		"waitingWithAttempt": "Nouvelle tentative dans {{seconds}}s (tentative {{attempt}})",
+		"waitingWithAttemptMax": "Nouvelle tentative dans {{seconds}}s (tentative {{attempt}}/{{maxAttempts}})",
+		"retrying": "Nouvelle tentative en cours…",
+		"cancelled": "Nouvelle tentative annulée"
+	},
 	"rateLimitRetry": {
 		"title": "Limite de débit atteinte — veuillez patienter.",
 		"waiting": "Nouvel essai dans {{seconds}}s",

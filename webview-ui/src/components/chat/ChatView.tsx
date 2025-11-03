@@ -428,7 +428,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					// an "ask" while ask is waiting for response.
 					switch (lastMessage.say) {
 						case "api_req_retry_delayed": {
-							if (lastMessage.metadata?.rateLimitRetry?.status === "cancelled") {
+							const retryStatus =
+								lastMessage.metadata?.retryStatus || lastMessage.metadata?.rateLimitRetry
+							if (retryStatus?.status === "cancelled") {
 								setSendingDisabled(false)
 							} else {
 								setSendingDisabled(true)

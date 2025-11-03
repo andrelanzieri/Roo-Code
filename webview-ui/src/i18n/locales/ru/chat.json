@@ -138,6 +138,14 @@
 		"cancelled": "API-запрос отменен",
 		"streamingFailed": "Ошибка потокового API-запроса"
 	},
+	"retryStatus": {
+		"title": "Запрос задержан — пожалуйста, подождите.",
+		"waiting": "Повтор через {{seconds}}с",
+		"waitingWithAttempt": "Повтор через {{seconds}}с (попытка {{attempt}})",
+		"waitingWithAttemptMax": "Повтор через {{seconds}}с (попытка {{attempt}}/{{maxAttempts}})",
+		"retrying": "Повторяем…",
+		"cancelled": "Повтор отменен"
+	},
 	"rateLimitRetry": {
 		"title": "Превышен лимит запросов — пожалуйста, подождите.",
 		"waiting": "Повторная попытка через {{seconds}}с",

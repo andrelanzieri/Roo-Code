@@ -143,6 +143,24 @@
 		"cancelled": "API请求已取消",
 		"streamingFailed": "API流式传输失败"
 	},
+	"retryStatus": {
+		"rateLimit": {
+			"title": "速率限制延迟 — 请稍候。",
+			"waiting": "{{seconds}}秒后继续",
+			"waitingWithAttempt": "{{seconds}}秒后继续（第 {{attempt}} 次尝试）",
+			"waitingWithAttemptMax": "{{seconds}}秒后继续（第 {{attempt}}/{{maxAttempts}} 次尝试）",
+			"proceeding": "正在继续…",
+			"cancelled": "请求已取消"
+		},
+		"backoff": {
+			"title": "请求已延迟 — 重试中。",
+			"waiting": "{{seconds}}秒后重试",
+			"waitingWithAttempt": "{{seconds}}秒后重试（第 {{attempt}} 次尝试）",
+			"waitingWithAttemptMax": "{{seconds}}秒后重试（第 {{attempt}}/{{maxAttempts}} 次尝试）",
+			"retrying": "正在重试…",
+			"cancelled": "重试已取消"
+		}
+	},
 	"rateLimitRetry": {
 		"title": "API 请求频率限制已触发 — 请稍候。",
 		"waiting": "正在 {{seconds}} 秒后重试",

@@ -44,7 +44,9 @@ import { appendImages } from "@src/utils/imageUtils"
 import { McpExecution } from "./McpExecution"
 import { ChatTextArea } from "./ChatTextArea"
 import { RateLimitRetryRow } from "./RateLimitRetryRow"
+import { RetryStatusRow } from "./RetryStatusRow"
 export { RateLimitRetryRow } from "./RateLimitRetryRow"
+export { RetryStatusRow } from "./RetryStatusRow"
 import { MAX_IMAGES_PER_MESSAGE } from "./ChatView"
 import { useSelectedModel } from "../ui/hooks/useSelectedModel"
 import {
@@ -1178,7 +1180,13 @@ export const ChatRowContent = ({
 					// Prevent multiple blocks returning, we only need a single block
 					// that's constantly updated
 					if (!isLast) return null
-					return <RateLimitRetryRow metadata={message.metadata?.rateLimitRetry} />
+
+					// Use new RetryStatusRow if retryStatus metadata is available, fall back to legacy
+					return message.metadata?.retryStatus ? (
+						<RetryStatusRow metadata={message.metadata.retryStatus} />
+					) : (
+						<RateLimitRetryRow metadata={message.metadata?.rateLimitRetry} />
+					)
 				case "shell_integration_warning":
 					return <CommandExecutionError />
 				case "checkpoint_saved":

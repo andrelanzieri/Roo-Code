@@ -27,6 +27,7 @@ describe("RateLimitRetryRow", () => {
 			attempt: 2,
 			maxAttempts: 5,
 			origin: "retry_attempt",
+			cause: "rate_limit",
 		}
 
 		render(<RateLimitRetryRow metadata={metadata} />)
@@ -40,6 +41,7 @@ describe("RateLimitRetryRow", () => {
 			type: "rate_limit_retry",
 			status: "retrying",
 			origin: "retry_attempt",
+			cause: "rate_limit",
 		}
 
 		render(<RateLimitRetryRow metadata={metadata} />)
@@ -53,6 +55,7 @@ describe("RateLimitRetryRow", () => {
 			type: "rate_limit_retry",
 			status: "cancelled",
 			origin: "retry_attempt",
+			cause: "rate_limit",
 		}
 
 		const { container } = render(<RateLimitRetryRow metadata={metadata} />)
@@ -82,6 +85,7 @@ describe("RateLimitRetryRow", () => {
 			attempt: 1,
 			maxAttempts: 3,
 			origin: "retry_attempt",
+			cause: "rate_limit",
 		}
 
 		const { rerender } = render(<RateLimitRetryRow metadata={initialMetadata} />)
@@ -94,6 +98,7 @@ describe("RateLimitRetryRow", () => {
 			type: "rate_limit_retry",
 			status: "retrying",
 			origin: "retry_attempt",
+			cause: "rate_limit",
 		}
 
 		rerender(<RateLimitRetryRow metadata={updatedMetadata} />)
@@ -111,6 +116,7 @@ describe("RateLimitRetryRow", () => {
 			attempt: 1,
 			maxAttempts: 3,
 			origin: "retry_attempt",
+			cause: "rate_limit",
 		}
 
 		const { rerender } = render(<RateLimitRetryRow metadata={metadata1} />)
