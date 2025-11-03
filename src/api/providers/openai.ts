@@ -156,13 +156,14 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			}
 
 			const isGrokXAI = this._isGrokXAI(this.options.openAiBaseUrl)
+			const isNvidiaApi = this._isNvidiaApi(this.options.openAiBaseUrl)
 
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
 				model: modelId,
 				temperature: this.options.modelTemperature ?? (deepseekReasoner ? DEEP_SEEK_DEFAULT_TEMPERATURE : 0),
 				messages: convertedMessages,
 				stream: true as const,
-				...(isGrokXAI ? {} : { stream_options: { include_usage: true } }),
+				...(isGrokXAI || isNvidiaApi ? {} : { stream_options: { include_usage: true } }),
 				...(reasoning && reasoning),
 			}
 
@@ -317,6 +318,8 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		if (this.options.openAiStreamingEnabled ?? true) {
 			const isGrokXAI = this._isGrokXAI(this.options.openAiBaseUrl)
 
+			const isNvidiaApi = this._isNvidiaApi(this.options.openAiBaseUrl)
+
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
 				model: modelId,
 				messages: [
@@ -327,7 +330,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					...convertToOpenAiMessages(messages),
 				],
 				stream: true,
-				...(isGrokXAI ? {} : { stream_options: { include_usage: true } }),
+				...(isGrokXAI || isNvidiaApi ? {} : { stream_options: { include_usage: true } }),
 				reasoning_effort: modelInfo.reasoningEffort as "low" | "medium" | "high" | undefined,
 				temperature: undefined,
 			}
@@ -421,6 +424,12 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	private _isAzureAiInference(baseUrl?: string): boolean {
 		const urlHost = this._getUrlHost(baseUrl)
 		return urlHost.endsWith(".services.ai.azure.com")
+	}
+
+	private _isNvidiaApi(baseUrl?: string): boolean {
+		const urlHost = this._getUrlHost(baseUrl)
+		// NVIDIA API endpoints typically use integrate.api.nvidia.com or build.nvidia.com
+		return urlHost.includes("nvidia.com")
 	}
 
 	/**
