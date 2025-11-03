@@ -20,7 +20,7 @@ import {
 	SearchResult,
 } from "@src/utils/context-mentions"
 import { cn } from "@src/lib/utils"
-import { convertToMentionPath } from "@src/utils/path-mentions"
+import { convertToMentionPath, escapeSpaces } from "@src/utils/path-mentions"
 import { StandardTooltip } from "@src/components/ui"
 
 import Thumbnails from "../common/Thumbnails"
@@ -354,6 +354,12 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						folderPath = folderPath + "/"
 					}
 
+					// Escape spaces for display (match insertMention behavior)
+					let displayFolderPath = folderPath
+					if (displayFolderPath.includes(" ") && !displayFolderPath.includes("\\ ")) {
+						displayFolderPath = escapeSpaces(displayFolderPath)
+					}
+
 					// Manually build insertion without a trailing space (more deterministic than insertMention)
 					const original = textAreaRef.current.value
 					const beforeCursor = original.slice(0, cursorPosition)
@@ -371,9 +377,9 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						afterCursorContent = isAlphaNumSpace ? afterCursor.replace(/^[^\s]*/, "") : afterCursor
 					}
 
-					const updatedValue = beforeMention + "@" + folderPath + afterCursorContent
+					const updatedValue = beforeMention + "@" + displayFolderPath + afterCursorContent
 					const afterMentionPos =
-						(lastAtIndex !== -1 ? lastAtIndex : beforeCursor.length) + 1 + folderPath.length
+						(lastAtIndex !== -1 ? lastAtIndex : beforeCursor.length) + 1 + displayFolderPath.length
 
 					setInputValue(updatedValue)
 					setCursorPosition(afterMentionPos)
@@ -391,7 +397,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					setSearchQuery(nextQuery)
 
 					// Kick off a search to populate folder children
-					const reqId = Math.random().toString(36).substring(2, 9)
+					const reqId =
+						globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
 					setSearchRequestId(reqId)
 					setSearchLoading(true)
 					vscode.postMessage({
@@ -660,7 +667,9 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							// Set a timeout to debounce the search requests.
 							searchTimeoutRef.current = setTimeout(() => {
 								// Generate a request ID for this search.
-								const reqId = Math.random().toString(36).substring(2, 9)
+								const reqId =
+									globalThis.crypto?.randomUUID?.() ??
+									`${Date.now()}-${Math.random().toString(36).slice(2)}`
 								setSearchRequestId(reqId)
 								setSearchLoading(true)
 

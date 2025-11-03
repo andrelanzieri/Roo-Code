@@ -93,4 +93,37 @@ describe("ChatTextArea - folder drilldown behavior", () => {
 		expect(lastMsg.query).toBe("/src/")
 		expect(typeof lastMsg.requestId).toBe("string")
 	})
+
+	it("escapes spaces in input and sends unescaped query for folder with spaces", () => {
+		const setInputValue = vi.fn()
+
+		const { container } = render(<ChatTextArea {...defaultProps} setInputValue={setInputValue} />)
+
+		// Type to open the @-context menu and set a query
+		const textarea = container.querySelector("textarea")!
+		fireEvent.change(textarea, {
+			target: { value: "@m", selectionStart: 2 },
+		})
+
+		// Ensure our mocked ContextMenu rendered and captured props
+		expect(screen.getByTestId("context-menu")).toBeInTheDocument()
+		const props = lastContextMenuProps
+		expect(props).toBeTruthy()
+		expect(typeof props.onSelect).toBe("function")
+
+		// Simulate selecting a concrete folder with a space
+		props.onSelect(ContextMenuOptionType.Folder, "/my folder")
+
+		// The input should contain the escaped path and NO trailing space
+		expect(setInputValue).toHaveBeenCalled()
+		const finalValue2 = setInputValue.mock.calls.at(-1)?.[0]
+		expect(finalValue2).toBe("@/my\\ folder/")
+
+		// It should have kicked off a searchFiles request with unescaped query
+		const pm2 = vscode.postMessage as ReturnType<typeof vi.fn>
+		const lastMsg2 = pm2.mock.calls.at(-1)?.[0]
+		expect(lastMsg2).toMatchObject({ type: "searchFiles" })
+		expect(lastMsg2.query).toBe("/my folder/")
+		expect(typeof lastMsg2.requestId).toBe("string")
+	})
 })
