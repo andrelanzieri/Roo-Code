@@ -644,6 +644,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	private async updateClineMessage(message: ClineMessage) {
 		const provider = this.providerRef.deref()
+
+		// Messages now store both formats, so no conversion needed
+		// The 'images' field already contains webview URIs for display
 		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
 		this.emit(RooCodeEventName.Message, { action: "updated", message })
 
@@ -735,6 +738,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					lastMessage.partial = partial
 					lastMessage.progressStatus = progressStatus
 					lastMessage.isProtected = isProtected
+					// Note: ask messages don't typically have images, so we don't update them here
 					// TODO: Be more efficient about saving and posting only new
 					// data or one whole message at a time so ignore partial for
 					// saves, and only post parts of partial message instead of
@@ -877,16 +881,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			text: this.askResponseText,
 			images: this.askResponseImages,
 		}
-		// Normalize any image refs to base64 data URLs before handing back to callers
-		if (Array.isArray(result.images) && result.images.length > 0) {
-			try {
-				const { normalizeImageRefsToDataUrls } = await import("../../integrations/misc/imageDataUrl")
-				const normalized = await normalizeImageRefsToDataUrls(result.images)
-				result.images = normalized
-			} catch (e) {
-				console.error("[Task#ask] Failed to normalize image refs:", e)
-			}
-		}
+		// Images from askResponse are already webview URIs from the frontend,
+		// so no conversion needed here
 		this.askResponse = undefined
 		this.askResponseText = undefined
 		this.askResponseImages = undefined
@@ -1084,13 +1080,23 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			throw new Error(`[RooCode#say] task ${this.taskId}.${this.instanceId} aborted`)
 		}
 
-		// Ensure any image refs are normalized to base64 data URLs before persisting or sending to APIs
+		// Convert images to both formats for efficient dual storage
+		let webviewUris: string[] | undefined
+		let base64Images: string[] | undefined
+
 		if (Array.isArray(images) && images.length > 0) {
 			try {
 				const { normalizeImageRefsToDataUrls } = await import("../../integrations/misc/imageDataUrl")
-				images = await normalizeImageRefsToDataUrls(images)
+
+				// Store original webview URIs/file paths for frontend
+				webviewUris = images
+
+				// Convert to base64 for API calls
+				base64Images = await normalizeImageRefsToDataUrls(images)
 			} catch (e) {
 				console.error("[Task#say] Failed to normalize image refs:", e)
+				// Fall back to original images if conversion fails
+				webviewUris = images
 			}
 		}
 
@@ -1104,7 +1110,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				if (isUpdatingPreviousPartial) {
 					// Existing partial message, so update it.
 					lastMessage.text = text
-					lastMessage.images = images
+					lastMessage.images = webviewUris
+					lastMessage.imagesBase64 = base64Images
 					lastMessage.partial = partial
 					lastMessage.progressStatus = progressStatus
 					this.updateClineMessage(lastMessage)
@@ -1121,7 +1128,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						type: "say",
 						say: type,
 						text,
-						images,
+						images: webviewUris,
+						imagesBase64: base64Images,
 						partial,
 						contextCondense,
 						metadata: options.metadata,
@@ -1137,7 +1145,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					}
 
 					lastMessage.text = text
-					lastMessage.images = images
+					lastMessage.images = webviewUris
+					lastMessage.imagesBase64 = base64Images
 					lastMessage.partial = false
 					lastMessage.progressStatus = progressStatus
 					if (options.metadata) {
@@ -1168,7 +1177,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						type: "say",
 						say: type,
 						text,
-						images,
+						images: webviewUris,
+						imagesBase64: base64Images,
 						contextCondense,
 						metadata: options.metadata,
 					})
@@ -1191,7 +1201,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				type: "say",
 				say: type,
 				text,
-				images,
+				images: webviewUris,
+				imagesBase64: base64Images,
 				checkpoint,
 				contextCondense,
 			})
@@ -1236,14 +1247,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		await this.providerRef.deref()?.postStateToWebview()
 
-		// Convert webview URIs to base64 data URLs for backend storage (one-time conversion)
-		const { normalizeImageRefsToDataUrls } = await import("../../integrations/misc/imageDataUrl")
-		const base64Images = images ? await normalizeImageRefsToDataUrls(images) : undefined
-
-		await this.say("text", task, base64Images) // Store base64 in backend messages
+		// Store the task message with both webview URIs and base64
+		// This is now handled in say() method which stores both formats
+		await this.say("text", task, images)
 		this.isInitialized = true
 
-		// Convert base64 to image blocks for API (no conversion needed, already base64)
+		// Get base64 from the stored message for API call
+		const lastMessage = this.clineMessages.at(-1)
+		const base64Images = lastMessage?.imagesBase64
+
+		// Convert base64 to image blocks for API
 		const { formatResponse } = await import("../prompts/responses")
 		let imageBlocks: Anthropic.ImageBlockParam[] = formatResponse.imageBlocks(base64Images)
 
@@ -1509,11 +1522,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		if (responseImages && responseImages.length > 0) {
-			// Convert webview URIs to base64 data URLs for backend storage (one-time conversion)
+			// Images from user response are webview URIs, convert to base64 for API
 			const { normalizeImageRefsToDataUrls } = await import("../../integrations/misc/imageDataUrl")
 			const base64ResponseImages = await normalizeImageRefsToDataUrls(responseImages)
 
-			// Convert base64 to image blocks for API (no conversion needed, already base64)
+			// Convert base64 to image blocks for API
 			const { formatResponse } = await import("../prompts/responses")
 			const responseImageBlocks = formatResponse.imageBlocks(base64ResponseImages)
 			newUserContent.push(...responseImageBlocks)
@@ -1778,14 +1791,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				)
 
 				if (response === "messageResponse") {
+					await this.say("user_feedback", text, images)
+
+					// Get base64 from the just-stored message for API call
+					const lastMessage = this.clineMessages.at(-1)
+					const base64Images = lastMessage?.imagesBase64
+
 					currentUserContent.push(
 						...[
 							{ type: "text" as const, text: formatResponse.tooManyMistakes(text) },
-							...formatResponse.imageBlocks(images),
+							...formatResponse.imageBlocks(base64Images),
 						],
 					)
-
-					await this.say("user_feedback", text, images)
 
 					// Track consecutive mistake errors in telemetry.
 					TelemetryService.instance.captureConsecutiveMistakeError(this.taskId)
