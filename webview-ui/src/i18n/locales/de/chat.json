@@ -144,12 +144,20 @@
 		"streamingFailed": "API-Streaming fehlgeschlagen"
 	},
 	"retryStatus": {
-		"title": "Anfrage verzögert — bitte warten.",
-		"waiting": "Wiederholung in {{seconds}}s",
-		"waitingWithAttempt": "Wiederholung in {{seconds}}s (Versuch {{attempt}})",
-		"waitingWithAttemptMax": "Wiederholung in {{seconds}}s (Versuch {{attempt}}/{{maxAttempts}})",
-		"retrying": "Wird wiederholt…",
-		"cancelled": "Wiederholung abgebrochen"
+		"rateLimit": {
+			"title": "Ratenlimit auf {{rateLimitSeconds}} Sekunden festgelegt",
+			"waiting": "Warte {{seconds}} Sekunden",
+			"proceeding": "Wird jetzt fortgesetzt…",
+			"cancelled": "Anfrage abgebrochen"
+		},
+		"backoff": {
+			"title": "Anfrage fehlgeschlagen",
+			"waiting": "Versuche in {{seconds}} Sekunden",
+			"waitingWithAttempt": "Versuche in {{seconds}} Sekunden (Versuch #{{attempt}})",
+			"waitingWithAttemptMax": "Versuche in {{seconds}} Sekunden (Versuch #{{attempt}}/{{maxAttempts}})",
+			"retrying": "Versuche jetzt…",
+			"cancelled": "Wiederholung abgebrochen"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "Ratenlimit ausgelöst — bitte warten.",

@@ -139,12 +139,20 @@
 		"streamingFailed": "API-streaming mislukt"
 	},
 	"retryStatus": {
-		"title": "Verzoek vertraagd — even geduld a.u.b.",
-		"waiting": "Opnieuw proberen over {{seconds}}s",
-		"waitingWithAttempt": "Opnieuw proberen over {{seconds}}s (poging {{attempt}})",
-		"waitingWithAttemptMax": "Opnieuw proberen over {{seconds}}s (poging {{attempt}}/{{maxAttempts}})",
-		"retrying": "Nu opnieuw proberen…",
-		"cancelled": "Herpoging geannuleerd"
+		"rateLimit": {
+			"title": "Snelheidslimiet ingesteld op {{rateLimitSeconds}} seconden",
+			"waiting": "{{seconds}} seconden wachten",
+			"proceeding": "Nu bezig...",
+			"cancelled": "Verzoek geannuleerd"
+		},
+		"backoff": {
+			"title": "Verzoek mislukt",
+			"waiting": "Probeert over {{seconds}} seconden",
+			"waitingWithAttempt": "Probeert over {{seconds}} seconden (poging #{{attempt}})",
+			"waitingWithAttemptMax": "Probeert over {{seconds}} seconden (poging #{{attempt}}/{{maxAttempts}})",
+			"retrying": "Nu proberen...",
+			"cancelled": "Opnieuw proberen geannuleerd"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "Snelheidslimiet bereikt — even geduld a.u.b.",

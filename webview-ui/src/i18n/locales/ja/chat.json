@@ -144,12 +144,20 @@
 		"streamingFailed": "APIストリーミング失敗"
 	},
 	"retryStatus": {
-		"title": "リクエストが遅延しています — しばらくお待ちください。",
-		"waiting": "{{seconds}}秒後に再試行",
-		"waitingWithAttempt": "{{seconds}}秒後に再試行（{{attempt}}回目の試行）",
-		"waitingWithAttemptMax": "{{seconds}}秒後に再試行（{{attempt}}/{{maxAttempts}}回目の試行）",
-		"retrying": "再試行中…",
-		"cancelled": "再試行がキャンセルされました"
+		"rateLimit": {
+			"title": "レート制限が{{rateLimitSeconds}}秒に設定されました",
+			"waiting": "{{seconds}}秒待機中",
+			"proceeding": "ただいま処理中...",
+			"cancelled": "リクエストがキャンセルされました"
+		},
+		"backoff": {
+			"title": "リクエスト失敗",
+			"waiting": "{{seconds}}秒後に再試行します",
+			"waitingWithAttempt": "{{seconds}}秒後に再試行します（試行{{attempt}}回目）",
+			"waitingWithAttemptMax": "{{seconds}}秒後に再試行します（試行{{attempt}}/{{maxAttempts}}回目）",
+			"retrying": "再試行中...",
+			"cancelled": "再試行がキャンセルされました"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "レート制限がトリガーされました — しばらくお待ちください。",

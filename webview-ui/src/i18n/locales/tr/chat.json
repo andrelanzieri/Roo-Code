@@ -163,12 +163,20 @@
 		"current": "Mevcut"
 	},
 	"retryStatus": {
-		"title": "İstek gecikti — lütfen bekleyin.",
-		"waiting": "{{seconds}}s içinde yeniden deneniyor",
-		"waitingWithAttempt": "{{seconds}}s içinde yeniden deneniyor (deneme {{attempt}})",
-		"waitingWithAttemptMax": "{{seconds}}s içinde yeniden deneniyor (deneme {{attempt}}/{{maxAttempts}})",
-		"retrying": "Şimdi yeniden deneniyor…",
-		"cancelled": "Yeniden deneme iptal edildi"
+		"rateLimit": {
+			"title": "Hız limiti {{rateLimitSeconds}} saniyeye ayarlandı",
+			"waiting": "{{seconds}} saniye bekleniyor",
+			"proceeding": "Şimdi devam ediliyor...",
+			"cancelled": "İstek iptal edildi"
+		},
+		"backoff": {
+			"title": "İstek başarısız oldu",
+			"waiting": "{{seconds}} saniye içinde deneniyor",
+			"waitingWithAttempt": "{{seconds}} saniye içinde deneniyor (deneme #{{attempt}})",
+			"waitingWithAttemptMax": "{{seconds}} saniye içinde deneniyor (deneme #{{attempt}}/{{maxAttempts}})",
+			"retrying": "Şimdi deneniyor...",
+			"cancelled": "Yeniden deneme iptal edildi"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "Hız limiti tetiklendi — lütfen bekleyin.",

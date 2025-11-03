@@ -144,12 +144,20 @@
 		"streamingFailed": "Streaming API thất bại"
 	},
 	"retryStatus": {
-		"title": "Yêu cầu bị trì hoãn — vui lòng đợi.",
-		"waiting": "Thử lại sau {{seconds}}s",
-		"waitingWithAttempt": "Thử lại sau {{seconds}}s (lần thử {{attempt}})",
-		"waitingWithAttemptMax": "Thử lại sau {{seconds}}s (lần thử {{attempt}}/{{maxAttempts}})",
-		"retrying": "Đang thử lại…",
-		"cancelled": "Thử lại đã bị hủy"
+		"rateLimit": {
+			"title": "Giới hạn tốc độ được đặt thành {{rateLimitSeconds}} giây",
+			"waiting": "Đang chờ {{seconds}} giây",
+			"proceeding": "Đang tiến hành...",
+			"cancelled": "Yêu cầu đã bị hủy"
+		},
+		"backoff": {
+			"title": "Yêu cầu thất bại",
+			"waiting": "Đang thử lại sau {{seconds}} giây",
+			"waitingWithAttempt": "Đang thử lại sau {{seconds}} giây (lần thử #{{attempt}})",
+			"waitingWithAttemptMax": "Đang thử lại sau {{seconds}} giây (lần thử #{{attempt}}/{{maxAttempts}})",
+			"retrying": "Đang thử ngay bây giờ...",
+			"cancelled": "Đã hủy thử lại"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "Đã đạt giới hạn tốc độ — vui lòng đợi.",

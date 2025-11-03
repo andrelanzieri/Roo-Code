@@ -144,12 +144,20 @@
 		"streamingFailed": "API 스트리밍 실패"
 	},
 	"retryStatus": {
-		"title": "요청이 지연되었습니다 — 잠시 기다려주세요.",
-		"waiting": "{{seconds}}초 후 재시도",
-		"waitingWithAttempt": "{{seconds}}초 후 재시도 (시도 {{attempt}})",
-		"waitingWithAttemptMax": "{{seconds}}초 후 재시도 (시도 {{attempt}}/{{maxAttempts}})",
-		"retrying": "재시도 중…",
-		"cancelled": "재시도 취소됨"
+		"rateLimit": {
+			"title": "속도 제한이 {{rateLimitSeconds}}초로 설정되었습니다.",
+			"waiting": "{{seconds}}초 대기 중",
+			"proceeding": "지금 진행 중...",
+			"cancelled": "요청이 취소되었습니다."
+		},
+		"backoff": {
+			"title": "요청 실패",
+			"waiting": "{{seconds}}초 후에 다시 시도합니다",
+			"waitingWithAttempt": "{{seconds}}초 후에 다시 시도합니다 (시도 #{{attempt}})",
+			"waitingWithAttemptMax": "{{seconds}}초 후에 다시 시도합니다 (시도 #{{attempt}}/{{maxAttempts}})",
+			"retrying": "지금 시도 중...",
+			"cancelled": "재시도 취소됨"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "속도 제한이 트리거되었습니다 — 잠시 기다려주세요.",

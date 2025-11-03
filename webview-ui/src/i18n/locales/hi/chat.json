@@ -144,12 +144,20 @@
 		"streamingFailed": "API स्ट्रीमिंग विफल हुई"
 	},
 	"retryStatus": {
-		"title": "अनुरोध में देरी — कृपया प्रतीक्षा करें।",
-		"waiting": "{{seconds}}s में पुनः प्रयास",
-		"waitingWithAttempt": "{{seconds}}s में पुनः प्रयास (प्रयास {{attempt}})",
-		"waitingWithAttemptMax": "{{seconds}}s में पुनः प्रयास (प्रयास {{attempt}}/{{maxAttempts}})",
-		"retrying": "अभी पुनः प्रयास कर रहे हैं…",
-		"cancelled": "पुनः प्रयास रद्द"
+		"rateLimit": {
+			"title": "दर सीमा {{rateLimitSeconds}} सेकंड पर सेट है",
+			"waiting": "{{seconds}} सेकंड प्रतीक्षा कर रहा है",
+			"proceeding": "अब आगे बढ़ रहा है...",
+			"cancelled": "अनुरोध रद्द कर दिया गया"
+		},
+		"backoff": {
+			"title": "अनुरोध विफल",
+			"waiting": "{{seconds}} सेकंड में पुन: प्रयास कर रहा है",
+			"waitingWithAttempt": "{{seconds}} सेकंड में पुन: प्रयास कर रहा है (प्रयास #{{attempt}})",
+			"waitingWithAttemptMax": "{{seconds}} सेकंड में पुन: प्रयास कर रहा है (प्रयास #{{attempt}}/{{maxAttempts}})",
+			"retrying": "अब कोशिश कर रहा हूँ...",
+			"cancelled": "पुन: प्रयास रद्द"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "दर सीमा ट्रिगर हुई — कृपया प्रतीक्षा करें।",

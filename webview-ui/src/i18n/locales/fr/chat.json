@@ -163,12 +163,20 @@
 		"current": "Actuel"
 	},
 	"retryStatus": {
-		"title": "Requête retardée — veuillez patienter.",
-		"waiting": "Nouvelle tentative dans {{seconds}}s",
-		"waitingWithAttempt": "Nouvelle tentative dans {{seconds}}s (tentative {{attempt}})",
-		"waitingWithAttemptMax": "Nouvelle tentative dans {{seconds}}s (tentative {{attempt}}/{{maxAttempts}})",
-		"retrying": "Nouvelle tentative en cours…",
-		"cancelled": "Nouvelle tentative annulée"
+		"rateLimit": {
+			"title": "Limite de taux fixée à {{rateLimitSeconds}} secondes",
+			"waiting": "En attente de {{seconds}} secondes",
+			"proceeding": "En cours…",
+			"cancelled": "Requête annulée"
+		},
+		"backoff": {
+			"title": "La requête a échoué",
+			"waiting": "Nouvel essai dans {{seconds}} secondes",
+			"waitingWithAttempt": "Nouvel essai dans {{seconds}} secondes (tentative n°{{attempt}})",
+			"waitingWithAttemptMax": "Nouvel essai dans {{seconds}} secondes (tentative n°{{attempt}}/{{maxAttempts}})",
+			"retrying": "Nouvel essai en cours…",
+			"cancelled": "Nouvel essai annulé"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "Limite de débit atteinte — veuillez patienter.",

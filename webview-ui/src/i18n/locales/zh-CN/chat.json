@@ -145,19 +145,17 @@
 	},
 	"retryStatus": {
 		"rateLimit": {
-			"title": "速率限制延迟 — 请稍候。",
-			"waiting": "{{seconds}}秒后继续",
-			"waitingWithAttempt": "{{seconds}}秒后继续（第 {{attempt}} 次尝试）",
-			"waitingWithAttemptMax": "{{seconds}}秒后继续（第 {{attempt}}/{{maxAttempts}} 次尝试）",
-			"proceeding": "正在继续…",
+			"title": "速率限制设置为 {{rateLimitSeconds}} 秒",
+			"waiting": "正在等待 {{seconds}} 秒",
+			"proceeding": "正在继续...",
 			"cancelled": "请求已取消"
 		},
 		"backoff": {
-			"title": "请求已延迟 — 重试中。",
-			"waiting": "{{seconds}}秒后重试",
-			"waitingWithAttempt": "{{seconds}}秒后重试（第 {{attempt}} 次尝试）",
-			"waitingWithAttemptMax": "{{seconds}}秒后重试（第 {{attempt}}/{{maxAttempts}} 次尝试）",
-			"retrying": "正在重试…",
+			"title": "请求失败",
+			"waiting": "将在 {{seconds}} 秒后重试",
+			"waitingWithAttempt": "将在 {{seconds}} 秒后重试 (第 #{{attempt}} 次)",
+			"waitingWithAttemptMax": "将在 {{seconds}} 秒后重试 (第 #{{attempt}}/{{maxAttempts}} 次)",
+			"retrying": "正在重试...",
 			"cancelled": "重试已取消"
 		}
 	},

@@ -144,12 +144,20 @@
 		"streamingFailed": "Strumieniowanie API nie powiodło się"
 	},
 	"retryStatus": {
-		"title": "Żądanie opóźnione — proszę czekać.",
-		"waiting": "Ponowna próba za {{seconds}}s",
-		"waitingWithAttempt": "Ponowna próba za {{seconds}}s (próba {{attempt}})",
-		"waitingWithAttemptMax": "Ponowna próba za {{seconds}}s (próba {{attempt}}/{{maxAttempts}})",
-		"retrying": "Ponawiam teraz…",
-		"cancelled": "Ponowna próba anulowana"
+		"rateLimit": {
+			"title": "Limit zapytań ustawiony na {{rateLimitSeconds}} sekund",
+			"waiting": "Oczekiwanie {{seconds}} sekund",
+			"proceeding": "Przechodzę teraz...",
+			"cancelled": "Żądanie anulowane"
+		},
+		"backoff": {
+			"title": "Żądanie nie powiodło się",
+			"waiting": "Próbuję za {{seconds}} sekund",
+			"waitingWithAttempt": "Próbuję za {{seconds}} sekund (próba #{{attempt}})",
+			"waitingWithAttemptMax": "Próbuję za {{seconds}} sekund (próba #{{attempt}}/{{maxAttempts}})",
+			"retrying": "Próbuję teraz...",
+			"cancelled": "Ponowienie anulowane"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "Osiągnięto limit szybkości — proszę czekać.",

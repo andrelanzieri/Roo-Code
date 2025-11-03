@@ -144,12 +144,20 @@
 		"streamingFailed": "Transmissió API ha fallat"
 	},
 	"retryStatus": {
-		"title": "Sol·licitud endarrerida — si us plau, espera.",
-		"waiting": "Reintentant en {{seconds}}s",
-		"waitingWithAttempt": "Reintentant en {{seconds}}s (intent {{attempt}})",
-		"waitingWithAttemptMax": "Reintentant en {{seconds}}s (intent {{attempt}}/{{maxAttempts}})",
-		"retrying": "Reintentant ara…",
-		"cancelled": "Reintent cancel·lat"
+		"rateLimit": {
+			"title": "Límit de taxa establert a {{rateLimitSeconds}} segons",
+			"waiting": "Esperant {{seconds}} segons",
+			"proceeding": "Continuant ara...",
+			"cancelled": "Sol·licitud cancel·lada"
+		},
+		"backoff": {
+			"title": "La sol·licitud ha fallat",
+			"waiting": "Intentant en {{seconds}} segons",
+			"waitingWithAttempt": "Intentant en {{seconds}} segons (intent #{{attempt}})",
+			"waitingWithAttemptMax": "Intentant en {{seconds}} segons (intent #{{attempt}}/{{maxAttempts}})",
+			"retrying": "Intentant ara...",
+			"cancelled": "Reintent cancel·lat"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "Límit de peticions assolit — si us plau, espera.",

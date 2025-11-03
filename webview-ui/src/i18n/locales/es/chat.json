@@ -164,19 +164,17 @@
 	},
 	"retryStatus": {
 		"rateLimit": {
-			"title": "Retraso por límite de velocidad — por favor, espera.",
-			"waiting": "Continuando en {{seconds}}s",
-			"waitingWithAttempt": "Continuando en {{seconds}}s (intento {{attempt}})",
-			"waitingWithAttemptMax": "Continuando en {{seconds}}s (intento {{attempt}}/{{maxAttempts}})",
+			"title": "Límite de velocidad establecido en {{rateLimitSeconds}} segundos",
+			"waiting": "Esperando {{seconds}} segundos",
 			"proceeding": "Continuando ahora…",
 			"cancelled": "Solicitud cancelada"
 		},
 		"backoff": {
-			"title": "Solicitud retrasada — reintentando.",
-			"waiting": "Reintentando en {{seconds}}s",
-			"waitingWithAttempt": "Reintentando en {{seconds}}s (intento {{attempt}})",
-			"waitingWithAttemptMax": "Reintentando en {{seconds}}s (intento {{attempt}}/{{maxAttempts}})",
-			"retrying": "Reintentando ahora…",
+			"title": "La solicitud falló",
+			"waiting": "Intentando en {{seconds}} segundos",
+			"waitingWithAttempt": "Intentando en {{seconds}} segundos (intento #{{attempt}})",
+			"waitingWithAttemptMax": "Intentando en {{seconds}} segundos (intento #{{attempt}}/{{maxAttempts}})",
+			"retrying": "Intentando ahora…",
 			"cancelled": "Reintento cancelado"
 		}
 	},

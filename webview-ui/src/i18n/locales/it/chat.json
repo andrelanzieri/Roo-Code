@@ -147,12 +147,20 @@
 		"streamingFailed": "Streaming API fallito"
 	},
 	"retryStatus": {
-		"title": "Richiesta ritardata — attendi.",
-		"waiting": "Riprovando tra {{seconds}}s",
-		"waitingWithAttempt": "Riprovando tra {{seconds}}s (tentativo {{attempt}})",
-		"waitingWithAttemptMax": "Riprovando tra {{seconds}}s (tentativo {{attempt}}/{{maxAttempts}})",
-		"retrying": "Riprovando ora…",
-		"cancelled": "Tentativo cancellato"
+		"rateLimit": {
+			"title": "Limite di velocità impostato a {{rateLimitSeconds}} secondi",
+			"waiting": "In attesa di {{seconds}} secondi",
+			"proceeding": "Procedendo ora...",
+			"cancelled": "Richiesta annullata"
+		},
+		"backoff": {
+			"title": "Richiesta fallita",
+			"waiting": "Tento tra {{seconds}} secondi",
+			"waitingWithAttempt": "Tento tra {{seconds}} secondi (tentativo n. {{attempt}})",
+			"waitingWithAttemptMax": "Tento tra {{seconds}} secondi (tentativo n. {{attempt}}/{{maxAttempts}})",
+			"retrying": "Tento ora...",
+			"cancelled": "Tentativo annullato"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "Limite di frequenza raggiunto — attendi.",

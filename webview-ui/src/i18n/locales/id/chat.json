@@ -153,12 +153,20 @@
 		"streamingFailed": "Streaming API Gagal"
 	},
 	"retryStatus": {
-		"title": "Permintaan tertunda — mohon tunggu.",
-		"waiting": "Mencoba lagi dalam {{seconds}}s",
-		"waitingWithAttempt": "Mencoba lagi dalam {{seconds}}s (percobaan {{attempt}})",
-		"waitingWithAttemptMax": "Mencoba lagi dalam {{seconds}}s (percobaan {{attempt}}/{{maxAttempts}})",
-		"retrying": "Mencoba sekarang…",
-		"cancelled": "Percobaan ulang dibatalkan"
+		"rateLimit": {
+			"title": "Batas tarif diatur ke {{rateLimitSeconds}} detik",
+			"waiting": "Menunggu {{seconds}} detik",
+			"proceeding": "Sedang memproses…",
+			"cancelled": "Permintaan dibatalkan"
+		},
+		"backoff": {
+			"title": "Permintaan gagal",
+			"waiting": "Mencoba dalam {{seconds}} detik",
+			"waitingWithAttempt": "Mencoba dalam {{seconds}} detik (percobaan #{{attempt}})",
+			"waitingWithAttemptMax": "Mencoba dalam {{seconds}} detik (percobaan #{{attempt}}/{{maxAttempts}})",
+			"retrying": "Mencoba sekarang…",
+			"cancelled": "Percobaan ulang dibatalkan"
+		}
 	},
 	"rateLimitRetry": {
 		"title": "Batas kecepatan tercapai — mohon tunggu.",
