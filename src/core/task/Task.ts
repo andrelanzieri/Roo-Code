@@ -2679,6 +2679,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const sendRateLimitUpdate = async (payload: RateLimitRetryPayload, isPartial: boolean): Promise<void> => {
 			await this.say("api_req_retry_delayed", undefined, undefined, isPartial, undefined, undefined, {
+				isNonInteractive: true,
 				metadata: { rateLimitRetry: payload },
 			})
 		}
@@ -2988,7 +2989,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						`[Task#attemptApiRequest] task ${this.taskId}.${this.instanceId} aborted during retry`,
 					)
 				}
-	
+
 				// Delegate generator output from the recursive call with
 				// incremented retry count.
 				yield* this.attemptApiRequest(retryAttempt + 1)
@@ -3086,11 +3087,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			})()
 
 			// Helper to send rate limit updates with structured metadata
-			const sendRateLimitUpdate = async (
-				payload: RateLimitRetryPayload,
-				isPartial: boolean,
-			): Promise<void> => {
+			const sendRateLimitUpdate = async (payload: RateLimitRetryPayload, isPartial: boolean): Promise<void> => {
 				await this.say("api_req_retry_delayed", undefined, undefined, isPartial, undefined, undefined, {
+					isNonInteractive: true,
 					metadata: { rateLimitRetry: payload },
 				})
 			}
