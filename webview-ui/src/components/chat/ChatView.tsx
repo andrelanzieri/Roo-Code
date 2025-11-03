@@ -560,6 +560,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					if ("cost" in info && info.cost !== undefined) {
 						return false // API request has finished.
 					}
+
+					// If we have api_req_started without cost or cancelReason, streaming is in progress
+					return true
 				}
 			}
 		}
