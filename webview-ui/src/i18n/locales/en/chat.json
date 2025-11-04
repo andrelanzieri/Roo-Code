@@ -246,6 +246,7 @@
 	"feedback": {
 		"youSaid": "You said"
 	},
+	"deleteMessageAndSubsequent": "Delete message and subsequent nodes",
 	"mcp": {
 		"wantsToUseTool": "Roo wants to use a tool on the {{serverName}} MCP server",
 		"wantsToAccessResource": "Roo wants to access a resource on the {{serverName}} MCP server"
