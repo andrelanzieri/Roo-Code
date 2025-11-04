@@ -74,7 +74,7 @@ import { MdmService } from "../../services/mdm/MdmService"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { setTtsEnabled, setTtsSpeed } from "../../utils/tts"
-import { getWorkspaceGitInfo } from "../../utils/git"
+import { getWorkspaceGitInfo, isGitHubRepository } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
 
@@ -1892,6 +1892,9 @@ export class ClineProvider
 		// This includes defaultBranch, which is populated even for worktrees.
 		const isGitRepository = Object.keys(gitInfo).length > 0
 
+		// Check if the repository is specifically a GitHub repository
+		const isGithubRepository = isGitHubRepository(gitInfo.repositoryUrl)
+
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
@@ -2023,6 +2026,7 @@ export class ClineProvider
 			openRouterUseMiddleOutTransform,
 			featureRoomoteControlEnabled,
 			isGitRepository,
+			isGithubRepository,
 		}
 	}
 
@@ -2258,6 +2262,7 @@ export class ClineProvider
 				}
 			})(),
 			isGitRepository: false, // Will be computed in getStateToPostToWebview
+			isGithubRepository: false, // Will be computed in getStateToPostToWebview
 		}
 	}
 

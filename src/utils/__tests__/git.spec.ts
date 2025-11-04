@@ -12,6 +12,7 @@ import {
 	extractRepositoryName,
 	getWorkspaceGitInfo,
 	convertGitUrlToHttps,
+	isGitHubRepository,
 } from "../git"
 import { truncateOutput } from "../../integrations/misc/extract-text"
 
@@ -895,6 +896,38 @@ describe("extractRepositoryName", () => {
 		const repoName = extractRepositoryName(url)
 
 		expect(repoName).toBe("RooCodeInc/Roo-Code")
+	})
+})
+
+describe("isGitHubRepository", () => {
+	it("should return true for github.com HTTPS URLs", () => {
+		expect(isGitHubRepository("https://github.com/user/repo.git")).toBe(true)
+		expect(isGitHubRepository("https://github.com/user/repo")).toBe(true)
+	})
+
+	it("should return true for github.com SSH URLs", () => {
+		expect(isGitHubRepository("git@github.com:user/repo.git")).toBe(true)
+		expect(isGitHubRepository("ssh://git@github.com/user/repo.git")).toBe(true)
+	})
+
+	it("should return true for GitHub URLs with different casing", () => {
+		expect(isGitHubRepository("https://GitHub.com/user/repo.git")).toBe(true)
+		expect(isGitHubRepository("https://GITHUB.COM/user/repo.git")).toBe(true)
+	})
+
+	it("should return false for non-GitHub URLs", () => {
+		expect(isGitHubRepository("https://gitlab.com/user/repo.git")).toBe(false)
+		expect(isGitHubRepository("https://bitbucket.org/user/repo.git")).toBe(false)
+		expect(isGitHubRepository("git@gitlab.com:user/repo.git")).toBe(false)
+	})
+
+	it("should return false for undefined or empty URLs", () => {
+		expect(isGitHubRepository(undefined)).toBe(false)
+		expect(isGitHubRepository("")).toBe(false)
+	})
+
+	it("should handle sanitized GitHub URLs", () => {
+		expect(isGitHubRepository("https://github.com/user/repo")).toBe(true)
 	})
 })
 

@@ -125,6 +125,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		cloudIsAuthenticated,
 		messageQueue = [],
 		isGitRepository = false,
+		isGithubRepository = false,
 	} = useExtensionState()
 
 	const messagesRef = useRef(messages)
@@ -406,8 +407,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							setClineAsk("completion_result")
 							setEnableButtons(!isPartial)
 
-							// Show "Create PR" only if in a git repository and user hasn't already requested it
-							if (isGitRepository && !prCreationRequested) {
+							// Show "Create PR" only if in a GitHub repository and user hasn't already requested it
+							if (isGitRepository && isGithubRepository && !prCreationRequested) {
 								setPrimaryButtonText(t("chat:createPR.title"))
 								setSecondaryButtonText(t("chat:startNewTask.title"))
 							} else {

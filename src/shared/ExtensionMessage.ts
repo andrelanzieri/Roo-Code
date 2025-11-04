@@ -363,6 +363,7 @@ export type ExtensionState = Pick<
 	taskSyncEnabled: boolean
 	featureRoomoteControlEnabled: boolean
 	isGitRepository: boolean
+	isGithubRepository: boolean
 }
 
 export interface ClineSayTool {

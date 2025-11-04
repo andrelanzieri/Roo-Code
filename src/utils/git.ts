@@ -212,6 +212,24 @@ export function extractRepositoryName(url: string): string {
 }
 
 /**
+ * Checks if a git repository URL is from GitHub
+ * @param repositoryUrl The repository URL to check
+ * @returns true if the URL is from GitHub, false otherwise
+ */
+export function isGitHubRepository(repositoryUrl?: string): boolean {
+	if (!repositoryUrl) {
+		return false
+	}
+
+	try {
+		// Check if the URL contains github.com
+		return repositoryUrl.toLowerCase().includes("github.com")
+	} catch {
+		return false
+	}
+}
+
+/**
  * Gets git repository information for the current VSCode workspace
  * @returns Git repository information or empty object if not available
  */
