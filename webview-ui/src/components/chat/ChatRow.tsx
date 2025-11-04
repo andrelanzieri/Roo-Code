@@ -16,6 +16,12 @@ import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
 import { vscode } from "@src/utils/vscode"
 import { removeLeadingNonAlphanumeric } from "@src/utils/removeLeadingNonAlphanumeric"
 import { getLanguageFromPath } from "@src/utils/getLanguageFromPath"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@src/components/ui/dropdown-menu"
 
 import { ToolUseBlock, ToolUseBlockHeader } from "../common/ToolUseBlock"
 import UpdateTodoListToolBlock from "./UpdateTodoListToolBlock"
@@ -1002,29 +1008,63 @@ export const ChatRowContent = ({
 
 					return (
 						<>
-							<div
-								className={`group text-sm transition-opacity ${
-									isApiRequestInProgress ? "opacity-100" : "opacity-40 hover:opacity-100"
-								}`}
-								style={{
-									...headerStyle,
-									marginBottom:
-										((cost === null || cost === undefined) && apiRequestFailedMessage) ||
-										apiReqStreamingFailedMessage
-											? 10
-											: 0,
-									justifyContent: "space-between",
-								}}>
-								<div style={{ display: "flex", alignItems: "center", gap: "10px", flexGrow: 1 }}>
-									{icon}
-									{title}
-								</div>
-								<div
-									className="text-xs text-vscode-dropdown-foreground border-vscode-dropdown-border/50 border px-1.5 py-0.5 rounded-lg"
-									style={{ opacity: cost !== null && cost !== undefined && cost > 0 ? 1 : 0 }}>
-									${Number(cost || 0)?.toFixed(4)}
-								</div>
-							</div>
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<div
+										className={`group text-sm transition-opacity ${
+											isApiRequestInProgress ? "opacity-100" : "opacity-40 hover:opacity-100"
+										}`}
+										style={{
+											...headerStyle,
+											marginBottom:
+												((cost === null || cost === undefined) && apiRequestFailedMessage) ||
+												apiReqStreamingFailedMessage
+													? 10
+													: 0,
+											justifyContent: "space-between",
+										}}
+										onContextMenu={(e) => e.preventDefault()}>
+										<div
+											style={{ display: "flex", alignItems: "center", gap: "10px", flexGrow: 1 }}>
+											{icon}
+											{title}
+										</div>
+										<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+											<div
+												className="text-xs text-vscode-dropdown-foreground border-vscode-dropdown-border/50 border px-1.5 py-0.5 rounded-lg"
+												style={{
+													opacity: cost !== null && cost !== undefined && cost > 0 ? 1 : 0,
+												}}>
+												${Number(cost || 0)?.toFixed(4)}
+											</div>
+											<div
+												className="cursor-pointer shrink-0 opacity-0 group-hover:opacity-30 hover:!opacity-100 transition-opacity"
+												style={{ visibility: isApiRequestInProgress ? "hidden" : "visible" }}
+												onClick={(e) => {
+													e.stopPropagation()
+													vscode.postMessage({ type: "deleteMessage", value: message.ts })
+												}}
+												title={t("chat:deleteMessageAndSubsequent")}>
+												<Trash2 className="w-4 shrink-0" aria-label="Delete message icon" />
+											</div>
+										</div>
+									</div>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent>
+									<DropdownMenuItem
+										onClick={() => vscode.postMessage({ type: "deleteMessage", value: message.ts })}
+										className="flex items-center gap-2"
+										disabled={isApiRequestInProgress}>
+										<Trash2 className="w-4 h-4" />
+										<span>
+											{t(
+												"chat:deleteMessageAndSubsequent",
+												"Delete message and subsequent nodes",
+											)}
+										</span>
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
 							{(((cost === null || cost === undefined) && apiRequestFailedMessage) ||
 								apiReqStreamingFailedMessage) && (
 								<ErrorRow
@@ -1053,22 +1093,49 @@ export const ChatRowContent = ({
 					return null // we should never see this message type
 				case "text":
 					return (
-						<div>
-							<div style={headerStyle}>
-								<MessageCircle className="w-4 shrink-0" aria-label="Speech bubble icon" />
-								<span style={{ fontWeight: "bold" }}>{t("chat:text.rooSaid")}</span>
-							</div>
-							<div className="pl-6">
-								<Markdown markdown={message.text} partial={message.partial} />
-								{message.images && message.images.length > 0 && (
-									<div style={{ marginTop: "10px" }}>
-										{message.images.map((image, index) => (
-											<ImageBlock key={index} imageData={image} />
-										))}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<div className="group" onContextMenu={(e) => e.preventDefault()}>
+									<div style={{ ...headerStyle, justifyContent: "space-between" }}>
+										<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+											<MessageCircle className="w-4 shrink-0" aria-label="Speech bubble icon" />
+											<span style={{ fontWeight: "bold" }}>{t("chat:text.rooSaid")}</span>
+										</div>
+										<div
+											className="cursor-pointer shrink-0 opacity-0 group-hover:opacity-30 hover:!opacity-100 transition-opacity"
+											style={{ visibility: isStreaming ? "hidden" : "visible" }}
+											onClick={(e) => {
+												e.stopPropagation()
+												vscode.postMessage({ type: "deleteMessage", value: message.ts })
+											}}
+											title={t("chat:deleteMessageAndSubsequent")}>
+											<Trash2 className="w-4 shrink-0" aria-label="Delete message icon" />
+										</div>
 									</div>
-								)}
-							</div>
-						</div>
+									<div className="pl-6">
+										<Markdown markdown={message.text} partial={message.partial} />
+										{message.images && message.images.length > 0 && (
+											<div style={{ marginTop: "10px" }}>
+												{message.images.map((image, index) => (
+													<ImageBlock key={index} imageData={image} />
+												))}
+											</div>
+										)}
+									</div>
+								</div>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent>
+								<DropdownMenuItem
+									onClick={() => vscode.postMessage({ type: "deleteMessage", value: message.ts })}
+									className="flex items-center gap-2"
+									disabled={isStreaming}>
+									<Trash2 className="w-4 h-4" />
+									<span>
+										{t("chat:deleteMessageAndSubsequent", "Delete message and subsequent nodes")}
+									</span>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					)
 				case "user_feedback":
 					return (
@@ -1162,15 +1229,42 @@ export const ChatRowContent = ({
 					return <ErrorRow type="error" message={message.text || ""} />
 				case "completion_result":
 					return (
-						<>
-							<div style={headerStyle}>
-								{icon}
-								{title}
-							</div>
-							<div className="border-l border-green-600/30 ml-2 pl-4 pb-1">
-								<Markdown markdown={message.text} />
-							</div>
-						</>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<div className="group" onContextMenu={(e) => e.preventDefault()}>
+									<div style={{ ...headerStyle, justifyContent: "space-between" }}>
+										<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+											{icon}
+											{title}
+										</div>
+										<div
+											className="cursor-pointer shrink-0 opacity-0 group-hover:opacity-30 hover:!opacity-100 transition-opacity"
+											style={{ visibility: isStreaming ? "hidden" : "visible" }}
+											onClick={(e) => {
+												e.stopPropagation()
+												vscode.postMessage({ type: "deleteMessage", value: message.ts })
+											}}
+											title={t("chat:deleteMessageAndSubsequent")}>
+											<Trash2 className="w-4 shrink-0" aria-label="Delete message icon" />
+										</div>
+									</div>
+									<div className="border-l border-green-600/30 ml-2 pl-4 pb-1">
+										<Markdown markdown={message.text} />
+									</div>
+								</div>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent>
+								<DropdownMenuItem
+									onClick={() => vscode.postMessage({ type: "deleteMessage", value: message.ts })}
+									className="flex items-center gap-2"
+									disabled={isStreaming}>
+									<Trash2 className="w-4 h-4" />
+									<span>
+										{t("chat:deleteMessageAndSubsequent", "Delete message and subsequent nodes")}
+									</span>
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					)
 				case "shell_integration_warning":
 					return <CommandExecutionError />
