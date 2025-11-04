@@ -111,7 +111,7 @@ export const XAI = ({
 				{t("settings:providers.apiKeyStorageNotice")}
 			</div>
 			{!apiConfiguration?.xaiApiKey && (
-				<VSCodeButtonLink href="https://api.x.ai/docs" appearance="secondary">
+				<VSCodeButtonLink href="https://docs.x.ai/docs/models" appearance="secondary">
 					{t("settings:providers.getXaiApiKey")}
 				</VSCodeButtonLink>
 			)}
@@ -148,7 +148,7 @@ export const XAI = ({
 						models={routerModels?.xai ?? {}}
 						modelIdKey="apiModelId"
 						serviceName="xAI (Grok)"
-						serviceUrl="https://api.x.ai/docs"
+						serviceUrl="https://docs.x.ai/docs/models"
 						setApiConfigurationField={setApiConfigurationField}
 						organizationAllowList={organizationAllowList as OrganizationAllowList}
 						errorMessage={modelValidationError}
