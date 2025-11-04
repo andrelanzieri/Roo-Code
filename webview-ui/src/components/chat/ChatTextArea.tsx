@@ -382,7 +382,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					// Keep the context menu open and immediately search within the folder
 					setShowContextMenu(true)
 					setSelectedType(null)
-					const folderQuery = insertValue.replace(/^\/+/, "")
+					const folderQuery = insertValue.slice(1)
 					setSearchQuery(folderQuery)
 					setSelectedMenuIndex(0)
 
