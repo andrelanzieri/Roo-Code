@@ -138,20 +138,28 @@ export class CodeIndexManager {
 			return { requiresRestart }
 		}
 
-		// 4. CacheManager Initialization
+		// 4. Early validation: Check if feature is configured before attempting initialization
+		// This prevents the "Code indexing is not properly configured" error from causing issues
+		if (!this.isFeatureConfigured) {
+			this._stateManager.setSystemState("Standby", t("embeddings:serviceFactory.codeIndexingNotConfigured"))
+			// Return early without throwing an error to prevent extension activation issues
+			return { requiresRestart: false }
+		}
+
+		// 5. CacheManager Initialization
 		if (!this._cacheManager) {
 			this._cacheManager = new CacheManager(this.context, this.workspacePath)
 			await this._cacheManager.initialize()
 		}
 
-		// 4. Determine if Core Services Need Recreation
+		// 6. Determine if Core Services Need Recreation
 		const needsServiceRecreation = !this._serviceFactory || requiresRestart
 
 		if (needsServiceRecreation) {
 			await this._recreateServices()
 		}
 
-		// 5. Handle Indexing Start/Restart
+		// 7. Handle Indexing Start/Restart
 		// The enhanced vectorStore.initialize() in startIndexing() now handles dimension changes automatically
 		// by detecting incompatible collections and recreating them, so we rely on that for dimension changes
 		const shouldStartOrRestartIndexing =
@@ -297,6 +305,13 @@ export class CodeIndexManager {
 		this._orchestrator = undefined
 		this._searchService = undefined
 
+		// Validate configuration before attempting to create services
+		if (!this._configManager || !this._configManager.isFeatureConfigured) {
+			// Set a clear state message instead of throwing an error
+			this._stateManager.setSystemState("Standby", "Code indexing requires configuration")
+			return
+		}
+
 		// (Re)Initialize service factory
 		this._serviceFactory = new CodeIndexServiceFactory(
 			this._configManager!,
@@ -332,43 +347,62 @@ export class CodeIndexManager {
 		const rooIgnoreController = new RooIgnoreController(workspacePath)
 		await rooIgnoreController.initialize()
 
-		// (Re)Create shared service instances
-		const { embedder, vectorStore, scanner, fileWatcher } = this._serviceFactory.createServices(
-			this.context,
-			this._cacheManager!,
-			ignoreInstance,
-			rooIgnoreController,
-		)
+		try {
+			// (Re)Create shared service instances
+			const { embedder, vectorStore, scanner, fileWatcher } = this._serviceFactory.createServices(
+				this.context,
+				this._cacheManager!,
+				ignoreInstance,
+				rooIgnoreController,
+			)
 
-		// Validate embedder configuration before proceeding
-		const validationResult = await this._serviceFactory.validateEmbedder(embedder)
-		if (!validationResult.valid) {
-			const errorMessage = validationResult.error || "Embedder configuration validation failed"
-			this._stateManager.setSystemState("Error", errorMessage)
-			throw new Error(errorMessage)
+			// Validate embedder configuration before proceeding
+			const validationResult = await this._serviceFactory.validateEmbedder(embedder)
+			if (!validationResult.valid) {
+				const errorMessage = validationResult.error || "Embedder configuration validation failed"
+				this._stateManager.setSystemState("Error", errorMessage)
+				throw new Error(errorMessage)
+			}
+
+			// (Re)Initialize orchestrator
+			this._orchestrator = new CodeIndexOrchestrator(
+				this._configManager!,
+				this._stateManager,
+				this.workspacePath,
+				this._cacheManager!,
+				vectorStore,
+				scanner,
+				fileWatcher,
+			)
+
+			// (Re)Initialize search service
+			this._searchService = new CodeIndexSearchService(
+				this._configManager!,
+				this._stateManager,
+				embedder,
+				vectorStore,
+			)
+
+			// Clear any error state after successful recreation
+			this._stateManager.setSystemState("Standby", "")
+		} catch (error) {
+			// Handle service creation errors gracefully
+			const errorMessage = error instanceof Error ? error.message : String(error)
+
+			// Check if this is a configuration error
+			if (errorMessage.includes("Code indexing is not properly configured")) {
+				// Set a user-friendly state message for configuration issues
+				this._stateManager.setSystemState(
+					"Standby",
+					"Code indexing requires configuration. Please set up embedding provider and API keys in settings.",
+				)
+			} else {
+				// For other errors, maintain error state but provide clear messaging
+				this._stateManager.setSystemState("Error", errorMessage)
+				// Re-throw non-configuration errors
+				throw error
+			}
 		}
-
-		// (Re)Initialize orchestrator
-		this._orchestrator = new CodeIndexOrchestrator(
-			this._configManager!,
-			this._stateManager,
-			this.workspacePath,
-			this._cacheManager!,
-			vectorStore,
-			scanner,
-			fileWatcher,
-		)
-
-		// (Re)Initialize search service
-		this._searchService = new CodeIndexSearchService(
-			this._configManager!,
-			this._stateManager,
-			embedder,
-			vectorStore,
-		)
-
-		// Clear any error state after successful recreation
-		this._stateManager.setSystemState("Standby", "")
 	}
 
 	/**

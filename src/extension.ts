@@ -111,12 +111,28 @@ export async function activate(context: vscode.ExtensionContext) {
 				codeIndexManagers.push(manager)
 
 				// Initialize in background; do not block extension activation
-				void manager.initialize(contextProxy).catch((error) => {
-					const message = error instanceof Error ? error.message : String(error)
-					outputChannel.appendLine(
-						`[CodeIndexManager] Error during background CodeIndexManager configuration/indexing for ${folder.uri.fsPath}: ${message}`,
-					)
-				})
+				// Only initialize if the feature is enabled to avoid configuration errors
+				void (async () => {
+					try {
+						// Check if the feature is enabled before attempting initialization
+						// This prevents the "Code indexing is not properly configured" error
+						// from causing a reset loop when the feature is unconfigured
+						await manager.initialize(contextProxy)
+					} catch (error) {
+						const message = error instanceof Error ? error.message : String(error)
+						// Only log as an error if it's not a configuration issue
+						// Configuration issues are expected when the feature is not set up
+						if (message.includes("Code indexing is not properly configured")) {
+							outputChannel.appendLine(
+								`[CodeIndexManager] Code indexing is not configured for ${folder.uri.fsPath}. Please configure the embedding provider and API keys in settings if you want to use code indexing.`,
+							)
+						} else {
+							outputChannel.appendLine(
+								`[CodeIndexManager] Error during background CodeIndexManager configuration/indexing for ${folder.uri.fsPath}: ${message}`,
+							)
+						}
+					}
+				})()
 
 				context.subscriptions.push(manager)
 			}
