@@ -210,7 +210,8 @@ Stage and commit any outstanding changes, then review the changes made in this b
 
 7. Check if gh CLI is installed:
 	  - Run: gh --version
-	  - If not found, guide user to install:
+	  - If not found, use ask_followup_question tool to ask the user if they want to install gh CLI
+	  - If the user agrees, follow one of the installation methods depending on their OS:
 	    * macOS: brew install gh
 	    * Windows: winget install GitHub.cli
 	    * Linux: See https://github.com/cli/cli#installation
@@ -226,7 +227,7 @@ Stage and commit any outstanding changes, then review the changes made in this b
 	    * Offer to have it reviewed by Roo Code Cloud's PR Reviewer agent
 	    * Link: https://roocode.com/reviewer
 
-If gh CLI is not installed or authenticated, provide clear setup instructions and wait for user to complete setup before proceeding.
+If gh CLI is not installed or authenticated, use ask_followup_question tool to confirm with the user before proceeding with installation instructions.
 </instructions>`,
 	},
 } as const
