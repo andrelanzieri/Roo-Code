@@ -158,7 +158,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 
 		let preOutput = ""
 		let commandOutputStarted = false
-		let streamDataReceived = false
+		let chunksReceived = 0
 
 		/*
 		 * Extract clean output from raw accumulated output. FYI:
@@ -172,7 +172,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 
 		// Process stream data
 		for await (let data of stream) {
-			streamDataReceived = true
+			chunksReceived++
 
 			// Check for command output start marker
 			if (!commandOutputStarted) {
@@ -185,13 +185,15 @@ export class TerminalProcess extends BaseTerminalProcess {
 					this.fullOutput = "" // Reset fullOutput when command actually starts
 					this.emit("line", "") // Trigger UI to proceed
 				} else {
-					// For the first chunk of data, if we don't see markers yet,
-					// wait a bit more to see if they arrive in the next chunk
-					if (!streamDataReceived && preOutput.length < 100) {
+					// For the first few chunks, wait to see if markers arrive
+					// This handles cases where markers might be split across chunks
+					if (chunksReceived < 3 && preOutput.length < 100) {
 						continue
 					}
 					// If we have accumulated enough preOutput without finding markers,
 					// treat it as command output to avoid losing data
+					// 500 chars threshold chosen to balance between waiting for markers
+					// and not losing legitimate output from fast commands
 					if (preOutput.length > 500) {
 						console.warn(
 							`[Terminal Process] No start markers found after ${preOutput.length} chars, treating as output`,

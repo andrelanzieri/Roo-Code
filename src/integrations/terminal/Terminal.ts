@@ -81,7 +81,13 @@ export class Terminal extends BaseTerminal {
 					ShellIntegrationManager.zshCleanupTmpDir(this.id)
 
 					// For newly created terminals on the first command, add a small delay
-					// to ensure the shell integration stream is fully ready
+					// to ensure the shell integration stream is fully ready.
+					// This addresses a race condition where the first command's output might not
+					// be captured properly, especially with chained commands like "ENV=hello && echo $ENV".
+					// The 200ms delay was chosen empirically to balance between:
+					// - Giving enough time for shell integration to fully initialize
+					// - Not adding noticeable latency to command execution
+					// This may need adjustment for slower systems or different shells.
 					if (this.isNewlyCreated && !this.firstCommandExecuted) {
 						console.log(`[Terminal ${this.id}] Adding delay for first command in new terminal`)
 						await new Promise((resolve) => setTimeout(resolve, 200))
