@@ -315,6 +315,99 @@ describe("OpenAiHandler", () => {
 			const callArgs = mockCreate.mock.calls[0][0]
 			expect(callArgs.max_completion_tokens).toBe(4096)
 		})
+
+		it("should include thinking parameter for GLM-4.6 when reasoning is enabled", async () => {
+			const glm46Options: ApiHandlerOptions = {
+				...mockOptions,
+				openAiModelId: "glm-4.6",
+				enableReasoningEffort: true,
+				openAiCustomModelInfo: {
+					contextWindow: 200_000,
+					maxTokens: 98_304,
+					supportsPromptCache: true,
+					supportsReasoningBinary: true,
+				},
+			}
+			const glm46Handler = new OpenAiHandler(glm46Options)
+			const stream = glm46Handler.createMessage(systemPrompt, messages)
+			// Consume the stream to trigger the API call
+			for await (const _chunk of stream) {
+			}
+			// Assert the mockCreate was called with thinking parameter
+			expect(mockCreate).toHaveBeenCalled()
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs.thinking).toEqual({ type: "enabled" })
+		})
+
+		it("should not include thinking parameter for GLM-4.6 when reasoning is disabled", async () => {
+			const glm46NoReasoningOptions: ApiHandlerOptions = {
+				...mockOptions,
+				openAiModelId: "glm-4.6",
+				enableReasoningEffort: false,
+				openAiCustomModelInfo: {
+					contextWindow: 200_000,
+					maxTokens: 98_304,
+					supportsPromptCache: true,
+					supportsReasoningBinary: true,
+				},
+			}
+			const glm46NoReasoningHandler = new OpenAiHandler(glm46NoReasoningOptions)
+			const stream = glm46NoReasoningHandler.createMessage(systemPrompt, messages)
+			// Consume the stream to trigger the API call
+			for await (const _chunk of stream) {
+			}
+			// Assert the mockCreate was called without thinking parameter
+			expect(mockCreate).toHaveBeenCalled()
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs.thinking).toBeUndefined()
+		})
+
+		it("should include thinking parameter for GLM-4.6 in non-streaming mode when reasoning is enabled", async () => {
+			const glm46NonStreamingOptions: ApiHandlerOptions = {
+				...mockOptions,
+				openAiModelId: "glm-4.6",
+				openAiStreamingEnabled: false,
+				enableReasoningEffort: true,
+				openAiCustomModelInfo: {
+					contextWindow: 200_000,
+					maxTokens: 98_304,
+					supportsPromptCache: true,
+					supportsReasoningBinary: true,
+				},
+			}
+			const glm46NonStreamingHandler = new OpenAiHandler(glm46NonStreamingOptions)
+			const stream = glm46NonStreamingHandler.createMessage(systemPrompt, messages)
+			// Consume the stream to trigger the API call
+			for await (const _chunk of stream) {
+			}
+			// Assert the mockCreate was called with thinking parameter
+			expect(mockCreate).toHaveBeenCalled()
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs.thinking).toEqual({ type: "enabled" })
+		})
+
+		it("should not include thinking parameter for non-GLM-4.6 models even with reasoning enabled", async () => {
+			const nonGlmOptions: ApiHandlerOptions = {
+				...mockOptions,
+				openAiModelId: "gpt-4",
+				enableReasoningEffort: true,
+				openAiCustomModelInfo: {
+					contextWindow: 128_000,
+					maxTokens: 4096,
+					supportsPromptCache: false,
+					supportsReasoningBinary: true,
+				},
+			}
+			const nonGlmHandler = new OpenAiHandler(nonGlmOptions)
+			const stream = nonGlmHandler.createMessage(systemPrompt, messages)
+			// Consume the stream to trigger the API call
+			for await (const _chunk of stream) {
+			}
+			// Assert the mockCreate was called without thinking parameter
+			expect(mockCreate).toHaveBeenCalled()
+			const callArgs = mockCreate.mock.calls[0][0]
+			expect(callArgs.thinking).toBeUndefined()
+		})
 	})
 
 	describe("error handling", () => {

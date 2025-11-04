@@ -94,6 +94,12 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		const deepseekReasoner = modelId.includes("deepseek-reasoner") || enabledR1Format
 		const ark = modelUrl.includes(".volces.com")
 
+		// Check if this is GLM-4.6 model with reasoning support
+		const isGLM46WithReasoning =
+			modelId.includes("glm-4.6") &&
+			this.options.enableReasoningEffort &&
+			(modelInfo.supportsReasoningBinary || this.options.openAiCustomModelInfo?.supportsReasoningBinary)
+
 		if (modelId.includes("o1") || modelId.includes("o3") || modelId.includes("o4")) {
 			yield* this.handleO3FamilyMessage(modelId, systemPrompt, messages)
 			return
@@ -166,6 +172,11 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				...(reasoning && reasoning),
 			}
 
+			// Add thinking parameter for GLM-4.6 when reasoning is enabled
+			if (isGLM46WithReasoning) {
+				;(requestOptions as any).thinking = { type: "enabled" }
+			}
+
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
@@ -231,6 +242,11 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					: enabledLegacyFormat
 						? [systemMessage, ...convertToSimpleMessages(messages)]
 						: [systemMessage, ...convertToOpenAiMessages(messages)],
+			}
+
+			// Add thinking parameter for GLM-4.6 when reasoning is enabled (non-streaming)
+			if (isGLM46WithReasoning) {
+				;(requestOptions as any).thinking = { type: "enabled" }
 			}
 
 			// Add max_tokens if needed
