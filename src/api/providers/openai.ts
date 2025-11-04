@@ -95,6 +95,8 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		const ark = modelUrl.includes(".volces.com")
 
 		// Check if this is GLM-4.6 model with reasoning support
+		// GLM-4.6 uses the 'thinking' parameter instead of 'reasoning_effort' for enabling reasoning
+		// This is a vendor-specific implementation detail for Z AI's GLM models
 		const isGLM46WithReasoning =
 			modelId.includes("glm-4.6") &&
 			this.options.enableReasoningEffort &&
