@@ -857,7 +857,9 @@ export class ClineProvider
 		await this.removeClineFromStack()
 	}
 
-	public async createTaskWithHistoryItem(historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task }) {
+	public async createTaskWithHistoryItem(
+		historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task },
+	): Promise<Task> {
 		await this.removeClineFromStack()
 
 		// If the history item has a saved mode, restore it and its associated API configuration.
@@ -903,6 +905,40 @@ export class ClineProvider
 			}
 		}
 
+		// Restore parent-child task relationships if this is a subtask
+		let restoredParentTask: Task | undefined = undefined
+		let restoredRootTask: Task | undefined = undefined
+
+		if (historyItem.parentTaskId) {
+			// Try to find the parent task in the current task stack
+			restoredParentTask = this.clineStack.find((task) => task.taskId === historyItem.parentTaskId)
+
+			if (!restoredParentTask) {
+				// Parent task is not in the stack, try to restore it from history
+				this.log(`Restoring parent task ${historyItem.parentTaskId} for subtask ${historyItem.id}`)
+				try {
+					const { historyItem: parentHistoryItem } = await this.getTaskWithId(historyItem.parentTaskId)
+					// Recursively restore parent task (which may have its own parent)
+					restoredParentTask = await this.createTaskWithHistoryItem(parentHistoryItem)
+				} catch (error) {
+					this.log(
+						`Failed to restore parent task ${historyItem.parentTaskId}: ${error instanceof Error ? error.message : String(error)}`,
+					)
+				}
+			}
+		}
+
+		if (historyItem.rootTaskId) {
+			// Try to find the root task in the current task stack
+			restoredRootTask = this.clineStack.find((task) => task.taskId === historyItem.rootTaskId)
+
+			if (!restoredRootTask && historyItem.rootTaskId !== historyItem.parentTaskId) {
+				// Root task is different from parent and not in stack
+				this.log(`Note: Root task ${historyItem.rootTaskId} not found in current stack`)
+				// We could restore root task here if needed, but usually parent is enough
+			}
+		}
+
 		const {
 			apiConfiguration,
 			diffEnabled: enableDiff,
@@ -924,8 +960,8 @@ export class ClineProvider
 			consecutiveMistakeLimit: apiConfiguration.consecutiveMistakeLimit,
 			historyItem,
 			experiments,
-			rootTask: historyItem.rootTask,
-			parentTask: historyItem.parentTask,
+			rootTask: restoredRootTask || historyItem.rootTask,
+			parentTask: restoredParentTask || historyItem.parentTask,
 			taskNumber: historyItem.number,
 			workspacePath: historyItem.workspace,
 			onCreated: this.taskCreationCallback,
