@@ -430,5 +430,6 @@
 	"slashCommand": {
 		"wantsToRun": "Roo 想要執行斜線指令",
 		"didRun": "Roo 執行了斜線指令"
-	}
+	},
+	"deleteMessageAndSubsequent": "Delete message and subsequent nodes"
 }

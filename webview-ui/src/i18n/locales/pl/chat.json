@@ -429,5 +429,6 @@
 	"slashCommand": {
 		"wantsToRun": "Roo chce uruchomić komendę slash",
 		"didRun": "Roo uruchomił komendę slash"
-	}
+	},
+	"deleteMessageAndSubsequent": "Delete message and subsequent nodes"
 }

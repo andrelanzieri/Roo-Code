@@ -429,5 +429,6 @@
 		"problems": "Problemes",
 		"terminal": "Terminal",
 		"url": "Enganxa la URL per obtenir-ne el contingut"
-	}
+	},
+	"deleteMessageAndSubsequent": "Delete message and subsequent nodes"
 }

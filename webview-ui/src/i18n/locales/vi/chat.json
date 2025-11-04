@@ -430,5 +430,6 @@
 	"slashCommand": {
 		"wantsToRun": "Roo muốn chạy lệnh slash",
 		"didRun": "Roo đã chạy lệnh slash"
-	}
+	},
+	"deleteMessageAndSubsequent": "Delete message and subsequent nodes"
 }

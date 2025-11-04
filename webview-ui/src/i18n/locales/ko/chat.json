@@ -429,5 +429,6 @@
 	"slashCommand": {
 		"wantsToRun": "Roo가 슬래시 명령어를 실행하려고 합니다",
 		"didRun": "Roo가 슬래시 명령어를 실행했습니다"
-	}
+	},
+	"deleteMessageAndSubsequent": "Delete message and subsequent nodes"
 }

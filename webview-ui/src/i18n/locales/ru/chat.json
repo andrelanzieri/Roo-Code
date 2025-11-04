@@ -430,5 +430,6 @@
 	"slashCommand": {
 		"wantsToRun": "Roo хочет выполнить слеш-команду",
 		"didRun": "Roo выполнил слеш-команду"
-	}
+	},
+	"deleteMessageAndSubsequent": "Delete message and subsequent nodes"
 }

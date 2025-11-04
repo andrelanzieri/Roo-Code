@@ -429,5 +429,6 @@
 	"slashCommand": {
 		"wantsToRun": "Roo एक स्लैश कमांड चलाना चाहता है",
 		"didRun": "Roo ने एक स्लैश कमांड चलाया"
-	}
+	},
+	"deleteMessageAndSubsequent": "Delete message and subsequent nodes"
 }
