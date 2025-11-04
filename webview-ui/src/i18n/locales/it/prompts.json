@@ -142,7 +142,7 @@
 			},
 			"NEW_TASK": {
 				"label": "Avvia nuova attività",
-				"description": "Avvia una newa attività con il tuo input. Disponibile nella palette dei comandi."
+				"description": "Avvia una nuova attività con il tuo input. Disponibile nella palette dei comandi."
 			},
 			"CREATE_PR": {
 				"label": "Crea Pull Request",
