@@ -915,10 +915,32 @@ describe("isGitHubRepository", () => {
 		expect(isGitHubRepository("https://GITHUB.COM/user/repo.git")).toBe(true)
 	})
 
+	it("should return true for GitHub subdomains", () => {
+		expect(isGitHubRepository("https://gist.github.com/user/repo")).toBe(true)
+		expect(isGitHubRepository("https://api.github.com/repos/user/repo")).toBe(true)
+		expect(isGitHubRepository("git@gist.github.com:user/repo.git")).toBe(true)
+	})
+
 	it("should return false for non-GitHub URLs", () => {
 		expect(isGitHubRepository("https://gitlab.com/user/repo.git")).toBe(false)
 		expect(isGitHubRepository("https://bitbucket.org/user/repo.git")).toBe(false)
 		expect(isGitHubRepository("git@gitlab.com:user/repo.git")).toBe(false)
+	})
+
+	it("should return false for malicious URLs with github.com in hostname", () => {
+		// Security: These URLs have "github.com" as part of the hostname but are not GitHub
+		expect(isGitHubRepository("https://malicious-github.com/user/repo.git")).toBe(false)
+		expect(isGitHubRepository("https://github.com.evil.com/user/repo.git")).toBe(false)
+		expect(isGitHubRepository("https://fake-github.com/user/repo.git")).toBe(false)
+		expect(isGitHubRepository("git@malicious-github.com:user/repo.git")).toBe(false)
+		expect(isGitHubRepository("ssh://git@github.com.evil.com/user/repo.git")).toBe(false)
+	})
+
+	it("should return false for URLs with github.com in the path", () => {
+		// Security: These URLs have "github.com" in the path but not as the hostname
+		expect(isGitHubRepository("https://evil.com/github.com/malicious/repo.git")).toBe(false)
+		expect(isGitHubRepository("https://attacker.com/fake/github.com/path")).toBe(false)
+		expect(isGitHubRepository("git@evil.com:github.com/user/repo.git")).toBe(false)
 	})
 
 	it("should return false for undefined or empty URLs", () => {

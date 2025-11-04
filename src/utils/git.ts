@@ -222,8 +222,33 @@ export function isGitHubRepository(repositoryUrl?: string): boolean {
 	}
 
 	try {
-		// Check if the URL contains github.com
-		return repositoryUrl.toLowerCase().includes("github.com")
+		const url = repositoryUrl.toLowerCase().trim()
+
+		// Try to parse as HTTPS/HTTP URL
+		if (url.startsWith("https://") || url.startsWith("http://")) {
+			const parsed = new URL(url)
+			return parsed.hostname === "github.com" || parsed.hostname.endsWith(".github.com")
+		}
+
+		// Handle SSH format: git@github.com:user/repo.git
+		if (url.startsWith("git@")) {
+			const match = url.match(/^git@([^:]+):/)
+			if (match && match[1]) {
+				const host = match[1]
+				return host === "github.com" || host.endsWith(".github.com")
+			}
+		}
+
+		// Handle SSH with protocol: ssh://git@github.com/user/repo.git
+		if (url.startsWith("ssh://")) {
+			const match = url.match(/^ssh:\/\/(?:git@)?([^\/]+)/)
+			if (match && match[1]) {
+				const host = match[1]
+				return host === "github.com" || host.endsWith(".github.com")
+			}
+		}
+
+		return false
 	} catch {
 		return false
 	}
