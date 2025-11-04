@@ -284,62 +284,6 @@ Please analyze this codebase and create an AGENTS.md file containing:
 
 Remember: The goal is to create documentation that enables AI assistants to be immediately productive in this codebase, focusing on project-specific knowledge that isn't obvious from the code structure alone.`,
 	},
-	create_pr: {
-		name: "create-pr",
-		description: "Create a GitHub pull request from current branch",
-		content: `<task>
-Stage and commit any outstanding changes, then review the changes made in this branch versus main/master and create a pull request using the gh CLI.
-</task>
-
-<instructions>
-1. Check if there are any unstaged/uncommitted changes:
-	  - Run: git status
-	  - If changes exist, stage and commit them with a descriptive message
-
-2. Identify the base branch (main or master):
-	  - Check which exists: git branch --list main master
-	  - Use the one that exists as base branch
-
-3. Get current branch name:
-	  - Run: git branch --show-current
-
-4. Analyze all changes between current branch and base:
-	  - Run: git diff <base-branch>...HEAD
-	  - Also get commit messages: git log <base-branch>..HEAD --oneline
-
-5. Generate PR title and description:
-	  - Analyze the diff and commit messages
-	  - Create concise, descriptive title (50 chars max)
-	  - Write clear PR description explaining:
-	    * What changed and why
-	    * Key implementation details
-	    * Any breaking changes or important notes
-
-6. Get repository info:
-	  - Extract from: git remote get-url origin
-	  - Parse to get org/repo format
-
-7. Check if gh CLI is installed:
-	  - Run: gh --version
-	  - If not found, guide user to install:
-	    * macOS: brew install gh
-	    * Windows: winget install GitHub.cli
-	    * Linux: See https://github.com/cli/cli#installation
-	    * After install: gh auth login
-
-8. Create the pull request:
-	  - Run: gh pr create --repo <org/repo> --head <current-branch> --title "<generated-title>" --body "<generated-description>"
-	  
-9. After successful PR creation:
-	  - Extract PR URL from gh output
-	  - Present success message with:
-	    * Link to the created PR
-	    * Offer to have it reviewed by Roo Code Cloud's PR Reviewer agent
-	    * Link: https://roocode.com/reviewer
-
-If gh CLI is not installed or authenticated, provide clear setup instructions and wait for user to complete setup before proceeding.
-</instructions>`,
-	},
 }
 
 /**

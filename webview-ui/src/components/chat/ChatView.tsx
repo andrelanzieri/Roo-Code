@@ -59,6 +59,7 @@ import DismissibleUpsell from "../common/DismissibleUpsell"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { Cloud } from "lucide-react"
 import { safeJsonParse } from "../../../../src/shared/safeJsonParse"
+import { supportPrompt } from "@roo/support-prompt"
 
 export interface ChatViewProps {
 	isHidden: boolean
@@ -126,6 +127,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		messageQueue = [],
 		isGitRepository = false,
 		isGithubRepository = false,
+		customSupportPrompts,
 	} = useExtensionState()
 
 	const messagesRef = useRef(messages)
@@ -743,8 +745,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					if (primaryButtonText === t("chat:createPR.title")) {
 						// Mark that PR creation was requested
 						setPrCreationRequested(true)
-						// Send /create-pr command
-						handleSendMessage("/create-pr", [])
+						// Send message using the Support Prompt for PR creation
+						const text = supportPrompt.create("CREATE_PR", {}, customSupportPrompts)
+						handleSendMessage(text, [])
 					} else {
 						// Original behavior: start new task
 						startNewTask()
@@ -759,7 +762,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			setClineAsk(undefined)
 			setEnableButtons(false)
 		},
-		[clineAsk, primaryButtonText, t, handleSendMessage, startNewTask],
+		[clineAsk, primaryButtonText, t, startNewTask, customSupportPrompts, handleSendMessage],
 	)
 
 	const handleSecondaryButtonClick = useCallback(
