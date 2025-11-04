@@ -859,6 +859,7 @@ export class ClineProvider
 
 	public async createTaskWithHistoryItem(
 		historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task },
+		startTask: boolean = true,
 	): Promise<Task> {
 		await this.removeClineFromStack()
 
@@ -919,7 +920,8 @@ export class ClineProvider
 				try {
 					const { historyItem: parentHistoryItem } = await this.getTaskWithId(historyItem.parentTaskId)
 					// Recursively restore parent task (which may have its own parent)
-					restoredParentTask = await this.createTaskWithHistoryItem(parentHistoryItem)
+					// Pass startTask: false to prevent the parent from automatically starting execution
+					restoredParentTask = await this.createTaskWithHistoryItem(parentHistoryItem, false)
 				} catch (error) {
 					this.log(
 						`Failed to restore parent task ${historyItem.parentTaskId}: ${error instanceof Error ? error.message : String(error)}`,
@@ -966,6 +968,7 @@ export class ClineProvider
 			workspacePath: historyItem.workspace,
 			onCreated: this.taskCreationCallback,
 			enableBridge: BridgeOrchestrator.isEnabled(cloudUserInfo, taskSyncEnabled),
+			startTask,
 		})
 
 		await this.addClineToStack(task)
