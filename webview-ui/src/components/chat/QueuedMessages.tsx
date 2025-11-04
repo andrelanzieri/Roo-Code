@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { QueuedMessage } from "@roo-code/types"
 
 import { Button } from "@src/components/ui"
+import { vscode } from "@src/utils/vscode"
 
 import Thumbnails from "../common/Thumbnails"
 
@@ -41,7 +42,21 @@ export const QueuedMessages = ({ queue, onRemove, onUpdate }: QueuedMessagesProp
 
 	return (
 		<div className="px-[15px] py-[10px] pr-[6px]" data-testid="queued-messages">
-			<div className="text-vscode-descriptionForeground text-md mb-2">{t("queuedMessages.title")}</div>
+			<div className="flex justify-between items-center mb-2">
+				<div className="text-vscode-descriptionForeground text-md">{t("queuedMessages.title")}</div>
+				{queue.length > 0 && (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => {
+							// Clear all messages via backend
+							vscode.postMessage({ type: "clearQueuedMessages" })
+						}}
+						className="text-xs">
+						{t("queuedMessages.clearAll", "Clear All")}
+					</Button>
+				)}
+			</div>
 			<div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2">
 				{queue.map((message, index) => {
 					const editState = getEditState(message.id, message.text)

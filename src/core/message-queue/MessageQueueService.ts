@@ -91,6 +91,11 @@ export class MessageQueueService extends EventEmitter<QueueEvents> {
 		return this._messages.length === 0
 	}
 
+	public clearAll(): void {
+		this._messages = []
+		this.emit("stateChanged", this._messages)
+	}
+
 	public dispose(): void {
 		this._messages = []
 		this.removeAllListeners()

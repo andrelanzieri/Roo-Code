@@ -3155,6 +3155,10 @@ export const webviewMessageHandler = async (
 			provider.getCurrentTask()?.messageQueueService.removeMessage(message.text ?? "")
 			break
 		}
+		case "clearQueuedMessages": {
+			provider.getCurrentTask()?.messageQueueService.clearAll()
+			break
+		}
 		case "editQueuedMessage": {
 			if (message.payload) {
 				const { id, text, images } = message.payload as EditQueuedMessagePayload

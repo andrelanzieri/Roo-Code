@@ -608,11 +608,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			text = text.trim()
 
 			if (text || images.length > 0) {
-				// Queue message if:
-				// - Task is busy (sendingDisabled)
-				// - API request in progress (isStreaming)
-				// - Queue has items (preserve message order during drain)
-				if (sendingDisabled || isStreaming || messageQueue.length > 0) {
+				// Check if this is a new task request (no existing messages)
+				const isNewTask = messagesRef.current.length === 0
+
+				// Allow starting new tasks even if queue has items
+				if (!isNewTask && (sendingDisabled || isStreaming || messageQueue.length > 0)) {
 					try {
 						console.log("queueMessage", text, images)
 						vscode.postMessage({ type: "queueMessage", text, images })

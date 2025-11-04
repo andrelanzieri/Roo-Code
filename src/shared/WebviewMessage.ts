@@ -230,6 +230,7 @@ export interface WebviewMessage {
 		| "openRouterImageGenerationSelectedModel"
 		| "queueMessage"
 		| "removeQueuedMessage"
+		| "clearQueuedMessages"
 		| "editQueuedMessage"
 		| "dismissUpsell"
 		| "getDismissedUpsells"
