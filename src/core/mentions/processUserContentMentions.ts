@@ -4,7 +4,7 @@ import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 
 /**
- * Process mentions in user content, specifically within task and feedback tags
+ * Process mentions in all user content uniformly (text and tool_result text blocks).
  */
 export async function processUserContentMentions({
 	userContent,
@@ -35,14 +35,27 @@ export async function processUserContentMentions({
 	// 3. ToolResultBlockParam's array content where blocks are text type
 	return Promise.all(
 		userContent.map(async (block) => {
-			const shouldProcessMentions = (_text: string) => true
-
 			if (block.type === "text") {
-				if (shouldProcessMentions(block.text)) {
+				return {
+					...block,
+					text: await parseMentions(
+						block.text,
+						cwd,
+						urlContentFetcher,
+						fileContextTracker,
+						rooIgnoreController,
+						showRooIgnoredFiles,
+						includeDiagnosticMessages,
+						maxDiagnosticMessages,
+						maxReadFileLine,
+					),
+				}
+			} else if (block.type === "tool_result") {
+				if (typeof block.content === "string") {
 					return {
 						...block,
-						text: await parseMentions(
-							block.text,
+						content: await parseMentions(
+							block.content,
 							cwd,
 							urlContentFetcher,
 							fileContextTracker,
@@ -53,33 +66,10 @@ export async function processUserContentMentions({
 							maxReadFileLine,
 						),
 					}
-				}
-
-				return block
-			} else if (block.type === "tool_result") {
-				if (typeof block.content === "string") {
-					if (shouldProcessMentions(block.content)) {
-						return {
-							...block,
-							content: await parseMentions(
-								block.content,
-								cwd,
-								urlContentFetcher,
-								fileContextTracker,
-								rooIgnoreController,
-								showRooIgnoredFiles,
-								includeDiagnosticMessages,
-								maxDiagnosticMessages,
-								maxReadFileLine,
-							),
-						}
-					}
-
-					return block
 				} else if (Array.isArray(block.content)) {
 					const parsedContent = await Promise.all(
 						block.content.map(async (contentBlock) => {
-							if (contentBlock.type === "text" && shouldProcessMentions(contentBlock.text)) {
+							if (contentBlock.type === "text") {
 								return {
 									...contentBlock,
 									text: await parseMentions(

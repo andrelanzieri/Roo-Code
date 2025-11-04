@@ -123,9 +123,10 @@ export async function attemptCompletionTool(
 			await cline.say("user_feedback", text ?? "", images)
 			const toolResults: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[] = []
 
+			const feedbackSuffix = text && text.trim().length > 0 ? `\n${text}` : ""
 			toolResults.push({
 				type: "text",
-				text: `The user has provided feedback on the results. Consider their input to continue the task, and then attempt completion again.\n${text}`,
+				text: `The user has provided feedback on the results. Consider their input to continue the task, and then attempt completion again.${feedbackSuffix}`,
 			})
 
 			toolResults.push(...formatResponse.imageBlocks(images))
