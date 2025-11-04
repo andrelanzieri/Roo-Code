@@ -216,6 +216,7 @@ describe("mergeExtensionState", () => {
 			featureRoomoteControlEnabled: false,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 			isGitRepository: false,
+			isGithubRepository: false,
 		}
 
 		const prevState: ExtensionState = {
