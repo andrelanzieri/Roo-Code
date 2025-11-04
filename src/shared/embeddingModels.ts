@@ -105,14 +105,19 @@ export function getModelDimension(provider: EmbedderProvider, modelId: string): 
 		return undefined
 	}
 
-	const modelProfile = providerProfiles[modelId]
+	// Convert modelId to lowercase for case-insensitive comparison
+	const lowerModelId = modelId.toLowerCase()
+
+	// Find the model profile with case-insensitive matching
+	const modelProfile = Object.keys(providerProfiles).find((key) => key.toLowerCase() === lowerModelId)
+
 	if (!modelProfile) {
 		// Don't warn here, as it might be a custom model ID not in our profiles
 		// console.warn(`Model not found for provider ${provider}: ${modelId}`)
 		return undefined // Or potentially return a default/fallback dimension?
 	}
 
-	return modelProfile.dimension
+	return providerProfiles[modelProfile].dimension
 }
 
 /**
@@ -127,8 +132,17 @@ export function getModelScoreThreshold(provider: EmbedderProvider, modelId: stri
 		return undefined
 	}
 
-	const modelProfile = providerProfiles[modelId]
-	return modelProfile?.scoreThreshold
+	// Convert modelId to lowercase for case-insensitive comparison
+	const lowerModelId = modelId.toLowerCase()
+
+	// Find the model profile with case-insensitive matching
+	const modelProfileKey = Object.keys(providerProfiles).find((key) => key.toLowerCase() === lowerModelId)
+
+	if (!modelProfileKey) {
+		return undefined
+	}
+
+	return providerProfiles[modelProfileKey]?.scoreThreshold
 }
 
 /**
@@ -143,8 +157,17 @@ export function getModelQueryPrefix(provider: EmbedderProvider, modelId: string)
 		return undefined
 	}
 
-	const modelProfile = providerProfiles[modelId]
-	return modelProfile?.queryPrefix
+	// Convert modelId to lowercase for case-insensitive comparison
+	const lowerModelId = modelId.toLowerCase()
+
+	// Find the model profile with case-insensitive matching
+	const modelProfileKey = Object.keys(providerProfiles).find((key) => key.toLowerCase() === lowerModelId)
+
+	if (!modelProfileKey) {
+		return undefined
+	}
+
+	return providerProfiles[modelProfileKey]?.queryPrefix
 }
 
 /**
