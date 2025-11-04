@@ -9,6 +9,8 @@ import { mergePromise } from "./mergePromise"
 
 export class Terminal extends BaseTerminal {
 	public terminal: vscode.Terminal
+	private isNewlyCreated: boolean = false
+	private firstCommandExecuted: boolean = false
 
 	public cmdCounter: number = 0
 
@@ -18,6 +20,9 @@ export class Terminal extends BaseTerminal {
 		const env = Terminal.getEnv()
 		const iconPath = new vscode.ThemeIcon("rocket")
 		this.terminal = terminal ?? vscode.window.createTerminal({ cwd, name: "Roo Code", iconPath, env })
+
+		// Mark if this is a newly created terminal
+		this.isNewlyCreated = terminal === undefined
 
 		if (Terminal.getTerminalZdotdir()) {
 			ShellIntegrationManager.terminalTmpDirs.set(id, env.ZDOTDIR)
@@ -71,9 +76,17 @@ export class Terminal extends BaseTerminal {
 			pWaitFor(() => this.terminal.shellIntegration !== undefined, {
 				timeout: Terminal.getShellIntegrationTimeout(),
 			})
-				.then(() => {
+				.then(async () => {
 					// Clean up temporary directory if shell integration is available, zsh did its job:
 					ShellIntegrationManager.zshCleanupTmpDir(this.id)
+
+					// For newly created terminals on the first command, add a small delay
+					// to ensure the shell integration stream is fully ready
+					if (this.isNewlyCreated && !this.firstCommandExecuted) {
+						console.log(`[Terminal ${this.id}] Adding delay for first command in new terminal`)
+						await new Promise((resolve) => setTimeout(resolve, 200))
+						this.firstCommandExecuted = true
+					}
 
 					// Run the command in the terminal
 					process.run(command)
