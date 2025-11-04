@@ -33,6 +33,7 @@ vitest.mock("fs", () => ({
 	promises: {
 		access: vitest.fn(),
 		readFile: vitest.fn(),
+		stat: vitest.fn(),
 	},
 }))
 
@@ -470,6 +471,12 @@ describe("getGitRepositoryInfo", () => {
 		// Mock successful access to .git directory
 		vitest.mocked(fs.promises.access).mockResolvedValue(undefined)
 
+		// Mock stat to indicate .git is a directory (not a worktree file)
+		vitest.mocked(fs.promises.stat).mockResolvedValue({
+			isFile: () => false,
+			isDirectory: () => true,
+		} as any)
+
 		// Mock git config file content
 		const mockConfig = `
 [core]
@@ -524,6 +531,12 @@ describe("getGitRepositoryInfo", () => {
 		// Mock successful access to .git directory
 		vitest.mocked(fs.promises.access).mockResolvedValue(undefined)
 
+		// Mock stat to indicate .git is a directory (not a worktree file)
+		vitest.mocked(fs.promises.stat).mockResolvedValue({
+			isFile: () => false,
+			isDirectory: () => true,
+		} as any)
+
 		// Mock git config file without URL
 		const mockConfig = `
 [core]
@@ -561,6 +574,12 @@ describe("getGitRepositoryInfo", () => {
 		// Mock successful access to .git directory
 		vitest.mocked(fs.promises.access).mockResolvedValue(undefined)
 
+		// Mock stat to indicate .git is a directory (not a worktree file)
+		vitest.mocked(fs.promises.stat).mockResolvedValue({
+			isFile: () => false,
+			isDirectory: () => true,
+		} as any)
+
 		// Setup the readFile mock to return different values based on the path
 		gitSpy.mockImplementation((path: any, encoding: any) => {
 			if (path === configPath) {
@@ -587,6 +606,12 @@ describe("getGitRepositoryInfo", () => {
 
 		// Mock successful access to .git directory
 		vitest.mocked(fs.promises.access).mockResolvedValue(undefined)
+
+		// Mock stat to indicate .git is a directory (not a worktree file)
+		vitest.mocked(fs.promises.stat).mockResolvedValue({
+			isFile: () => false,
+			isDirectory: () => true,
+		} as any)
 
 		// Setup the readFile mock to return different values based on the path
 		gitSpy.mockImplementation((path: any, encoding: any) => {
@@ -618,6 +643,12 @@ describe("getGitRepositoryInfo", () => {
 
 		// Mock successful access to .git directory
 		vitest.mocked(fs.promises.access).mockResolvedValue(undefined)
+
+		// Mock stat to indicate .git is a directory (not a worktree file)
+		vitest.mocked(fs.promises.stat).mockResolvedValue({
+			isFile: () => false,
+			isDirectory: () => true,
+		} as any)
 
 		// Mock git config file with SSH URL
 		const mockConfig = `
@@ -653,6 +684,99 @@ describe("getGitRepositoryInfo", () => {
 			repositoryName: "RooCodeInc/Roo-Code",
 			defaultBranch: "main",
 		})
+	})
+
+	it("should handle git worktrees where .git is a file", async () => {
+		// Clear previous mocks
+		vitest.clearAllMocks()
+
+		// Create a spy to track the implementation
+		const accessSpy = vitest.spyOn(fs.promises, "access")
+		const statSpy = vitest.spyOn(fs.promises, "stat")
+		const readFileSpy = vitest.spyOn(fs.promises, "readFile")
+
+		// Mock successful access to .git file (not directory)
+		accessSpy.mockResolvedValue(undefined)
+
+		// Mock stat to indicate .git is a file (worktree)
+		statSpy.mockResolvedValue({
+			isFile: () => true,
+			isDirectory: () => false,
+		} as any)
+
+		// Mock .git file content (worktree reference)
+		const gitFileContent = "gitdir: /path/to/main/repo/.git/worktrees/my-worktree"
+
+		// Mock git config file content from the actual git directory
+		const mockConfig = `
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+[remote "origin"]
+	url = https://github.com/RooCodeInc/Roo-Code.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+`
+		// Mock HEAD file content
+		const mockHead = "ref: refs/heads/feature-branch"
+
+		// Setup the readFile mock to return different values based on the path
+		readFileSpy.mockImplementation((filePath: any, encoding: any) => {
+			const pathStr = String(filePath)
+			if (pathStr.endsWith(".git")) {
+				// Reading the .git file itself
+				return Promise.resolve(gitFileContent)
+			} else if (pathStr.includes("config")) {
+				return Promise.resolve(mockConfig)
+			} else if (pathStr.includes("HEAD")) {
+				return Promise.resolve(mockHead)
+			}
+			return Promise.reject(new Error(`Unexpected path: ${pathStr}`))
+		})
+
+		const result = await getGitRepositoryInfo(workspaceRoot)
+
+		// Verify that the worktree was handled correctly
+		expect(result).toEqual({
+			repositoryUrl: "https://github.com/RooCodeInc/Roo-Code.git",
+			repositoryName: "RooCodeInc/Roo-Code",
+			defaultBranch: "main",
+		})
+
+		// Verify the .git file was read
+		expect(statSpy).toHaveBeenCalledWith(gitDir)
+		expect(readFileSpy).toHaveBeenCalledWith(gitDir, "utf8")
+	})
+
+	it("should return empty object if .git file has invalid format", async () => {
+		// Clear previous mocks
+		vitest.clearAllMocks()
+
+		// Create a spy to track the implementation
+		const accessSpy = vitest.spyOn(fs.promises, "access")
+		const statSpy = vitest.spyOn(fs.promises, "stat")
+		const readFileSpy = vitest.spyOn(fs.promises, "readFile")
+
+		// Mock successful access to .git file
+		accessSpy.mockResolvedValue(undefined)
+
+		// Mock stat to indicate .git is a file (worktree)
+		statSpy.mockResolvedValue({
+			isFile: () => true,
+			isDirectory: () => false,
+		} as any)
+
+		// Mock invalid .git file content
+		const gitFileContent = "invalid content without gitdir"
+
+		readFileSpy.mockResolvedValue(gitFileContent)
+
+		const result = await getGitRepositoryInfo(workspaceRoot)
+
+		expect(result).toEqual({})
 	})
 })
 
@@ -803,6 +927,12 @@ describe("getWorkspaceGitInfo", () => {
 
 		// Mock successful access to .git directory
 		gitSpy.mockResolvedValue(undefined)
+
+		// Mock stat to indicate .git is a directory (not a worktree file)
+		vitest.mocked(fs.promises.stat).mockResolvedValue({
+			isFile: () => false,
+			isDirectory: () => true,
+		} as any)
 
 		// Mock git config file content
 		const mockConfig = `

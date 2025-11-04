@@ -1886,6 +1886,12 @@ export class ClineProvider
 		const currentMode = mode ?? defaultModeSlug
 		const hasSystemPromptOverride = await this.hasFileBasedSystemPromptOverride(currentMode)
 
+		// Check if the current workspace is a git repository
+		const gitInfo = await getWorkspaceGitInfo()
+		// A repository is valid if we found ANY git info (not just a remote URL)
+		// This includes defaultBranch, which is populated even for worktrees.
+		const isGitRepository = Object.keys(gitInfo).length > 0
+
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
@@ -2016,6 +2022,7 @@ export class ClineProvider
 			openRouterImageGenerationSelectedModel,
 			openRouterUseMiddleOutTransform,
 			featureRoomoteControlEnabled,
+			isGitRepository,
 		}
 	}
 
@@ -2250,6 +2257,7 @@ export class ClineProvider
 					return false
 				}
 			})(),
+			isGitRepository: false, // Will be computed in getStateToPostToWebview
 		}
 	}
 
