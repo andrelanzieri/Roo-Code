@@ -527,7 +527,12 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 				getValue: vi.fn(),
 				setValue: vi.fn(),
 				storeSecret: vi.fn(),
-				getSecret: vi.fn(),
+				getSecret: vi.fn().mockImplementation((key: string) => {
+					// Return appropriate secret based on key for the config to be valid
+					if (key === "codeIndexOpenAiKey") return "test-openai-key"
+					if (key === "codeIndexQdrantApiKey") return "test-qdrant-key"
+					return ""
+				}),
 				refreshSecrets: vi.fn().mockResolvedValue(undefined),
 				getGlobalState: vi.fn().mockReturnValue({
 					codebaseIndexEnabled: true,
