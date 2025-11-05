@@ -39,6 +39,7 @@ export class ContextProxy {
 
 	private stateCache: GlobalState
 	private secretCache: SecretState
+	private workspaceStateCache: Map<string, any> = new Map()
 	private _isInitialized = false
 
 	constructor(context: vscode.ExtensionContext) {
@@ -185,6 +186,73 @@ export class ContextProxy {
 
 	private getAllGlobalState(): GlobalState {
 		return Object.fromEntries(GLOBAL_STATE_KEYS.map((key) => [key, this.getGlobalState(key)]))
+	}
+
+	/**
+	 * Workspace State Management
+	 * These methods handle workspace-specific state storage
+	 */
+
+	getWorkspaceState<T>(key: string): T | undefined
+	getWorkspaceState<T>(key: string, defaultValue: T): T
+	getWorkspaceState<T>(key: string, defaultValue?: T): T | undefined {
+		// Check cache first
+		if (this.workspaceStateCache.has(key)) {
+			return this.workspaceStateCache.get(key) as T
+		}
+
+		// Get from VS Code workspace state
+		const value = this.originalContext.workspaceState.get<T>(key)
+
+		// Update cache
+		if (value !== undefined) {
+			this.workspaceStateCache.set(key, value)
+		}
+
+		return value !== undefined ? value : defaultValue
+	}
+
+	async updateWorkspaceState<T>(key: string, value: T | undefined): Promise<void> {
+		// Update cache
+		if (value === undefined) {
+			this.workspaceStateCache.delete(key)
+		} else {
+			this.workspaceStateCache.set(key, value)
+		}
+
+		// Persist to VS Code workspace state
+		await this.originalContext.workspaceState.update(key, value)
+	}
+
+	/**
+	 * Get Qdrant configuration from workspace state with fallback to global state
+	 * This allows migration from global to workspace-specific configuration
+	 */
+	getQdrantConfig(): { url: string; apiKey: string } {
+		// Try workspace state first
+		let url = this.getWorkspaceState<string>("codebaseIndexQdrantUrl")
+		let apiKey = this.getWorkspaceState<string>("codeIndexQdrantApiKey")
+
+		// Fallback to global state if not in workspace state
+		if (!url) {
+			const globalConfig = this.getGlobalState("codebaseIndexConfig") || {}
+			url = globalConfig.codebaseIndexQdrantUrl || "http://localhost:6333"
+		}
+
+		// API key from secrets if not in workspace state
+		if (!apiKey) {
+			apiKey = this.getSecret("codeIndexQdrantApiKey" as SecretStateKey) || ""
+		}
+
+		return { url, apiKey }
+	}
+
+	/**
+	 * Set Qdrant configuration in workspace state
+	 */
+	async setQdrantConfig(url: string, apiKey: string): Promise<void> {
+		await this.updateWorkspaceState("codebaseIndexQdrantUrl", url)
+		await this.updateWorkspaceState("codeIndexQdrantApiKey", apiKey)
 	}
 
 	/**

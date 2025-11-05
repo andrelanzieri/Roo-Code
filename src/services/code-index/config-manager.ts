@@ -56,7 +56,6 @@ export class CodeIndexConfigManager {
 
 		const {
 			codebaseIndexEnabled,
-			codebaseIndexQdrantUrl,
 			codebaseIndexEmbedderProvider,
 			codebaseIndexEmbedderBaseUrl,
 			codebaseIndexEmbedderModelId,
@@ -64,8 +63,10 @@ export class CodeIndexConfigManager {
 			codebaseIndexSearchMaxResults,
 		} = codebaseIndexConfig
 
+		// Get Qdrant configuration from workspace state (with fallback to global state)
+		const qdrantConfig = this.contextProxy?.getQdrantConfig() ?? { url: "http://localhost:6333", apiKey: "" }
+
 		const openAiKey = this.contextProxy?.getSecret("codeIndexOpenAiKey") ?? ""
-		const qdrantApiKey = this.contextProxy?.getSecret("codeIndexQdrantApiKey") ?? ""
 		// Fix: Read OpenAI Compatible settings from the correct location within codebaseIndexConfig
 		const openAiCompatibleBaseUrl = codebaseIndexConfig.codebaseIndexOpenAiCompatibleBaseUrl ?? ""
 		const openAiCompatibleApiKey = this.contextProxy?.getSecret("codebaseIndexOpenAiCompatibleApiKey") ?? ""
@@ -76,8 +77,8 @@ export class CodeIndexConfigManager {
 
 		// Update instance variables with configuration
 		this.codebaseIndexEnabled = codebaseIndexEnabled ?? true
-		this.qdrantUrl = codebaseIndexQdrantUrl
-		this.qdrantApiKey = qdrantApiKey ?? ""
+		this.qdrantUrl = qdrantConfig.url
+		this.qdrantApiKey = qdrantConfig.apiKey
 		this.searchMinScore = codebaseIndexSearchMinScore
 		this.searchMaxResults = codebaseIndexSearchMaxResults
 
@@ -499,5 +500,14 @@ export class CodeIndexConfigManager {
 	 */
 	public get currentSearchMaxResults(): number {
 		return this.searchMaxResults ?? DEFAULT_MAX_SEARCH_RESULTS
+	}
+
+	/**
+	 * Save Qdrant configuration to workspace state
+	 */
+	public async saveQdrantConfig(url: string, apiKey: string): Promise<void> {
+		await this.contextProxy.setQdrantConfig(url, apiKey)
+		this.qdrantUrl = url
+		this.qdrantApiKey = apiKey
 	}
 }

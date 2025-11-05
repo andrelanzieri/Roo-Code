@@ -2508,11 +2508,18 @@ export const webviewMessageHandler = async (
 				const embedderProviderChanged =
 					currentConfig.codebaseIndexEmbedderProvider !== settings.codebaseIndexEmbedderProvider
 
-				// Save global state settings atomically
+				// Save Qdrant URL and API key to workspace state for workspace-specific configuration
+				if (settings.codebaseIndexQdrantUrl !== undefined || settings.codeIndexQdrantApiKey !== undefined) {
+					const qdrantUrl = settings.codebaseIndexQdrantUrl ?? "http://localhost:6333"
+					const qdrantApiKey = settings.codeIndexQdrantApiKey ?? ""
+					await provider.contextProxy.setQdrantConfig(qdrantUrl, qdrantApiKey)
+				}
+
+				// Save global state settings atomically (but without Qdrant config)
 				const globalStateConfig = {
 					...currentConfig,
 					codebaseIndexEnabled: settings.codebaseIndexEnabled,
-					codebaseIndexQdrantUrl: settings.codebaseIndexQdrantUrl,
+					// Don't save Qdrant config to global state anymore
 					codebaseIndexEmbedderProvider: settings.codebaseIndexEmbedderProvider,
 					codebaseIndexEmbedderBaseUrl: settings.codebaseIndexEmbedderBaseUrl,
 					codebaseIndexEmbedderModelId: settings.codebaseIndexEmbedderModelId,
@@ -2525,12 +2532,9 @@ export const webviewMessageHandler = async (
 				// Save global state first
 				await updateGlobalState("codebaseIndexConfig", globalStateConfig)
 
-				// Save secrets directly using context proxy
+				// Save secrets directly using context proxy (except Qdrant API key which is now workspace-specific)
 				if (settings.codeIndexOpenAiKey !== undefined) {
 					await provider.contextProxy.storeSecret("codeIndexOpenAiKey", settings.codeIndexOpenAiKey)
-				}
-				if (settings.codeIndexQdrantApiKey !== undefined) {
-					await provider.contextProxy.storeSecret("codeIndexQdrantApiKey", settings.codeIndexQdrantApiKey)
 				}
 				if (settings.codebaseIndexOpenAiCompatibleApiKey !== undefined) {
 					await provider.contextProxy.storeSecret(
@@ -2690,7 +2694,11 @@ export const webviewMessageHandler = async (
 		case "requestCodeIndexSecretStatus": {
 			// Check if secrets are set using the VSCode context directly for async access
 			const hasOpenAiKey = !!(await provider.context.secrets.get("codeIndexOpenAiKey"))
-			const hasQdrantApiKey = !!(await provider.context.secrets.get("codeIndexQdrantApiKey"))
+
+			// Check Qdrant API key from workspace state
+			const qdrantConfig = provider.contextProxy.getQdrantConfig()
+			const hasQdrantApiKey = !!qdrantConfig.apiKey
+
 			const hasOpenAiCompatibleApiKey = !!(await provider.context.secrets.get(
 				"codebaseIndexOpenAiCompatibleApiKey",
 			))
