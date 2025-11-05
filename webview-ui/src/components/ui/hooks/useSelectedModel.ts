@@ -146,7 +146,7 @@ function getSelectedModel({
 	switch (provider) {
 		case "openrouter": {
 			const id = apiConfiguration.openRouterModelId ?? openRouterDefaultModelId
-			let info = routerModels.openrouter[id]
+			let info = routerModels.openrouter?.[id]
 			const specificProvider = apiConfiguration.openRouterSpecificProvider
 
 			if (specificProvider && openRouterModelProviders[specificProvider]) {
@@ -162,22 +162,22 @@ function getSelectedModel({
 		}
 		case "requesty": {
 			const id = apiConfiguration.requestyModelId ?? requestyDefaultModelId
-			const info = routerModels.requesty[id]
+			const info = routerModels.requesty?.[id]
 			return { id, info }
 		}
 		case "glama": {
 			const id = apiConfiguration.glamaModelId ?? glamaDefaultModelId
-			const info = routerModels.glama[id]
+			const info = routerModels.glama?.[id]
 			return { id, info }
 		}
 		case "unbound": {
 			const id = apiConfiguration.unboundModelId ?? unboundDefaultModelId
-			const info = routerModels.unbound[id]
+			const info = routerModels.unbound?.[id]
 			return { id, info }
 		}
 		case "litellm": {
 			const id = apiConfiguration.litellmModelId ?? litellmDefaultModelId
-			const info = routerModels.litellm[id]
+			const info = routerModels.litellm?.[id]
 			return { id, info }
 		}
 		case "xai": {
@@ -202,7 +202,7 @@ function getSelectedModel({
 		}
 		case "chutes": {
 			const id = apiConfiguration.apiModelId ?? chutesDefaultModelId
-			const info = routerModels.chutes[id]
+			const info = routerModels.chutes?.[id]
 			return { id, info }
 		}
 		case "bedrock": {
@@ -354,7 +354,7 @@ function getSelectedModel({
 		case "roo": {
 			// Roo is a dynamic provider - models are loaded from API
 			const id = apiConfiguration.apiModelId ?? rooDefaultModelId
-			const info = routerModels.roo[id]
+			const info = routerModels.roo?.[id]
 			return { id, info }
 		}
 		case "qwen-code": {
