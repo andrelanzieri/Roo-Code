@@ -260,14 +260,23 @@ function buildRecursiveArgs(dirPath: string): string[] {
 		args.push("-g", "**/*")
 	}
 
+	// CRITICAL: Always exclude .git directories for performance reasons
+	// This must come before other exclusions to ensure it's always applied
+	args.push("-g", "!**/.git/**")
+
 	// Apply directory exclusions for recursive searches
 	for (const dir of DIRS_TO_IGNORE) {
+		// Skip .git since we already handled it above
+		if (dir === ".git") {
+			continue
+		}
+
 		// Special handling for hidden directories pattern
 		if (dir === ".*") {
 			// If we're explicitly targeting a hidden directory, don't exclude hidden files/dirs
 			// This allows the target hidden directory and all its contents to be listed
 			if (!isTargetingHiddenDir) {
-				// Not targeting hidden dir: exclude all hidden directories
+				// Not targeting hidden dir: exclude all hidden directories (except .git which is already excluded)
 				args.push("-g", `!**/.*/**`)
 			}
 			// If targeting hidden dir: don't add any exclusion for hidden directories
@@ -305,8 +314,17 @@ function buildNonRecursiveArgs(): string[] {
 	// Respect .gitignore in non-recursive mode too
 	// (ripgrep respects .gitignore by default)
 
+	// CRITICAL: Always exclude .git directories for performance reasons
+	args.push("-g", "!.git")
+	args.push("-g", "!.git/**")
+
 	// Apply directory exclusions for non-recursive searches
 	for (const dir of DIRS_TO_IGNORE) {
+		// Skip .git since we already handled it above
+		if (dir === ".git") {
+			continue
+		}
+
 		if (dir === ".*") {
 			// For hidden directories in non-recursive mode, we want to show the directories
 			// themselves but not their contents. Since we're using --maxdepth 1, this
