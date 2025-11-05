@@ -101,6 +101,9 @@ export interface ExtensionMessage {
 		| "remoteBrowserEnabled"
 		| "ttsStart"
 		| "ttsStop"
+		| "ttsVoices"
+		| "ttsUsageStats"
+		| "ttsProviderConfigured"
 		| "maxReadFileLine"
 		| "fileSearchResults"
 		| "toggleApiConfigPin"
@@ -211,6 +214,10 @@ export interface ExtensionMessage {
 	queuedMessages?: QueuedMessage[]
 	list?: string[] // For dismissedUpsells
 	organizationId?: string | null // For organizationSwitchResult
+	voices?: any[] // For TTS voices
+	stats?: any // For TTS usage stats
+	provider?: string // For TTS provider checks
+	configured?: boolean // For TTS provider configuration status
 }
 
 export type ExtensionState = Pick<
