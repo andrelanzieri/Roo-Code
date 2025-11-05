@@ -127,26 +127,45 @@ export function containsDangerousSubstitution(source: string): boolean {
  * chaining operators (&&, ||, ;, |, or &) and newlines.
  *
  * Uses shell-quote to properly handle:
- * - Quoted strings (preserves quotes)
+ * - Quoted strings (preserves quotes and newlines within quotes)
  * - Subshell commands ($(cmd), `cmd`, <(cmd), >(cmd))
  * - PowerShell redirections (2>&1)
  * - Chain operators (&&, ||, ;, |, &)
- * - Newlines as command separators
+ * - Newlines as command separators (but not within quotes)
  */
 export function parseCommand(command: string): string[] {
 	if (!command?.trim()) return []
 
-	// Split by newlines first (handle different line ending formats)
-	// This regex splits on \r\n (Windows), \n (Unix), or \r (old Mac)
-	const lines = command.split(/\r\n|\r|\n/)
+	// First protect quoted strings to avoid splitting on newlines inside quotes
+	const quotes: string[] = []
+	let protectedCommand = command
+
+	// Protect double-quoted strings (including multi-line) - simpler regex
+	protectedCommand = protectedCommand.replace(/"[^"]*"/gs, (match) => {
+		quotes.push(match)
+		return `__QUOTE_${quotes.length - 1}__`
+	})
+
+	// Protect single-quoted strings (including multi-line) - simpler regex
+	protectedCommand = protectedCommand.replace(/'[^']*'/gs, (match) => {
+		quotes.push(match)
+		return `__QUOTE_${quotes.length - 1}__`
+	})
+
+	// Now split by newlines (only unquoted newlines will be split)
+	const lines = protectedCommand.split(/\r\n|\r|\n/)
 	const allCommands: string[] = []
 
 	for (const line of lines) {
 		// Skip empty lines
 		if (!line.trim()) continue
 
+		// Restore quotes in this line before processing
+		let restoredLine = line
+		restoredLine = restoredLine.replace(/__QUOTE_(\d+)__/g, (_, i) => quotes[parseInt(i)])
+
 		// Process each line through the existing parsing logic
-		const lineCommands = parseCommandLine(line)
+		const lineCommands = parseCommandLine(restoredLine)
 		allCommands.push(...lineCommands)
 	}
 

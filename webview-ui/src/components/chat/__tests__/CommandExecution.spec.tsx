@@ -564,5 +564,37 @@ Output:
 			expect(codeBlocks.length).toBeGreaterThan(1)
 			expect(codeBlocks[1]).toHaveTextContent("0 total")
 		})
+
+		it("should filter out multi-line patterns from command pattern selector", () => {
+			// Test with a multi-line git commit command similar to the PR issue
+			const multiLineGitCommand = `git commit -m "feat: title
+
+- point a
+- point b"`
+
+			render(
+				<ExtensionStateWrapper>
+					<CommandExecution executionId="test-18" text={multiLineGitCommand} />
+				</ExtensionStateWrapper>,
+			)
+
+			// Should show pattern selector
+			const selector = screen.getByTestId("command-pattern-selector")
+			expect(selector).toBeInTheDocument()
+
+			// Should show useful single-line patterns like "git" and "git commit"
+			expect(selector.textContent).toMatch(/git/)
+
+			// Should NOT show the full collapsed multi-line content (which would be very long)
+			// The pattern selector should contain short, useful patterns only
+			const patterns = selector.textContent || ""
+			// Check that no pattern is suspiciously long (> 50 chars would indicate collapsed multi-line content)
+			const longPatternMatch = patterns.match(/\b\S{51,}\b/)
+			expect(longPatternMatch).toBeNull()
+
+			// But the original command should still be shown in the code block
+			const codeBlock = screen.getByTestId("code-block")
+			expect(codeBlock.textContent).toContain("feat: title")
+		})
 	})
 })

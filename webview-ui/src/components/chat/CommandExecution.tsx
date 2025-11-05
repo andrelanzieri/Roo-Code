@@ -63,8 +63,10 @@ export const CommandExecution = ({ executionId, text, icon, title }: CommandExec
 
 		// Add all individual commands first
 		allCommands.forEach((cmd) => {
-			if (cmd.trim()) {
-				allPatterns.add(cmd.trim())
+			const trimmed = cmd.trim()
+			// Skip patterns containing newlines - these are multi-line and not useful for UI patterns
+			if (trimmed && !trimmed.includes("\n") && !trimmed.includes("\r")) {
+				allPatterns.add(trimmed)
 			}
 		})
 

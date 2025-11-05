@@ -110,15 +110,40 @@ describe("Command Validation", () => {
 				])
 			})
 
-			it("splits on actual newlines even within quotes", () => {
-				// Note: Since we split by newlines first, actual newlines in the input
-				// will split the command, even if they appear to be within quotes
+			it("preserves newlines within quoted strings", () => {
+				// Newlines inside quoted strings should be preserved as part of the command
 				// Using template literal to create actual newline
 				const commandWithNewlineInQuotes = `echo "Hello
-World"
-git status`
-				// The quotes get stripped because they're no longer properly paired after splitting
-				expect(parseCommand(commandWithNewlineInQuotes)).toEqual(["echo Hello", "World", "git status"])
+	World"
+	git status`
+				// The newlines inside quotes are preserved, so we get two commands
+				expect(parseCommand(commandWithNewlineInQuotes)).toEqual(['echo "Hello\nWorld"', "git status"])
+			})
+
+			it("handles multi-line git commit messages correctly", () => {
+				// Real-world case: multi-line git commit messages in quotes
+				const multiLineCommit = `git commit -m "feat: add new feature
+	
+	- Point A
+	- Point B"
+	git status`
+				// The multi-line commit message should be preserved as one command
+				expect(parseCommand(multiLineCommit)).toEqual([
+					`git commit -m "feat: add new feature\n\n- Point A\n- Point B"`,
+					"git status",
+				])
+			})
+
+			it("handles mixed single and double quotes with newlines", () => {
+				const mixedQuotes = `echo 'single line'
+	echo "multi
+	line"
+	echo 'another single'`
+				expect(parseCommand(mixedQuotes)).toEqual([
+					"echo 'single line'",
+					'echo "multi\nline"',
+					"echo 'another single'",
+				])
 			})
 
 			it("handles quoted strings on single line", () => {
