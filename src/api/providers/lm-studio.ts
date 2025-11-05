@@ -19,13 +19,16 @@ import { handleOpenAIError } from "./utils/openai-error-handler"
 
 export class LmStudioHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
-	private client: OpenAI
+	private client!: OpenAI
 	private readonly providerName = "LM Studio"
 
 	constructor(options: ApiHandlerOptions) {
 		super()
 		this.options = options
+		this.initializeClient()
+	}
 
+	private initializeClient(): void {
 		// LM Studio uses "noop" as a placeholder API key
 		const apiKey = "noop"
 
@@ -138,6 +141,28 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				outputTokens,
 			} as const
 		} catch (error) {
+			// Check if it's a connection error before showing generic message
+			if (error instanceof Error) {
+				// Preserve connection errors and other clear error messages
+				if (
+					error.message.includes("ECONNREFUSED") ||
+					error.message.includes("ECONNRESET") ||
+					error.message.includes("ENOTFOUND") ||
+					error.message.includes("ETIMEDOUT") ||
+					error.message.includes("fetch failed") ||
+					error.message.includes("Connection") ||
+					error.message.includes("Network")
+				) {
+					throw error
+				}
+
+				// Also preserve errors from handleOpenAIError which already have good messages
+				if (error.message.includes("LM Studio")) {
+					throw error
+				}
+			}
+
+			// Only show generic message for actual model/context issues
 			throw new Error(
 				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.",
 			)
@@ -161,6 +186,11 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 
 	async completePrompt(prompt: string): Promise<string> {
 		try {
+			// Recreate the client if needed to ensure fresh connection
+			if (!this.client) {
+				this.initializeClient()
+			}
+
 			// Create params object with optional draft model
 			const params: any = {
 				model: this.getModel().id,
@@ -182,6 +212,30 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			}
 			return response.choices[0]?.message.content || ""
 		} catch (error) {
+			// Check if it's a connection error before showing generic message
+			if (error instanceof Error) {
+				// Preserve connection errors and other clear error messages
+				if (
+					error.message.includes("ECONNREFUSED") ||
+					error.message.includes("ECONNRESET") ||
+					error.message.includes("ENOTFOUND") ||
+					error.message.includes("ETIMEDOUT") ||
+					error.message.includes("fetch failed") ||
+					error.message.includes("Connection") ||
+					error.message.includes("Network")
+				) {
+					// Log the actual error for debugging
+					console.error("[LmStudio] Connection error in completePrompt:", error.message)
+					throw error
+				}
+
+				// Also preserve errors from handleOpenAIError which already have good messages
+				if (error.message.includes("LM Studio")) {
+					throw error
+				}
+			}
+
+			// Only show generic message for actual model/context issues
 			throw new Error(
 				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.",
 			)
