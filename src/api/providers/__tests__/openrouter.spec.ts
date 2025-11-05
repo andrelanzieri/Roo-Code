@@ -124,7 +124,7 @@ describe("OpenRouterHandler", () => {
 			const handler = new OpenRouterHandler({})
 			const logSpy = vitest.spyOn(console, "log").mockImplementation(() => {})
 			const model = handler.getModel()
-			expect(model.id).toBe("anthropic/claude-sonnet-4")
+			expect(model.id).toBe("anthropic/claude-sonnet-4.5")
 			expect(model.info.supportsPromptCache).toBe(true)
 			expect(logSpy).toHaveBeenCalledWith("[model-cache] source:", "default-fallback")
 			logSpy.mockRestore()
