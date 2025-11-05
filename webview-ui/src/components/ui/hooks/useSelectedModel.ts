@@ -56,19 +56,15 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 	const lmStudioModelId = provider === "lmstudio" ? apiConfiguration?.lmStudioModelId : undefined
 	const ollamaModelId = provider === "ollama" ? apiConfiguration?.ollamaModelId : undefined
 
-	// Only fetch router models for dynamic providers
-	const shouldFetchRouterModels = isDynamicProvider(provider)
-	const routerModels = useRouterModels({
-		provider: shouldFetchRouterModels ? provider : undefined,
-		enabled: shouldFetchRouterModels,
-	})
+	// Do not auto-fetch router models; rely on explicit refresh (Phase 5.1)
+	const routerModels = useRouterModels({ enabled: false })
 
 	const openRouterModelProviders = useOpenRouterModelProviders(openRouterModelId)
 	const lmStudioModels = useLmStudioModels(lmStudioModelId)
 	const ollamaModels = useOllamaModels(ollamaModelId)
 
-	// Compute readiness only for the data actually needed for the selected provider
-	const needRouterModels = shouldFetchRouterModels
+	// Compute readiness only for data actually needed; router models use cached data without fetch
+	const needRouterModels = false
 	const needOpenRouterProviders = provider === "openrouter"
 	const needLmStudio = typeof lmStudioModelId !== "undefined"
 	const needOllama = typeof ollamaModelId !== "undefined"
