@@ -16,6 +16,26 @@ import { handleOpenAIError } from "./utils/openai-error-handler"
 
 const XAI_DEFAULT_TEMPERATURE = 0
 
+/**
+ * Sanitizes reasoning content by removing tool-related XML/HTML tags
+ * that may appear in the model's thinking output.
+ * This prevents tags like <appy_diff>, <switch_mode>, etc. from being displayed.
+ */
+function sanitizeReasoningContent(content: string): string {
+	// Remove XML/HTML-like tags that are tool-related
+	// Matches patterns like <tag>, </tag>, <tag attr="value">, etc.
+	const toolTagPattern =
+		/<\/?(?:appy_diff|switch_mode|apply_diff|write_to_file|search_files|read_file|execute_command|list_files|insert_content|attempt_completion|ask_followup_question|update_todo_list|new_task|fetch_instructions|list_code_definition_names)[^>]*>/gi
+
+	// Remove the tool tags while preserving the content between them
+	let sanitized = content.replace(toolTagPattern, "")
+
+	// Clean up any excessive whitespace that might result from tag removal
+	sanitized = sanitized.replace(/\n{3,}/g, "\n\n").trim()
+
+	return sanitized
+}
+
 export class XAIHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: OpenAI
@@ -79,9 +99,12 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 			}
 
 			if (delta && "reasoning_content" in delta && delta.reasoning_content) {
-				yield {
-					type: "reasoning",
-					text: delta.reasoning_content as string,
+				const sanitizedContent = sanitizeReasoningContent(delta.reasoning_content as string)
+				if (sanitizedContent.trim()) {
+					yield {
+						type: "reasoning",
+						text: sanitizedContent,
+					}
 				}
 			}
 

@@ -204,6 +204,154 @@ describe("XAIHandler", () => {
 		})
 	})
 
+	it("createMessage should sanitize tool tags from reasoning content", async () => {
+		const reasoningWithTags =
+			"I need to <apply_diff>fix this code</apply_diff> and then <switch_mode>change mode</switch_mode>"
+		const expectedSanitized = "I need to fix this code and then change mode"
+
+		// Setup mock for streaming response
+		mockCreate.mockImplementationOnce(() => {
+			return {
+				[Symbol.asyncIterator]: () => ({
+					next: vi
+						.fn()
+						.mockResolvedValueOnce({
+							done: false,
+							value: {
+								choices: [{ delta: { reasoning_content: reasoningWithTags } }],
+							},
+						})
+						.mockResolvedValueOnce({ done: true }),
+				}),
+			}
+		})
+
+		// Create and consume the stream
+		const stream = handler.createMessage("system prompt", [])
+		const firstChunk = await stream.next()
+
+		// Verify the reasoning content is sanitized
+		expect(firstChunk.done).toBe(false)
+		expect(firstChunk.value).toEqual({
+			type: "reasoning",
+			text: expectedSanitized,
+		})
+	})
+
+	it("createMessage should handle complex nested tool tags in reasoning", async () => {
+		const complexReasoning = `Let me think about this...
+<read_file path="test.ts">
+This should be removed
+</read_file>
+Now I'll use <execute_command>npm test</execute_command>
+And finally <attempt_completion result="done">complete</attempt_completion>`
+
+		const expectedSanitized = `Let me think about this...
+
+This should be removed
+
+Now I'll use npm test
+And finally complete`
+
+		// Setup mock for streaming response
+		mockCreate.mockImplementationOnce(() => {
+			return {
+				[Symbol.asyncIterator]: () => ({
+					next: vi
+						.fn()
+						.mockResolvedValueOnce({
+							done: false,
+							value: {
+								choices: [{ delta: { reasoning_content: complexReasoning } }],
+							},
+						})
+						.mockResolvedValueOnce({ done: true }),
+				}),
+			}
+		})
+
+		// Create and consume the stream
+		const stream = handler.createMessage("system prompt", [])
+		const firstChunk = await stream.next()
+
+		// Verify the reasoning content is properly sanitized
+		expect(firstChunk.done).toBe(false)
+		expect(firstChunk.value).toEqual({
+			type: "reasoning",
+			text: expectedSanitized,
+		})
+	})
+
+	it("createMessage should not yield reasoning if content is empty after sanitization", async () => {
+		const onlyTags = "<appy_diff></appy_diff><switch_mode></switch_mode>"
+
+		// Setup mock for streaming response
+		mockCreate.mockImplementationOnce(() => {
+			return {
+				[Symbol.asyncIterator]: () => ({
+					next: vi
+						.fn()
+						.mockResolvedValueOnce({
+							done: false,
+							value: {
+								choices: [{ delta: { reasoning_content: onlyTags } }],
+							},
+						})
+						.mockResolvedValueOnce({
+							done: false,
+							value: {
+								choices: [{ delta: { content: "Regular content" } }],
+							},
+						})
+						.mockResolvedValueOnce({ done: true }),
+				}),
+			}
+		})
+
+		// Create and consume the stream
+		const stream = handler.createMessage("system prompt", [])
+		const firstChunk = await stream.next()
+
+		// Should skip the empty reasoning and go straight to the regular content
+		expect(firstChunk.done).toBe(false)
+		expect(firstChunk.value).toEqual({
+			type: "text",
+			text: "Regular content",
+		})
+	})
+
+	it("createMessage should preserve reasoning content without tool tags", async () => {
+		const cleanReasoning = "This is clean reasoning content without any tool tags. Just thinking about the problem."
+
+		// Setup mock for streaming response
+		mockCreate.mockImplementationOnce(() => {
+			return {
+				[Symbol.asyncIterator]: () => ({
+					next: vi
+						.fn()
+						.mockResolvedValueOnce({
+							done: false,
+							value: {
+								choices: [{ delta: { reasoning_content: cleanReasoning } }],
+							},
+						})
+						.mockResolvedValueOnce({ done: true }),
+				}),
+			}
+		})
+
+		// Create and consume the stream
+		const stream = handler.createMessage("system prompt", [])
+		const firstChunk = await stream.next()
+
+		// Verify the reasoning content is preserved as-is
+		expect(firstChunk.done).toBe(false)
+		expect(firstChunk.value).toEqual({
+			type: "reasoning",
+			text: cleanReasoning,
+		})
+	})
+
 	it("createMessage should yield usage data from stream", async () => {
 		// Setup mock for streaming response that includes usage data
 		mockCreate.mockImplementationOnce(() => {
