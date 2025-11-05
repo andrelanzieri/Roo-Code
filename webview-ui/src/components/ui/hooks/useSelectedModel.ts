@@ -27,7 +27,6 @@ import {
 	ioIntelligenceModels,
 	qwenCodeModels,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
-	isDynamicProvider,
 	getProviderDefaultModelId,
 } from "@roo-code/types"
 
@@ -64,22 +63,13 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 	const ollamaModels = useOllamaModels(ollamaModelId)
 
 	// Compute readiness only for data actually needed; router models use cached data without fetch
-	const needRouterModels = false
 	const needOpenRouterProviders = provider === "openrouter"
 	const needLmStudio = typeof lmStudioModelId !== "undefined"
 	const needOllama = typeof ollamaModelId !== "undefined"
 
-	const hasValidRouterData = needRouterModels
-		? routerModels.data &&
-			routerModels.data[provider] !== undefined &&
-			typeof routerModels.data[provider] === "object" &&
-			!routerModels.isLoading
-		: true
-
 	const isReady =
 		(!needLmStudio || typeof lmStudioModels.data !== "undefined") &&
 		(!needOllama || typeof ollamaModels.data !== "undefined") &&
-		hasValidRouterData &&
 		(!needOpenRouterProviders || typeof openRouterModelProviders.data !== "undefined")
 
 	const { id, info } =
@@ -99,12 +89,10 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 		id,
 		info,
 		isLoading:
-			(needRouterModels && routerModels.isLoading) ||
 			(needOpenRouterProviders && openRouterModelProviders.isLoading) ||
 			(needLmStudio && lmStudioModels!.isLoading) ||
 			(needOllama && ollamaModels!.isLoading),
 		isError:
-			(needRouterModels && routerModels.isError) ||
 			(needOpenRouterProviders && openRouterModelProviders.isError) ||
 			(needLmStudio && lmStudioModels!.isError) ||
 			(needOllama && ollamaModels!.isError),
