@@ -1,7 +1,7 @@
 import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useEvent } from "react-use"
 import DynamicTextArea from "react-textarea-autosize"
-import { VolumeX, Image, WandSparkles, SendHorizontal, MessageSquareX } from "lucide-react"
+import { VolumeX, Image, WandSparkles, SendHorizontal, MessageSquareX, Mic, MicOff } from "lucide-react"
 
 import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
 import { WebviewMessage } from "@roo/WebviewMessage"
@@ -31,6 +31,7 @@ import { MAX_IMAGES_PER_MESSAGE } from "./ChatView"
 import ContextMenu from "./ContextMenu"
 import { IndexingStatusBadge } from "./IndexingStatusBadge"
 import { usePromptHistory } from "./hooks/usePromptHistory"
+import { useSpeechRecognition } from "./hooks/useSpeechRecognition"
 import { CloudAccountSwitcher } from "../cloud/CloudAccountSwitcher"
 
 interface ChatTextAreaProps {
@@ -213,6 +214,49 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const contextMenuContainerRef = useRef<HTMLDivElement>(null)
 		const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false)
 		const [isFocused, setIsFocused] = useState(false)
+
+		// Use custom hook for speech recognition
+		const {
+			isListening,
+			isSupported: isSpeechRecognitionSupported,
+			transcript,
+			interimTranscript,
+			error: speechError,
+			toggleListening,
+			clearTranscript,
+		} = useSpeechRecognition()
+
+		// Update input value when transcript changes
+		useEffect(() => {
+			if (transcript && !isListening) {
+				// Append transcript to existing input value with a space if needed
+				const needsSpace = inputValue.length > 0 && !inputValue.endsWith(" ")
+				const newValue = inputValue + (needsSpace ? " " : "") + transcript
+				setInputValue(newValue)
+				// Clear the transcript after using it
+				clearTranscript()
+
+				// Set cursor position to the end
+				const newCursorPosition = newValue.length
+				setCursorPosition(newCursorPosition)
+				setIntendedCursorPosition(newCursorPosition)
+
+				// Focus the textarea
+				setTimeout(() => {
+					if (textAreaRef.current) {
+						textAreaRef.current.focus()
+						textAreaRef.current.setSelectionRange(newCursorPosition, newCursorPosition)
+					}
+				}, 0)
+			}
+		}, [transcript, isListening, inputValue, setInputValue, clearTranscript])
+
+		// Show speech error if any
+		useEffect(() => {
+			if (speechError) {
+				console.error("Speech recognition error:", speechError)
+			}
+		}, [speechError])
 
 		// Use custom hook for prompt history navigation
 		const { handleHistoryNavigation, resetHistoryNavigation, resetOnInputChange } = usePromptHistory({
@@ -1084,6 +1128,19 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								onScroll={() => updateHighlights()}
 							/>
 
+							{/* Show interim transcript overlay when listening */}
+							{isListening && interimTranscript && (
+								<div
+									className="absolute bottom-14 left-2 right-2 z-40 p-2 rounded-md bg-vscode-editor-background border border-vscode-input-border"
+									style={{
+										boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+									}}>
+									<div className="text-vscode-input-foreground text-sm italic opacity-80">
+										{interimTranscript}
+									</div>
+								</div>
+							)}
+
 							<div className="absolute bottom-2 right-1 z-30 flex flex-col items-center gap-0">
 								<StandardTooltip content={t("chat:addImages")}>
 									<button
@@ -1133,6 +1190,36 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										<WandSparkles className={cn("w-4 h-4", isEnhancingPrompt && "animate-spin")} />
 									</button>
 								</StandardTooltip>
+								{isSpeechRecognitionSupported && (
+									<StandardTooltip
+										content={isListening ? t("chat:stopListening") : t("chat:startListening")}>
+										<button
+											aria-label={
+												isListening ? t("chat:stopListening") : t("chat:startListening")
+											}
+											onClick={toggleListening}
+											className={cn(
+												"relative inline-flex items-center justify-center",
+												"bg-transparent border-none p-1.5",
+												"rounded-md min-w-[28px] min-h-[28px]",
+												"text-vscode-descriptionForeground hover:text-vscode-foreground",
+												"transition-all duration-150",
+												"cursor-pointer",
+												isListening
+													? "text-vscode-errorForeground opacity-100"
+													: "opacity-50 hover:opacity-100",
+												"hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
+												"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
+												"active:bg-[rgba(255,255,255,0.1)]",
+											)}>
+											{isListening ? (
+												<MicOff className="w-4 h-4 animate-pulse" />
+											) : (
+												<Mic className="w-4 h-4" />
+											)}
+										</button>
+									</StandardTooltip>
+								)}
 								{isEditMode && (
 									<StandardTooltip content={t("chat:cancel.title")}>
 										<button

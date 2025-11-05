@@ -421,5 +421,18 @@
 		"problems": "Problems",
 		"terminal": "Terminal",
 		"url": "Paste URL to fetch contents"
+	},
+	"startListening": "Start voice input",
+	"stopListening": "Stop voice input",
+	"voiceToText": {
+		"errors": {
+			"noSpeech": "No speech detected. Please try again.",
+			"audioCapture": "Microphone not found. Please check your microphone.",
+			"notAllowed": "Microphone permission denied. Please allow microphone access.",
+			"network": "Network error. Please check your connection.",
+			"aborted": "Speech recognition aborted.",
+			"generic": "Speech recognition error",
+			"notSupported": "Speech recognition is not supported in your browser."
+		}
 	}
 }
