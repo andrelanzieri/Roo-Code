@@ -558,6 +558,37 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		return false
 	}, [modifiedMessages, clineAsk, enableButtons, primaryButtonText])
 
+	// Track the actual streaming state for the cancel button separately.
+	// This ensures the cancel button remains enabled during API requests,
+	// even when there's a tool approval dialog.
+	const isApiRequestInProgress = useMemo(() => {
+		const isLastMessagePartial = modifiedMessages.at(-1)?.partial === true
+
+		if (isLastMessagePartial) {
+			return true
+		}
+
+		const lastApiReqStarted = findLast(
+			modifiedMessages,
+			(message: ClineMessage) => message.say === "api_req_started",
+		)
+
+		if (
+			lastApiReqStarted &&
+			lastApiReqStarted.text !== null &&
+			lastApiReqStarted.text !== undefined &&
+			lastApiReqStarted.say === "api_req_started"
+		) {
+			const cost = JSON.parse(lastApiReqStarted.text).cost
+
+			if (cost === undefined) {
+				return true // API request has not finished yet.
+			}
+		}
+
+		return false
+	}, [modifiedMessages])
+
 	const markFollowUpAsAnswered = useCallback(() => {
 		const lastFollowUpMessage = messagesRef.current.findLast((msg: ClineMessage) => msg.ask === "followup")
 		if (lastFollowUpMessage) {
@@ -733,7 +764,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			const trimmedInput = text?.trim()
 
-			if (isStreaming) {
+			if (isStreaming || isApiRequestInProgress) {
 				vscode.postMessage({ type: "cancelTask" })
 				setDidClickCancel(true)
 				return
@@ -773,7 +804,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			setClineAsk(undefined)
 			setEnableButtons(false)
 		},
-		[clineAsk, startNewTask, isStreaming],
+		[clineAsk, startNewTask, isStreaming, isApiRequestInProgress],
 	)
 
 	const { info: model } = useSelectedModel(apiConfiguration)
@@ -1763,7 +1794,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		vscode.postMessage({ type: "condenseTaskContextRequest", text: taskId })
 	}
 
-	const areButtonsVisible = showScrollToBottom || primaryButtonText || secondaryButtonText || isStreaming
+	const areButtonsVisible =
+		showScrollToBottom || primaryButtonText || secondaryButtonText || isStreaming || isApiRequestInProgress
 
 	return (
 		<div
@@ -1887,7 +1919,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							className={`flex h-9 items-center mb-1 px-[15px] ${
 								showScrollToBottom
 									? "opacity-100"
-									: enableButtons || (isStreaming && !didClickCancel)
+									: enableButtons || ((isStreaming || isApiRequestInProgress) && !didClickCancel)
 										? "opacity-100"
 										: "opacity-50"
 							}`}>
@@ -1937,10 +1969,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 											</VSCodeButton>
 										</StandardTooltip>
 									)}
-									{(secondaryButtonText || isStreaming) && (
+									{(secondaryButtonText || isStreaming || isApiRequestInProgress) && (
 										<StandardTooltip
 											content={
-												isStreaming
+												isStreaming || isApiRequestInProgress
 													? t("chat:cancel.tooltip")
 													: secondaryButtonText === t("chat:startNewTask.title")
 														? t("chat:startNewTask.tooltip")
@@ -1952,10 +1984,18 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 											}>
 											<VSCodeButton
 												appearance="secondary"
-												disabled={!enableButtons && !(isStreaming && !didClickCancel)}
-												className={isStreaming ? "flex-[2] ml-0" : "flex-1 ml-[6px]"}
+												disabled={
+													!enableButtons && !(isApiRequestInProgress && !didClickCancel)
+												}
+												className={
+													isStreaming || isApiRequestInProgress
+														? "flex-[2] ml-0"
+														: "flex-1 ml-[6px]"
+												}
 												onClick={() => handleSecondaryButtonClick(inputValue, selectedImages)}>
-												{isStreaming ? t("chat:cancel.title") : secondaryButtonText}
+												{isStreaming || isApiRequestInProgress
+													? t("chat:cancel.title")
+													: secondaryButtonText}
 											</VSCodeButton>
 										</StandardTooltip>
 									)}
