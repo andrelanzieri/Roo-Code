@@ -959,5 +959,6 @@
 		"requireCtrlEnterToSend": {
 			"label": "Erfordert {primaryMod}+Enter zum Senden von Nachrichten",
 			"description": "Wenn aktiviert, musst du {primaryMod}+Enter drücken, um Nachrichten zu senden, anstatt nur Enter."
+		}
 	}
 }

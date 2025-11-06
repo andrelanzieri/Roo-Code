@@ -954,11 +954,11 @@
 	},
 	"ui": {
 		"collapseThinking": {
-			"label": "Comprimi i messaggi di pensiero per impostazione predefinita",
+			"label": "Comprimi i messaggi di pensiero per impostazione predefinita"
+		},
 		"requireCtrlEnterToSend": {
 			"label": "Richiedi {primaryMod}+Invio per inviare messaggi",
 			"description": "Quando abilitato, devi premere {primaryMod}+Invio per inviare messaggi invece di solo Invio"
-			"description": "Quando abilitato, devi premere Ctrl+Invio per inviare messaggi invece di solo Invio"
 		}
 	}
 }
