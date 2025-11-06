@@ -123,38 +123,66 @@ export class RooHandler extends BaseOpenAiCompatibleProvider<string> {
 		)
 
 		let lastUsage: RooUsage | undefined = undefined
+		let hasYieldedContent = false
+		let hasYieldedReasoning = false
+		let chunkCount = 0
 
-		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+		try {
+			for await (const chunk of stream) {
+				chunkCount++
+				const delta = chunk.choices[0]?.delta
 
-			if (delta) {
-				// Check for reasoning content (similar to OpenRouter)
-				if ("reasoning" in delta && delta.reasoning && typeof delta.reasoning === "string") {
-					yield {
-						type: "reasoning",
-						text: delta.reasoning,
+				if (delta) {
+					// Check for reasoning content (similar to OpenRouter)
+					if ("reasoning" in delta && delta.reasoning && typeof delta.reasoning === "string") {
+						hasYieldedReasoning = true
+						yield {
+							type: "reasoning",
+							text: delta.reasoning,
+						}
+					}
+
+					// Also check for reasoning_content for backward compatibility
+					if ("reasoning_content" in delta && typeof delta.reasoning_content === "string") {
+						hasYieldedReasoning = true
+						yield {
+							type: "reasoning",
+							text: delta.reasoning_content,
+						}
+					}
+
+					if (delta.content) {
+						hasYieldedContent = true
+						yield {
+							type: "text",
+							text: delta.content,
+						}
 					}
 				}
 
-				// Also check for reasoning_content for backward compatibility
-				if ("reasoning_content" in delta && typeof delta.reasoning_content === "string") {
-					yield {
-						type: "reasoning",
-						text: delta.reasoning_content,
-					}
-				}
-
-				if (delta.content) {
-					yield {
-						type: "text",
-						text: delta.content,
-					}
+				if (chunk.usage) {
+					lastUsage = chunk.usage as RooUsage
 				}
 			}
+		} catch (error) {
+			console.error("[RooHandler] Error during stream processing:", error)
+			console.error("[RooHandler] Chunks processed before error:", chunkCount)
+			throw error
+		}
 
-			if (chunk.usage) {
-				lastUsage = chunk.usage as RooUsage
+		// If no content was yielded, provide a fallback message to prevent "Unexpected API Response" error
+		if (!hasYieldedContent && !hasYieldedReasoning) {
+			console.warn("[RooHandler] No content received from API stream")
+			console.warn("[RooHandler] Total chunks processed:", chunkCount)
+			console.warn("[RooHandler] Model:", this.getModel().id)
+			console.warn("[RooHandler] Task ID:", metadata?.taskId)
+
+			// Yield a minimal response to prevent the error
+			yield {
+				type: "text",
+				text: "I apologize, but I didn't receive a proper response from the API. This might be a temporary issue with the service. Please try your request again.",
 			}
+			hasYieldedContent = true
 		}
 
 		if (lastUsage) {

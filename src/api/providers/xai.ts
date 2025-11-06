@@ -68,43 +68,73 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 			throw handleOpenAIError(error, this.providerName)
 		}
 
-		for await (const chunk of stream) {
-			const delta = chunk.choices[0]?.delta
+		let hasYieldedContent = false
+		let hasYieldedReasoning = false
+		let chunkCount = 0
 
-			if (delta?.content) {
-				yield {
-					type: "text",
-					text: delta.content,
+		try {
+			for await (const chunk of stream) {
+				chunkCount++
+				const delta = chunk.choices[0]?.delta
+
+				if (delta?.content) {
+					hasYieldedContent = true
+					yield {
+						type: "text",
+						text: delta.content,
+					}
+				}
+
+				if (delta && "reasoning_content" in delta && delta.reasoning_content) {
+					hasYieldedReasoning = true
+					yield {
+						type: "reasoning",
+						text: delta.reasoning_content as string,
+					}
+				}
+
+				if (chunk.usage) {
+					// Extract detailed token information if available
+					// First check for prompt_tokens_details structure (real API response)
+					const promptDetails =
+						"prompt_tokens_details" in chunk.usage ? chunk.usage.prompt_tokens_details : null
+					const cachedTokens =
+						promptDetails && "cached_tokens" in promptDetails ? promptDetails.cached_tokens : 0
+
+					// Fall back to direct fields in usage (used in test mocks)
+					const readTokens =
+						cachedTokens ||
+						("cache_read_input_tokens" in chunk.usage ? (chunk.usage as any).cache_read_input_tokens : 0)
+					const writeTokens =
+						"cache_creation_input_tokens" in chunk.usage
+							? (chunk.usage as any).cache_creation_input_tokens
+							: 0
+
+					yield {
+						type: "usage",
+						inputTokens: chunk.usage.prompt_tokens || 0,
+						outputTokens: chunk.usage.completion_tokens || 0,
+						cacheReadTokens: readTokens,
+						cacheWriteTokens: writeTokens,
+					}
 				}
 			}
+		} catch (error) {
+			console.error("[XAIHandler] Error during stream processing:", error)
+			console.error("[XAIHandler] Chunks processed before error:", chunkCount)
+			throw error
+		}
 
-			if (delta && "reasoning_content" in delta && delta.reasoning_content) {
-				yield {
-					type: "reasoning",
-					text: delta.reasoning_content as string,
-				}
-			}
+		// If no content was yielded, provide a fallback message to prevent "Unexpected API Response" error
+		if (!hasYieldedContent && !hasYieldedReasoning) {
+			console.warn("[XAIHandler] No content received from API stream")
+			console.warn("[XAIHandler] Total chunks processed:", chunkCount)
+			console.warn("[XAIHandler] Model:", modelId)
 
-			if (chunk.usage) {
-				// Extract detailed token information if available
-				// First check for prompt_tokens_details structure (real API response)
-				const promptDetails = "prompt_tokens_details" in chunk.usage ? chunk.usage.prompt_tokens_details : null
-				const cachedTokens = promptDetails && "cached_tokens" in promptDetails ? promptDetails.cached_tokens : 0
-
-				// Fall back to direct fields in usage (used in test mocks)
-				const readTokens =
-					cachedTokens ||
-					("cache_read_input_tokens" in chunk.usage ? (chunk.usage as any).cache_read_input_tokens : 0)
-				const writeTokens =
-					"cache_creation_input_tokens" in chunk.usage ? (chunk.usage as any).cache_creation_input_tokens : 0
-
-				yield {
-					type: "usage",
-					inputTokens: chunk.usage.prompt_tokens || 0,
-					outputTokens: chunk.usage.completion_tokens || 0,
-					cacheReadTokens: readTokens,
-					cacheWriteTokens: writeTokens,
-				}
+			// Yield a minimal response to prevent the error
+			yield {
+				type: "text",
+				text: "I apologize, but I didn't receive a proper response from the API. This might be a temporary issue with the xAI service. Please try your request again.",
 			}
 		}
 	}

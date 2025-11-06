@@ -233,7 +233,7 @@ describe("RooHandler", () => {
 			}).rejects.toThrow("API Error")
 		})
 
-		it("should handle empty response content", async () => {
+		it("should handle empty response content with fallback message", async () => {
 			mockCreate.mockResolvedValueOnce({
 				[Symbol.asyncIterator]: async function* () {
 					yield {
@@ -259,7 +259,9 @@ describe("RooHandler", () => {
 			}
 
 			const textChunks = chunks.filter((chunk) => chunk.type === "text")
-			expect(textChunks).toHaveLength(0)
+			// Now we expect a fallback message when no content is received
+			expect(textChunks).toHaveLength(1)
+			expect(textChunks[0].text).toContain("I apologize, but I didn't receive a proper response from the API")
 			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
 			expect(usageChunks).toHaveLength(1)
 		})
