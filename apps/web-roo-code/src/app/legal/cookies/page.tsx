@@ -43,7 +43,7 @@ export default function CookiePolicy() {
 		<>
 			<div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
 				<div className="prose prose-lg mx-auto max-w-4xl dark:prose-invert">
-					<p className="text-muted-foreground">Updated: September 18, 2025</p>
+					<p className="text-muted-foreground">Updated: November 6, 2025</p>
 
 					<h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">Cookie Policy</h1>
 
@@ -100,6 +100,19 @@ export default function CookiePolicy() {
 									<td className="border border-border px-4 py-3">1 year</td>
 									<td className="border border-border px-4 py-3 font-mono text-sm">ph_*</td>
 								</tr>
+								<tr>
+									<td className="border border-border px-4 py-3 font-medium">Google</td>
+									<td className="border border-border px-4 py-3">
+										Advertising and analytics for marketing optimization
+									</td>
+									<td className="border border-border px-4 py-3">
+										Marketing (only with your consent)
+									</td>
+									<td className="border border-border px-4 py-3">Various (90 days to 2 years)</td>
+									<td className="border border-border px-4 py-3 font-mono text-sm">
+										_ga, _gid, _gcl_*, gtag_*
+									</td>
+								</tr>
 							</tbody>
 						</table>
 					</div>
@@ -120,6 +133,15 @@ export default function CookiePolicy() {
 							rel="noopener noreferrer"
 							className="text-primary hover:underline">
 							PostHog Privacy Policy
+						</a>
+					</p>
+					<p>
+						<a
+							href="https://policies.google.com/privacy"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-primary hover:underline">
+							Google Privacy Policy
 						</a>
 					</p>
 
