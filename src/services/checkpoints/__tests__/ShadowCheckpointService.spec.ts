@@ -629,6 +629,178 @@ describe.each([[RepoPerTaskCheckpointService, "RepoPerTaskCheckpointService"]])(
 				await fs.rm(workspaceDir, { recursive: true, force: true })
 			})
 
+			it("correctly parses gitlink entries with spaces in paths", async () => {
+				// Create a new temporary workspace and service for this test
+				const shadowDir = path.join(tmpDir, `${prefix}-spaces-gitlinks-${Date.now()}`)
+				const workspaceDir = path.join(tmpDir, `workspace-spaces-gitlinks-${Date.now()}`)
+
+				// Create workspace directory
+				await fs.mkdir(workspaceDir, { recursive: true })
+
+				// Create a primary workspace repo
+				const mainGit = simpleGit(workspaceDir)
+				await mainGit.init()
+				await mainGit.addConfig("user.name", "Roo Code")
+				await mainGit.addConfig("user.email", "support@roocode.com")
+
+				// Create a test file in the main workspace
+				const mainFile = path.join(workspaceDir, "main-file.txt")
+				await fs.writeFile(mainFile, "Content in main repo")
+				await mainGit.add(".")
+				await mainGit.commit("Initial commit")
+
+				const logMessages: string[] = []
+				const service = await klass.create({
+					taskId: `${taskId}-spaces`,
+					shadowDir,
+					workspaceDir,
+					log: (msg: string) => logMessages.push(msg),
+				})
+
+				// Mock the git.raw calls to simulate ls-files output with spaces in paths
+				const mockGit = {
+					raw: vitest.fn().mockImplementation((args: string[]) => {
+						if (args[0] === "ls-files" && args.includes("-s")) {
+							// Simulate git ls-files -s output with gitlinks that have spaces in paths
+							return Promise.resolve(
+								[
+									"100644 abc123... 0	regular-file.txt",
+									"160000 def456... 0	nested repo with spaces",
+									"160000 ghi789... 0	another nested/repo with spaces",
+									"100644 jkl012... 0	another-regular-file.txt",
+								].join("\n"),
+							)
+						}
+						// For other git commands, use a mock that returns empty strings
+						return Promise.resolve("")
+					}),
+					init: vitest.fn().mockResolvedValue(undefined),
+					addConfig: vitest.fn().mockResolvedValue(undefined),
+					revparse: vitest.fn().mockResolvedValue("abc123456"),
+					commit: vitest.fn().mockResolvedValue({ commit: "def789012" }),
+					add: vitest.fn().mockResolvedValue(undefined),
+				}
+
+				// Replace the git instance after service creation (already initialized)
+				service["git"] = mockGit as any
+
+				// Modify main file to trigger stageAll which should detect gitlinks
+				await fs.writeFile(mainFile, "Modified content")
+
+				// This should trigger the parsing logic for gitlinks with spaces
+				await expect(service.saveCheckpoint("Test gitlinks with spaces")).rejects.toThrow(
+					/Gitlink entries detected/,
+				)
+
+				// Verify that both paths with spaces were correctly parsed
+				expect(mockGit.raw).toHaveBeenCalledWith(["ls-files", "-s", "--cached"])
+
+				// The error message should include the correctly parsed paths with spaces
+				try {
+					await service.saveCheckpoint("Test gitlinks with spaces")
+				} catch (error) {
+					const errorMessage = error instanceof Error ? error.message : String(error)
+					expect(errorMessage).toContain("nested repo with spaces")
+					expect(errorMessage).toContain("another nested/repo with spaces")
+					// Should not contain partial paths that would result from incorrect split()
+					expect(errorMessage).not.toContain("nested,")
+					expect(errorMessage).not.toContain("another,")
+				}
+
+				// Clean up
+				await fs.rm(shadowDir, { recursive: true, force: true })
+				await fs.rm(workspaceDir, { recursive: true, force: true })
+			})
+
+			it("correctly detects nested repos with spaces in paths from index", async () => {
+				// Create a new temporary workspace and service for this test
+				const shadowDir = path.join(tmpDir, `${prefix}-spaces-nested-repos-${Date.now()}`)
+				const workspaceDir = path.join(tmpDir, `workspace-spaces-nested-repos-${Date.now()}`)
+
+				// Create workspace directory
+				await fs.mkdir(workspaceDir, { recursive: true })
+
+				// Create a primary workspace repo
+				const mainGit = simpleGit(workspaceDir)
+				await mainGit.init()
+				await mainGit.addConfig("user.name", "Roo Code")
+				await mainGit.addConfig("user.email", "support@roocode.com")
+
+				// Create a test file in the main workspace
+				const mainFile = path.join(workspaceDir, "main-file.txt")
+				await fs.writeFile(mainFile, "Content in main repo")
+				await mainGit.add(".")
+				await mainGit.commit("Initial commit")
+
+				const logMessages: string[] = []
+				const service = await klass.create({
+					taskId: `${taskId}-nested-spaces`,
+					shadowDir,
+					workspaceDir,
+					log: (msg: string) => logMessages.push(msg),
+				})
+
+				// Mock git.raw to simulate different ls-files outputs and other commands
+				const mockGit = {
+					raw: vitest.fn().mockImplementation((args: string[]) => {
+						if (args[0] === "ls-files" && args.includes("-s") && !args.includes("--cached")) {
+							// For findNestedRepos call (ls-files -s without --cached)
+							return Promise.resolve(
+								[
+									"100644 abc123... 0	regular-file.txt",
+									"160000 def456... 0	nested repo with spaces",
+									"160000 ghi789... 0	path with multiple spaces",
+									"100644 jkl012... 0	another-regular-file.txt",
+								].join("\n"),
+							)
+						} else if (args[0] === "ls-files" && args.includes("--cached")) {
+							// For stageAll safety check (should be empty after proper exclusion)
+							return Promise.resolve("")
+						} else if (args[0] === "config" && args.includes(".gitmodules")) {
+							// No .gitmodules file
+							const error = new Error("exit code 1")
+							throw error
+						} else if (args[0] === "add") {
+							// Mock successful add operation
+							return Promise.resolve("")
+						} else if (args[0] === "rm") {
+							// Mock successful rm operation
+							return Promise.resolve("")
+						}
+						return Promise.resolve("")
+					}),
+					init: vitest.fn().mockResolvedValue(undefined),
+					addConfig: vitest.fn().mockResolvedValue(undefined),
+					revparse: vitest.fn().mockResolvedValue("abc123456"),
+					commit: vitest.fn().mockResolvedValue({ commit: "def789012" }),
+					add: vitest.fn().mockResolvedValue(undefined),
+				}
+
+				// Mock executeRipgrep to return empty results (no filesystem-based detections)
+				vitest.spyOn(fileSearch, "executeRipgrep").mockResolvedValue([])
+
+				// Replace the git instance after service creation (already initialized)
+				service["git"] = mockGit as any
+
+				// Modify main file and save checkpoint
+				await fs.writeFile(mainFile, "Modified content")
+				await service.saveCheckpoint("Test nested repos with spaces")
+
+				// Verify git.raw was called for ls-files to detect nested repos
+				expect(mockGit.raw).toHaveBeenCalledWith(["ls-files", "-s"])
+
+				// Verify that paths with spaces were correctly detected and logged
+				const excludeLog = logMessages.find((msg) => msg.includes("excluding") && msg.includes("nested repos"))
+				expect(excludeLog).toBeDefined()
+				expect(excludeLog).toContain("nested repo with spaces")
+				expect(excludeLog).toContain("path with multiple spaces")
+
+				// Clean up
+				vitest.restoreAllMocks()
+				await fs.rm(shadowDir, { recursive: true, force: true })
+				await fs.rm(workspaceDir, { recursive: true, force: true })
+			})
+
 			it("normalizes Windows-style backslash paths from filesystem scans to POSIX for git pathspecs", async () => {
 				// Create a new temporary workspace and service for this test.
 				const shadowDir = path.join(tmpDir, `${prefix}-windows-paths-${Date.now()}`)

@@ -175,7 +175,12 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			const gitlinkEntries = stagedFiles
 				.split("\n")
 				.filter((line) => line.startsWith("160000"))
-				.map((line) => line.split(/\s+/)[3])
+				.map((line) => {
+					// Parse git ls-files output: <mode> <object> <stage> <filename>
+					// Handle filenames with spaces by splitting only on first 3 whitespace groups
+					const match = line.match(/^(\S+)\s+(\S+)\s+(\S+)\s+(.+)$/)
+					return match ? match[4] : null
+				})
 				.filter(Boolean)
 
 			if (gitlinkEntries.length > 0) {
@@ -226,8 +231,12 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			const lsFiles = await git.raw(["ls-files", "-s"])
 			for (const line of lsFiles.split("\n")) {
 				if (line.startsWith("160000")) {
-					const parts = line.split(/\s+/)
-					if (parts[3]) nestedRepos.add(parts[3])
+					// Parse git ls-files output: <mode> <object> <stage> <filename>
+					// Handle filenames with spaces by splitting only on first 3 whitespace groups
+					const match = line.match(/^(\S+)\s+(\S+)\s+(\S+)\s+(.+)$/)
+					if (match && match[4]) {
+						nestedRepos.add(match[4])
+					}
 				}
 			}
 		} catch (error) {
