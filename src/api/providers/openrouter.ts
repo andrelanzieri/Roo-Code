@@ -60,6 +60,8 @@ type OpenRouterChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
 	include_reasoning?: boolean
 	// https://openrouter.ai/docs/use-cases/reasoning-tokens
 	reasoning?: OpenRouterReasoningParams
+	// For DeepSeek V3.1 Terminus models that require chat_template_kwargs
+	chat_template_kwargs?: { thinking?: boolean }
 }
 
 // See `OpenAI.Chat.Completions.ChatCompletionChunk["usage"]`
@@ -141,6 +143,20 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 
 		const transforms = (this.options.openRouterUseMiddleOutTransform ?? true) ? ["middle-out"] : undefined
 
+		// Special handling for DeepSeek V3.1 Terminus models
+		// These models use chat_template_kwargs with thinking parameter instead of reasoning
+		let chatTemplateKwargs: { thinking?: boolean } | undefined
+		let finalReasoning = reasoning
+
+		if (modelId.startsWith("deepseek/deepseek-v3.1-terminus")) {
+			// For DeepSeek V3.1 Terminus, convert reasoning to chat_template_kwargs
+			// The reasoning object will be present if reasoning is enabled
+			const hasReasoningEnabled = Boolean(reasoning && !reasoning.exclude)
+			chatTemplateKwargs = { thinking: hasReasoningEnabled }
+			// Don't pass reasoning parameter for this model
+			finalReasoning = undefined
+		}
+
 		// https://openrouter.ai/docs/transforms
 		const completionParams: OpenRouterChatCompletionParams = {
 			model: modelId,
@@ -160,7 +176,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 					},
 				}),
 			...(transforms && { transforms }),
-			...(reasoning && { reasoning }),
+			...(finalReasoning && { reasoning: finalReasoning }),
+			...(chatTemplateKwargs && { chat_template_kwargs: chatTemplateKwargs }),
 		}
 
 		let stream
@@ -248,6 +265,16 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	async completePrompt(prompt: string) {
 		let { id: modelId, maxTokens, temperature, reasoning } = await this.fetchModel()
 
+		// Handle DeepSeek V3.1 Terminus for non-streaming as well
+		let chatTemplateKwargs: { thinking?: boolean } | undefined
+		let finalReasoning = reasoning
+
+		if (modelId.startsWith("deepseek/deepseek-v3.1-terminus")) {
+			const hasReasoningEnabled = Boolean(reasoning && !reasoning.exclude)
+			chatTemplateKwargs = { thinking: hasReasoningEnabled }
+			finalReasoning = undefined
+		}
+
 		const completionParams: OpenRouterChatCompletionParams = {
 			model: modelId,
 			max_tokens: maxTokens,
@@ -263,7 +290,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 						allow_fallbacks: false,
 					},
 				}),
-			...(reasoning && { reasoning }),
+			...(finalReasoning && { reasoning: finalReasoning }),
+			...(chatTemplateKwargs && { chat_template_kwargs: chatTemplateKwargs }),
 		}
 
 		let response
