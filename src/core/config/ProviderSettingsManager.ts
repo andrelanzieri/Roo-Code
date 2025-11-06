@@ -1,6 +1,8 @@
 import { ExtensionContext } from "vscode"
+import * as vscode from "vscode"
 import { z, ZodError } from "zod"
 import deepEqual from "fast-deep-equal"
+import * as crypto from "crypto"
 
 import {
 	type ProviderSettingsWithId,
@@ -16,6 +18,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { Mode, modes } from "../../shared/modes"
 import { buildApiHandler } from "../../api"
+import { getWorkspacePath } from "../../utils/path"
 
 // Type-safe model migrations mapping
 type ModelMigrations = {
@@ -54,7 +57,9 @@ export type ProviderProfiles = z.infer<typeof providerProfilesSchema>
 
 export class ProviderSettingsManager {
 	private static readonly SCOPE_PREFIX = "roo_cline_config_"
+	private static readonly GLOBAL_KEY = "api_config" // Legacy global key
 	private readonly defaultConfigId = this.generateId()
+	private workspaceId: string | null = null
 
 	private readonly defaultModeApiConfigs: Record<string, string> = Object.fromEntries(
 		modes.map((mode) => [mode.slug, this.defaultConfigId]),
@@ -77,6 +82,7 @@ export class ProviderSettingsManager {
 
 	constructor(context: ExtensionContext) {
 		this.context = context
+		this.workspaceId = this.getWorkspaceIdentifier()
 
 		// TODO: We really shouldn't have async methods in the constructor.
 		this.initialize().catch(console.error)
@@ -575,16 +581,58 @@ export class ProviderSettingsManager {
 	public async resetAllConfigs() {
 		return await this.lock(async () => {
 			await this.context.secrets.delete(this.secretsKey)
+			// Also delete the global key if exists
+			await this.context.secrets.delete(this.globalSecretsKey)
 		})
 	}
 
+	/**
+	 * Get a unique workspace identifier based on the workspace folder path.
+	 * Returns null if no workspace is open (falls back to global storage).
+	 */
+	private getWorkspaceIdentifier(): string | null {
+		const workspacePath = getWorkspacePath()
+		if (!workspacePath || workspacePath === "") {
+			return null
+		}
+
+		// Create a hash of the workspace path for a shorter, consistent identifier
+		const hash = crypto.createHash("sha256").update(workspacePath).digest("hex")
+		// Use first 8 characters of hash for brevity
+		return hash.substring(0, 8)
+	}
+
 	private get secretsKey() {
-		return `${ProviderSettingsManager.SCOPE_PREFIX}api_config`
+		// If we have a workspace, use workspace-specific key
+		if (this.workspaceId) {
+			return `${ProviderSettingsManager.SCOPE_PREFIX}ws_${this.workspaceId}`
+		}
+		// Fall back to global key for non-workspace scenarios
+		return this.globalSecretsKey
+	}
+
+	private get globalSecretsKey() {
+		return `${ProviderSettingsManager.SCOPE_PREFIX}${ProviderSettingsManager.GLOBAL_KEY}`
 	}
 
 	private async load(): Promise<ProviderProfiles> {
 		try {
-			const content = await this.context.secrets.get(this.secretsKey)
+			// First try to load from workspace-specific key
+			let content = await this.context.secrets.get(this.secretsKey)
+
+			// If no workspace-specific config and we have a workspace, check for migration from global
+			if (!content && this.workspaceId) {
+				const globalContent = await this.context.secrets.get(this.globalSecretsKey)
+				if (globalContent) {
+					// Migrate global config to workspace-specific
+					console.log(`[ProviderSettingsManager] Migrating global config to workspace-specific storage`)
+					content = globalContent
+					// Save to workspace-specific key
+					await this.context.secrets.store(this.secretsKey, globalContent)
+					// Note: We don't delete the global config here to maintain backward compatibility
+					// for other workspaces that might still be using it
+				}
+			}
 
 			if (!content) {
 				return this.defaultProviderProfiles

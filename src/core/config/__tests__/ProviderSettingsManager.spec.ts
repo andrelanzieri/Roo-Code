@@ -6,6 +6,19 @@ import type { ProviderSettings } from "@roo-code/types"
 
 import { ProviderSettingsManager, ProviderProfiles, SyncCloudProfilesResult } from "../ProviderSettingsManager"
 
+// Mock getWorkspacePath
+import { getWorkspacePath } from "../../../utils/path"
+vi.mock("../../../utils/path", () => ({
+	getWorkspacePath: vi.fn(() => "/test/workspace"),
+}))
+
+// Mock vscode module
+vi.mock("vscode", () => ({
+	workspace: {
+		workspaceFolders: [{ uri: { fsPath: "/test/workspace" } }],
+	},
+}))
+
 // Mock VSCode ExtensionContext
 const mockSecrets = {
 	get: vi.fn(),
@@ -458,7 +471,10 @@ describe("ProviderSettingsManager", () => {
 				},
 			}
 
-			expect(mockSecrets.store.mock.calls[0][0]).toEqual("roo_cline_config_api_config")
+			// Should use workspace-specific key (hash of /test/workspace)
+			const crypto = await import("crypto")
+			const workspaceHash = crypto.createHash("sha256").update("/test/workspace").digest("hex").substring(0, 8)
+			expect(mockSecrets.store.mock.calls[0][0]).toEqual(`roo_cline_config_ws_${workspaceHash}`)
 			expect(storedConfig).toEqual(expectedConfig)
 		})
 
@@ -508,7 +524,10 @@ describe("ProviderSettingsManager", () => {
 				},
 			}
 
-			expect(mockSecrets.store.mock.calls[0][0]).toEqual("roo_cline_config_api_config")
+			// Should use workspace-specific key
+			const crypto = await import("crypto")
+			const workspaceHash = crypto.createHash("sha256").update("/test/workspace").digest("hex").substring(0, 8)
+			expect(mockSecrets.store.mock.calls[0][0]).toEqual(`roo_cline_config_ws_${workspaceHash}`)
 			expect(storedConfig).toEqual(expectedConfig)
 		})
 
@@ -551,8 +570,10 @@ describe("ProviderSettingsManager", () => {
 			}
 
 			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[mockSecrets.store.mock.calls.length - 1][1])
+			const crypto = await import("crypto")
+			const workspaceHash = crypto.createHash("sha256").update("/test/workspace").digest("hex").substring(0, 8)
 			expect(mockSecrets.store.mock.calls[mockSecrets.store.mock.calls.length - 1][0]).toEqual(
-				"roo_cline_config_api_config",
+				`roo_cline_config_ws_${workspaceHash}`,
 			)
 			expect(storedConfig).toEqual(expectedConfig)
 		})
@@ -757,7 +778,11 @@ describe("ProviderSettingsManager", () => {
 
 			await providerSettingsManager.resetAllConfigs()
 
-			// Should have called delete with the correct config key
+			// Should have called delete with the workspace-specific key
+			const crypto = await import("crypto")
+			const workspaceHash = crypto.createHash("sha256").update("/test/workspace").digest("hex").substring(0, 8)
+			expect(mockSecrets.delete).toHaveBeenCalledWith(`roo_cline_config_ws_${workspaceHash}`)
+			// Should also try to delete the global key for backward compatibility
 			expect(mockSecrets.delete).toHaveBeenCalledWith("roo_cline_config_api_config")
 		})
 	})
@@ -1234,6 +1259,161 @@ describe("ProviderSettingsManager", () => {
 			expect(result.hasChanges).toBe(true)
 			expect(result.activeProfileChanged).toBe(false)
 			expect(result.activeProfileId).toBe("local-id")
+		})
+	})
+
+	describe("Workspace-specific storage", () => {
+		it("should use workspace-specific key when workspace is available", async () => {
+			vi.mocked(getWorkspacePath).mockReturnValue("/test/workspace")
+			const manager = new ProviderSettingsManager(mockContext)
+
+			mockSecrets.get.mockResolvedValue(null)
+
+			const config: ProviderSettings = {
+				apiProvider: "anthropic",
+				apiKey: "test-key",
+			}
+
+			await manager.saveConfig("test", config)
+
+			const crypto = await import("crypto")
+			const workspaceHash = crypto.createHash("sha256").update("/test/workspace").digest("hex").substring(0, 8)
+			expect(mockSecrets.store).toHaveBeenCalledWith(`roo_cline_config_ws_${workspaceHash}`, expect.any(String))
+		})
+
+		it("should fall back to global key when no workspace is available", async () => {
+			vi.mocked(getWorkspacePath).mockReturnValue("")
+			const manager = new ProviderSettingsManager(mockContext)
+
+			mockSecrets.get.mockResolvedValue(null)
+
+			const config: ProviderSettings = {
+				apiProvider: "anthropic",
+				apiKey: "test-key",
+			}
+
+			await manager.saveConfig("test", config)
+
+			expect(mockSecrets.store).toHaveBeenCalledWith("roo_cline_config_api_config", expect.any(String))
+		})
+
+		it("should migrate from global to workspace-specific storage", async () => {
+			vi.mocked(getWorkspacePath).mockReturnValue("/test/workspace")
+
+			const globalConfig = {
+				currentApiConfigName: "global-config",
+				apiConfigs: {
+					"global-config": {
+						apiProvider: "anthropic",
+						apiKey: "global-key",
+						id: "global-id",
+					},
+				},
+			}
+
+			const crypto = await import("crypto")
+			const workspaceHash = crypto.createHash("sha256").update("/test/workspace").digest("hex").substring(0, 8)
+			const workspaceKey = `roo_cline_config_ws_${workspaceHash}`
+
+			// Set up the mock to properly simulate migration behavior
+			let storedConfig: string | undefined
+			mockSecrets.get.mockImplementation((key) => {
+				if (key === workspaceKey) {
+					// Return stored config if it was migrated
+					return Promise.resolve(storedConfig || null)
+				} else if (key === "roo_cline_config_api_config") {
+					// Return global config for migration
+					return Promise.resolve(JSON.stringify(globalConfig))
+				}
+				return Promise.resolve(null)
+			})
+
+			mockSecrets.store.mockImplementation((key, value) => {
+				if (key === workspaceKey) {
+					storedConfig = value
+				}
+				return Promise.resolve()
+			})
+
+			const manager = new ProviderSettingsManager(mockContext)
+			// Wait for initialization to complete (which triggers migration)
+			await new Promise((resolve) => setTimeout(resolve, 100))
+
+			const configs = await manager.listConfig()
+
+			// Should have migrated the global config
+			expect(configs).toEqual([
+				{ name: "global-config", id: "global-id", apiProvider: "anthropic", modelId: undefined },
+			])
+
+			// Should have saved to workspace-specific key
+			expect(mockSecrets.store).toHaveBeenCalledWith(workspaceKey, JSON.stringify(globalConfig))
+		})
+
+		it("should maintain separate configs for different workspaces", async () => {
+			// First workspace
+			vi.mocked(getWorkspacePath).mockReturnValue("/workspace/project1")
+			const manager1 = new ProviderSettingsManager(mockContext)
+
+			const config1 = {
+				currentApiConfigName: "project1-config",
+				apiConfigs: {
+					"project1-config": {
+						apiProvider: "anthropic",
+						apiKey: "project1-key",
+						id: "project1-id",
+					},
+				},
+			}
+
+			const crypto = await import("crypto")
+			const workspace1Hash = crypto
+				.createHash("sha256")
+				.update("/workspace/project1")
+				.digest("hex")
+				.substring(0, 8)
+			mockSecrets.get.mockImplementation((key) => {
+				if (key === `roo_cline_config_ws_${workspace1Hash}`) {
+					return JSON.stringify(config1)
+				}
+				return null
+			})
+
+			const configs1 = await manager1.listConfig()
+			expect(configs1).toEqual([{ name: "project1-config", id: "project1-id", apiProvider: "anthropic" }])
+
+			// Second workspace
+			vi.mocked(getWorkspacePath).mockReturnValue("/workspace/project2")
+			const manager2 = new ProviderSettingsManager(mockContext)
+
+			const config2 = {
+				currentApiConfigName: "project2-config",
+				apiConfigs: {
+					"project2-config": {
+						apiProvider: "openai",
+						apiKey: "project2-key",
+						id: "project2-id",
+					},
+				},
+			}
+
+			const workspace2Hash = crypto
+				.createHash("sha256")
+				.update("/workspace/project2")
+				.digest("hex")
+				.substring(0, 8)
+			mockSecrets.get.mockImplementation((key) => {
+				if (key === `roo_cline_config_ws_${workspace2Hash}`) {
+					return JSON.stringify(config2)
+				}
+				return null
+			})
+
+			const configs2 = await manager2.listConfig()
+			expect(configs2).toEqual([{ name: "project2-config", id: "project2-id", apiProvider: "openai" }])
+
+			// Verify different workspace hashes
+			expect(workspace1Hash).not.toEqual(workspace2Hash)
 		})
 	})
 })
