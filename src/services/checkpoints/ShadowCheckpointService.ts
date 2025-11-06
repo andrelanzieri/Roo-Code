@@ -149,7 +149,9 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			// Remove any existing gitlinks from the index before staging
 			for (const repoPath of nestedRepos) {
 				try {
-					await git.raw(["rm", "--cached", "--ignore-unmatch", "-r", repoPath])
+					// Normalize to POSIX for git pathspec compatibility
+					const posixPath = repoPath.replace(/\\/g, "/")
+					await git.raw(["rm", "--cached", "--ignore-unmatch", "-r", posixPath])
 				} catch (error) {
 					this.log(
 						`[${this.constructor.name}#stageAll] failed to remove cached gitlink ${repoPath}: ${error instanceof Error ? error.message : String(error)}`,
@@ -160,7 +162,9 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 			// Build add command with pathspec excludes
 			const addArgs: string[] = ["-A", ":/"]
 			for (const repoPath of nestedRepos) {
-				addArgs.push(`:(exclude)${repoPath}/`)
+				// Normalize to POSIX for git pathspec compatibility
+				const posixPath = repoPath.replace(/\\/g, "/")
+				addArgs.push(`:(exclude)${posixPath}/`)
 			}
 
 			// Stage files
@@ -198,10 +202,15 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 
 		// 1. From .gitmodules (declared submodules)
 		try {
-			const config = await git.raw(["config", "-f", ".gitmodules", "--get-regexp", "^submodule\\..*\\.path$"])
+			const modulesPath = path.join(this.workspaceDir, ".gitmodules")
+			const config = await git.raw(["config", "-f", modulesPath, "--get-regexp", "^submodule\\..*\\.path$"])
 			for (const line of config.split("\n")) {
 				const match = line.match(/submodule\..*\.path\s+(.+)/)
-				if (match) nestedRepos.add(match[1])
+				if (match) {
+					// Normalize paths to POSIX format for git pathspec compatibility
+					const normalizedPath = match[1].replace(/\\/g, "/")
+					nestedRepos.add(normalizedPath)
+				}
 			}
 		} catch (error) {
 			// No .gitmodules file is expected in most cases, only log if it's a real error
@@ -242,8 +251,10 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 						!normalizedPath.startsWith(".git/") &&
 						normalizedPath !== ".git/HEAD"
 					) {
+						// Normalize path first to handle Windows-style backslashes
+						const normalizedPath = result.path.replace(/\\/g, "/")
 						// Extract repo directory (remove .git/HEAD)
-						const gitDir = path.dirname(result.path)
+						const gitDir = path.dirname(normalizedPath)
 						const repoDir = path.dirname(gitDir)
 						nestedRepos.add(repoDir)
 					}
@@ -273,7 +284,9 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 							const content = await fs.readFile(gitFilePath, "utf8")
 							if (content.trim().startsWith("gitdir:")) {
 								// This is a worktree - exclude its directory
-								const repoDir = path.dirname(result.path)
+								// Normalize path first to handle Windows-style backslashes
+								const normalizedPath = result.path.replace(/\\/g, "/")
+								const repoDir = path.dirname(normalizedPath)
 								nestedRepos.add(repoDir)
 							}
 						} catch (error) {
