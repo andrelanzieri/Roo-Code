@@ -1061,7 +1061,7 @@ export const ChatRowContent = ({
 								<span style={{ fontWeight: "bold" }}>{t("chat:text.rooSaid")}</span>
 							</div>
 							<div className="pl-6">
-								<Markdown markdown={message.text} partial={message.partial} />
+								<Markdown markdown={message.text} partial={message.partial} messageTs={message.ts} />
 								{message.images && message.images.length > 0 && (
 									<div style={{ marginTop: "10px" }}>
 										{message.images.map((image, index) => (
@@ -1170,7 +1170,7 @@ export const ChatRowContent = ({
 								{title}
 							</div>
 							<div className="border-l border-green-600/30 ml-2 pl-4 pb-1">
-								<Markdown markdown={message.text} />
+								<Markdown markdown={message.text} messageTs={message.ts} />
 							</div>
 						</>
 					)
@@ -1324,7 +1324,7 @@ export const ChatRowContent = ({
 								</div>
 							)}
 							<div style={{ paddingTop: 10 }}>
-								<Markdown markdown={message.text} partial={message.partial} />
+								<Markdown markdown={message.text} partial={message.partial} messageTs={message.ts} />
 							</div>
 						</>
 					)
@@ -1410,7 +1410,11 @@ export const ChatRowContent = ({
 									{title}
 								</div>
 								<div style={{ color: "var(--vscode-charts-green)", paddingTop: 10 }}>
-									<Markdown markdown={message.text} partial={message.partial} />
+									<Markdown
+										markdown={message.text}
+										partial={message.partial}
+										messageTs={message.ts}
+									/>
 								</div>
 							</div>
 						)
@@ -1429,6 +1433,7 @@ export const ChatRowContent = ({
 							<div className="flex flex-col gap-2 ml-6">
 								<Markdown
 									markdown={message.partial === true ? message?.text : followUpData?.question}
+									messageTs={message.ts}
 								/>
 								<FollowUpSuggest
 									suggestions={followUpData?.suggest}
