@@ -176,6 +176,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [sendingDisabled, setSendingDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
+	const [isCancelPending, setIsCancelPending] = useState(false)
 
 	// we need to hold on to the ask because useEffect > lastMessage will always let us know when an ask comes in and handle it, but by the time handleMessage is called, the last message might not be the ask anymore (it could be a say that followed)
 	const [clineAsk, setClineAsk] = useState<ClineAsk | undefined>(undefined)
@@ -514,6 +515,32 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		prevExpandedRowsRef.current = expandedRows // Store current state for next comparison
 	}, [expandedRows])
 
+	// Helper function to check if an API request is actively in progress
+	const checkApiRequestInProgress = useCallback((messages: ClineMessage[]) => {
+		const isLastMessagePartial = messages.at(-1)?.partial === true
+
+		if (isLastMessagePartial) {
+			return true
+		}
+
+		const lastApiReqStarted = findLast(messages, (message: ClineMessage) => message.say === "api_req_started")
+
+		if (
+			lastApiReqStarted &&
+			lastApiReqStarted.text !== null &&
+			lastApiReqStarted.text !== undefined &&
+			lastApiReqStarted.say === "api_req_started"
+		) {
+			const cost = JSON.parse(lastApiReqStarted.text).cost
+
+			if (cost === undefined) {
+				return true // API request has not finished yet.
+			}
+		}
+
+		return false
+	}, [])
+
 	const isStreaming = useMemo(() => {
 		// Checking clineAsk isn't enough since messages effect may be called
 		// again for a tool for example, set clineAsk to its value, and if the
@@ -531,63 +558,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			return false
 		}
 
-		const isLastMessagePartial = modifiedMessages.at(-1)?.partial === true
-
-		if (isLastMessagePartial) {
-			return true
-		} else {
-			const lastApiReqStarted = findLast(
-				modifiedMessages,
-				(message: ClineMessage) => message.say === "api_req_started",
-			)
-
-			if (
-				lastApiReqStarted &&
-				lastApiReqStarted.text !== null &&
-				lastApiReqStarted.text !== undefined &&
-				lastApiReqStarted.say === "api_req_started"
-			) {
-				const cost = JSON.parse(lastApiReqStarted.text).cost
-
-				if (cost === undefined) {
-					return true // API request has not finished yet.
-				}
-			}
-		}
-
-		return false
-	}, [modifiedMessages, clineAsk, enableButtons, primaryButtonText])
+		return checkApiRequestInProgress(modifiedMessages)
+	}, [modifiedMessages, clineAsk, enableButtons, primaryButtonText, checkApiRequestInProgress])
 
 	// Track the actual streaming state for the cancel button separately.
 	// This ensures the cancel button remains enabled during API requests,
 	// even when there's a tool approval dialog.
 	const isApiRequestInProgress = useMemo(() => {
-		const isLastMessagePartial = modifiedMessages.at(-1)?.partial === true
-
-		if (isLastMessagePartial) {
-			return true
-		}
-
-		const lastApiReqStarted = findLast(
-			modifiedMessages,
-			(message: ClineMessage) => message.say === "api_req_started",
-		)
-
-		if (
-			lastApiReqStarted &&
-			lastApiReqStarted.text !== null &&
-			lastApiReqStarted.text !== undefined &&
-			lastApiReqStarted.say === "api_req_started"
-		) {
-			const cost = JSON.parse(lastApiReqStarted.text).cost
-
-			if (cost === undefined) {
-				return true // API request has not finished yet.
-			}
-		}
-
-		return false
-	}, [modifiedMessages])
+		return checkApiRequestInProgress(modifiedMessages)
+	}, [modifiedMessages, checkApiRequestInProgress])
 
 	const markFollowUpAsAnswered = useCallback(() => {
 		const lastFollowUpMessage = messagesRef.current.findLast((msg: ClineMessage) => msg.ask === "followup")
@@ -764,9 +743,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			const trimmedInput = text?.trim()
 
-			if (isStreaming || isApiRequestInProgress) {
+			if ((isStreaming || isApiRequestInProgress) && !isCancelPending) {
+				// Prevent rapid clicks by setting pending state
+				setIsCancelPending(true)
 				vscode.postMessage({ type: "cancelTask" })
 				setDidClickCancel(true)
+				// Reset pending state after a short delay
+				setTimeout(() => setIsCancelPending(false), 1000)
 				return
 			}
 
@@ -804,7 +787,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			setClineAsk(undefined)
 			setEnableButtons(false)
 		},
-		[clineAsk, startNewTask, isStreaming, isApiRequestInProgress],
+		[clineAsk, startNewTask, isStreaming, isApiRequestInProgress, isCancelPending],
 	)
 
 	const { info: model } = useSelectedModel(apiConfiguration)
