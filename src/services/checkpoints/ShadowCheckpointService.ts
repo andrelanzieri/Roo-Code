@@ -251,8 +251,6 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 						!normalizedPath.startsWith(".git/") &&
 						normalizedPath !== ".git/HEAD"
 					) {
-						// Normalize path first to handle Windows-style backslashes
-						const normalizedPath = result.path.replace(/\\/g, "/")
 						// Extract repo directory (remove .git/HEAD)
 						const gitDir = path.dirname(normalizedPath)
 						const repoDir = path.dirname(gitDir)
@@ -284,8 +282,6 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 							const content = await fs.readFile(gitFilePath, "utf8")
 							if (content.trim().startsWith("gitdir:")) {
 								// This is a worktree - exclude its directory
-								// Normalize path first to handle Windows-style backslashes
-								const normalizedPath = result.path.replace(/\\/g, "/")
 								const repoDir = path.dirname(normalizedPath)
 								nestedRepos.add(repoDir)
 							}
