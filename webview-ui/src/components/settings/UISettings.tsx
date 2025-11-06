@@ -73,12 +73,16 @@ export const UISettings = ({
 							onChange={(e: any) => handleRequireCtrlEnterToSendChange(e.target.checked)}
 							data-testid="ctrl-enter-checkbox">
 							<span className="font-medium">
-								{t("settings:ui.requireCtrlEnterToSend.label", { primaryMod: getPrimaryModifierKey() })}
+								{t("settings:ui.requireCtrlEnterToSend.label", {
+									primaryMod: getPrimaryModifierKey(),
+									interpolation: { prefix: "{", suffix: "}" },
+								})}
 							</span>
 						</VSCodeCheckbox>
 						<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
 							{t("settings:ui.requireCtrlEnterToSend.description", {
 								primaryMod: getPrimaryModifierKey(),
+								interpolation: { prefix: "{", suffix: "}" },
 							})}
 						</div>
 					</div>

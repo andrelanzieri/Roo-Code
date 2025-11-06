@@ -1255,12 +1255,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					key={messageOrGroup.ts}
 					message={messageOrGroup}
 					isExpanded={expandedRows[messageOrGroup.ts] || false}
-					onToggleExpand={toggleRowExpansion} // This was already stabilized
-					lastModifiedMessage={modifiedMessages.at(-1)} // Original direct access
-					isLast={index === groupedMessages.length - 1} // Original direct access
+					onToggleExpand={toggleRowExpansion}
+					lastModifiedMessage={modifiedMessages.at(-1)}
+					isLast={index === groupedMessages.length - 1}
 					onHeightChange={handleRowHeightChange}
 					isStreaming={isStreaming}
-					onSuggestionClick={handleSuggestionClickInRow} // This was already stabilized
+					onSuggestionClick={handleSuggestionClickInRow}
 					onBatchFileResponse={handleBatchFileResponse}
 					isFollowUpAnswered={messageOrGroup.isAnswered === true || messageOrGroup.ts === currentFollowUpTs}
 					editable={
@@ -1281,7 +1281,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							return tool.tool === "updateTodoList" && enableButtons && !!primaryButtonText
 						})()
 					}
-					hasCheckpoint={hasCheckpoint}
 				/>
 			)
 		},

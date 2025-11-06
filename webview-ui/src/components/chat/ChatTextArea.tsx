@@ -1008,11 +1008,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									"font-vscode-font-family",
 									"text-vscode-editor-font-size",
 									"leading-vscode-editor-line-height",
-									isFocused
-										? "border border-vscode-focusBorder outline outline-vscode-focusBorder"
-										: isDraggingOver
-											? "border-2 border-dashed border-vscode-focusBorder"
-											: "border border-transparent",
+									"border-none",
+									"outline-none",
 									"pl-2",
 									"py-2",
 									isEditMode ? "pr-20" : "pr-9",
@@ -1211,22 +1208,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										pointerEvents: "none",
 									}}>
 									{placeholderBottomText}
-								</div>
-							)}
-							{requireCtrlEnterToSend && (
-								<div
-									className={cn(
-										"absolute left-2 z-30 flex items-center h-8 font-vscode-font-family text-vscode-editor-font-size leading-vscode-editor-line-height",
-										isEditMode ? "pr-20" : "pr-9",
-									)}
-									style={{
-										bottom: "0.25rem",
-										color: "color-mix(in oklab, var(--vscode-descriptionForeground) 70%, transparent)",
-										userSelect: "none",
-										pointerEvents: "none",
-										fontSize: "0.75rem",
-									}}>
-									{t("chat:pressToSend", { keyCombination: getSendMessageKeyCombination() })}
 								</div>
 							)}
 						</div>

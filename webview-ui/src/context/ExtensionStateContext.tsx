@@ -11,7 +11,6 @@ import {
 	type OrganizationAllowList,
 	type CloudOrganizationMembership,
 	ORGANIZATION_ALLOW_ALL,
-	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 } from "@roo-code/types"
 
 import { ExtensionMessage, ExtensionState, MarketplaceInstalledMetadata, Command } from "@roo/ExtensionMessage"
@@ -161,11 +160,11 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setMaxDiagnosticMessages: (value: number) => void
 	includeTaskHistoryInEnhance?: boolean
 	setIncludeTaskHistoryInEnhance: (value: boolean) => void
-	includeCurrentTime?: boolean
+	includeCurrentTime: boolean
 	setIncludeCurrentTime: (value: boolean) => void
-	includeCurrentCost?: boolean
+	includeCurrentCost: boolean
 	setIncludeCurrentCost: (value: boolean) => void
-	requireCtrlEnterToSend?: boolean
+	requireCtrlEnterToSend: boolean
 	setRequireCtrlEnterToSend: (value: boolean) => void
 }
 
@@ -207,7 +206,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		ttsSpeed: 1.0,
 		diffEnabled: false,
 		enableCheckpoints: true,
-		checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, // Default to 15 seconds
+		checkpointTimeout: 15, // Default to 15 seconds
 		fuzzyMatchThreshold: 1.0,
 		language: "en", // Default language code
 		writeDelayMs: 1000,
@@ -604,7 +603,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setIncludeCurrentTime,
 		includeCurrentCost,
 		setIncludeCurrentCost,
-		requireCtrlEnterToSend: state.requireCtrlEnterToSend,
+		requireCtrlEnterToSend: !!state.requireCtrlEnterToSend,
 		setRequireCtrlEnterToSend: (value) => {
 			setState((prevState) => ({ ...prevState, requireCtrlEnterToSend: value }))
 		},
