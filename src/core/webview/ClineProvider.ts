@@ -585,6 +585,26 @@ export class ClineProvider
 		this.clearAllPendingEditOperations()
 		this.log("Cleared pending operations")
 
+		// Dispose code index manager and stop any ongoing indexing
+		if (this.codeIndexStatusSubscription) {
+			this.codeIndexStatusSubscription.dispose()
+			this.codeIndexStatusSubscription = undefined
+		}
+
+		// Stop code indexing if it's running
+		const codeIndexManager = this.getCurrentWorkspaceCodeIndexManager()
+		if (codeIndexManager) {
+			try {
+				codeIndexManager.stopWatcher()
+				this.log("Stopped code indexing during dispose")
+			} catch (error) {
+				this.log(
+					`Failed to stop code indexing during dispose: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		}
+		this.codeIndexManager = undefined
+
 		if (this.view && "dispose" in this.view) {
 			this.view.dispose()
 			this.log("Disposed webview")
@@ -1217,6 +1237,21 @@ export class ClineProvider
 	 * @param newMode The mode to switch to
 	 */
 	public async handleModeSwitch(newMode: Mode) {
+		// Stop code indexing if switching away from code mode
+		const currentMode = this.getGlobalState("mode") ?? defaultModeSlug
+		if (currentMode === "code" && newMode !== "code") {
+			const codeIndexManager = this.getCurrentWorkspaceCodeIndexManager()
+			if (codeIndexManager) {
+				try {
+					// Stop the file watcher to prevent continuous disk reading
+					codeIndexManager.stopWatcher()
+					this.log(`Stopped code indexing when switching from code mode to ${newMode}`)
+				} catch (error) {
+					this.log(`Failed to stop code indexing: ${error instanceof Error ? error.message : String(error)}`)
+				}
+			}
+		}
+
 		const task = this.getCurrentTask()
 
 		if (task) {
@@ -2472,6 +2507,11 @@ export class ClineProvider
 		// Dispose the old subscription if it exists
 		if (this.codeIndexStatusSubscription) {
 			this.codeIndexStatusSubscription.dispose()
+			// Remove from webviewDisposables to prevent duplicate disposal
+			const index = this.webviewDisposables.indexOf(this.codeIndexStatusSubscription)
+			if (index > -1) {
+				this.webviewDisposables.splice(index, 1)
+			}
 			this.codeIndexStatusSubscription = undefined
 		}
 
@@ -2492,7 +2532,8 @@ export class ClineProvider
 				}
 			})
 
-			if (this.view) {
+			// Only add to disposables if view exists and subscription is not already added
+			if (this.view && this.webviewDisposables.indexOf(this.codeIndexStatusSubscription) === -1) {
 				this.webviewDisposables.push(this.codeIndexStatusSubscription)
 			}
 

@@ -247,10 +247,25 @@ export class CodeIndexManager {
 	 * Cleans up the manager instance.
 	 */
 	public dispose(): void {
+		// Stop file watcher and indexing if running
 		if (this._orchestrator) {
 			this.stopWatcher()
+			this._orchestrator = undefined
 		}
-		this._stateManager.dispose()
+
+		// Dispose state manager
+		if (this._stateManager) {
+			this._stateManager.dispose()
+		}
+
+		// Clear all service references to allow garbage collection
+		this._configManager = undefined
+		this._serviceFactory = undefined
+		this._searchService = undefined
+		this._cacheManager = undefined
+
+		// Remove this instance from the static instances map
+		CodeIndexManager.instances.delete(this.workspacePath)
 	}
 
 	/**
