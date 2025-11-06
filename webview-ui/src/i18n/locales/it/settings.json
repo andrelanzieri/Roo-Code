@@ -954,7 +954,8 @@
 	},
 	"ui": {
 		"collapseThinking": {
-			"label": "Comprimi i messaggi di pensiero per impostazione predefinita"
+			"label": "Comprimi i messaggi di pensiero per impostazione predefinita",
+			"description": "Quando abilitato, i blocchi di pensiero saranno compressi per impostazione predefinita finché non interagisci con essi"
 		},
 		"requireCtrlEnterToSend": {
 			"label": "Richiedi {primaryMod}+Invio per inviare messaggi",
