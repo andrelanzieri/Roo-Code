@@ -33,7 +33,7 @@ describe("RetryStatusRow", () => {
 		render(<RetryStatusRow metadata={metadata} />)
 
 		expect(screen.getByText("chat:retryStatus.rateLimit.waitingWithAttemptMax")).toBeInTheDocument()
-		expect(screen.getByText("chat:retryStatus.rateLimit.description")).toBeInTheDocument()
+		expect(screen.getByText("chat:retryStatus.rateLimit.title")).toBeInTheDocument()
 	})
 
 	it("renders retrying state for backoff cause", () => {
