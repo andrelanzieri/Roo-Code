@@ -3,7 +3,7 @@ import os from "os"
 import * as path from "path"
 import * as vscode from "vscode"
 
-function flattenMessages(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+export function flattenMessages(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
 	return messages.flatMap((message) => {
 		// Check if this is an Orchestrator message with nested tasks
 		if (
