@@ -16,7 +16,17 @@ export class MiniMaxHandler extends BaseOpenAiCompatibleProvider<MinimaxModelId>
 
 	constructor(options: ApiHandlerOptions) {
 		const baseURL = options.minimaxBaseUrl ?? "https://api.minimax.io/v1"
-		const isChinaEndpoint = baseURL.includes("minimaxi.com")
+		// Detect China endpoint by parsing the hostname
+		// China endpoint uses different model IDs than international endpoint
+		let isChinaEndpoint = false
+		try {
+			const url = new URL(baseURL)
+			// Check for known China domains: minimaxi.com or minimax.com (as mentioned in issue)
+			isChinaEndpoint = url.hostname.endsWith("minimaxi.com") || url.hostname.endsWith("minimax.com")
+		} catch {
+			// If URL parsing fails, fall back to simple check
+			isChinaEndpoint = baseURL.includes("minimaxi.com")
+		}
 
 		super({
 			...options,
@@ -43,11 +53,13 @@ export class MiniMaxHandler extends BaseOpenAiCompatibleProvider<MinimaxModelId>
 		// Map model IDs for China endpoint - they use different model names
 		let apiModelId = modelId as string
 		if (this.isChinaEndpoint) {
+			// China endpoint requires different model IDs than the international endpoint
+			// MiniMax uses different naming conventions for their China-hosted models
 			const chinaModelMapping: Record<string, string> = {
 				"MiniMax-M2": "abab7-chat",
 				"MiniMax-M2-Stable": "abab7-chat-hd",
 			}
-			apiModelId = chinaModelMapping[modelId] || modelId.toLowerCase()
+			apiModelId = chinaModelMapping[modelId] ?? modelId
 		}
 
 		// Centralized cap: clamp to 20% of the context window (unless provider-specific exceptions apply)
@@ -84,11 +96,13 @@ export class MiniMaxHandler extends BaseOpenAiCompatibleProvider<MinimaxModelId>
 		// Map model IDs for China endpoint
 		let apiModelId = modelId as string
 		if (this.isChinaEndpoint) {
+			// China endpoint requires different model IDs than the international endpoint
+			// MiniMax uses different naming conventions for their China-hosted models
 			const chinaModelMapping: Record<string, string> = {
 				"MiniMax-M2": "abab7-chat",
 				"MiniMax-M2-Stable": "abab7-chat-hd",
 			}
-			apiModelId = chinaModelMapping[modelId] || modelId.toLowerCase()
+			apiModelId = chinaModelMapping[modelId] ?? modelId
 		}
 
 		try {
