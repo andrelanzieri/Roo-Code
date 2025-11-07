@@ -161,9 +161,9 @@
 	},
 	"rateLimitRetry": {
 		"title": "Đã đạt giới hạn tốc độ — vui lòng đợi.",
-		"waiting": "Đang thử lại sau {{seconds}}s",
-		"waitingWithAttempt": "Đang thử lại sau {{seconds}}s (thử lại lần {{attempt}})",
-		"waitingWithAttemptMax": "Đang thử lại sau {{seconds}}s (thử lại lần {{attempt}}/{{maxAttempts}})",
+		"waiting": "Đang thử lại sau {{seconds}} giây",
+		"waitingWithAttempt": "Đang thử lại sau {{seconds}} giây (thử lại lần {{attempt}})",
+		"waitingWithAttemptMax": "Đang thử lại sau {{seconds}} giây (thử lại lần {{attempt}}/{{maxAttempts}})",
 		"retrying": "Đang thử lại ngay…",
 		"cancelled": "Đã hủy thử lại"
 	},

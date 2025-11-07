@@ -152,11 +152,11 @@
 		},
 		"backoff": {
 			"title": "अनुरोध विफल",
-			"waiting": "{{seconds}} सेकंड में पुन: प्रयास कर रहा है",
-			"waitingWithAttempt": "{{seconds}} सेकंड में पुन: प्रयास कर रहा है (प्रयास #{{attempt}})",
-			"waitingWithAttemptMax": "{{seconds}} सेकंड में पुन: प्रयास कर रहा है (प्रयास #{{attempt}}/{{maxAttempts}})",
+			"waiting": "{{seconds}} सेकंड में पुनः प्रयास कर रहा है",
+			"waitingWithAttempt": "{{seconds}} सेकंड में पुनः प्रयास कर रहा है (प्रयास #{{attempt}})",
+			"waitingWithAttemptMax": "{{seconds}} सेकंड में पुनः प्रयास कर रहा है (प्रयास #{{attempt}}/{{maxAttempts}})",
 			"retrying": "अब कोशिश कर रहा हूँ...",
-			"cancelled": "पुन: प्रयास रद्द"
+			"cancelled": "पुनः प्रयास रद्द"
 		}
 	},
 	"rateLimitRetry": {

@@ -19,7 +19,7 @@ vi.mock("@/i18n/TranslationContext", () => ({
 //    rendering a single live status row: spinner + per‑second countdown,
 //    then "Retrying now..." at zero. Input remains disabled during the wait.
 describe("RetryStatusRow", () => {
-	it("renders waiting countdown with attempt and max attempts for rate limit cause", () => {
+	it("renders waiting countdown for rate limit cause", () => {
 		const metadata: RetryStatusMetadata = {
 			type: "retry_status",
 			status: "waiting",
@@ -32,7 +32,7 @@ describe("RetryStatusRow", () => {
 
 		render(<RetryStatusRow metadata={metadata} />)
 
-		expect(screen.getByText("chat:retryStatus.rateLimit.waitingWithAttemptMax")).toBeInTheDocument()
+		expect(screen.getByText("chat:retryStatus.rateLimit.waiting")).toBeInTheDocument()
 		expect(screen.getByText("chat:retryStatus.rateLimit.title")).toBeInTheDocument()
 	})
 
@@ -47,6 +47,19 @@ describe("RetryStatusRow", () => {
 		render(<RetryStatusRow metadata={metadata} />)
 
 		expect(screen.getByText("chat:retryStatus.backoff.retrying")).toBeInTheDocument()
+	})
+
+	it("renders proceeding state for rate limit cause", () => {
+		const metadata: RetryStatusMetadata = {
+			type: "retry_status",
+			status: "retrying",
+			origin: "retry_attempt",
+			cause: "rate_limit",
+		}
+
+		render(<RetryStatusRow metadata={metadata} />)
+
+		expect(screen.getByText("chat:retryStatus.rateLimit.proceeding")).toBeInTheDocument()
 	})
 
 	it("renders cancelled state (neutral)", () => {
@@ -117,7 +130,7 @@ describe("RetryStatusRow", () => {
 		const { rerender } = render(<RetryStatusRow metadata={metadata1} />)
 
 		// Initial countdown
-		expect(screen.getByText("chat:retryStatus.rateLimit.waitingWithAttemptMax")).toBeInTheDocument()
+		expect(screen.getByText("chat:retryStatus.rateLimit.waiting")).toBeInTheDocument()
 
 		// Update countdown
 		const metadata2: RetryStatusMetadata = {
@@ -128,6 +141,6 @@ describe("RetryStatusRow", () => {
 		rerender(<RetryStatusRow metadata={metadata2} />)
 
 		// Should still show the same text key but with updated seconds
-		expect(screen.getByText("chat:retryStatus.rateLimit.waitingWithAttemptMax")).toBeInTheDocument()
+		expect(screen.getByText("chat:retryStatus.rateLimit.waiting")).toBeInTheDocument()
 	})
 })

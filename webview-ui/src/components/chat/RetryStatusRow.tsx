@@ -37,7 +37,7 @@ export const RetryStatusRow = ({ metadata }: RetryStatusRowProps) => {
 		const isRateLimit = metadata.cause === "rate_limit"
 
 		if (metadata.status === "retrying") {
-			return isRateLimit ? t("chat:retryStatus.rateLimit.retrying") : t("chat:retryStatus.backoff.retrying")
+			return isRateLimit ? t("chat:retryStatus.rateLimit.proceeding") : t("chat:retryStatus.backoff.retrying")
 		}
 
 		if (metadata.status === "cancelled") {
@@ -46,25 +46,8 @@ export const RetryStatusRow = ({ metadata }: RetryStatusRowProps) => {
 
 		if (typeof metadata.remainingSeconds === "number") {
 			if (isRateLimit) {
-				// Rate limit: handle attempt/maxAttempts like backoff case
-				const baseKey = "chat:retryStatus.rateLimit"
-
-				if (metadata.attempt && metadata.maxAttempts) {
-					return t(`${baseKey}.waitingWithAttemptMax`, {
-						seconds: metadata.remainingSeconds,
-						attempt: metadata.attempt,
-						maxAttempts: metadata.maxAttempts,
-					})
-				}
-
-				if (metadata.attempt) {
-					return t(`${baseKey}.waitingWithAttempt`, {
-						seconds: metadata.remainingSeconds,
-						attempt: metadata.attempt,
-					})
-				}
-
-				return t(`${baseKey}.waiting`, { seconds: metadata.remainingSeconds })
+				// Rate limit: always use simple waiting message (no attempt numbers)
+				return t("chat:retryStatus.rateLimit.waiting", { seconds: metadata.remainingSeconds })
 			} else {
 				// Retry: "Trying in 22s (attempt #2)"
 				const baseKey = "chat:retryStatus.backoff"
