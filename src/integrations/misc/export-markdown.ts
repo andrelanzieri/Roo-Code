@@ -3,6 +3,48 @@ import os from "os"
 import * as path from "path"
 import * as vscode from "vscode"
 
+function flattenMessages(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+	return messages.flatMap((message) => {
+		// Check if this is an Orchestrator message with nested tasks
+		if (
+			message.role === "assistant" &&
+			typeof message.content === "string" &&
+			message.content.includes("Orchestrator: Task completed")
+		) {
+			// This is an Orchestrator completion message, we'll include it but not its nested content
+			// as that will be included separately in the history
+			return [
+				{
+					role: message.role,
+					content: message.content,
+				},
+			]
+		}
+
+		// For tool_use and tool_result messages, ensure they're properly included
+		if (Array.isArray(message.content)) {
+			const processedContent = message.content.map((block) => {
+				if (block.type === "tool_result" && typeof block.content !== "string" && Array.isArray(block.content)) {
+					// Flatten nested tool results
+					return {
+						...block,
+						content: block.content.map(formatContentBlockToMarkdown).join("\n"),
+					}
+				}
+				return block
+			})
+			return [
+				{
+					...message,
+					content: processedContent,
+				},
+			]
+		}
+
+		return [message]
+	})
+}
+
 export async function downloadTask(dateTs: number, conversationHistory: Anthropic.MessageParam[]) {
 	// File name
 	const date = new Date(dateTs)
@@ -17,8 +59,11 @@ export async function downloadTask(dateTs: number, conversationHistory: Anthropi
 	hours = hours ? hours : 12 // the hour '0' should be '12'
 	const fileName = `roo_task_${month}-${day}-${year}_${hours}-${minutes}-${seconds}-${ampm}.md`
 
+	// Flatten and process messages for export
+	const flattenedHistory = flattenMessages(conversationHistory)
+
 	// Generate markdown
-	const markdownContent = conversationHistory
+	const markdownContent = flattenedHistory
 		.map((message) => {
 			const role = message.role === "user" ? "**User:**" : "**Assistant:**"
 			const content = Array.isArray(message.content)
