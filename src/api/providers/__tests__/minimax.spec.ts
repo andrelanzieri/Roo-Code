@@ -131,6 +131,79 @@ describe("MiniMaxHandler", () => {
 			expect(model.id).toBe(minimaxDefaultModelId)
 			expect(model.info).toEqual(minimaxModels[minimaxDefaultModelId])
 		})
+
+		it("should map MiniMax-M2 to abab7-chat for China endpoint", async () => {
+			const handlerWithModel = new MiniMaxHandler({
+				apiModelId: "MiniMax-M2",
+				minimaxApiKey: "test-minimax-api-key",
+				minimaxBaseUrl: "https://api.minimaxi.com/v1",
+			})
+
+			mockCreate.mockImplementationOnce(() => {
+				return {
+					[Symbol.asyncIterator]: () => ({
+						async next() {
+							return { done: true }
+						},
+					}),
+				}
+			})
+
+			const messageGenerator = handlerWithModel.createMessage("test", [])
+			await messageGenerator.next()
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: "abab7-chat", // Mapped model ID for China endpoint
+				}),
+				undefined,
+			)
+		})
+
+		it("should map MiniMax-M2-Stable to abab7-chat-hd for China endpoint", async () => {
+			const handlerWithModel = new MiniMaxHandler({
+				apiModelId: "MiniMax-M2-Stable",
+				minimaxApiKey: "test-minimax-api-key",
+				minimaxBaseUrl: "https://api.minimaxi.com/v1",
+			})
+
+			mockCreate.mockImplementationOnce(() => {
+				return {
+					[Symbol.asyncIterator]: () => ({
+						async next() {
+							return { done: true }
+						},
+					}),
+				}
+			})
+
+			const messageGenerator = handlerWithModel.createMessage("test", [])
+			await messageGenerator.next()
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: "abab7-chat-hd", // Mapped model ID for China endpoint
+				}),
+				undefined,
+			)
+		})
+
+		it("should map model ID correctly in completePrompt for China endpoint", async () => {
+			const handlerWithModel = new MiniMaxHandler({
+				apiModelId: "MiniMax-M2",
+				minimaxApiKey: "test-minimax-api-key",
+				minimaxBaseUrl: "https://api.minimaxi.com/v1",
+			})
+
+			mockCreate.mockResolvedValueOnce({ choices: [{ message: { content: "test response" } }] })
+			await handlerWithModel.completePrompt("test prompt")
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: "abab7-chat", // Mapped model ID for China endpoint
+				}),
+			)
+		})
 	})
 
 	describe("Default behavior", () => {
@@ -253,6 +326,35 @@ describe("MiniMaxHandler", () => {
 					messages: expect.arrayContaining([{ role: "system", content: systemPrompt }]),
 					stream: true,
 					stream_options: { include_usage: true },
+				}),
+				undefined,
+			)
+		})
+
+		it("should not apply model ID mapping for international endpoint", async () => {
+			const modelId: MinimaxModelId = "MiniMax-M2"
+			const handlerWithModel = new MiniMaxHandler({
+				apiModelId: modelId,
+				minimaxApiKey: "test-minimax-api-key",
+				minimaxBaseUrl: "https://api.minimax.io/v1",
+			})
+
+			mockCreate.mockImplementationOnce(() => {
+				return {
+					[Symbol.asyncIterator]: () => ({
+						async next() {
+							return { done: true }
+						},
+					}),
+				}
+			})
+
+			const messageGenerator = handlerWithModel.createMessage("test", [])
+			await messageGenerator.next()
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: modelId, // Original model ID for international endpoint
 				}),
 				undefined,
 			)
