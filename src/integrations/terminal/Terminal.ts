@@ -6,6 +6,7 @@ import { BaseTerminal } from "./BaseTerminal"
 import { TerminalProcess } from "./TerminalProcess"
 import { ShellIntegrationManager } from "./ShellIntegrationManager"
 import { mergePromise } from "./mergePromise"
+import { Package } from "../../shared/package"
 
 export class Terminal extends BaseTerminal {
 	public terminal: vscode.Terminal
@@ -14,6 +15,13 @@ export class Terminal extends BaseTerminal {
 
 	constructor(id: number, terminal: vscode.Terminal | undefined, cwd: string) {
 		super("vscode", id, cwd)
+
+		// Initialize shell integration timeout from VS Code configuration
+		const config = vscode.workspace.getConfiguration(Package.name)
+		const configTimeout = config.get<number>("terminalShellIntegrationTimeout")
+		if (configTimeout !== undefined) {
+			Terminal.setShellIntegrationTimeout(configTimeout)
+		}
 
 		const env = Terminal.getEnv()
 		const iconPath = new vscode.ThemeIcon("rocket")
@@ -79,15 +87,25 @@ export class Terminal extends BaseTerminal {
 					process.run(command)
 				})
 				.catch(() => {
-					console.log(`[Terminal ${this.id}] Shell integration not available. Command execution aborted.`)
+					const timeoutMs = Terminal.getShellIntegrationTimeout()
+					const isTheia = this.isTheiaIDE()
+
+					console.log(
+						`[Terminal ${this.id}] Shell integration not available${isTheia ? " in Theia IDE" : ""}. Command execution aborted.`,
+					)
 
 					// Clean up temporary directory if shell integration is not available
 					ShellIntegrationManager.zshCleanupTmpDir(this.id)
 
-					process.emit(
-						"no_shell_integration",
-						`Shell integration initialization sequence '\\x1b]633;A' was not received within ${Terminal.getShellIntegrationTimeout() / 1000}s. Shell integration has been disabled for this terminal instance. Increase the timeout in the settings if necessary.`,
-					)
+					let errorMessage = `Shell integration initialization sequence '\\x1b]633;A' was not received within ${timeoutMs / 1000}s. Shell integration has been disabled for this terminal instance.`
+
+					if (isTheia) {
+						errorMessage += ` You appear to be using Theia IDE. Consider increasing the timeout in VS Code settings (roo-cline.terminalShellIntegrationTimeout) or refer to the documentation for Theia-specific setup.`
+					} else {
+						errorMessage += ` Increase the timeout in the settings if necessary.`
+					}
+
+					process.emit("no_shell_integration", errorMessage)
 				})
 		})
 
@@ -189,5 +207,26 @@ export class Terminal extends BaseTerminal {
 		}
 
 		return env
+	}
+
+	/**
+	 * Detects if we're running in Theia IDE
+	 * @returns true if running in Theia IDE, false otherwise
+	 */
+	private isTheiaIDE(): boolean {
+		// Check for Theia-specific environment variables or app name
+		if (process.env.THEIA_CONFIG_DIR || process.env.THEIA_WORKSPACE_ROOT || process.env.GITPOD_REPO_ROOT) {
+			return true
+		}
+
+		// Check if VSCode's appName contains "Theia"
+		if (vscode.env.appName && vscode.env.appName.toLowerCase().includes("theia")) {
+			return true
+		}
+
+		// Additional check: look for Theia-specific extension by ID (if any are known)
+		// This is a placeholder - actual Theia-specific extensions would need to be identified
+
+		return false
 	}
 }

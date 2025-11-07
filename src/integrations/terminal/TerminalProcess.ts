@@ -79,17 +79,18 @@ export class TerminalProcess extends BaseTerminalProcess {
 				this.removeAllListeners("stream_available")
 
 				// Emit no_shell_integration event with descriptive message
+				const timeoutSeconds = Terminal.getShellIntegrationTimeout() / 1000
+				console.debug(
+					`[TerminalProcess] Shell integration stream did not start within ${timeoutSeconds} seconds`,
+				)
+
 				this.emit(
 					"no_shell_integration",
-					`VSCE shell integration stream did not start within ${Terminal.getShellIntegrationTimeout() / 1000} seconds. Terminal problem?`,
+					`VSCE shell integration stream did not start within ${timeoutSeconds} seconds. Terminal problem?`,
 				)
 
 				// Reject with descriptive error
-				reject(
-					new Error(
-						`VSCE shell integration stream did not start within ${Terminal.getShellIntegrationTimeout() / 1000} seconds.`,
-					),
-				)
+				reject(new Error(`VSCE shell integration stream did not start within ${timeoutSeconds} seconds.`))
 			}, Terminal.getShellIntegrationTimeout())
 
 			// Clean up timeout if stream becomes available
@@ -222,6 +223,9 @@ export class TerminalProcess extends BaseTerminalProcess {
 
 			const inspectPreOutput = inspect(preOutput, { colors: false, breakLength: Infinity })
 			console.error(`[Terminal Process] ${errorMsg} preOutput: ${inspectPreOutput}`)
+			console.debug(`[TerminalProcess] Shell integration markers not found in output`)
+			console.debug(`[TerminalProcess] Output contains: ${this.fullOutput.length} characters`)
+			console.debug(`[TerminalProcess] Looking for markers: \\x1b]633;C or \\x1b]133;C`)
 
 			// Emit no_shell_integration event
 			this.emit("no_shell_integration", errorMsg)
@@ -402,7 +406,19 @@ export class TerminalProcess extends BaseTerminalProcess {
 	 * If both exist, takes the content after the last marker found.
 	 */
 	private matchAfterVsceStartMarkers(data: string): string | undefined {
-		return this.matchVsceMarkers(data, "\x1b]633;C", "\x1b]133;C", undefined, undefined)
+		const result = this.matchVsceMarkers(data, "\x1b]633;C", "\x1b]133;C", undefined, undefined)
+
+		if (result === undefined) {
+			console.debug(`[TerminalProcess] No start markers found in data (length: ${data.length})`)
+			// Log first 200 chars of data in a safe way (escape control chars)
+			// eslint-disable-next-line no-control-regex
+			const preview = data.substring(0, 200).replace(/\x1b/g, "\\x1b").replace(/\x07/g, "\\x07")
+			console.debug(`[TerminalProcess] Data preview: ${preview}`)
+		} else {
+			console.debug(`[TerminalProcess] Found start markers, extracted ${result.length} characters`)
+		}
+
+		return result
 	}
 
 	/**

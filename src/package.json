@@ -436,6 +436,13 @@
 					"minimum": 1,
 					"maximum": 200,
 					"description": "%settings.codeIndex.embeddingBatchSize.description%"
+				},
+				"roo-cline.terminalShellIntegrationTimeout": {
+					"type": "number",
+					"default": 5000,
+					"minimum": 1000,
+					"maximum": 30000,
+					"description": "Timeout in milliseconds for terminal shell integration initialization. Increase this value if you encounter 'Shell integration initialization sequence was not received' errors in IDEs like Theia (default: 5000ms, range: 1000-30000ms)."
 				}
 			}
 		}
