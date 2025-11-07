@@ -7,6 +7,7 @@ import { ExternalLinkIcon } from "@radix-ui/react-icons"
 import {
 	type ProviderName,
 	type ProviderSettings,
+	type ModelInfo,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	openRouterDefaultModelId,
 	requestyDefaultModelId,
@@ -173,6 +174,9 @@ const ApiOptions = ({
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 	const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
 
+	// Simple cache to prevent flicker during settings save
+	const [lastKnownModelInfo, setLastKnownModelInfo] = useState<ModelInfo | undefined>()
+
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
 			field: K,
@@ -189,6 +193,16 @@ const ApiOptions = ({
 		id: selectedModelId,
 		info: selectedModelInfo,
 	} = useSelectedModel(apiConfiguration)
+
+	// Update cache whenever selectedModelInfo is available
+	useEffect(() => {
+		if (selectedModelInfo) {
+			setLastKnownModelInfo(selectedModelInfo)
+		}
+	}, [selectedModelInfo])
+
+	// Use cached info as fallback when selectedModelInfo is temporarily unavailable
+	const displayModelInfo = selectedModelInfo || lastKnownModelInfo
 
 	const { data: routerModels, refetch: refetchRouterModels } = useRouterModels()
 
@@ -749,11 +763,11 @@ const ApiOptions = ({
 					)}
 
 					{/* Only show model info if not deprecated */}
-					{!selectedModelInfo?.deprecated && (
+					{!displayModelInfo?.deprecated && (
 						<ModelInfoView
 							apiProvider={selectedProvider}
 							selectedModelId={selectedModelId}
-							modelInfo={selectedModelInfo}
+							modelInfo={displayModelInfo}
 							isDescriptionExpanded={isDescriptionExpanded}
 							setIsDescriptionExpanded={setIsDescriptionExpanded}
 						/>
@@ -773,16 +787,16 @@ const ApiOptions = ({
 					key={`${selectedProvider}-${selectedModelId}`}
 					apiConfiguration={apiConfiguration}
 					setApiConfigurationField={setApiConfigurationField}
-					modelInfo={selectedModelInfo}
+					modelInfo={displayModelInfo}
 				/>
 			)}
 
 			{/* Gate Verbosity UI by capability flag */}
-			{selectedModelInfo?.supportsVerbosity && (
+			{displayModelInfo?.supportsVerbosity && (
 				<Verbosity
 					apiConfiguration={apiConfiguration}
 					setApiConfigurationField={setApiConfigurationField}
-					modelInfo={selectedModelInfo}
+					modelInfo={displayModelInfo}
 				/>
 			)}
 
@@ -802,12 +816,12 @@ const ApiOptions = ({
 							fuzzyMatchThreshold={apiConfiguration.fuzzyMatchThreshold}
 							onChange={(field, value) => setApiConfigurationField(field, value)}
 						/>
-						{selectedModelInfo?.supportsTemperature !== false && (
+						{displayModelInfo?.supportsTemperature !== false && (
 							<TemperatureControl
 								value={apiConfiguration.modelTemperature}
 								onChange={handleInputChange("modelTemperature", noTransform)}
 								maxValue={2}
-								defaultValue={selectedModelInfo?.defaultTemperature}
+								defaultValue={displayModelInfo?.defaultTemperature}
 							/>
 						)}
 						<RateLimitSecondsControl
