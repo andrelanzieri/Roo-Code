@@ -11,6 +11,7 @@ import {
 
 import type { ApiHandlerOptions, ModelRecord } from "../../shared/api"
 
+import { shouldSkipReasoningForModel } from "../../utils/model-utils"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStreamChunk } from "../transform/stream"
 import { convertToR1Format } from "../transform/r1-format"
@@ -238,6 +239,21 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 								arguments: toolCall.function?.arguments || "",
 							})
 						}
+					}
+				}
+
+				// OpenRouter passes reasoning details that we can pass back unmodified in api requests to preserve reasoning traces for model
+				// See: https://openrouter.ai/docs/use-cases/reasoning-tokens#preserving-reasoning-blocks
+				if (
+					"reasoning_details" in delta &&
+					(delta as any).reasoning_details &&
+					// @ts-ignore-next-line
+					(delta as any).reasoning_details.length && // exists and non-0
+					!shouldSkipReasoningForModel(this.options.openRouterModelId)
+				) {
+					yield {
+						type: "reasoning_details",
+						reasoning_details: (delta as any).reasoning_details,
 					}
 				}
 
