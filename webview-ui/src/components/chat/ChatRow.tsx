@@ -170,6 +170,7 @@ export const ChatRowContent = ({
 	const [editedContent, setEditedContent] = useState("")
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
 	const [editImages, setEditImages] = useState<string[]>([])
+	const [showRequestResponse, setShowRequestResponse] = useState(false)
 
 	// Handle message events for image selection during edit mode
 	useEffect(() => {
@@ -1070,12 +1071,15 @@ export const ChatRowContent = ({
 					const isApiRequestInProgress =
 						apiReqCancelReason === undefined && apiRequestFailedMessage === undefined && cost === undefined
 
+					// Parse the API request info to get request and response data
+					const apiReqInfo = safeJsonParse<ClineApiReqInfo>(message.text)
+
 					return (
 						<>
 							<div
 								className={`group text-sm transition-opacity ${
-									isApiRequestInProgress ? "opacity-100" : "opacity-40 hover:opacity-100"
-								}`}
+									apiReqInfo?.request || apiReqInfo?.response ? "cursor-pointer" : ""
+								} ${isApiRequestInProgress ? "opacity-100" : "opacity-40 hover:opacity-100"}`}
 								style={{
 									...headerStyle,
 									marginBottom:
@@ -1084,10 +1088,21 @@ export const ChatRowContent = ({
 											? 10
 											: 0,
 									justifyContent: "space-between",
+								}}
+								onClick={() => {
+									if (apiReqInfo?.request || apiReqInfo?.response) {
+										setShowRequestResponse(!showRequestResponse)
+									}
 								}}>
 								<div style={{ display: "flex", alignItems: "center", gap: "10px", flexGrow: 1 }}>
 									{icon}
 									{title}
+									{(apiReqInfo?.request || apiReqInfo?.response) && (
+										<span
+											className={`codicon codicon-chevron-${showRequestResponse ? "up" : "down"}`}
+											style={{ fontSize: "12px", opacity: 0.7 }}
+										/>
+									)}
 								</div>
 								<div
 									className="text-xs text-vscode-dropdown-foreground border-vscode-dropdown-border/50 border px-1.5 py-0.5 rounded-lg"
@@ -1095,6 +1110,36 @@ export const ChatRowContent = ({
 									${Number(cost || 0)?.toFixed(4)}
 								</div>
 							</div>
+							{showRequestResponse && (apiReqInfo?.request || apiReqInfo?.response) && (
+								<div className="ml-6 mt-2 mb-4">
+									{apiReqInfo?.request && (
+										<div className="mb-3">
+											<div className="text-xs font-semibold mb-1 text-vscode-descriptionForeground">
+												Request to LLM:
+											</div>
+											<CodeAccordian
+												code={apiReqInfo.request}
+												language="json"
+												isExpanded={true}
+												onToggleExpand={() => {}}
+											/>
+										</div>
+									)}
+									{apiReqInfo?.response && (
+										<div>
+											<div className="text-xs font-semibold mb-1 text-vscode-descriptionForeground">
+												Response from LLM:
+											</div>
+											<CodeAccordian
+												code={apiReqInfo.response}
+												language="markdown"
+												isExpanded={true}
+												onToggleExpand={() => {}}
+											/>
+										</div>
+									)}
+								</div>
+							)}
 							{(((cost === null || cost === undefined) && apiRequestFailedMessage) ||
 								apiReqStreamingFailedMessage) && (
 								<ErrorRow

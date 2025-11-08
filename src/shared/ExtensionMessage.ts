@@ -464,6 +464,7 @@ export interface ClineAskUseMcpServer {
 
 export interface ClineApiReqInfo {
 	request?: string
+	response?: string
 	tokensIn?: number
 	tokensOut?: number
 	cacheWrites?: number

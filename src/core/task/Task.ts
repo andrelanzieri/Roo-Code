@@ -1859,8 +1859,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// message.
 			const lastApiReqIndex = findLastIndex(this.clineMessages, (m) => m.say === "api_req_started")
 
+			// Store the request content as a formatted string
+			const requestContent = JSON.stringify(
+				{
+					role: "user",
+					content: finalUserContent,
+				},
+				null,
+				2,
+			)
+
 			this.clineMessages[lastApiReqIndex].text = JSON.stringify({
 				apiProtocol,
+				request: requestContent,
 			} satisfies ClineApiReqInfo)
 
 			await this.saveClineMessages()
@@ -1880,6 +1891,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// anyways, so it remains solely for legacy purposes to keep track
 				// of prices in tasks from history (it's worth removing a few months
 				// from now).
+				// Store accumulated response text for the API request
+				let accumulatedResponse = ""
+
 				const updateApiReqMsg = (cancelReason?: ClineApiReqCancelReason, streamingFailedMessage?: string) => {
 					if (lastApiReqIndex < 0 || !this.clineMessages[lastApiReqIndex]) {
 						return
@@ -1917,6 +1931,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						cost: totalCost ?? costResult.totalCost,
 						cancelReason,
 						streamingFailedMessage,
+						response: accumulatedResponse || undefined,
 					} satisfies ClineApiReqInfo)
 				}
 
@@ -2014,6 +2029,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								break
 							case "text": {
 								assistantMessage += chunk.text
+								accumulatedResponse += chunk.text
 
 								// Parse raw assistant message chunk into content blocks.
 								const prevLength = this.assistantMessageContent.length
