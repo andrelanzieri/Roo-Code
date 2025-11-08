@@ -2703,12 +2703,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			})
 		}
 
-		// Legacy function for backward compatibility
-		const sendRateLimitUpdate = async (payload: RateLimitRetryPayload, isPartial: boolean): Promise<void> => {
-			const retryPayload: RetryStatusPayload = { ...payload, type: "retry_status", cause: "rate_limit" }
-			await sendRetryStatusUpdate(retryPayload, isPartial)
-		}
-
 		const runRateLimitCountdown = async ({
 			seconds,
 			origin,
