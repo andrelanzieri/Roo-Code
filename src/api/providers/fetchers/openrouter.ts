@@ -205,6 +205,11 @@ export const parseOpenRouterModel = ({
 
 	const supportsPromptCache = typeof cacheReadsPrice !== "undefined" // some models support caching but don't charge a cacheWritesPrice, e.g. GPT-5
 
+	// Check if the model supports reasoning (either through include_reasoning or reasoning parameters)
+	const supportsReasoning = supportedParameters
+		? supportedParameters.includes("reasoning") || supportedParameters.includes("include_reasoning")
+		: false
+
 	const modelInfo: ModelInfo = {
 		maxTokens: maxTokens || Math.ceil(model.context_length * 0.2),
 		contextWindow: model.context_length,
@@ -217,6 +222,8 @@ export const parseOpenRouterModel = ({
 		description: model.description,
 		supportsReasoningEffort: supportedParameters ? supportedParameters.includes("reasoning") : undefined,
 		supportedParameters: supportedParameters ? supportedParameters.filter(isModelParameter) : undefined,
+		// Preserve reasoning in conversation history for models that support reasoning
+		preserveReasoning: supportsReasoning,
 	}
 
 	if (OPEN_ROUTER_REASONING_BUDGET_MODELS.has(id)) {
@@ -239,6 +246,8 @@ export const parseOpenRouterModel = ({
 
 	if (id === "anthropic/claude-3.7-sonnet:thinking") {
 		modelInfo.maxTokens = anthropicModels["claude-3-7-sonnet-20250219:thinking"].maxTokens
+		// Ensure reasoning is preserved for thinking models
+		modelInfo.preserveReasoning = true
 	}
 
 	// Set claude-opus-4.1 model to use the correct configuration
@@ -251,6 +260,14 @@ export const parseOpenRouterModel = ({
 	if (id === "anthropic/claude-haiku-4.5") {
 		modelInfo.supportsReasoningBudget = true
 		modelInfo.supportsReasoningEffort = false
+		// Preserve reasoning for Claude Haiku 4.5
+		modelInfo.preserveReasoning = true
+	}
+
+	// Ensure reasoning preservation for models that support reasoning budget
+	// This includes models like MiniMax-M2 and other reasoning-capable models
+	if (modelInfo.supportsReasoningBudget || modelInfo.requiredReasoningBudget) {
+		modelInfo.preserveReasoning = true
 	}
 
 	// Set horizon-alpha model to 32k max tokens
