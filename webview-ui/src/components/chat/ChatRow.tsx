@@ -171,6 +171,7 @@ export const ChatRowContent = ({
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
 	const [editImages, setEditImages] = useState<string[]>([])
 	const [showRequestResponse, setShowRequestResponse] = useState(false)
+	const [showRawResponse, setShowRawResponse] = useState(false)
 
 	// Handle message events for image selection during edit mode
 	useEffect(() => {
@@ -1127,12 +1128,23 @@ export const ChatRowContent = ({
 									)}
 									{apiReqInfo?.response && (
 										<div>
-											<div className="text-xs font-semibold mb-1 text-vscode-descriptionForeground">
-												Response from LLM:
+											<div className="flex items-center justify-between mb-1">
+												<div className="text-xs font-semibold text-vscode-descriptionForeground">
+													Response from LLM:
+												</div>
+												<button
+													className="text-xs px-2 py-0.5 rounded hover:bg-vscode-button-hoverBackground transition-colors"
+													onClick={(e) => {
+														e.stopPropagation()
+														setShowRawResponse(!showRawResponse)
+													}}
+													title={showRawResponse ? "Show formatted" : "Show raw"}>
+													{showRawResponse ? "Formatted" : "Raw"}
+												</button>
 											</div>
 											<CodeAccordian
 												code={apiReqInfo.response}
-												language="markdown"
+												language={showRawResponse ? "text" : "markdown"}
 												isExpanded={true}
 												onToggleExpand={() => {}}
 											/>
