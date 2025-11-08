@@ -2193,6 +2193,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const stream = this.attemptApiRequest()
 				let assistantMessage = ""
 				let reasoningMessage = ""
+				const reasoningDetails = []
 				let pendingGroundingSources: GroundingSource[] = []
 				this.isStreaming = true
 
@@ -2225,6 +2226,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								await this.say("reasoning", formattedReasoning, undefined, true)
 								break
 							}
+							// for cline/openrouter providers
+							case "reasoning_details":
+								// reasoning_details may be an array of 0 or 1 items depending on how openrouter returns it
+								if (Array.isArray(chunk.reasoning_details)) {
+									reasoningDetails.push(...chunk.reasoning_details)
+								} else {
+									reasoningDetails.push(chunk.reasoning_details)
+								}
+								break
 							case "usage":
 								inputTokens += chunk.inputTokens
 								outputTokens += chunk.outputTokens
@@ -2692,7 +2702,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					await this.addToApiConversationHistory(
 						{
 							role: "assistant",
-							content: assistantContent,
+							content: assistantContent.map((block) => {
+								if (block.type === "text" && reasoningDetails.length > 0) {
+									return {
+										...block,
+										// reasoning_details only exists for cline/openrouter providers
+										// @ts-ignore-next-line (reasoning_details is not a valid property for TextBlockParam)
+										reasoning_details: reasoningDetails,
+									}
+								}
+								return block
+							}),
 						},
 						reasoningMessage || undefined,
 					)
