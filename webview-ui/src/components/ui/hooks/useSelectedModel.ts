@@ -11,7 +11,6 @@ import {
 	geminiModels,
 	mistralModels,
 	openAiModelInfoSaneDefaults,
-	openAiNativeModels,
 	vertexModels,
 	xaiModels,
 	groqModels,
@@ -37,6 +36,7 @@ import { useRouterModels } from "./useRouterModels"
 import { useOpenRouterModelProviders } from "./useOpenRouterModelProviders"
 import { useLmStudioModels } from "./useLmStudioModels"
 import { useOllamaModels } from "./useOllamaModels"
+import { useOpenAiNativeModels } from "./useOpenAiNativeModels"
 
 /**
  * Helper to get a validated model ID for dynamic providers.
@@ -66,12 +66,14 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 	const openRouterModelProviders = useOpenRouterModelProviders(openRouterModelId)
 	const lmStudioModels = useLmStudioModels(lmStudioModelId)
 	const ollamaModels = useOllamaModels(ollamaModelId)
+	const openAiNativeModels = useOpenAiNativeModels(provider === "openai-native")
 
 	// Compute readiness only for the data actually needed for the selected provider
 	const needRouterModels = shouldFetchRouterModels
 	const needOpenRouterProviders = provider === "openrouter"
 	const needLmStudio = typeof lmStudioModelId !== "undefined"
 	const needOllama = typeof ollamaModelId !== "undefined"
+	const needOpenAiNative = provider === "openai-native"
 
 	const hasValidRouterData = needRouterModels
 		? routerModels.data &&
@@ -83,6 +85,7 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 	const isReady =
 		(!needLmStudio || typeof lmStudioModels.data !== "undefined") &&
 		(!needOllama || typeof ollamaModels.data !== "undefined") &&
+		(!needOpenAiNative || typeof openAiNativeModels.data !== "undefined") &&
 		hasValidRouterData &&
 		(!needOpenRouterProviders || typeof openRouterModelProviders.data !== "undefined")
 
@@ -95,6 +98,7 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 					openRouterModelProviders: (openRouterModelProviders.data || {}) as Record<string, ModelInfo>,
 					lmStudioModels: (lmStudioModels.data || undefined) as ModelRecord | undefined,
 					ollamaModels: (ollamaModels.data || undefined) as ModelRecord | undefined,
+					openAiNativeModels: (openAiNativeModels.data || undefined) as ModelRecord | undefined,
 				})
 			: { id: getProviderDefaultModelId(provider), info: undefined }
 
@@ -106,12 +110,14 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 			(needRouterModels && routerModels.isLoading) ||
 			(needOpenRouterProviders && openRouterModelProviders.isLoading) ||
 			(needLmStudio && lmStudioModels!.isLoading) ||
-			(needOllama && ollamaModels!.isLoading),
+			(needOllama && ollamaModels!.isLoading) ||
+			(needOpenAiNative && openAiNativeModels!.isLoading),
 		isError:
 			(needRouterModels && routerModels.isError) ||
 			(needOpenRouterProviders && openRouterModelProviders.isError) ||
 			(needLmStudio && lmStudioModels!.isError) ||
-			(needOllama && ollamaModels!.isError),
+			(needOllama && ollamaModels!.isError) ||
+			(needOpenAiNative && openAiNativeModels!.isError),
 	}
 }
 
@@ -122,6 +128,7 @@ function getSelectedModel({
 	openRouterModelProviders,
 	lmStudioModels,
 	ollamaModels,
+	openAiNativeModels,
 }: {
 	provider: ProviderName
 	apiConfiguration: ProviderSettings
@@ -129,6 +136,7 @@ function getSelectedModel({
 	openRouterModelProviders: Record<string, ModelInfo>
 	lmStudioModels: ModelRecord | undefined
 	ollamaModels: ModelRecord | undefined
+	openAiNativeModels: ModelRecord | undefined
 }): { id: string; info: ModelInfo | undefined } {
 	// the `undefined` case are used to show the invalid selection to prevent
 	// users from seeing the default model if their selection is invalid
@@ -260,7 +268,8 @@ function getSelectedModel({
 		}
 		case "openai-native": {
 			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = openAiNativeModels[id as keyof typeof openAiNativeModels]
+			// Use dynamically loaded models (built-in + custom from ~/.roo/models/openai-native.json)
+			const info = openAiNativeModels?.[id]
 			return { id, info }
 		}
 		case "mistral": {

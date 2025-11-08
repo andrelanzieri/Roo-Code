@@ -5,7 +5,12 @@ import {
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
 } from "@roo-code/types"
 
-import { getModelMaxOutputTokens, shouldUseReasoningBudget, shouldUseReasoningEffort } from "../api"
+import {
+	getModelMaxOutputTokens,
+	shouldUseReasoningBudget,
+	shouldUseReasoningEffort,
+	shouldUseResponseContinuity,
+} from "../api"
 
 describe("getModelMaxOutputTokens", () => {
 	const mockModel: ModelInfo = {
@@ -281,6 +286,47 @@ describe("getModelMaxOutputTokens", () => {
 
 			expect(result).toBe(expected)
 		})
+	})
+
+	test("should bypass 20% cap when model.useFullMaxTokens is true (non-GPT-5 id)", () => {
+		const model: ModelInfo = {
+			contextWindow: 200_000,
+			supportsPromptCache: false,
+			maxTokens: 128_000,
+			useFullMaxTokens: true,
+		}
+		const result = getModelMaxOutputTokens({
+			modelId: "vendor/special-model",
+			model,
+			settings: { apiProvider: "openai" },
+			format: "openai",
+		})
+		expect(result).toBe(128_000)
+	})
+
+	test("shouldUseResponseContinuity returns true for GPT-5 ids", () => {
+		const model: ModelInfo = {
+			contextWindow: 100_000,
+			supportsPromptCache: true,
+		}
+		expect(shouldUseResponseContinuity({ modelId: "gpt-5-turbo", model })).toBe(true)
+	})
+
+	test("shouldUseResponseContinuity returns true when model.enableResponseContinuity is true", () => {
+		const model: ModelInfo = {
+			contextWindow: 100_000,
+			supportsPromptCache: true,
+			enableResponseContinuity: true,
+		}
+		expect(shouldUseResponseContinuity({ modelId: "not-gpt", model })).toBe(true)
+	})
+
+	test("shouldUseResponseContinuity returns false otherwise", () => {
+		const model: ModelInfo = {
+			contextWindow: 100_000,
+			supportsPromptCache: true,
+		}
+		expect(shouldUseResponseContinuity({ modelId: "other-model", model })).toBe(false)
 	})
 
 	test("should return modelMaxTokens from settings when reasoning budget is required", () => {

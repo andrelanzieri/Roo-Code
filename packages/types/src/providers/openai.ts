@@ -316,6 +316,77 @@ export const openAiModelInfoSaneDefaults: ModelInfo = {
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#api-specs
 export const azureOpenAiDefaultApiVersion = "2024-08-01-preview"
 
+/**
+ * Load user-defined OpenAI native models from ~/.roo/models/openai-native.json (or ROO_OPENAI_NATIVE_MODELS_PATH).
+ * Uses dynamic requires so the types package remains browser-safe for the webview bundle.
+ */
+function loadUserOpenAiNativeModels(): Record<string, ModelInfo> {
+	try {
+		// 1) Environment JSON override (works in ESM/browser-safe contexts)
+		const inlineJson = (typeof process !== "undefined" && process.env?.ROO_OPENAI_NATIVE_MODELS_JSON) || ""
+		if (inlineJson) {
+			try {
+				const parsed = JSON.parse(inlineJson)
+				if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+					const envResult: Record<string, ModelInfo> = {}
+					for (const [modelId, info] of Object.entries(parsed)) {
+						if (info && typeof info === "object" && !Array.isArray(info)) {
+							envResult[modelId] = info as ModelInfo
+						}
+					}
+					return envResult
+				}
+			} catch {
+				// ignore malformed env JSON and continue to file-based load
+			}
+		}
+
+		// 2) Node file-based load (CJS-friendly; best-effort in ESM via require fallback)
+		const req: NodeRequire | null =
+			typeof Function !== "undefined" ? Function("try{return require}catch{return null}")() : null
+		if (!req || typeof process === "undefined" || !process?.versions?.node) return {}
+
+		const fs: typeof import("fs") | undefined = req("fs")
+		const path: typeof import("path") | undefined = req("path")
+		const os: typeof import("os") | undefined = req("os")
+		if (!fs || !path) return {}
+
+		const customPath =
+			process.env.ROO_OPENAI_NATIVE_MODELS_PATH ||
+			(os?.homedir ? path.join(os.homedir(), ".roo", "models", "openai-native.json") : undefined)
+
+		if (!customPath) return {}
+		if (!fs.existsSync?.(customPath)) return {}
+
+		const raw = fs.readFileSync(customPath, "utf8")
+		const parsed = JSON.parse(raw)
+
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+
+		// Best-effort shallow validation; only keep object entries
+		const result: Record<string, ModelInfo> = {}
+		for (const [modelId, info] of Object.entries(parsed)) {
+			if (info && typeof info === "object" && !Array.isArray(info)) {
+				result[modelId] = info as ModelInfo
+			}
+		}
+		return result
+	} catch {
+		// On any error (missing file, invalid JSON, restricted env), fall back to empty extras
+		return {}
+	}
+}
+
+/**
+ * Returns built-in OpenAI native models merged with user-defined additions.
+ * User models override built-ins on key collision.
+ */
+export function getOpenAiNativeModels(): Record<string, ModelInfo> {
+	// Merge each call to pick up changes without caching; cost is negligible
+	const extras = loadUserOpenAiNativeModels()
+	return { ...openAiNativeModels, ...(extras || {}) }
+}
+
 export const OPENAI_NATIVE_DEFAULT_TEMPERATURE = 0
 export const GPT5_DEFAULT_TEMPERATURE = 1.0
 

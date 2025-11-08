@@ -58,7 +58,7 @@ import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { defaultModeSlug, getModeBySlug, getGroupName } from "../../shared/modes"
 import { DiffStrategy } from "../../shared/tools"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
-import { getModelMaxOutputTokens } from "../../shared/api"
+import { getModelMaxOutputTokens, shouldUseResponseContinuity } from "../../shared/api"
 
 // services
 import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
@@ -2807,12 +2807,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			throw new Error("Auto-approval limit reached and user did not approve continuation")
 		}
 
-		// Determine GPT‑5 previous_response_id from last persisted assistant turn (if available),
-		// unless a condense just occurred (skip once after condense).
+		// Determine previous_response_id continuity from last persisted assistant turn (if available),
+		// for GPT‑5 family or models that opt-in via enableResponseContinuity; skip if a condense just occurred.
 		let previousResponseId: string | undefined = undefined
 		try {
 			const modelId = this.api.getModel().id
-			if (modelId && modelId.startsWith("gpt-5") && !this.skipPrevResponseIdOnce) {
+			const modelInfo = this.api.getModel().info
+			if (!this.skipPrevResponseIdOnce && shouldUseResponseContinuity({ modelId, model: modelInfo })) {
 				// Find the last assistant message that has a previous_response_id stored
 				const idx = findLastIndex(
 					this.clineMessages,
@@ -3060,7 +3061,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private async persistGpt5Metadata(): Promise<void> {
 		try {
 			const modelId = this.api.getModel().id
-			if (!modelId || !modelId.startsWith("gpt-5")) return
+			const modelInfo = this.api.getModel().info
+			if (!shouldUseResponseContinuity({ modelId, model: modelInfo })) return
 
 			// Check if the API handler has a getLastResponseId method (OpenAiNativeHandler specific)
 			const handler = this.api as ApiHandler & { getLastResponseId?: () => string | undefined }

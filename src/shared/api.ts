@@ -118,15 +118,16 @@ export const getModelMaxOutputTokens = ({
 	// If model has explicit maxTokens, clamp it to 20% of the context window
 	// Exception: GPT-5 models should use their exact configured max output tokens
 	if (model.maxTokens) {
-		// Check if this is a GPT-5 model (case-insensitive)
+		// Check if this is a GPT-5 model (case-insensitive) OR a model opting-in via capability flag
 		const isGpt5Model = modelId.toLowerCase().includes("gpt-5")
+		const bypassCap = !!model.useFullMaxTokens || isGpt5Model
 
-		// GPT-5 models bypass the 20% cap and use their full configured max tokens
-		if (isGpt5Model) {
+		// Bypass the 20% cap and use the full configured max tokens
+		if (bypassCap) {
 			return model.maxTokens
 		}
 
-		// All other models are clamped to 20% of context window
+		// Otherwise clamp to 20% of context window
 		return Math.min(model.maxTokens, Math.ceil(model.contextWindow * 0.2))
 	}
 
@@ -172,3 +173,17 @@ const dynamicProviderExtras = {
 export type GetModelsOptions = {
 	[P in keyof typeof dynamicProviderExtras]: ({ provider: P } & (typeof dynamicProviderExtras)[P]) & CommonFetchParams
 }[RouterName]
+
+/**
+ * Should we enable OpenAI Responses API continuity (previous_response_id)?
+ * True for GPT‑5 family by default, or when the model opts in via ModelInfo.enableResponseContinuity.
+ */
+export const shouldUseResponseContinuity = ({ modelId, model }: { modelId: string; model: ModelInfo }): boolean => {
+	try {
+		if (!modelId) return false
+		if (model?.enableResponseContinuity) return true
+		return modelId.startsWith("gpt-5")
+	} catch {
+		return false
+	}
+}

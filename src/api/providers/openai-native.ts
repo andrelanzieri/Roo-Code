@@ -1,5 +1,8 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
+import * as fsSync from "fs"
+import * as pathSync from "path"
+import * as osSync from "os"
 
 import {
 	type ModelInfo,
@@ -30,6 +33,50 @@ export type OpenAiNativeModel = ReturnType<OpenAiNativeHandler["getModel"]>
 
 // Constants for model identification
 const GPT5_MODEL_PREFIX = "gpt-5"
+
+/**
+ * Host-only sync loader for OpenAI Native models merged with ~/.roo overrides.
+ * Avoids the browser-safe loader in @roo-code/types which may not resolve extras in the extension host bundle.
+ */
+function loadMergedOpenAiNativeModelsOnHostSync(): Record<string, ModelInfo> {
+	try {
+		// 1) Inline JSON override
+		let extras: Record<string, ModelInfo> = {}
+		try {
+			const inline = process.env?.ROO_OPENAI_NATIVE_MODELS_JSON
+			if (inline) {
+				const parsed = JSON.parse(inline)
+				if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+					extras = parsed as Record<string, ModelInfo>
+				}
+			}
+		} catch {
+			// ignore
+		}
+
+		// 2) File-based load when no inline provided
+		if (Object.keys(extras).length === 0) {
+			try {
+				const customPath =
+					process.env.ROO_OPENAI_NATIVE_MODELS_PATH ||
+					pathSync.join(osSync.homedir(), ".roo", "models", "openai-native.json")
+				if (customPath && fsSync.existsSync(customPath)) {
+					const raw = fsSync.readFileSync(customPath, "utf8")
+					const parsed = JSON.parse(raw)
+					if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+						extras = parsed as Record<string, ModelInfo>
+					}
+				}
+			} catch {
+				// ignore file errors
+			}
+		}
+
+		return { ...openAiNativeModels, ...extras } as Record<string, ModelInfo>
+	} catch {
+		return openAiNativeModels as Record<string, ModelInfo>
+	}
+}
 
 export class OpenAiNativeHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -1221,10 +1268,12 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	override getModel() {
 		const modelId = this.options.apiModelId
 
-		let id =
-			modelId && modelId in openAiNativeModels ? (modelId as OpenAiNativeModelId) : openAiNativeDefaultModelId
+		// Get merged models (built-in + user-defined from ~/.roo/models/openai-native.json)
+		const allModels = loadMergedOpenAiNativeModelsOnHostSync()
 
-		const info: ModelInfo = openAiNativeModels[id]
+		let id = modelId && modelId in allModels ? (modelId as OpenAiNativeModelId) : openAiNativeDefaultModelId
+
+		const info: ModelInfo = allModels[id]
 
 		const params = getModelParams({
 			format: "openai",

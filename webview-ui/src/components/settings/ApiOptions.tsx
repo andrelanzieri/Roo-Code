@@ -45,6 +45,7 @@ import { validateApiConfigurationExcludingModelErrors, getModelValidationError }
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useRouterModels } from "@src/components/ui/hooks/useRouterModels"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
+import { useOpenAiNativeModels } from "@src/components/ui/hooks/useOpenAiNativeModels"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import {
 	useOpenRouterModelProviders,
@@ -190,6 +191,9 @@ const ApiOptions = ({
 		info: selectedModelInfo,
 	} = useSelectedModel(apiConfiguration)
 
+	// Fetch merged OpenAI Native models for dropdown options
+	const { data: openAiNativeRecord } = useOpenAiNativeModels(selectedProvider === "openai-native")
+
 	const { data: routerModels, refetch: refetchRouterModels } = useRouterModels()
 
 	const { data: openRouterModelProviders } = useOpenRouterModelProviders(
@@ -270,7 +274,10 @@ const ApiOptions = ({
 	}, [apiConfiguration, routerModels, organizationAllowList, setErrorMessage])
 
 	const selectedProviderModels = useMemo(() => {
-		const models = MODELS_BY_PROVIDER[selectedProvider]
+		const models =
+			selectedProvider === "openai-native"
+				? openAiNativeRecord || MODELS_BY_PROVIDER[selectedProvider]
+				: MODELS_BY_PROVIDER[selectedProvider]
 		if (!models) return []
 
 		const filteredModels = filterModels(models, selectedProvider, organizationAllowList)
@@ -292,7 +299,7 @@ const ApiOptions = ({
 			: []
 
 		return availableModels
-	}, [selectedProvider, organizationAllowList, selectedModelId])
+	}, [selectedProvider, organizationAllowList, selectedModelId, openAiNativeRecord])
 
 	const onProviderChange = useCallback(
 		(value: ProviderName) => {

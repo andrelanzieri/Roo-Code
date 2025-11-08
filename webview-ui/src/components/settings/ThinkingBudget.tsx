@@ -33,10 +33,13 @@ const shouldShowMinimalOption = (
 	provider: string | undefined,
 	modelId: string | undefined,
 	supportsEffort: boolean | undefined,
+	modelDefaultEffort?: ReasoningEffortWithMinimal | undefined,
 ): boolean => {
 	const isGpt5Model = provider === "openai-native" && modelId?.startsWith("gpt-5")
 	const isOpenRouterWithEffort = provider === "openrouter" && supportsEffort === true
-	return !!(isGpt5Model || isOpenRouterWithEffort)
+	// Gate for OpenAI Native via model JSON: show when default effort is explicitly "minimal"
+	const isOpenAiNativeMinimal = provider === "openai-native" && modelDefaultEffort === "minimal"
+	return !!(isGpt5Model || isOpenRouterWithEffort || isOpenAiNativeMinimal)
 }
 
 export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, modelInfo }: ThinkingBudgetProps) => {
@@ -53,11 +56,19 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 	const isReasoningBudgetRequired = !!modelInfo && modelInfo.requiredReasoningBudget
 	const isReasoningEffortSupported = !!modelInfo && modelInfo.supportsReasoningEffort
 
+	// Default reasoning effort - use model's default if available
+	// GPT-5 models have "medium" as their default in the model configuration
+	const modelDefaultReasoningEffort = modelInfo?.reasoningEffort as ReasoningEffortWithMinimal | undefined
+	const defaultReasoningEffort: ReasoningEffortWithMinimal = modelDefaultReasoningEffort || "medium"
+	const currentReasoningEffort: ReasoningEffortWithMinimal =
+		(apiConfiguration.reasoningEffort as ReasoningEffortWithMinimal | undefined) || defaultReasoningEffort
+
 	// Determine if minimal option should be shown
 	const showMinimalOption = shouldShowMinimalOption(
 		apiConfiguration.apiProvider,
 		selectedModelId,
 		isReasoningEffortSupported,
+		modelDefaultReasoningEffort,
 	)
 
 	// Build available reasoning efforts list
@@ -65,13 +76,6 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 	const availableReasoningEfforts: ReadonlyArray<ReasoningEffortWithMinimal> = showMinimalOption
 		? (["minimal", ...baseEfforts] as ReasoningEffortWithMinimal[])
 		: baseEfforts
-
-	// Default reasoning effort - use model's default if available
-	// GPT-5 models have "medium" as their default in the model configuration
-	const modelDefaultReasoningEffort = modelInfo?.reasoningEffort as ReasoningEffortWithMinimal | undefined
-	const defaultReasoningEffort: ReasoningEffortWithMinimal = modelDefaultReasoningEffort || "medium"
-	const currentReasoningEffort: ReasoningEffortWithMinimal =
-		(apiConfiguration.reasoningEffort as ReasoningEffortWithMinimal | undefined) || defaultReasoningEffort
 
 	// Set default reasoning effort when model supports it and no value is set
 	useEffect(() => {

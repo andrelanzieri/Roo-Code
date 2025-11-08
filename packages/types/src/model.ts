@@ -70,6 +70,11 @@ export const modelInfoSchema = z.object({
 	supportsReasoningEffort: z.boolean().optional(),
 	requiredReasoningEffort: z.boolean().optional(),
 	preserveReasoning: z.boolean().optional(),
+	// Generic capability flags (user-extensible via ~/.roo/models/*.json)
+	// When true, bypass 20% cap in getModelMaxOutputTokens
+	useFullMaxTokens: z.boolean().optional(),
+	// When true, enable previous_response_id continuity on OpenAI Responses API
+	enableResponseContinuity: z.boolean().optional(),
 	supportedParameters: z.array(modelParametersSchema).optional(),
 	inputPrice: z.number().optional(),
 	outputPrice: z.number().optional(),
