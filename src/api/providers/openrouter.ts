@@ -113,7 +113,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		chatTemplateKwargs: { thinking?: boolean } | undefined
 		finalReasoning: OpenRouterReasoningParams | undefined
 	} {
-		if (!modelId.startsWith("deepseek/deepseek-v3.1-terminus")) {
+		if (!modelId.includes("deepseek-v3.1-terminus")) {
 			return { chatTemplateKwargs: undefined, finalReasoning: reasoning }
 		}
 

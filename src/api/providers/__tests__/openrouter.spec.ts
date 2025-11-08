@@ -62,6 +62,17 @@ vitest.mock("../fetchers/modelCache", () => ({
 				supportsReasoningEffort: true,
 				supportedReasoningEfforts: ["low", "medium", "high"],
 			},
+			"deepseek/deepseek-v3.1-terminus:exacto": {
+				maxTokens: 8192,
+				contextWindow: 128000,
+				supportsImages: false,
+				supportsPromptCache: false,
+				inputPrice: 0.3,
+				outputPrice: 1.2,
+				description: "DeepSeek V3.1 Terminus Exacto",
+				supportsReasoningEffort: true,
+				supportedReasoningEfforts: ["low", "medium", "high"],
+			},
 		})
 	}),
 }))
@@ -471,6 +482,44 @@ describe("OpenRouterHandler", () => {
 					model: "deepseek/deepseek-v3.1-terminus",
 					chat_template_kwargs: { thinking: true },
 					stream: false,
+				}),
+			)
+			// Ensure reasoning parameter is NOT included
+			expect(mockCreate).not.toHaveBeenCalledWith(
+				expect.objectContaining({
+					reasoning: expect.anything(),
+				}),
+			)
+		})
+
+		it("should handle DeepSeek V3.1 Terminus exacto variant with chat_template_kwargs", async () => {
+			const handler = new OpenRouterHandler({
+				openRouterApiKey: "test-key",
+				openRouterModelId: "deepseek/deepseek-v3.1-terminus:exacto",
+				reasoningEffort: "medium",
+			})
+
+			const mockStream = {
+				async *[Symbol.asyncIterator]() {
+					yield {
+						id: "test-id",
+						choices: [{ delta: { content: "test response" } }],
+					}
+				},
+			}
+
+			const mockCreate = vitest.fn().mockResolvedValue(mockStream)
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: mockCreate },
+			} as any
+
+			await handler.createMessage("test", []).next()
+
+			// Should include chat_template_kwargs with thinking:true for exacto variant
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: "deepseek/deepseek-v3.1-terminus:exacto",
+					chat_template_kwargs: { thinking: true },
 				}),
 			)
 			// Ensure reasoning parameter is NOT included
