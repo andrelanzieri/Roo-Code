@@ -297,9 +297,9 @@ describe("ZAiHandler", () => {
 		})
 
 		describe("Reasoning functionality", () => {
-			it("should include thinking parameter when enableReasoningEffort is true and model supports reasoning in createMessage", async () => {
+			it("should not include thinking parameter when enableReasoningEffort is true for GLM-4.6 (no think for coding agents)", async () => {
 				const handlerWithReasoning = new ZAiHandler({
-					apiModelId: "glm-4.6", // GLM-4.6 has supportsReasoningBinary: true
+					apiModelId: "glm-4.6",
 					zaiApiKey: "test-zai-api-key",
 					zaiApiLine: "international_coding",
 					enableReasoningEffort: true,
@@ -322,8 +322,8 @@ describe("ZAiHandler", () => {
 				await messageGenerator.next()
 
 				expect(mockCreate).toHaveBeenCalledWith(
-					expect.objectContaining({
-						thinking: { type: "enabled" },
+					expect.not.objectContaining({
+						thinking: expect.anything(),
 					}),
 					undefined,
 				)
@@ -393,9 +393,9 @@ describe("ZAiHandler", () => {
 				)
 			})
 
-			it("should include thinking parameter when enableReasoningEffort is true and model supports reasoning in completePrompt", async () => {
+			it("should not include thinking parameter when enableReasoningEffort is true for GLM-4.5 (no think for coding agents) in completePrompt", async () => {
 				const handlerWithReasoning = new ZAiHandler({
-					apiModelId: "glm-4.5", // GLM-4.5 has supportsReasoningBinary: true
+					apiModelId: "glm-4.5",
 					zaiApiKey: "test-zai-api-key",
 					zaiApiLine: "international_coding",
 					enableReasoningEffort: true,
@@ -407,8 +407,8 @@ describe("ZAiHandler", () => {
 				await handlerWithReasoning.completePrompt("test prompt")
 
 				expect(mockCreate).toHaveBeenCalledWith(
-					expect.objectContaining({
-						thinking: { type: "enabled" },
+					expect.not.objectContaining({
+						thinking: expect.anything(),
 					}),
 				)
 			})

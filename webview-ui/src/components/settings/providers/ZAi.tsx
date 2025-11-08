@@ -48,6 +48,9 @@ export const ZAi = ({ apiConfiguration, setApiConfigurationField }: ZAiProps) =>
 				<div className="text-xs text-vscode-descriptionForeground mt-1">
 					{t("settings:providers.zaiEntrypointDescription")}
 				</div>
+				<div className="text-xs text-vscode-descriptionForeground mt-2">
+					{t("settings:providers.zaiThinkNote")}
+				</div>
 			</div>
 			<div>
 				<VSCodeTextField
