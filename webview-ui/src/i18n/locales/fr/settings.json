@@ -488,7 +488,8 @@
 			"placeholder": "Défaut : claude",
 			"maxTokensLabel": "Jetons de sortie max",
 			"maxTokensDescription": "Nombre maximum de jetons de sortie pour les réponses de Claude Code. La valeur par défaut est 8000."
-		}
+		},
+		"zaiThinkNote": "Note: For coding agents, GLM-4.5 and GLM-4.6 were trained without 'think'. Thinking will be available in GLM-4.6 Air."
 	},
 	"browser": {
 		"enable": {

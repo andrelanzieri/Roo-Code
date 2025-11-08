@@ -488,7 +488,8 @@
 			"placeholder": "デフォルト：claude",
 			"maxTokensLabel": "最大出力トークン",
 			"maxTokensDescription": "Claude Codeレスポンスの最大出力トークン数。デフォルトは8000です。"
-		}
+		},
+		"zaiThinkNote": "Note: For coding agents, GLM-4.5 and GLM-4.6 were trained without 'think'. Thinking will be available in GLM-4.6 Air."
 	},
 	"browser": {
 		"enable": {

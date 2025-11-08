@@ -488,7 +488,8 @@
 			"placeholder": "Domyślnie: claude",
 			"maxTokensLabel": "Maksymalna liczba tokenów wyjściowych",
 			"maxTokensDescription": "Maksymalna liczba tokenów wyjściowych dla odpowiedzi Claude Code. Domyślnie 8000."
-		}
+		},
+		"zaiThinkNote": "Note: For coding agents, GLM-4.5 and GLM-4.6 were trained without 'think'. Thinking will be available in GLM-4.6 Air."
 	},
 	"browser": {
 		"enable": {

@@ -488,7 +488,8 @@
 			"placeholder": "기본값: claude",
 			"maxTokensLabel": "최대 출력 토큰",
 			"maxTokensDescription": "Claude Code 응답의 최대 출력 토큰 수. 기본값은 8000입니다."
-		}
+		},
+		"zaiThinkNote": "Note: For coding agents, GLM-4.5 and GLM-4.6 were trained without 'think'. Thinking will be available in GLM-4.6 Air."
 	},
 	"browser": {
 		"enable": {

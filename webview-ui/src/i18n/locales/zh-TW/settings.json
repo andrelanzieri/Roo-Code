@@ -488,7 +488,8 @@
 			"placeholder": "預設：claude",
 			"maxTokensLabel": "最大輸出 Token",
 			"maxTokensDescription": "Claude Code 回應的最大輸出 Token 數量。預設為 8000。"
-		}
+		},
+		"zaiThinkNote": "Note: For coding agents, GLM-4.5 and GLM-4.6 were trained without 'think'. Thinking will be available in GLM-4.6 Air."
 	},
 	"browser": {
 		"enable": {

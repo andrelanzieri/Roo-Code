@@ -488,7 +488,8 @@
 			"placeholder": "Mặc định: claude",
 			"maxTokensLabel": "Số token đầu ra tối đa",
 			"maxTokensDescription": "Số lượng token đầu ra tối đa cho các phản hồi của Claude Code. Mặc định là 8000."
-		}
+		},
+		"zaiThinkNote": "Note: For coding agents, GLM-4.5 and GLM-4.6 were trained without 'think'. Thinking will be available in GLM-4.6 Air."
 	},
 	"browser": {
 		"enable": {
