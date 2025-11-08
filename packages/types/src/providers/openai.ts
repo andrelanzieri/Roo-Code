@@ -1,4 +1,4 @@
-import type { ModelInfo } from "../model.js"
+import { modelInfoSchema, type ModelInfo } from "../model.js"
 
 // https://openai.com/api/pricing/
 export type OpenAiNativeModelId = keyof typeof openAiNativeModels
@@ -328,12 +328,7 @@ function loadUserOpenAiNativeModels(): Record<string, ModelInfo> {
 			try {
 				const parsed = JSON.parse(inlineJson)
 				if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-					const envResult: Record<string, ModelInfo> = {}
-					for (const [modelId, info] of Object.entries(parsed)) {
-						if (info && typeof info === "object" && !Array.isArray(info)) {
-							envResult[modelId] = info as ModelInfo
-						}
-					}
+					const envResult = validateModelInfoRecord(parsed)
 					return envResult
 				}
 			} catch {
@@ -363,18 +358,30 @@ function loadUserOpenAiNativeModels(): Record<string, ModelInfo> {
 
 		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
 
-		// Best-effort shallow validation; only keep object entries
-		const result: Record<string, ModelInfo> = {}
-		for (const [modelId, info] of Object.entries(parsed)) {
-			if (info && typeof info === "object" && !Array.isArray(info)) {
-				result[modelId] = info as ModelInfo
-			}
-		}
-		return result
+		// Use shared validator (merges sane defaults and accepts partials)
+		return validateModelInfoRecord(parsed)
 	} catch {
 		// On any error (missing file, invalid JSON, restricted env), fall back to empty extras
 		return {}
 	}
+}
+
+/**
+ * Validate an arbitrary record of model info objects, keeping only entries that conform.
+ */
+export function validateModelInfoRecord(input: unknown): Record<string, ModelInfo> {
+	if (!input || typeof input !== "object" || Array.isArray(input)) return {}
+	const out: Record<string, ModelInfo> = {}
+	for (const [id, info] of Object.entries(input as Record<string, unknown>)) {
+		if (info && typeof info === "object" && !Array.isArray(info)) {
+			const parsedInfo = modelInfoSchema.partial().safeParse(info)
+			const merged = parsedInfo.success
+				? { ...openAiModelInfoSaneDefaults, ...parsedInfo.data }
+				: { ...openAiModelInfoSaneDefaults, ...(info as Record<string, unknown>) }
+			out[id] = merged as ModelInfo
+		}
+	}
+	return out
 }
 
 /**

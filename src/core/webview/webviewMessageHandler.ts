@@ -11,6 +11,7 @@ import {
 	type ClineMessage,
 	type TelemetrySetting,
 	type ModelInfo,
+	validateModelInfoRecord,
 	TelemetryEventName,
 	UserSettingsConfig,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
@@ -114,7 +115,7 @@ export const webviewMessageHandler = async (
 				try {
 					const parsed = JSON.parse(inline)
 					if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-						extras = parsed
+						extras = validateModelInfoRecord(parsed)
 					}
 				} catch {
 					// ignore malformed env json
@@ -130,7 +131,7 @@ export const webviewMessageHandler = async (
 					const raw = await fs.readFile(customPath, "utf8")
 					const parsed = JSON.parse(raw)
 					if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-						extras = parsed
+						extras = validateModelInfoRecord(parsed)
 					}
 				} catch {
 					// missing/invalid file: ignore
@@ -1030,8 +1031,8 @@ export const webviewMessageHandler = async (
 		case "requestOpenAiNativeModels": {
 			// Return merged built-ins + user-defined from ~/.roo/models/openai-native.json
 			try {
-				const openAiNativeModels = await getMergedOpenAiNativeModelsOnHost()
-				provider.postMessageToWebview({ type: "openAiNativeModels", openAiNativeModels })
+				const mergedModels = await getMergedOpenAiNativeModelsOnHost()
+				provider.postMessageToWebview({ type: "openAiNativeModels", openAiNativeModels: mergedModels })
 			} catch (error) {
 				console.error("Failed to load OpenAI Native models:", error)
 				provider.postMessageToWebview({ type: "openAiNativeModels", openAiNativeModels: {} })

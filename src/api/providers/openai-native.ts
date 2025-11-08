@@ -9,6 +9,7 @@ import {
 	openAiNativeDefaultModelId,
 	OpenAiNativeModelId,
 	openAiNativeModels,
+	validateModelInfoRecord,
 	OPENAI_NATIVE_DEFAULT_TEMPERATURE,
 	GPT5_DEFAULT_TEMPERATURE,
 	type ReasoningEffort,
@@ -47,7 +48,7 @@ function loadMergedOpenAiNativeModelsOnHostSync(): Record<string, ModelInfo> {
 			if (inline) {
 				const parsed = JSON.parse(inline)
 				if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-					extras = parsed as Record<string, ModelInfo>
+					extras = validateModelInfoRecord(parsed)
 				}
 			}
 		} catch {
@@ -64,7 +65,7 @@ function loadMergedOpenAiNativeModelsOnHostSync(): Record<string, ModelInfo> {
 					const raw = fsSync.readFileSync(customPath, "utf8")
 					const parsed = JSON.parse(raw)
 					if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-						extras = parsed as Record<string, ModelInfo>
+						extras = validateModelInfoRecord(parsed)
 					}
 				}
 			} catch {
