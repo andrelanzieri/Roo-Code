@@ -743,7 +743,9 @@ export class McpHub {
 				}
 			} else if (configInjected.type === "streamable-http") {
 				// Streamable HTTP connection
-				transport = new StreamableHTTPClientTransport(new URL(configInjected.url), {
+				// Normalize URL by removing trailing slashes to avoid 405 errors
+				const normalizedUrl = configInjected.url.replace(/\/+$/, "")
+				transport = new StreamableHTTPClientTransport(new URL(normalizedUrl), {
 					requestInit: {
 						headers: configInjected.headers,
 					},
@@ -769,6 +771,8 @@ export class McpHub {
 				}
 			} else if (configInjected.type === "sse") {
 				// SSE connection
+				// Normalize URL by removing trailing slashes for consistency
+				const normalizedUrl = configInjected.url.replace(/\/+$/, "")
 				const sseOptions = {
 					requestInit: {
 						headers: configInjected.headers,
@@ -787,7 +791,7 @@ export class McpHub {
 					},
 				}
 				global.EventSource = ReconnectingEventSource
-				transport = new SSEClientTransport(new URL(configInjected.url), {
+				transport = new SSEClientTransport(new URL(normalizedUrl), {
 					...sseOptions,
 					eventSourceInit: reconnectingEventSourceOptions,
 				})
@@ -1378,8 +1382,8 @@ export class McpHub {
 						await this.deleteConnection(serverName, serverSource)
 						// Re-add as a disabled connection
 						// Re-read config from file to get updated disabled state
-					const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
-					await this.connectToServer(serverName, updatedConfig, serverSource)
+						const updatedConfig = await this.readServerConfigFromFile(serverName, serverSource)
+						await this.connectToServer(serverName, updatedConfig, serverSource)
 					} else if (!disabled && connection.server.status === "disconnected") {
 						// If enabling a disabled server, connect it
 						// Re-read config from file to get updated disabled state
