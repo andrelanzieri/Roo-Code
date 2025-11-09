@@ -2538,6 +2538,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const state = await this.providerRef.deref()?.getState()
 
+		// Debug logging to track custom instructions persistence
+		if (!state) {
+			console.warn(
+				`[Task#${this.taskId}] getSystemPrompt: state is undefined, custom instructions may be missing`,
+			)
+		} else if (!state.customInstructions && !state.customModePrompts) {
+			console.debug(`[Task#${this.taskId}] getSystemPrompt: No custom instructions or mode prompts in state`)
+		}
+
 		const {
 			browserViewportSize,
 			mode,
@@ -2571,6 +2580,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			const canUseBrowserTool = modelSupportsBrowser && modeSupportsBrowser && (browserToolEnabled ?? true)
 
+			// Ensure custom instructions are passed even if empty string
+			const effectiveCustomInstructions = customInstructions ?? ""
+
+			// Log system prompt generation for debugging
+			console.debug(
+				`[Task#${this.taskId}] Generating system prompt with mode: ${mode ?? defaultModeSlug}, ` +
+					`customInstructions: ${effectiveCustomInstructions.length} chars`,
+			)
+
 			return SYSTEM_PROMPT(
 				provider.context,
 				this.cwd,
@@ -2581,7 +2599,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				mode ?? defaultModeSlug,
 				customModePrompts,
 				customModes,
-				customInstructions,
+				effectiveCustomInstructions,
 				this.diffEnabled,
 				experiments,
 				enableMcpServerCreation,
