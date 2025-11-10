@@ -42,7 +42,6 @@ import {
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_MODES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
-	getModelId,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { CloudService, BridgeOrchestrator, getRooCodeApiUrl } from "@roo-code/cloud"
@@ -1296,31 +1295,6 @@ export class ClineProvider
 
 	// Provider Profile Management
 
-	/**
-	 * Updates the current task's API handler if the provider or model has changed.
-	 * This prevents unnecessary context condensing when only non-model settings change.
-	 * @param providerSettings The new provider settings to apply
-	 */
-	private updateTaskApiHandlerIfNeeded(providerSettings: ProviderSettings): void {
-		const task = this.getCurrentTask()
-
-		if (task && task.apiConfiguration) {
-			// Only rebuild API handler if provider or model actually changed
-			// to avoid triggering unnecessary context condensing
-			const currentProvider = task.apiConfiguration.apiProvider
-			const newProvider = providerSettings.apiProvider
-			const currentModelId = getModelId(task.apiConfiguration)
-			const newModelId = getModelId(providerSettings)
-
-			if (currentProvider !== newProvider || currentModelId !== newModelId) {
-				task.api = buildApiHandler(providerSettings)
-			}
-		} else if (task) {
-			// Fallback: rebuild if apiConfiguration is not available
-			task.api = buildApiHandler(providerSettings)
-		}
-	}
-
 	getProviderProfileEntries(): ProviderSettingsEntry[] {
 		return this.contextProxy.getValues().listApiConfigMeta || []
 	}
@@ -1368,7 +1342,11 @@ export class ClineProvider
 
 				// Change the provider for the current task.
 				// TODO: We should rename `buildApiHandler` for clarity (e.g. `getProviderClient`).
-				this.updateTaskApiHandlerIfNeeded(providerSettings)
+				const task = this.getCurrentTask()
+
+				if (task) {
+					task.api = buildApiHandler(providerSettings)
+				}
 			} else {
 				await this.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig())
 			}
@@ -1425,7 +1403,11 @@ export class ClineProvider
 		}
 
 		// Change the provider for the current task.
-		this.updateTaskApiHandlerIfNeeded(providerSettings)
+		const task = this.getCurrentTask()
+
+		if (task) {
+			task.api = buildApiHandler(providerSettings)
+		}
 
 		await this.postStateToWebview()
 
