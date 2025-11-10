@@ -34,7 +34,7 @@ const shouldShowMinimalOption = (
 	provider: string | undefined,
 	modelId: string | undefined,
 	supportsEffort: boolean | undefined,
-	modelDefaultEffort?: ReasoningEffortWithMinimal | undefined,
+	modelDefaultEffort?: ReasoningEffortWithMinimalOrNone | undefined,
 ): boolean => {
 	const isGpt5Model = provider === "openai-native" && modelId?.startsWith("gpt-5")
 	const isOpenRouterWithEffort = provider === "openrouter" && supportsEffort === true
