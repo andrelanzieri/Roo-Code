@@ -11,7 +11,7 @@ import {
 	type ClineMessage,
 	type TelemetrySetting,
 	type ModelInfo,
-	validateModelInfoRecord,
+	getOpenAiNativeModels,
 	TelemetryEventName,
 	UserSettingsConfig,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
@@ -55,7 +55,6 @@ import { getWorkspacePath } from "../../utils/path"
 import { Mode, defaultModeSlug } from "../../shared/modes"
 import { getModels, flushModels } from "../../api/providers/fetchers/modelCache"
 import { GetModelsOptions } from "../../shared/api"
-import { openAiNativeModels } from "@roo-code/types"
 import { generateSystemPrompt } from "./generateSystemPrompt"
 import { getCommand } from "../../utils/commands"
 
@@ -98,51 +97,6 @@ export const webviewMessageHandler = async (
 		return currentCline.apiConversationHistory.findIndex(
 			(msg: ApiMessage) => typeof msg?.ts === "number" && (msg.ts as number) >= ts,
 		)
-	}
-
-	/**
-	 * Host-only loader: merge built-in OpenAI native models with user additions from:
-	 * - ROO_OPENAI_NATIVE_MODELS_JSON (JSON string)
-	 * - ROO_OPENAI_NATIVE_MODELS_PATH or ~/.roo/models/openai-native.json
-	 * Returns the merged models record.
-	 */
-	async function getMergedOpenAiNativeModelsOnHost(): Promise<Record<string, ModelInfo>> {
-		try {
-			// 1) Env JSON override
-			let extras: Record<string, any> = {}
-			const inline = process.env?.ROO_OPENAI_NATIVE_MODELS_JSON
-			if (inline) {
-				try {
-					const parsed = JSON.parse(inline)
-					if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-						extras = validateModelInfoRecord(parsed)
-					}
-				} catch {
-					// ignore malformed env json
-				}
-			}
-
-			// 2) File-based
-			if (Object.keys(extras).length === 0) {
-				const customPath =
-					process.env.ROO_OPENAI_NATIVE_MODELS_PATH ||
-					path.join(os.homedir(), ".roo", "models", "openai-native.json")
-				try {
-					const raw = await fs.readFile(customPath, "utf8")
-					const parsed = JSON.parse(raw)
-					if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-						extras = validateModelInfoRecord(parsed)
-					}
-				} catch {
-					// missing/invalid file: ignore
-				}
-			}
-
-			const merged = { ...openAiNativeModels, ...extras }
-			return merged as Record<string, ModelInfo>
-		} catch {
-			return openAiNativeModels as Record<string, ModelInfo>
-		}
 	}
 
 	/**
@@ -1031,7 +985,7 @@ export const webviewMessageHandler = async (
 		case "requestOpenAiNativeModels": {
 			// Return merged built-ins + user-defined from ~/.roo/models/openai-native.json
 			try {
-				const mergedModels = await getMergedOpenAiNativeModelsOnHost()
+				const mergedModels = getOpenAiNativeModels()
 				provider.postMessageToWebview({ type: "openAiNativeModels", openAiNativeModels: mergedModels })
 			} catch (error) {
 				console.error("Failed to load OpenAI Native models:", error)
