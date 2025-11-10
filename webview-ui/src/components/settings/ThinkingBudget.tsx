@@ -27,6 +27,7 @@ interface ThinkingBudgetProps {
 	) => void
 	modelInfo?: ModelInfo
 }
+type ReasoningEffortWithMinimalOrNone = ReasoningEffortWithMinimal | "none"
 
 // Helper function to determine if minimal option should be shown
 const shouldShowMinimalOption = (
@@ -58,10 +59,10 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 
 	// Default reasoning effort - use model's default if available
 	// GPT-5 models have "medium" as their default in the model configuration
-	const modelDefaultReasoningEffort = modelInfo?.reasoningEffort as ReasoningEffortWithMinimal | undefined
-	const defaultReasoningEffort: ReasoningEffortWithMinimal = modelDefaultReasoningEffort || "medium"
-	const currentReasoningEffort: ReasoningEffortWithMinimal =
-		(apiConfiguration.reasoningEffort as ReasoningEffortWithMinimal | undefined) || defaultReasoningEffort
+	const modelDefaultReasoningEffort = modelInfo?.reasoningEffort as ReasoningEffortWithMinimalOrNone | undefined
+	const defaultReasoningEffort: ReasoningEffortWithMinimalOrNone = modelDefaultReasoningEffort || "medium"
+	const currentReasoningEffort: ReasoningEffortWithMinimalOrNone =
+		(apiConfiguration.reasoningEffort as ReasoningEffortWithMinimalOrNone | undefined) || defaultReasoningEffort
 
 	// Determine if minimal option should be shown
 	const showMinimalOption = shouldShowMinimalOption(
@@ -71,15 +72,24 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 		modelDefaultReasoningEffort,
 	)
 
+	const showNoneOption = currentReasoningEffort === "none" || modelDefaultReasoningEffort === "none"
+
 	// Build available reasoning efforts list
 	const baseEfforts = [...reasoningEfforts] as ReasoningEffortWithMinimal[]
-	const availableReasoningEfforts: ReadonlyArray<ReasoningEffortWithMinimal> = showMinimalOption
-		? (["minimal", ...baseEfforts] as ReasoningEffortWithMinimal[])
-		: baseEfforts
+	const availableReasoningEfforts: ReadonlyArray<ReasoningEffortWithMinimalOrNone> = [
+		...(showNoneOption ? (["none"] as const) : []),
+		...(showMinimalOption ? (["minimal"] as const) : []),
+		...baseEfforts,
+	]
 
 	// Set default reasoning effort when model supports it and no value is set
 	useEffect(() => {
-		if (isReasoningEffortSupported && !apiConfiguration.reasoningEffort && defaultReasoningEffort) {
+		if (
+			isReasoningEffortSupported &&
+			!apiConfiguration.reasoningEffort &&
+			defaultReasoningEffort &&
+			defaultReasoningEffort !== "none"
+		) {
 			setApiConfigurationField("reasoningEffort", defaultReasoningEffort, false)
 		}
 	}, [isReasoningEffortSupported, apiConfiguration.reasoningEffort, defaultReasoningEffort, setApiConfigurationField])
@@ -178,8 +188,12 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 			</div>
 			<Select
 				value={currentReasoningEffort}
-				onValueChange={(value: ReasoningEffortWithMinimal) => {
-					setApiConfigurationField("reasoningEffort", value)
+				onValueChange={(value: ReasoningEffortWithMinimalOrNone) => {
+					if (value === "none") {
+						setApiConfigurationField("reasoningEffort", undefined)
+					} else {
+						setApiConfigurationField("reasoningEffort", value)
+					}
 				}}>
 				<SelectTrigger className="w-full">
 					<SelectValue
