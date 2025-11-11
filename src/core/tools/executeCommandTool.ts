@@ -316,7 +316,8 @@ export async function executeCommand(
 			result.length > 0 ? `Here's the output so far:\n${result}\n` : "\n",
 		]
 		if (text && text.trim().length > 0) {
-			parts.push(`The user provided the following feedback:\n${text}`)
+			// Append feedback verbatim without prefacing blurb
+			parts.push(text)
 		}
 
 		return [true, formatResponse.toolResult(parts.join("\n"), images)]
