@@ -88,37 +88,7 @@ export function parseUnifiedDiff(source: string, filePath?: string): DiffLine[] 
 			prevHunk = hunk
 		}
 
-		// Collapse "- line" then "+ same line" pairs into a single context line.
-		// This normalizes diffs where the only change is adding a trailing newline
-		// (common when appending to a file missing EOF newline). VS Code's diff
-		// shows these as unchanged; our chat view should too.
-		const collapseReplacePairs = (input: DiffLine[]): DiffLine[] => {
-			const out: DiffLine[] = []
-			for (let i = 0; i < input.length; i++) {
-				const cur = input[i]
-				const next = input[i + 1]
-				if (
-					cur &&
-					next &&
-					cur.type === "deletion" &&
-					next.type === "addition" &&
-					cur.content === next.content
-				) {
-					out.push({
-						oldLineNum: cur.oldLineNum,
-						newLineNum: next.newLineNum,
-						type: "context",
-						content: cur.content,
-					})
-					i++ // skip the paired addition
-					continue
-				}
-				out.push(cur)
-			}
-			return out
-		}
-
-		return collapseReplacePairs(lines)
+		return lines
 	} catch {
 		// swallow parse errors and render nothing rather than breaking the UI
 		return []

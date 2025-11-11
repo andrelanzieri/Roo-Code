@@ -31,6 +31,9 @@ export class DiffViewProvider {
 	private documentWasOpen = false
 	private relPath?: string
 	private newContent?: string
+	// Original content used for the left (original) side of VS Code's diff.
+	// We may normalize trailing newline for display-only to improve hunk alignment.
+	private originalContentForDisplay?: string
 	private activeDiffEditor?: vscode.TextEditor
 	private fadedOverlayController?: DecorationController
 	private activeLineController?: DecorationController
@@ -69,8 +72,14 @@ export class DiffViewProvider {
 
 		if (fileExists) {
 			this.originalContent = await fs.readFile(absolutePath, "utf-8")
+			// Normalize trailing newline for display only to avoid false replace of last line
+			this.originalContentForDisplay = this.originalContent.endsWith("\n")
+				? this.originalContent
+				: this.originalContent + "\n"
 		} else {
 			this.originalContent = ""
+			// For new files, keep original empty to show all additions
+			this.originalContentForDisplay = this.originalContent
 		}
 
 		// For new files, create any necessary directories and keep track of new
@@ -554,7 +563,9 @@ export class DiffViewProvider {
 					return vscode.commands.executeCommand(
 						"vscode.diff",
 						vscode.Uri.parse(`${DIFF_VIEW_URI_SCHEME}:${fileName}`).with({
-							query: Buffer.from(this.originalContent ?? "").toString("base64"),
+							query: Buffer.from(this.originalContentForDisplay ?? this.originalContent ?? "").toString(
+								"base64",
+							),
 						}),
 						uri,
 						`${fileName}: ${fileExists ? `${DIFF_VIEW_LABEL_CHANGES}` : "New File"} (Editable)`,
