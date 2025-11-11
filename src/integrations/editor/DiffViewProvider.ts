@@ -72,10 +72,10 @@ export class DiffViewProvider {
 
 		if (fileExists) {
 			this.originalContent = await fs.readFile(absolutePath, "utf-8")
-			// Normalize trailing newline for display only to avoid false replace of last line
-			this.originalContentForDisplay = this.originalContent.endsWith("\n")
-				? this.originalContent
-				: this.originalContent + "\n"
+			// Normalize EOLs to \n for display and ensure a trailing newline so
+			// the last unchanged line is treated as context instead of a replace.
+			const normalizedEol = this.originalContent.replace(/\r\n/g, "\n")
+			this.originalContentForDisplay = normalizedEol.endsWith("\n") ? normalizedEol : normalizedEol + "\n"
 		} else {
 			this.originalContent = ""
 			// For new files, keep original empty to show all additions
