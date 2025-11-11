@@ -175,8 +175,11 @@ export class DiffViewProvider {
 				await vscode.workspace.applyEdit(edit)
 			}
 
-			// Preserve empty last line if original content had one.
-			const hasEmptyLastLine = this.originalContent?.endsWith("\n")
+			// Preserve empty last line if the ORIGINAL DISPLAY BUFFER had one.
+			// We normalize the left side (original) to include a trailing newline for display
+			// when the file lacks it. To avoid spurious deletion on EOF-append, keep the
+			// right side consistent with that display buffer as well.
+			const hasEmptyLastLine = (this.originalContentForDisplay ?? this.originalContent)?.endsWith("\n")
 
 			if (hasEmptyLastLine && !accumulatedContent.endsWith("\n")) {
 				accumulatedContent += "\n"
