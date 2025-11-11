@@ -15,7 +15,60 @@ export interface DiffStats {
  */
 export function sanitizeUnifiedDiff(diff: string): string {
 	if (!diff) return diff
-	return diff.replace(/\r\n/g, "\n").replace(/(^|\n)[ \t]*(?:\\ )?No newline at end of file[ \t]*(?=\n|$)/gi, "$1")
+	// Normalize EOLs and drop noisy EOF markers first
+	let cleaned = diff
+		.replace(/\r\n/g, "\n")
+		.replace(/(^|\n)[ \t]*(?:\\ )?No newline at end of file[ \t]*(?=\n|$)/gi, "$1")
+
+	// Collapse identical delete/add pairs inside hunks (represents newline-only changes at EOF)
+	// We scan line-by-line, only inside '@@' hunks, and convert:
+	//   -foo
+	//   +foo
+	// to:
+	//    foo
+	// which matches how VS Code visually treats these as unchanged context.
+	const lines = cleaned.split("\n")
+	const out: string[] = []
+	let inHunk = false
+
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i]
+
+		// Track hunk boundaries
+		if (line.startsWith("@@")) {
+			inHunk = true
+			out.push(line)
+			continue
+		}
+		// Empty line does not change state
+		if (!inHunk) {
+			out.push(line)
+			continue
+		}
+
+		// Only within a hunk do '-' and '+' denote diff lines
+		const next = lines[i + 1]
+		if (
+			line.startsWith("-") &&
+			typeof next === "string" &&
+			next.startsWith("+") &&
+			line.slice(1) === next.slice(1)
+		) {
+			// Collapse replacement of identical content to context
+			out.push(" " + line.slice(1))
+			i++ // skip the paired addition
+			continue
+		}
+
+		// End hunk when another header starts (safety)
+		if (line.startsWith("--- ") || line.startsWith("+++ ")) {
+			inHunk = false
+		}
+
+		out.push(line)
+	}
+
+	return out.join("\n")
 }
 
 /**
