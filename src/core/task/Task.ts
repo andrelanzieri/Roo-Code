@@ -2180,7 +2180,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								await this.say("reasoning", formattedReasoning, undefined, true)
 								break
 							}
-							// for cline/openrouter providers
 							case "reasoning_details":
 								// reasoning_details may be an array of 0 or 1 items depending on how openrouter returns it
 								if (Array.isArray(chunk.reasoning_details)) {
