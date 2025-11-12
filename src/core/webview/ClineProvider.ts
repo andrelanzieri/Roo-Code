@@ -1280,6 +1280,7 @@ export class ClineProvider
 			const profile = listApiConfig.find(({ id }) => id === savedConfigId)
 
 			if (profile?.name) {
+				// This is a mode switch, which should apply all settings
 				await this.activateProviderProfile({ name: profile.name })
 			}
 		} else {
@@ -1305,8 +1306,9 @@ export class ClineProvider
 	 * Also synchronizes the task.apiConfiguration so subsequent comparisons and logic
 	 * (protocol selection, reasoning display, model metadata) use the latest profile.
 	 * @param providerSettings The new provider settings to apply
+	 * @param forceRebuild If true, always rebuild the API handler regardless of provider/model changes
 	 */
-	private updateTaskApiHandlerIfNeeded(providerSettings: ProviderSettings): void {
+	private updateTaskApiHandlerIfNeeded(providerSettings: ProviderSettings, forceRebuild: boolean = false): void {
 		const task = this.getCurrentTask()
 		if (!task) return
 
@@ -1317,7 +1319,8 @@ export class ClineProvider
 		const newProvider = providerSettings.apiProvider
 		const newModelId = getModelId(providerSettings)
 
-		if (prevProvider !== newProvider || prevModelId !== newModelId) {
+		// Rebuild if forced (explicit profile switch) or if provider/model changed
+		if (forceRebuild || prevProvider !== newProvider || prevModelId !== newModelId) {
 			task.api = buildApiHandler(providerSettings)
 		}
 
@@ -1373,6 +1376,7 @@ export class ClineProvider
 
 				// Change the provider for the current task.
 				// TODO: We should rename `buildApiHandler` for clarity (e.g. `getProviderClient`).
+				// Don't force rebuild here since this is part of upsert, not explicit switch
 				this.updateTaskApiHandlerIfNeeded(providerSettings)
 			} else {
 				await this.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig())
@@ -1430,7 +1434,8 @@ export class ClineProvider
 		}
 
 		// Change the provider for the current task.
-		this.updateTaskApiHandlerIfNeeded(providerSettings)
+		// Force rebuild since this is an explicit profile switch by the user
+		this.updateTaskApiHandlerIfNeeded(providerSettings, true)
 
 		await this.postStateToWebview()
 
