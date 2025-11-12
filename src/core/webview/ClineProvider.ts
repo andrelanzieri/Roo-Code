@@ -1304,26 +1304,22 @@ export class ClineProvider
 	private updateTaskApiHandlerIfNeeded(providerSettings: ProviderSettings): void {
 		const task = this.getCurrentTask()
 
-		if (task && task.apiConfiguration) {
-			// Only rebuild API handler if provider or model actually changed
-			// to avoid triggering unnecessary context condensing
-			const currentProvider = task.apiConfiguration.apiProvider
-			const newProvider = providerSettings.apiProvider
-			const currentModelId = getModelId(task.apiConfiguration)
+		if (task) {
+			// Get the current effective configuration from the task's API handler
+			// This represents what's actually being used, not the original configuration
+			const currentModelId = task.api?.getModel()?.id
 			const newModelId = getModelId(providerSettings)
 
+			// Also check provider to handle cases where model IDs might be the same across providers
+			const currentProvider = (task as any)._lastAppliedProvider || task.apiConfiguration?.apiProvider
+			const newProvider = providerSettings.apiProvider
+
 			if (currentProvider !== newProvider || currentModelId !== newModelId) {
-				task.api = buildApiHandler(providerSettings)
-				// Update task.apiConfiguration to keep it in sync with the active API handler
-				// This prevents the "switch back" bug where the comparison would incorrectly
-				// skip rebuilding when switching back to a previously used model
-				task.apiConfiguration = providerSettings
+				task.api = buildApiHandler(providerSettings)(
+					// Track the last applied provider to fix the "switch back" bug
+					task as any,
+				)._lastAppliedProvider = newProvider
 			}
-		} else if (task) {
-			// Fallback: rebuild if apiConfiguration is not available
-			task.api = buildApiHandler(providerSettings)
-			// Also update apiConfiguration in the fallback case
-			task.apiConfiguration = providerSettings
 		}
 	}
 
