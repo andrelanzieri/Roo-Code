@@ -1314,10 +1314,16 @@ export class ClineProvider
 
 			if (currentProvider !== newProvider || currentModelId !== newModelId) {
 				task.api = buildApiHandler(providerSettings)
+				// Update task.apiConfiguration to keep it in sync with the active API handler
+				// This prevents the "switch back" bug where the comparison would incorrectly
+				// skip rebuilding when switching back to a previously used model
+				task.apiConfiguration = providerSettings
 			}
 		} else if (task) {
 			// Fallback: rebuild if apiConfiguration is not available
 			task.api = buildApiHandler(providerSettings)
+			// Also update apiConfiguration in the fallback case
+			task.apiConfiguration = providerSettings
 		}
 	}
 

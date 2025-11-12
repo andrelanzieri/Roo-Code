@@ -497,6 +497,99 @@ describe("ClineProvider - API Handler Rebuild Guard", () => {
 				}),
 			)
 		})
+
+		test("handles A→B→A switching correctly (regression test for #9179)", async () => {
+			// Start with Model A (reasoning-enabled)
+			const mockTask = new Task({
+				...defaultTaskOptions,
+				apiConfiguration: {
+					apiProvider: "openrouter",
+					openRouterModelId: "openai/o1-preview",
+				},
+			})
+			const originalApiA = {
+				getModel: vi.fn().mockReturnValue({
+					id: "openai/o1-preview",
+					info: { contextWindow: 128000 },
+				}),
+			}
+			mockTask.api = originalApiA as any
+
+			await provider.addClineToStack(mockTask)
+
+			buildApiHandlerMock.mockClear()
+
+			// Switch to Model B (no reasoning)
+			const newApiB = {
+				getModel: vi.fn().mockReturnValue({
+					id: "openai/gpt-4",
+					info: { contextWindow: 128000 },
+				}),
+			}
+			buildApiHandlerMock.mockReturnValue(newApiB)
+
+			await provider.upsertProviderProfile(
+				"model-b-config",
+				{
+					apiProvider: "openrouter",
+					openRouterModelId: "openai/gpt-4",
+				},
+				true,
+			)
+
+			// Verify API handler was rebuilt for Model B
+			expect(buildApiHandlerMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiProvider: "openrouter",
+					openRouterModelId: "openai/gpt-4",
+				}),
+			)
+			expect(mockTask.api).toBe(newApiB)
+			// Verify task.apiConfiguration was updated to Model B
+			expect(mockTask.apiConfiguration).toEqual(
+				expect.objectContaining({
+					apiProvider: "openrouter",
+					openRouterModelId: "openai/gpt-4",
+				}),
+			)
+
+			buildApiHandlerMock.mockClear()
+
+			// Switch back to Model A (this is where the bug occurred)
+			const newApiA = {
+				getModel: vi.fn().mockReturnValue({
+					id: "openai/o1-preview",
+					info: { contextWindow: 128000 },
+				}),
+			}
+			buildApiHandlerMock.mockReturnValue(newApiA)
+
+			await provider.upsertProviderProfile(
+				"model-a-config",
+				{
+					apiProvider: "openrouter",
+					openRouterModelId: "openai/o1-preview",
+				},
+				true,
+			)
+
+			// Verify API handler WAS rebuilt when switching back to Model A
+			// This is the key test - without the fix, this would fail
+			expect(buildApiHandlerMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiProvider: "openrouter",
+					openRouterModelId: "openai/o1-preview",
+				}),
+			)
+			expect(mockTask.api).toBe(newApiA)
+			// Verify task.apiConfiguration was updated back to Model A
+			expect(mockTask.apiConfiguration).toEqual(
+				expect.objectContaining({
+					apiProvider: "openrouter",
+					openRouterModelId: "openai/o1-preview",
+				}),
+			)
+		})
 	})
 
 	describe("getModelId helper", () => {
