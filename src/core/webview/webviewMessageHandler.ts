@@ -566,7 +566,13 @@ export const webviewMessageHandler = async (
 
 				// Store selection context in the newly created task
 				const newTask = provider.getCurrentTask()
-				if (newTask && message.selectedText) {
+				if (
+					newTask &&
+					message.selectedText &&
+					message.selectionFilePath &&
+					typeof message.selectionStartLine === "number" &&
+					typeof message.selectionEndLine === "number"
+				) {
 					newTask.selectionContext = {
 						selectedText: message.selectedText,
 						selectionFilePath: message.selectionFilePath,
@@ -593,7 +599,13 @@ export const webviewMessageHandler = async (
 		case "askResponse": {
 			// Store selection context in current task before handling response
 			const task = provider.getCurrentTask()
-			if (task && message.selectedText) {
+			if (
+				task &&
+				message.selectedText &&
+				message.selectionFilePath &&
+				typeof message.selectionStartLine === "number" &&
+				typeof message.selectionEndLine === "number"
+			) {
 				task.selectionContext = {
 					selectedText: message.selectedText,
 					selectionFilePath: message.selectionFilePath,
