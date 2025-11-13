@@ -32,15 +32,13 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		maxWorkspaceFiles = 200,
 	} = state ?? {}
 
-	// Include selection context if available
-	if (cline.selectionContext) {
-		const { selectedText, selectionFilePath, selectionStartLine, selectionEndLine } = cline.selectionContext
+	// Include selection context if available (and automatically clear it)
+	const selectionContext = cline.getAndClearSelectionContext()
+	if (selectionContext) {
+		const { selectedText, selectionFilePath, selectionStartLine, selectionEndLine } = selectionContext
 		details += "\n\n# Current Selection"
 		details += `\nFile: ${selectionFilePath}:${selectionStartLine}-${selectionEndLine}`
 		details += `\n\`\`\`\n${selectedText}\n\`\`\``
-
-		// Clear the selection context after including it once
-		cline.selectionContext = undefined
 	}
 
 	// It could be useful for cline to know if the user went from one or no

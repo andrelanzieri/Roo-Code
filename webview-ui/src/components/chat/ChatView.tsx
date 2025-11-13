@@ -568,6 +568,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				// Mark that user has responded - this prevents any pending auto-approvals.
 				userRespondedRef.current = true
 
+				// Request fresh selection context before sending
+				vscode.postMessage({ type: "requestSelectionContext" })
+
 				if (messagesRef.current.length === 0) {
 					vscode.postMessage({
 						type: "newTask",
@@ -838,8 +841,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// NOTE: the VSCode window needs to be focused for this to work.
 	useMount(() => {
 		textAreaRef.current?.focus()
-		// Request initial selection context when component mounts
-		vscode.postMessage({ type: "requestSelectionContext" })
 	})
 
 	const visibleMessages = useMemo(() => {

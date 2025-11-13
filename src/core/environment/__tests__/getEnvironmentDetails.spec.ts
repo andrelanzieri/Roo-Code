@@ -116,6 +116,7 @@ describe("getEnvironmentDetails", () => {
 				deref: vi.fn().mockReturnValue(mockProvider),
 				[Symbol.toStringTag]: "WeakRef",
 			} as unknown as WeakRef<ClineProvider>,
+			getAndClearSelectionContext: vi.fn().mockReturnValue(undefined),
 		}
 
 		// Mock other dependencies.
@@ -393,46 +394,57 @@ describe("getEnvironmentDetails", () => {
 
 	describe("Selection Context", () => {
 		it("should include selection context when available", async () => {
-			const clineWithSelection = {
-				...mockCline,
-				selectionContext: {
-					selectedText: "const x = 1;\nconst y = 2;",
-					selectionFilePath: "src/test.ts",
-					selectionStartLine: 10,
-					selectionEndLine: 11,
-				},
+			const selectionContext = {
+				selectedText: "const x = 1;\nconst y = 2;",
+				selectionFilePath: "src/test.ts",
+				selectionStartLine: 10,
+				selectionEndLine: 11,
 			}
 
-			const result = await getEnvironmentDetails(clineWithSelection as Task)
+			const clineWithSelection = {
+				...mockCline,
+				getAndClearSelectionContext: vi.fn().mockReturnValueOnce(selectionContext),
+			}
+
+			const result = await getEnvironmentDetails(clineWithSelection as unknown as Task)
 
 			expect(result).toContain("# Current Selection")
 			expect(result).toContain("File: src/test.ts:10-11")
 			expect(result).toContain("```")
 			expect(result).toContain("const x = 1;")
 			expect(result).toContain("const y = 2;")
+			expect(clineWithSelection.getAndClearSelectionContext).toHaveBeenCalledOnce()
 		})
 
 		it("should clear selection context after including it", async () => {
-			const clineWithSelection = {
-				...mockCline,
-				selectionContext: {
-					selectedText: "test code",
-					selectionFilePath: "src/app.ts",
-					selectionStartLine: 5,
-					selectionEndLine: 5,
-				},
+			const selectionContext = {
+				selectedText: "test code",
+				selectionFilePath: "src/app.ts",
+				selectionStartLine: 5,
+				selectionEndLine: 5,
 			}
 
-			await getEnvironmentDetails(clineWithSelection as Task)
+			const clineWithSelection = {
+				...mockCline,
+				getAndClearSelectionContext: vi.fn().mockReturnValueOnce(selectionContext),
+			}
 
-			// Selection context should be cleared after use
-			expect(clineWithSelection.selectionContext).toBeUndefined()
+			await getEnvironmentDetails(clineWithSelection as unknown as Task)
+
+			// Selection context should be cleared after use (method called once)
+			expect(clineWithSelection.getAndClearSelectionContext).toHaveBeenCalledOnce()
 		})
 
 		it("should not include selection section when no context is available", async () => {
-			const result = await getEnvironmentDetails(mockCline as Task)
+			const clineWithoutSelection = {
+				...mockCline,
+				getAndClearSelectionContext: vi.fn().mockReturnValueOnce(undefined),
+			}
+
+			const result = await getEnvironmentDetails(clineWithoutSelection as unknown as Task)
 
 			expect(result).not.toContain("# Current Selection")
+			expect(clineWithoutSelection.getAndClearSelectionContext).toHaveBeenCalledOnce()
 		})
 	})
 })

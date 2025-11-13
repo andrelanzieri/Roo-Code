@@ -450,7 +450,7 @@ export const webviewMessageHandler = async (
 				const startLine = selection.start.line + 1
 				const endLine = selection.end.line + 1
 
-				// Send selection context to webview
+				// Send selection context to webview only - don't store in task
 				await provider.postMessageToWebview({
 					type: "selectionContext",
 					selectedText,
@@ -458,28 +458,11 @@ export const webviewMessageHandler = async (
 					selectionStartLine: startLine,
 					selectionEndLine: endLine,
 				})
-
-				// Store selection context in current task for use in environment details
-				const currentTask = provider.getCurrentTask()
-				if (currentTask) {
-					currentTask.selectionContext = {
-						selectedText,
-						selectionFilePath: relativeFilePath,
-						selectionStartLine: startLine,
-						selectionEndLine: endLine,
-					}
-				}
 			} else {
 				// No selection, send empty context
 				await provider.postMessageToWebview({
 					type: "selectionContext",
 				})
-
-				// Clear selection context in current task
-				const currentTask = provider.getCurrentTask()
-				if (currentTask) {
-					currentTask.selectionContext = undefined
-				}
 			}
 			break
 		}
@@ -562,24 +545,20 @@ export const webviewMessageHandler = async (
 			// agentically running promises in old instance don't affect our new
 			// task. This essentially creates a fresh slate for the new task.
 			try {
-				await provider.createTask(message.text, message.images)
-
-				// Store selection context in the newly created task
-				const newTask = provider.getCurrentTask()
-				if (
-					newTask &&
-					message.selectedText &&
-					message.selectionFilePath &&
-					typeof message.selectionStartLine === "number" &&
-					typeof message.selectionEndLine === "number"
-				) {
-					newTask.selectionContext = {
-						selectedText: message.selectedText,
-						selectionFilePath: message.selectionFilePath,
-						selectionStartLine: message.selectionStartLine,
-						selectionEndLine: message.selectionEndLine,
-					}
-				}
+				await provider.createTask(message.text, message.images, undefined, {
+					selectionContext:
+						message.selectedText &&
+						message.selectionFilePath &&
+						typeof message.selectionStartLine === "number" &&
+						typeof message.selectionEndLine === "number"
+							? {
+									selectedText: message.selectedText,
+									selectionFilePath: message.selectionFilePath,
+									selectionStartLine: message.selectionStartLine,
+									selectionEndLine: message.selectionEndLine,
+								}
+							: undefined,
+				})
 
 				// Task created successfully - notify the UI to reset
 				await provider.postMessageToWebview({ type: "invoke", invoke: "newChat" })
@@ -597,23 +576,21 @@ export const webviewMessageHandler = async (
 			break
 
 		case "askResponse": {
-			// Store selection context in current task before handling response
 			const task = provider.getCurrentTask()
-			if (
-				task &&
+			// Pass selection context through to handleWebviewAskResponse
+			const selectionContext =
 				message.selectedText &&
 				message.selectionFilePath &&
 				typeof message.selectionStartLine === "number" &&
 				typeof message.selectionEndLine === "number"
-			) {
-				task.selectionContext = {
-					selectedText: message.selectedText,
-					selectionFilePath: message.selectionFilePath,
-					selectionStartLine: message.selectionStartLine,
-					selectionEndLine: message.selectionEndLine,
-				}
-			}
-			task?.handleWebviewAskResponse(message.askResponse!, message.text, message.images)
+					? {
+							selectedText: message.selectedText,
+							selectionFilePath: message.selectionFilePath,
+							selectionStartLine: message.selectionStartLine,
+							selectionEndLine: message.selectionEndLine,
+						}
+					: undefined
+			task?.handleWebviewAskResponse(message.askResponse!, message.text, message.images, selectionContext)
 			break
 		}
 

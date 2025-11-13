@@ -142,6 +142,12 @@ export interface TaskOptions extends CreateTaskOptions {
 	onCreated?: (task: Task) => void
 	initialTodos?: TodoItem[]
 	workspacePath?: string
+	selectionContext?: {
+		selectedText: string
+		selectionFilePath: string
+		selectionStartLine: number
+		selectionEndLine: number
+	}
 }
 
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
@@ -155,7 +161,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	todoList?: TodoItem[]
 
-	selectionContext?: {
+	// Temporary storage for selection context during message processing
+	// This is cleared after being used in getEnvironmentDetails
+	private _currentSelectionContext?: {
 		selectedText: string
 		selectionFilePath: string
 		selectionStartLine: number
@@ -326,6 +334,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		onCreated,
 		initialTodos,
 		workspacePath,
+		selectionContext,
 	}: TaskOptions) {
 		super()
 
@@ -447,13 +456,30 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		if (startTask) {
 			if (task || images) {
-				this.startTask(task, images)
+				this.startTask(task, images, selectionContext)
 			} else if (historyItem) {
 				this.resumeTaskFromHistory()
 			} else {
 				throw new Error("Either historyItem or task/images must be provided")
 			}
 		}
+	}
+
+	/**
+	 * Get and clear the current selection context.
+	 * This ensures selection context is only used once and doesn't persist.
+	 */
+	public getAndClearSelectionContext():
+		| {
+				selectedText: string
+				selectionFilePath: string
+				selectionStartLine: number
+				selectionEndLine: number
+		  }
+		| undefined {
+		const context = this._currentSelectionContext
+		this._currentSelectionContext = undefined
+		return context
 	}
 
 	/**
@@ -971,10 +997,23 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		return result
 	}
 
-	handleWebviewAskResponse(askResponse: ClineAskResponse, text?: string, images?: string[]) {
+	handleWebviewAskResponse(
+		askResponse: ClineAskResponse,
+		text?: string,
+		images?: string[],
+		selectionContext?: {
+			selectedText: string
+			selectionFilePath: string
+			selectionStartLine: number
+			selectionEndLine: number
+		},
+	) {
 		this.askResponse = askResponse
 		this.askResponseText = text
 		this.askResponseImages = images
+
+		// Store selection context temporarily for use in the next getEnvironmentDetails call
+		this._currentSelectionContext = selectionContext
 
 		// Create a checkpoint whenever the user sends a message.
 		// Use allowEmpty=true to ensure a checkpoint is recorded even if there are no file changes.
@@ -1251,7 +1290,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Lifecycle
 	// Start / Resume / Abort / Dispose
 
-	private async startTask(task?: string, images?: string[]): Promise<void> {
+	private async startTask(
+		task?: string,
+		images?: string[],
+		selectionContext?: {
+			selectedText: string
+			selectionFilePath: string
+			selectionStartLine: number
+			selectionEndLine: number
+		},
+	): Promise<void> {
 		if (this.enableBridge) {
 			try {
 				await BridgeOrchestrator.subscribeToTask(this)
@@ -1270,6 +1318,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// messages from previous session).
 		this.clineMessages = []
 		this.apiConversationHistory = []
+
+		// Store selection context temporarily for use in the first getEnvironmentDetails call
+		this._currentSelectionContext = selectionContext
 
 		// The todo list is already set in the constructor if initialTodos were provided
 		// No need to add any messages - the todoList property is already set

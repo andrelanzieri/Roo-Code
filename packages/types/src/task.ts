@@ -92,6 +92,12 @@ export interface CreateTaskOptions {
 	consecutiveMistakeLimit?: number
 	experiments?: Record<string, boolean>
 	initialTodos?: TodoItem[]
+	selectionContext?: {
+		selectedText: string
+		selectionFilePath: string
+		selectionStartLine: number
+		selectionEndLine: number
+	}
 }
 
 export enum TaskStatus {
