@@ -134,6 +134,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [sendingDisabled, setSendingDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
+	const [selectionContext, setSelectionContext] = useState<{
+		selectedText?: string
+		selectionFilePath?: string
+		selectionStartLine?: number
+		selectionEndLine?: number
+	} | null>(null)
 
 	// We need to hold on to the ask because useEffect > lastMessage will always
 	// let us know when an ask comes in and handle it, but by the time
@@ -563,7 +569,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				userRespondedRef.current = true
 
 				if (messagesRef.current.length === 0) {
-					vscode.postMessage({ type: "newTask", text, images })
+					vscode.postMessage({
+						type: "newTask",
+						text,
+						images,
+						...(selectionContext || {}),
+					})
 				} else if (clineAskRef.current) {
 					if (clineAskRef.current === "followup") {
 						markFollowUpAsAnswered()
@@ -588,19 +599,26 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 								askResponse: "messageResponse",
 								text,
 								images,
+								...(selectionContext || {}),
 							})
 							break
 						// There is no other case that a textfield should be enabled.
 					}
 				} else {
 					// This is a new message in an ongoing task.
-					vscode.postMessage({ type: "askResponse", askResponse: "messageResponse", text, images })
+					vscode.postMessage({
+						type: "askResponse",
+						askResponse: "messageResponse",
+						text,
+						images,
+						...(selectionContext || {}),
+					})
 				}
 
 				handleChatReset()
 			}
 		},
-		[handleChatReset, markFollowUpAsAnswered, sendingDisabled, isStreaming, messageQueue.length], // messagesRef and clineAskRef are stable
+		[handleChatReset, markFollowUpAsAnswered, sendingDisabled, isStreaming, messageQueue.length, selectionContext], // messagesRef and clineAskRef are stable
 	)
 
 	const handleSetChatBoxMessage = useCallback(
@@ -743,6 +761,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							break
 					}
 					break
+				case "selectionContext":
+					// Update selection context when received from extension
+					setSelectionContext({
+						selectedText: message.selectedText,
+						selectionFilePath: message.selectionFilePath,
+						selectionStartLine: message.selectionStartLine,
+						selectionEndLine: message.selectionEndLine,
+					})
+					break
 				case "selectedImages":
 					// Only handle selectedImages if it's not for editing context
 					// When context is "edit", ChatRow will handle the images
@@ -809,7 +836,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useEvent("message", handleMessage)
 
 	// NOTE: the VSCode window needs to be focused for this to work.
-	useMount(() => textAreaRef.current?.focus())
+	useMount(() => {
+		textAreaRef.current?.focus()
+		// Request initial selection context when component mounts
+		vscode.postMessage({ type: "requestSelectionContext" })
+	})
 
 	const visibleMessages = useMemo(() => {
 		// Pre-compute checkpoint hashes that have associated user messages for O(1) lookup

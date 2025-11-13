@@ -390,4 +390,49 @@ describe("getEnvironmentDetails", () => {
 		const result = await getEnvironmentDetails(cline as Task)
 		expect(result).toContain("REMINDERS")
 	})
+
+	describe("Selection Context", () => {
+		it("should include selection context when available", async () => {
+			const clineWithSelection = {
+				...mockCline,
+				selectionContext: {
+					selectedText: "const x = 1;\nconst y = 2;",
+					selectionFilePath: "src/test.ts",
+					selectionStartLine: 10,
+					selectionEndLine: 11,
+				},
+			}
+
+			const result = await getEnvironmentDetails(clineWithSelection as Task)
+
+			expect(result).toContain("# Current Selection")
+			expect(result).toContain("File: src/test.ts:10-11")
+			expect(result).toContain("```")
+			expect(result).toContain("const x = 1;")
+			expect(result).toContain("const y = 2;")
+		})
+
+		it("should clear selection context after including it", async () => {
+			const clineWithSelection = {
+				...mockCline,
+				selectionContext: {
+					selectedText: "test code",
+					selectionFilePath: "src/app.ts",
+					selectionStartLine: 5,
+					selectionEndLine: 5,
+				},
+			}
+
+			await getEnvironmentDetails(clineWithSelection as Task)
+
+			// Selection context should be cleared after use
+			expect(clineWithSelection.selectionContext).toBeUndefined()
+		})
+
+		it("should not include selection section when no context is available", async () => {
+			const result = await getEnvironmentDetails(mockCline as Task)
+
+			expect(result).not.toContain("# Current Selection")
+		})
+	})
 })

@@ -155,6 +155,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	todoList?: TodoItem[]
 
+	selectionContext?: {
+		selectedText: string
+		selectionFilePath: string
+		selectionStartLine: number
+		selectionEndLine: number
+	}
+
 	readonly rootTask: Task | undefined = undefined
 	readonly parentTask: Task | undefined = undefined
 	readonly taskNumber: number

@@ -165,7 +165,12 @@ export interface WebviewMessage {
 		| "dismissUpsell"
 		| "getDismissedUpsells"
 		| "updateSettings"
+		| "requestSelectionContext"
 	text?: string
+	selectedText?: string
+	selectionFilePath?: string
+	selectionStartLine?: number
+	selectionEndLine?: number
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
 	disabled?: boolean

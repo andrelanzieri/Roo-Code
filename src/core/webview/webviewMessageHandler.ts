@@ -428,6 +428,61 @@ export const webviewMessageHandler = async (
 	}
 
 	switch (message.type) {
+		case "requestSelectionContext": {
+			// Get the active editor and its selection
+			const editor = vscode.window.activeTextEditor
+			if (editor && !editor.selection.isEmpty) {
+				const selection = editor.selection
+				const selectedText = editor.document.getText(selection)
+				const filePath = editor.document.uri.fsPath
+
+				// Convert to workspace-relative path if possible
+				const workspacePath = provider.cwd
+				let relativeFilePath: string
+				if (filePath.startsWith(workspacePath)) {
+					relativeFilePath = path.relative(workspacePath, filePath)
+				} else {
+					// File is outside workspace, use absolute path
+					relativeFilePath = filePath
+				}
+
+				// VSCode uses 0-based line numbers, convert to 1-based for user-friendly display
+				const startLine = selection.start.line + 1
+				const endLine = selection.end.line + 1
+
+				// Send selection context to webview
+				await provider.postMessageToWebview({
+					type: "selectionContext",
+					selectedText,
+					selectionFilePath: relativeFilePath,
+					selectionStartLine: startLine,
+					selectionEndLine: endLine,
+				})
+
+				// Store selection context in current task for use in environment details
+				const currentTask = provider.getCurrentTask()
+				if (currentTask) {
+					currentTask.selectionContext = {
+						selectedText,
+						selectionFilePath: relativeFilePath,
+						selectionStartLine: startLine,
+						selectionEndLine: endLine,
+					}
+				}
+			} else {
+				// No selection, send empty context
+				await provider.postMessageToWebview({
+					type: "selectionContext",
+				})
+
+				// Clear selection context in current task
+				const currentTask = provider.getCurrentTask()
+				if (currentTask) {
+					currentTask.selectionContext = undefined
+				}
+			}
+			break
+		}
 		case "webviewDidLaunch":
 			// Load custom modes first
 			const customModes = await provider.customModesManager.getCustomModes()
@@ -508,6 +563,18 @@ export const webviewMessageHandler = async (
 			// task. This essentially creates a fresh slate for the new task.
 			try {
 				await provider.createTask(message.text, message.images)
+
+				// Store selection context in the newly created task
+				const newTask = provider.getCurrentTask()
+				if (newTask && message.selectedText) {
+					newTask.selectionContext = {
+						selectedText: message.selectedText,
+						selectionFilePath: message.selectionFilePath,
+						selectionStartLine: message.selectionStartLine,
+						selectionEndLine: message.selectionEndLine,
+					}
+				}
+
 				// Task created successfully - notify the UI to reset
 				await provider.postMessageToWebview({ type: "invoke", invoke: "newChat" })
 			} catch (error) {
@@ -523,9 +590,20 @@ export const webviewMessageHandler = async (
 			await provider.updateCustomInstructions(message.text)
 			break
 
-		case "askResponse":
-			provider.getCurrentTask()?.handleWebviewAskResponse(message.askResponse!, message.text, message.images)
+		case "askResponse": {
+			// Store selection context in current task before handling response
+			const task = provider.getCurrentTask()
+			if (task && message.selectedText) {
+				task.selectionContext = {
+					selectedText: message.selectedText,
+					selectionFilePath: message.selectionFilePath,
+					selectionStartLine: message.selectionStartLine,
+					selectionEndLine: message.selectionEndLine,
+				}
+			}
+			task?.handleWebviewAskResponse(message.askResponse!, message.text, message.images)
 			break
+		}
 
 		case "updateSettings":
 			if (message.updatedSettings) {

@@ -32,6 +32,17 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		maxWorkspaceFiles = 200,
 	} = state ?? {}
 
+	// Include selection context if available
+	if (cline.selectionContext) {
+		const { selectedText, selectionFilePath, selectionStartLine, selectionEndLine } = cline.selectionContext
+		details += "\n\n# Current Selection"
+		details += `\nFile: ${selectionFilePath}:${selectionStartLine}-${selectionEndLine}`
+		details += `\n\`\`\`\n${selectedText}\n\`\`\``
+
+		// Clear the selection context after including it once
+		cline.selectionContext = undefined
+	}
+
 	// It could be useful for cline to know if the user went from one or no
 	// file to another between messages, so we always include this context.
 	details += "\n\n# VSCode Visible Files"

@@ -128,7 +128,12 @@ export interface ExtensionMessage {
 		| "dismissedUpsells"
 		| "organizationSwitchResult"
 		| "interactionRequired"
+		| "selectionContext"
 	text?: string
+	selectedText?: string
+	selectionFilePath?: string
+	selectionStartLine?: number
+	selectionEndLine?: number
 	payload?: any // Add a generic payload for now, can refine later
 	// Checkpoint warning message
 	checkpointWarning?: {
