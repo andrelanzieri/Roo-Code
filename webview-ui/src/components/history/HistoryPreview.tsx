@@ -10,9 +10,7 @@ import TaskItem from "./TaskItem"
 const HistoryPreview = () => {
 	const { tasks } = useTaskSearch()
 	const { t } = useAppTranslation()
-	let { maxTasksHomeScreen } = useExtensionState()
-
-	maxTasksHomeScreen = 100
+	const { maxTasksHomeScreen } = useExtensionState()
 
 	const handleViewAllHistory = () => {
 		vscode.postMessage({ type: "switchTab", tab: "history" })
