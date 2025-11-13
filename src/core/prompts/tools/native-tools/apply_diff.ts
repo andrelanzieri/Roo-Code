@@ -4,9 +4,7 @@ export const apply_diff_single_file = {
 	type: "function",
 	function: {
 		name: "apply_diff",
-		description: `
-Apply precise, targeted modifications to an existing file using one or more search/replace blocks. This tool is for surgical edits only; the 'SEARCH' block must exactly match the existing content, including whitespace and indentation. To make multiple targeted changes, provide multiple SEARCH/REPLACE blocks in the 'diff' parameter. Use the 'read_file' tool first if you are not confident in the exact content to search for.
-`,
+		description: `Apply precise, targeted modifications to an existing file using one or more search/replace blocks. This tool is for surgical edits only; the 'SEARCH' block must exactly match the existing content, including whitespace and indentation. To make multiple targeted changes, provide multiple SEARCH/REPLACE blocks in the 'diff' parameter. Use the 'read_file' tool first if you are not confident in the exact content to search for.`,
 		parameters: {
 			type: "object",
 			properties: {
@@ -16,16 +14,14 @@ Apply precise, targeted modifications to an existing file using one or more sear
 				},
 				diff: {
 					type: "string",
-					description: `
-A string containing one or more search/replace blocks defining the changes. The ':start_line:' is required and indicates the starting line number of the original content.  You must not add a start line for the replacement content. Each block must follow this format:
+					description: `A string containing one or more search/replace blocks defining the changes. The ':start_line:' is required and indicates the starting line number of the original content.  You must not add a start line for the replacement content. Each block must follow this format:
 <<<<<<< SEARCH
- :start_line:[line_number]
- -------
- [exact content to find]
- =======
- [new content to replace with]
- >>>>>>> REPLACE
-`,
+:start_line:[line_number]
+-------
+[exact content to find]
+=======
+[new content to replace with]
+>>>>>>> REPLACE`,
 				},
 			},
 			required: ["path", "diff"],
@@ -64,14 +60,12 @@ export const apply_diff_multi_file = {
 									properties: {
 										content: {
 											type: "string",
-											description: `
-The search/replace block defining the changes. The SEARCH block must exactly match the content to be replaced. Format: 
-'<<<<<<< SEARCH
+											description: `The search/replace block defining the changes. The SEARCH block must exactly match the content to be replaced. Format: 
+<<<<<<< SEARCH
 [content_to_find]
 =======
 [content_to_replace_with]
->>>>>>> REPLACE
- `,
+>>>>>>> REPLACE`,
 										},
 										start_line: {
 											type: "integer",
