@@ -11,6 +11,7 @@ import {
 	type ClineMessage,
 	type TelemetrySetting,
 	type UserSettingsConfig,
+	type SelectionContext,
 	TelemetryEventName,
 	RooCodeSettings,
 	Experiments,
@@ -428,14 +429,7 @@ export const webviewMessageHandler = async (
 	}
 
 	// Helper function to capture current editor selection
-	const captureSelectionContext = ():
-		| {
-				selectedText: string
-				selectionFilePath: string
-				selectionStartLine: number
-				selectionEndLine: number
-		  }
-		| undefined => {
+	const captureSelectionContext = (): SelectionContext | undefined => {
 		const editor = vscode.window.activeTextEditor
 		if (editor && !editor.selection.isEmpty) {
 			const selection = editor.selection

@@ -24,6 +24,7 @@ import {
 	type ToolProgressStatus,
 	type HistoryItem,
 	type CreateTaskOptions,
+	type SelectionContext,
 	RooCodeEventName,
 	TelemetryEventName,
 	TaskStatus,
@@ -142,12 +143,7 @@ export interface TaskOptions extends CreateTaskOptions {
 	onCreated?: (task: Task) => void
 	initialTodos?: TodoItem[]
 	workspacePath?: string
-	selectionContext?: {
-		selectedText: string
-		selectionFilePath: string
-		selectionStartLine: number
-		selectionEndLine: number
-	}
+	selectionContext?: SelectionContext
 }
 
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
@@ -163,12 +159,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Temporary storage for selection context during message processing
 	// This is cleared after being used in getEnvironmentDetails
-	private _currentSelectionContext?: {
-		selectedText: string
-		selectionFilePath: string
-		selectionStartLine: number
-		selectionEndLine: number
-	}
+	private _currentSelectionContext?: SelectionContext
 
 	readonly rootTask: Task | undefined = undefined
 	readonly parentTask: Task | undefined = undefined
@@ -469,14 +460,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * Get and clear the current selection context.
 	 * This ensures selection context is only used once and doesn't persist.
 	 */
-	public getAndClearSelectionContext():
-		| {
-				selectedText: string
-				selectionFilePath: string
-				selectionStartLine: number
-				selectionEndLine: number
-		  }
-		| undefined {
+	public getAndClearSelectionContext(): SelectionContext | undefined {
 		const context = this._currentSelectionContext
 		this._currentSelectionContext = undefined
 		return context
@@ -1001,12 +985,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		askResponse: ClineAskResponse,
 		text?: string,
 		images?: string[],
-		selectionContext?: {
-			selectedText: string
-			selectionFilePath: string
-			selectionStartLine: number
-			selectionEndLine: number
-		},
+		selectionContext?: SelectionContext,
 	) {
 		this.askResponse = askResponse
 		this.askResponseText = text
@@ -1290,16 +1269,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Lifecycle
 	// Start / Resume / Abort / Dispose
 
-	private async startTask(
-		task?: string,
-		images?: string[],
-		selectionContext?: {
-			selectedText: string
-			selectionFilePath: string
-			selectionStartLine: number
-			selectionEndLine: number
-		},
-	): Promise<void> {
+	private async startTask(task?: string, images?: string[], selectionContext?: SelectionContext): Promise<void> {
 		if (this.enableBridge) {
 			try {
 				await BridgeOrchestrator.subscribeToTask(this)

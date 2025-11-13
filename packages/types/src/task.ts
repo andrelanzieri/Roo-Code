@@ -82,6 +82,16 @@ export type TaskProviderEvents = {
 }
 
 /**
+ * Selection context captured from the editor
+ */
+export interface SelectionContext {
+	selectedText: string
+	selectionFilePath: string
+	selectionStartLine: number
+	selectionEndLine: number
+}
+
+/**
  * TaskLike
  */
 
@@ -92,12 +102,7 @@ export interface CreateTaskOptions {
 	consecutiveMistakeLimit?: number
 	experiments?: Record<string, boolean>
 	initialTodos?: TodoItem[]
-	selectionContext?: {
-		selectedText: string
-		selectionFilePath: string
-		selectionStartLine: number
-		selectionEndLine: number
-	}
+	selectionContext?: SelectionContext
 }
 
 export enum TaskStatus {
