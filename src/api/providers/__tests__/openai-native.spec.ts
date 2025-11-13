@@ -1316,5 +1316,159 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 				expect(bodyStr).not.toContain('"verbosity"')
 			})
 		})
+
+		describe("gpt-5-chat-latest encrypted reasoning fix", () => {
+			it("should NOT include encrypted reasoning for gpt-5-chat-latest", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode(
+									'data: {"type":"response.output_item.added","item":{"type":"text","text":"Response without encrypted reasoning"}}\n\n',
+								),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				global.fetch = mockFetch as any
+
+				// Mock SDK to fail so it uses fetch
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-chat-latest",
+					openAiNativeApiKey: "test-api-key",
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+
+				const stream = handler.createMessage(systemPrompt, messages)
+				const chunks: any[] = []
+				for await (const chunk of stream) {
+					chunks.push(chunk)
+				}
+
+				// Verify the request was made
+				expect(mockFetch).toHaveBeenCalledWith(
+					"https://api.openai.com/v1/responses",
+					expect.objectContaining({
+						method: "POST",
+						headers: expect.objectContaining({
+							"Content-Type": "application/json",
+							Authorization: "Bearer test-api-key",
+							Accept: "text/event-stream",
+						}),
+						body: expect.any(String),
+					}),
+				)
+
+				const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+
+				// CRITICAL: gpt-5-chat-latest should NOT have encrypted reasoning
+				expect(requestBody.include).toBeUndefined()
+				expect(requestBody).not.toHaveProperty("include")
+
+				// Should still have other expected properties
+				expect(requestBody.model).toBe("gpt-5-chat-latest")
+				expect(requestBody.instructions).toBe("You are a helpful assistant.")
+				expect(requestBody.stream).toBe(true)
+				expect(requestBody.store).toBe(false)
+
+				// gpt-5-chat-latest supports verbosity
+				expect(requestBody.text?.verbosity).toBe("medium")
+
+				// gpt-5-chat-latest does NOT support reasoning effort
+				expect(requestBody.reasoning).toBeUndefined()
+			})
+
+			it("should still include encrypted reasoning for models that support it (gpt-5-2025-08-07)", async () => {
+				const mockFetch = vitest.fn().mockResolvedValue({
+					ok: true,
+					body: new ReadableStream({
+						start(controller) {
+							controller.enqueue(
+								new TextEncoder().encode(
+									'data: {"type":"response.output_item.added","item":{"type":"text","text":"Response with encrypted reasoning"}}\n\n',
+								),
+							)
+							controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+							controller.close()
+						},
+					}),
+				})
+				global.fetch = mockFetch as any
+
+				// Mock SDK to fail so it uses fetch
+				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-2025-08-07",
+					openAiNativeApiKey: "test-api-key",
+				})
+
+				const systemPrompt = "You are a helpful assistant."
+				const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+
+				const stream = handler.createMessage(systemPrompt, messages)
+				const chunks: any[] = []
+				for await (const chunk of stream) {
+					chunks.push(chunk)
+				}
+
+				const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
+
+				// gpt-5-2025-08-07 SHOULD have encrypted reasoning
+				expect(requestBody.include).toEqual(["reasoning.encrypted_content"])
+
+				// Should also have reasoning effort
+				expect(requestBody.reasoning?.effort).toBe("medium")
+			})
+
+			it("should NOT include encrypted reasoning for gpt-5-chat-latest in completePrompt", async () => {
+				// Clear the mock before this test
+				mockResponsesCreate.mockClear()
+
+				const handler = new OpenAiNativeHandler({
+					apiModelId: "gpt-5-chat-latest",
+					openAiNativeApiKey: "test-api-key",
+				})
+
+				// Mock the responses.create method
+				mockResponsesCreate.mockResolvedValue({
+					output: [
+						{
+							type: "message",
+							content: [
+								{
+									type: "output_text",
+									text: "Completion without encrypted reasoning",
+								},
+							],
+						},
+					],
+				})
+
+				const result = await handler.completePrompt("Test prompt")
+
+				expect(result).toBe("Completion without encrypted reasoning")
+				expect(mockResponsesCreate).toHaveBeenCalledTimes(1)
+				expect(mockResponsesCreate).toHaveBeenCalledWith(
+					expect.objectContaining({
+						model: "gpt-5-chat-latest",
+						stream: false,
+						store: false,
+					}),
+				)
+
+				// Check that include is NOT in the request
+				const callArg = mockResponsesCreate.mock.calls[0][0]
+				expect(callArg.include).toBeUndefined()
+				expect(callArg).not.toHaveProperty("include")
+			})
+		})
 	})
 })

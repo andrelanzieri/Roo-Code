@@ -206,17 +206,21 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		const requestedTier = (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
 		const allowedTierNames = new Set(model.info.tiers?.map((t) => t.name).filter(Boolean) || [])
 
+		// Check if the model supports reasoning (and thus encrypted reasoning)
+		const supportsReasoning = model.info.supportsReasoningEffort !== false || reasoningEffort !== undefined
+
 		const body: Gpt5RequestBody = {
 			model: model.id,
 			input: formattedInput,
 			stream: true,
-			// Always use stateless operation with encrypted reasoning
+			// Always use stateless operation
 			store: false,
 			// Always include instructions (system prompt) for Responses API.
 			// Unlike Chat Completions, system/developer roles in input have no special semantics here.
 			// The official way to set system behavior is the top-level `instructions` field.
 			instructions: systemPrompt,
-			include: ["reasoning.encrypted_content"],
+			// Only include encrypted reasoning for models that support reasoning
+			...(supportsReasoning ? { include: ["reasoning.encrypted_content"] } : {}),
 			...(reasoningEffort
 				? {
 						reasoning: {
@@ -1087,6 +1091,9 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			// Resolve reasoning effort for models that support it
 			const reasoningEffort = this.getReasoningEffort(model)
 
+			// Check if the model supports reasoning (and thus encrypted reasoning)
+			const supportsReasoning = model.info.supportsReasoningEffort !== false || reasoningEffort !== undefined
+
 			// Build request body for Responses API
 			const requestBody: any = {
 				model: model.id,
@@ -1098,7 +1105,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				],
 				stream: false, // Non-streaming for completePrompt
 				store: false, // Don't store prompt completions
-				include: ["reasoning.encrypted_content"],
+				// Only include encrypted reasoning for models that support reasoning
+				...(supportsReasoning ? { include: ["reasoning.encrypted_content"] } : {}),
 			}
 
 			// Include service tier if selected and supported
