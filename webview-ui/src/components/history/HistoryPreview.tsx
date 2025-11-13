@@ -10,7 +10,9 @@ import TaskItem from "./TaskItem"
 const HistoryPreview = () => {
 	const { tasks } = useTaskSearch()
 	const { t } = useAppTranslation()
-	const { maxTasksHomeScreen } = useExtensionState()
+	let { maxTasksHomeScreen } = useExtensionState()
+
+	maxTasksHomeScreen = 100
 
 	const handleViewAllHistory = () => {
 		vscode.postMessage({ type: "switchTab", tab: "history" })
@@ -22,7 +24,7 @@ const HistoryPreview = () => {
 	}
 
 	return (
-		<div className="flex flex-col gap-1">
+		<div className="flex flex-col gap-1 h-full">
 			<div className="flex flex-wrap items-center justify-between mt-4 mb-2">
 				<h2 className="font-semibold text-lg grow m-0">{t("history:recentTasks")}</h2>
 				<button
@@ -33,11 +35,14 @@ const HistoryPreview = () => {
 				</button>
 			</div>
 			{tasks.length !== 0 && (
-				<>
-					{tasks.slice(0, maxTasksHomeScreen).map((item) => (
-						<TaskItem key={item.id} item={item} variant="compact" />
-					))}
-				</>
+				<div className="relative w-full">
+					<div className="absolute w-full bg-gradient-to-t from-vscode-sideBar-background to-vscode-sideBar-background/0 z-5 bottom-0 h-6" />
+					<div className="overflow-y-auto space-y-1 -mx-6 px-6 pb-6 max-h-[calc(100vh-280px)] relative z-4">
+						{tasks.slice(0, maxTasksHomeScreen).map((item) => (
+							<TaskItem key={item.id} item={item} variant="compact" />
+						))}
+					</div>
+				</div>
 			)}
 		</div>
 	)
