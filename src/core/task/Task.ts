@@ -1920,17 +1920,20 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 									cacheReadTokens,
 								)
 
-					// For tokensIn, store the base input tokens (not including cache tokens)
-					// This ensures context length calculation works correctly in getApiMetrics
-					// where it adds tokensIn + tokensOut. The cache tokens are stored separately
-					// in cacheWrites and cacheReads for display purposes.
+					// Store tokensIn based on the API protocol:
+					// - For Anthropic: inputTokens is base input (without cache), so use inputTokens
+					// - For OpenAI: inputTokens already includes cache, so use totalInputTokens
+					// This ensures getApiMetrics can correctly calculate context tokens by checking apiProtocol
+					const tokensInValue = apiProtocol === "anthropic" ? inputTokens : costResult.totalInputTokens
+
 					this.clineMessages[lastApiReqIndex].text = JSON.stringify({
 						...existingData,
-						tokensIn: inputTokens,
+						tokensIn: tokensInValue,
 						tokensOut: costResult.totalOutputTokens,
 						cacheWrites: cacheWriteTokens,
 						cacheReads: cacheReadTokens,
 						cost: totalCost ?? costResult.totalCost,
+						apiProtocol,
 						cancelReason,
 						streamingFailedMessage,
 					} satisfies ClineApiReqInfo)
