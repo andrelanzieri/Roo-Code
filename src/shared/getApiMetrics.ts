@@ -82,9 +82,10 @@ export function getApiMetrics(messages: ClineMessage[]) {
 				const parsedText: ParsedApiReqStartedTextType = JSON.parse(message.text)
 				const { tokensIn, tokensOut } = parsedText
 
-				// Since tokensIn now stores TOTAL input tokens (including cache tokens),
-				// we no longer need to add cacheWrites and cacheReads separately.
-				// This applies to both Anthropic and OpenAI protocols.
+				// tokensIn contains base input tokens (without cache tokens).
+				// This works correctly for both Anthropic and OpenAI protocols because:
+				// - Cache tokens are stored separately in cacheWrites/cacheReads
+				// - Context length = base input + output tokens
 				result.contextTokens = (tokensIn || 0) + (tokensOut || 0)
 			} catch (error) {
 				console.error("Error parsing JSON:", error)

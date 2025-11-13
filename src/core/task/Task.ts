@@ -1920,9 +1920,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 									cacheReadTokens,
 								)
 
+					// For tokensIn, store the base input tokens (not including cache tokens)
+					// This ensures context length calculation works correctly in getApiMetrics
+					// where it adds tokensIn + tokensOut. The cache tokens are stored separately
+					// in cacheWrites and cacheReads for display purposes.
 					this.clineMessages[lastApiReqIndex].text = JSON.stringify({
 						...existingData,
-						tokensIn: costResult.totalInputTokens,
+						tokensIn: inputTokens,
 						tokensOut: costResult.totalOutputTokens,
 						cacheWrites: cacheWriteTokens,
 						cacheReads: cacheReadTokens,
