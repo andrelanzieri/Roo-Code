@@ -2,6 +2,7 @@ import { memo } from "react"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { useExtensionState } from "@src/context/ExtensionStateContext"
 
 import { useTaskSearch } from "./useTaskSearch"
 import TaskItem from "./TaskItem"
@@ -9,9 +10,15 @@ import TaskItem from "./TaskItem"
 const HistoryPreview = () => {
 	const { tasks } = useTaskSearch()
 	const { t } = useAppTranslation()
+	const { maxTasksHomeScreen } = useExtensionState()
 
 	const handleViewAllHistory = () => {
 		vscode.postMessage({ type: "switchTab", tab: "history" })
+	}
+
+	// If maxTasksHomeScreen is 0, don't render anything
+	if (maxTasksHomeScreen === 0) {
+		return null
 	}
 
 	return (
@@ -27,7 +34,7 @@ const HistoryPreview = () => {
 			</div>
 			{tasks.length !== 0 && (
 				<>
-					{tasks.slice(0, 4).map((item) => (
+					{tasks.slice(0, maxTasksHomeScreen).map((item) => (
 						<TaskItem key={item.id} item={item} variant="compact" />
 					))}
 				</>

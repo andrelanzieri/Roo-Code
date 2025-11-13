@@ -42,6 +42,10 @@
 		"collapseThinking": {
 			"label": "Collapse Thinking messages by default",
 			"description": "When enabled, thinking blocks will be collapsed by default until you interact with them"
+		},
+		"maxTasksHomeScreen": {
+			"label": "Maximum number of tasks in home screen",
+			"description": "Number of recent tasks to show on the home screen (0-20). Set to 0 to hide the history preview entirely."
 		}
 	},
 	"prompts": {
