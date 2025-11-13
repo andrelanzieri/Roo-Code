@@ -15,10 +15,10 @@ describe("UISettings", () => {
 		expect(checkbox).toBeTruthy()
 	})
 
-	it("renders the max tasks home screen input", () => {
+	it("renders the max tasks home screen slider", () => {
 		const { getByTestId } = render(<UISettings {...defaultProps} />)
-		const input = getByTestId("max-tasks-home-screen-input")
-		expect(input).toBeTruthy()
+		const slider = getByTestId("max-tasks-home-screen-slider")
+		expect(slider).toBeTruthy()
 	})
 
 	it("displays the correct initial state for collapse thinking", () => {
@@ -29,8 +29,9 @@ describe("UISettings", () => {
 
 	it("displays the correct initial value for max tasks", () => {
 		const { getByTestId } = render(<UISettings {...defaultProps} maxTasksHomeScreen={10} />)
-		const input = getByTestId("max-tasks-home-screen-input") as HTMLInputElement
-		expect(input.value).toBe("10")
+		const slider = getByTestId("max-tasks-home-screen-slider")
+		const thumb = slider.querySelector('[role="slider"]') as HTMLElement
+		expect(thumb.getAttribute("aria-valuenow")).toBe("10")
 	})
 
 	it("calls setCachedStateField when checkbox is toggled", async () => {
@@ -54,12 +55,15 @@ describe("UISettings", () => {
 		expect(checkbox.checked).toBe(true)
 	})
 
-	it("updates input value when maxTasksHomeScreen prop changes", () => {
+	it("updates slider value when maxTasksHomeScreen prop changes", () => {
 		const { getByTestId, rerender } = render(<UISettings {...defaultProps} maxTasksHomeScreen={4} />)
-		const input = getByTestId("max-tasks-home-screen-input") as HTMLInputElement
-		expect(input.value).toBe("4")
+		let slider = getByTestId("max-tasks-home-screen-slider")
+		let thumb = slider.querySelector('[role="slider"]') as HTMLElement
+		expect(thumb.getAttribute("aria-valuenow")).toBe("4")
 
 		rerender(<UISettings {...defaultProps} maxTasksHomeScreen={10} />)
-		expect(input.value).toBe("10")
+		slider = getByTestId("max-tasks-home-screen-slider")
+		thumb = slider.querySelector('[role="slider"]') as HTMLElement
+		expect(thumb.getAttribute("aria-valuenow")).toBe("10")
 	})
 })

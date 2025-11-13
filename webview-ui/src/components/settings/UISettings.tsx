@@ -1,8 +1,10 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import { Glasses } from "lucide-react"
 import { telemetryClient } from "@/utils/TelemetryClient"
+
+import { Slider } from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
@@ -32,16 +34,13 @@ export const UISettings = ({
 		})
 	}
 
-	const handleMaxTasksHomeScreenChange = (value: string) => {
-		const numValue = parseInt(value, 10)
-		if (!isNaN(numValue) && numValue >= 0 && numValue <= 20) {
-			setCachedStateField("maxTasksHomeScreen", numValue)
+	const handleMaxTasksHomeScreenChange = (value: number) => {
+		setCachedStateField("maxTasksHomeScreen", value)
 
-			// Track telemetry event
-			telemetryClient.capture("ui_settings_max_tasks_home_screen_changed", {
-				value: numValue,
-			})
-		}
+		// Track telemetry event
+		telemetryClient.capture("ui_settings_max_tasks_home_screen_changed", {
+			value: value,
+		})
 	}
 
 	return (
@@ -70,18 +69,17 @@ export const UISettings = ({
 
 					{/* Maximum Tasks in Home Screen Setting */}
 					<div className="flex flex-col gap-1">
-						<label htmlFor="max-tasks-home-screen" className="font-medium">
-							{t("settings:ui.maxTasksHomeScreen.label")}
-						</label>
-						<VSCodeTextField
-							id="max-tasks-home-screen"
-							value={maxTasksHomeScreen.toString()}
-							onChange={(e: any) => handleMaxTasksHomeScreenChange(e.target.value)}
-							data-testid="max-tasks-home-screen-input"
-							className="w-32"
-						/>
-						<div className="text-vscode-descriptionForeground text-sm mt-1">
-							{t("settings:ui.maxTasksHomeScreen.description")}
+						<label className="block font-medium mb-1">{t("settings:ui.maxTasksHomeScreen.label")}</label>
+						<div className="flex items-center gap-2">
+							<Slider
+								min={0}
+								max={20}
+								step={1}
+								value={[maxTasksHomeScreen]}
+								onValueChange={([value]) => handleMaxTasksHomeScreenChange(value)}
+								data-testid="max-tasks-home-screen-slider"
+							/>
+							<span className="w-10">{maxTasksHomeScreen}</span>
 						</div>
 					</div>
 				</div>
