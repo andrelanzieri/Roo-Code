@@ -2847,6 +2847,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const systemPrompt = await this.getSystemPrompt()
 		const { contextTokens } = this.getTokenUsage()
 
+		// Store the projected context tokens for dynamic 1M context switching
+		// This will be passed to the API handler to decide whether to use 1M or 200K context
+		let projectedContextTokens = 0
+
 		if (contextTokens) {
 			const modelInfo = this.api.getModel().info
 
@@ -2894,6 +2898,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					{ isNonInteractive: true } /* options */,
 					contextCondense,
 				)
+			}
+
+			// Store the projected context tokens from the truncation result
+			if ("prevContextTokens" in truncateResult) {
+				projectedContextTokens = truncateResult.prevContextTokens
 			}
 		}
 
@@ -2953,11 +2962,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			allTools = [...nativeTools, ...mcpTools]
 		}
 
-		const metadata: ApiHandlerCreateMessageMetadata = {
+		const metadata: ApiHandlerCreateMessageMetadata & { contextTokens?: number } = {
 			mode: mode,
 			taskId: this.taskId,
 			// Include tools and tool protocol when using native protocol and model supports it
 			...(shouldIncludeTools ? { tools: allTools, tool_choice: "auto", toolProtocol } : {}),
+			// Include projected context tokens for dynamic 1M context switching
+			...(projectedContextTokens > 0 ? { contextTokens: projectedContextTokens } : {}),
 		}
 
 		// The provider accepts reasoning items alongside standard messages; cast to the expected parameter type.
