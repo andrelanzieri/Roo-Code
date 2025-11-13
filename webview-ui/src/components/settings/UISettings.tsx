@@ -75,10 +75,7 @@ export const UISettings = ({
 						</label>
 						<VSCodeTextField
 							id="max-tasks-home-screen"
-							type="number"
 							value={maxTasksHomeScreen.toString()}
-							min="0"
-							max="20"
 							onChange={(e: any) => handleMaxTasksHomeScreenChange(e.target.value)}
 							data-testid="max-tasks-home-screen-input"
 							className="w-32"
