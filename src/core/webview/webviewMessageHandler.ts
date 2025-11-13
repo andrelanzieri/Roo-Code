@@ -427,45 +427,46 @@ export const webviewMessageHandler = async (
 		}
 	}
 
-	switch (message.type) {
-		case "requestSelectionContext": {
-			// Get the active editor and its selection
-			const editor = vscode.window.activeTextEditor
-			if (editor && !editor.selection.isEmpty) {
-				const selection = editor.selection
-				const selectedText = editor.document.getText(selection)
-				const filePath = editor.document.uri.fsPath
+	// Helper function to capture current editor selection
+	const captureSelectionContext = ():
+		| {
+				selectedText: string
+				selectionFilePath: string
+				selectionStartLine: number
+				selectionEndLine: number
+		  }
+		| undefined => {
+		const editor = vscode.window.activeTextEditor
+		if (editor && !editor.selection.isEmpty) {
+			const selection = editor.selection
+			const selectedText = editor.document.getText(selection)
+			const filePath = editor.document.uri.fsPath
 
-				// Convert to workspace-relative path if possible
-				const workspacePath = provider.cwd
-				let relativeFilePath: string
-				if (filePath.startsWith(workspacePath)) {
-					relativeFilePath = path.relative(workspacePath, filePath)
-				} else {
-					// File is outside workspace, use absolute path
-					relativeFilePath = filePath
-				}
-
-				// VSCode uses 0-based line numbers, convert to 1-based for user-friendly display
-				const startLine = selection.start.line + 1
-				const endLine = selection.end.line + 1
-
-				// Send selection context to webview only - don't store in task
-				await provider.postMessageToWebview({
-					type: "selectionContext",
-					selectedText,
-					selectionFilePath: relativeFilePath,
-					selectionStartLine: startLine,
-					selectionEndLine: endLine,
-				})
+			// Convert to workspace-relative path if possible
+			const workspacePath = provider.cwd
+			let relativeFilePath: string
+			if (filePath.startsWith(workspacePath)) {
+				relativeFilePath = path.relative(workspacePath, filePath)
 			} else {
-				// No selection, send empty context
-				await provider.postMessageToWebview({
-					type: "selectionContext",
-				})
+				// File is outside workspace, use absolute path
+				relativeFilePath = filePath
 			}
-			break
+
+			// VSCode uses 0-based line numbers, convert to 1-based for user-friendly display
+			const startLine = selection.start.line + 1
+			const endLine = selection.end.line + 1
+
+			return {
+				selectedText,
+				selectionFilePath: relativeFilePath,
+				selectionStartLine: startLine,
+				selectionEndLine: endLine,
+			}
 		}
+		return undefined
+	}
+
+	switch (message.type) {
 		case "webviewDidLaunch":
 			// Load custom modes first
 			const customModes = await provider.customModesManager.getCustomModes()
@@ -545,19 +546,11 @@ export const webviewMessageHandler = async (
 			// agentically running promises in old instance don't affect our new
 			// task. This essentially creates a fresh slate for the new task.
 			try {
+				// Capture selection context directly when creating task
+				const selectionContext = captureSelectionContext()
+
 				await provider.createTask(message.text, message.images, undefined, {
-					selectionContext:
-						message.selectedText &&
-						message.selectionFilePath &&
-						typeof message.selectionStartLine === "number" &&
-						typeof message.selectionEndLine === "number"
-							? {
-									selectedText: message.selectedText,
-									selectionFilePath: message.selectionFilePath,
-									selectionStartLine: message.selectionStartLine,
-									selectionEndLine: message.selectionEndLine,
-								}
-							: undefined,
+					selectionContext,
 				})
 
 				// Task created successfully - notify the UI to reset
@@ -577,19 +570,9 @@ export const webviewMessageHandler = async (
 
 		case "askResponse": {
 			const task = provider.getCurrentTask()
-			// Pass selection context through to handleWebviewAskResponse
-			const selectionContext =
-				message.selectedText &&
-				message.selectionFilePath &&
-				typeof message.selectionStartLine === "number" &&
-				typeof message.selectionEndLine === "number"
-					? {
-							selectedText: message.selectedText,
-							selectionFilePath: message.selectionFilePath,
-							selectionStartLine: message.selectionStartLine,
-							selectionEndLine: message.selectionEndLine,
-						}
-					: undefined
+			// Capture selection context directly when handling response
+			const selectionContext = captureSelectionContext()
+
 			task?.handleWebviewAskResponse(message.askResponse!, message.text, message.images, selectionContext)
 			break
 		}
