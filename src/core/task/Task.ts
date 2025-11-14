@@ -300,7 +300,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	didRejectTool = false
 	didAlreadyUseTool = false
 	didCompleteReadingStream = false
-	assistantMessageParser: AssistantMessageParser
+	assistantMessageParser?: AssistantMessageParser
 
 	// Token Usage Cache
 	private tokenUsageSnapshot?: TokenUsage
@@ -405,8 +405,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			TelemetryService.instance.captureTaskCreated(this.taskId)
 		}
 
-		// Initialize the assistant message parser.
-		this.assistantMessageParser = new AssistantMessageParser()
+		// Initialize the assistant message parser only for XML protocol.
+		// For native protocol, tool calls come as tool_call chunks, not XML.
+		const toolProtocol = vscode.workspace.getConfiguration(Package.name).get<ToolProtocol>("toolProtocol", "xml")
+		this.assistantMessageParser = toolProtocol === "xml" ? new AssistantMessageParser() : undefined
 
 		this.messageQueueService = new MessageQueueService()
 
@@ -1995,7 +1997,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.didAlreadyUseTool = false
 				this.presentAssistantMessageLocked = false
 				this.presentAssistantMessageHasPendingUpdates = false
-				this.assistantMessageParser.reset()
+				this.assistantMessageParser?.reset()
 
 				await this.diffViewProvider.reset()
 
@@ -2081,18 +2083,41 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							case "text": {
 								assistantMessage += chunk.text
 
-								// Parse raw assistant message chunk into content blocks.
-								const prevLength = this.assistantMessageContent.length
-								this.assistantMessageContent = this.assistantMessageParser.processChunk(chunk.text)
+								if (this.assistantMessageParser) {
+									// XML protocol: Parse raw assistant message chunk into content blocks
+									const prevLength = this.assistantMessageContent.length
+									this.assistantMessageContent = this.assistantMessageParser.processChunk(chunk.text)
 
-								if (this.assistantMessageContent.length > prevLength) {
-									// New content we need to present, reset to
-									// false in case previous content set this to true.
-									this.userMessageContentReady = false
+									if (this.assistantMessageContent.length > prevLength) {
+										// New content we need to present, reset to
+										// false in case previous content set this to true.
+										this.userMessageContentReady = false
+									}
+
+									// Present content to user.
+									presentAssistantMessage(this)
+								} else {
+									// Native protocol: Text chunks are plain text, not XML tool calls
+									// Create or update a text content block directly
+									const lastBlock =
+										this.assistantMessageContent[this.assistantMessageContent.length - 1]
+
+									if (lastBlock?.type === "text" && lastBlock.partial) {
+										// Update existing partial text block
+										lastBlock.content = assistantMessage
+									} else {
+										// Create new text block
+										this.assistantMessageContent.push({
+											type: "text",
+											content: assistantMessage,
+											partial: true,
+										})
+										this.userMessageContentReady = false
+									}
+
+									// Present content to user
+									presentAssistantMessage(this)
 								}
-
-								// Present content to user.
-								presentAssistantMessage(this)
 								break
 							}
 						}
@@ -2383,16 +2408,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Can't just do this b/c a tool could be in the middle of executing.
 				// this.assistantMessageContent.forEach((e) => (e.partial = false))
 
-				// Now that the stream is complete, finalize any remaining partial content blocks
-				this.assistantMessageParser.finalizeContentBlocks()
+				// Now that the stream is complete, finalize any remaining partial content blocks (XML protocol only)
+				if (this.assistantMessageParser) {
+					this.assistantMessageParser.finalizeContentBlocks()
 
-				// Preserve tool_use blocks that were added via native protocol (not parsed from text)
-				// These come from tool_call chunks and are added directly to assistantMessageContent
-				const nativeToolBlocks = this.assistantMessageContent.filter((block) => block.type === "tool_use")
-				const parsedBlocks = this.assistantMessageParser.getContentBlocks()
+					// Preserve tool_use blocks that were added via native protocol (not parsed from text)
+					// These come from tool_call chunks and are added directly to assistantMessageContent
+					const nativeToolBlocks = this.assistantMessageContent.filter((block) => block.type === "tool_use")
+					const parsedBlocks = this.assistantMessageParser.getContentBlocks()
 
-				// Merge: parser blocks + native tool blocks that aren't in parser
-				this.assistantMessageContent = [...parsedBlocks, ...nativeToolBlocks]
+					// Merge: parser blocks + native tool blocks that aren't in parser
+					this.assistantMessageContent = [...parsedBlocks, ...nativeToolBlocks]
+				}
 
 				if (partialBlocks.length > 0) {
 					// If there is content to update then it will complete and
@@ -2425,8 +2452,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				await this.saveClineMessages()
 				await this.providerRef.deref()?.postStateToWebview()
 
-				// Reset parser after each complete conversation round
-				this.assistantMessageParser.reset()
+				// Reset parser after each complete conversation round (XML protocol only)
+				this.assistantMessageParser?.reset()
 
 				// Now add to apiConversationHistory.
 				// Need to save assistant responses to file before proceeding to
