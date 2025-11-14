@@ -206,6 +206,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		includeCurrentTime,
 		includeCurrentCost,
 		maxGitStatusFiles,
+		taskHistoryRetention,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -409,6 +410,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					includeCurrentTime: includeCurrentTime ?? true,
 					includeCurrentCost: includeCurrentCost ?? true,
 					maxGitStatusFiles: maxGitStatusFiles ?? 0,
+					taskHistoryRetention: taskHistoryRetention ?? "never",
 					profileThresholds,
 					imageGenerationProvider,
 					openRouterImageApiKey,
@@ -847,7 +849,12 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 					{/* About Section */}
 					{activeTab === "about" && (
-						<About telemetrySetting={telemetrySetting} setTelemetrySetting={setTelemetrySetting} />
+						<About
+							telemetrySetting={telemetrySetting}
+							setTelemetrySetting={setTelemetrySetting}
+							taskHistoryRetention={taskHistoryRetention ?? "never"}
+							setTaskHistoryRetention={(value) => setCachedStateField("taskHistoryRetention", value)}
+						/>
 					)}
 				</TabContent>
 			</div>
