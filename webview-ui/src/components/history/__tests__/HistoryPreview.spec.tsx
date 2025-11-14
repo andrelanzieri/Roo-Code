@@ -148,7 +148,7 @@ describe("HistoryPreview", () => {
 
 		render(<HistoryPreview />)
 
-		// Should render only the first 3 tasks
+		// Should render only the first 4 tasks
 		expect(screen.getByTestId("task-item-task-1")).toBeInTheDocument()
 		expect(screen.getByTestId("task-item-task-2")).toBeInTheDocument()
 		expect(screen.getByTestId("task-item-task-3")).toBeInTheDocument()

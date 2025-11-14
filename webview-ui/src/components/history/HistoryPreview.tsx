@@ -36,7 +36,7 @@ const HistoryPreview = () => {
 				<div className="relative w-full">
 					<div className="absolute w-full bg-gradient-to-t from-vscode-sideBar-background to-vscode-sideBar-background/0 z-5 bottom-0 h-6" />
 					<div className="overflow-y-auto space-y-1 -mx-6 px-6 pb-6 max-h-[calc(100vh-280px)] relative z-4">
-						{tasks.slice(0, maxTasksHomeScreen).map((item) => (
+						{tasks.slice(0, Math.max(0, Math.min(20, maxTasksHomeScreen ?? 4))).map((item) => (
 							<TaskItem key={item.id} item={item} variant="compact" />
 						))}
 					</div>
