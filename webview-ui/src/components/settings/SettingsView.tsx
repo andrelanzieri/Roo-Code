@@ -852,8 +852,13 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						<About
 							telemetrySetting={telemetrySetting}
 							setTelemetrySetting={setTelemetrySetting}
-							taskHistoryRetention={taskHistoryRetention ?? "never"}
-							setTaskHistoryRetention={(value) => setCachedStateField("taskHistoryRetention", value)}
+							taskHistoryRetention={String(taskHistoryRetention ?? "never")}
+							setTaskHistoryRetention={(value) =>
+								setCachedStateField(
+									"taskHistoryRetention",
+									value as ExtensionStateContextType["taskHistoryRetention"],
+								)
+							}
 						/>
 					)}
 				</TabContent>
