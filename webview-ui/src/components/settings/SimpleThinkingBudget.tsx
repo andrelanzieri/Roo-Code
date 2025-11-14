@@ -81,7 +81,7 @@ export const SimpleThinkingBudget = ({
 	}
 	// If persisted value isn't supported by capability (e.g., "minimal" while supports=true), don't show it
 	const normalizedCurrent: ReasoningSelectValue | undefined =
-		current && (availableOptions as readonly any[]).includes(current) ? current : undefined
+		current && (availableOptions as readonly any[])?.includes(current) ? current : undefined
 
 	// Default when required: set to model default on mount (no synthetic "None")
 	useEffect(() => {
@@ -109,9 +109,9 @@ export const SimpleThinkingBudget = ({
 			<Select
 				value={normalizedCurrent}
 				onValueChange={(value: ReasoningSelectValue) => {
-				if (value === "disable") {
-					setApiConfigurationField("enableReasoningEffort", false, true)
-					setApiConfigurationField("reasoningEffort", "disable" as any, true)
+					if (value === "disable") {
+						setApiConfigurationField("enableReasoningEffort", false, true)
+						setApiConfigurationField("reasoningEffort", "disable" as any, true)
 					} else {
 						setApiConfigurationField("enableReasoningEffort", true, true)
 						setApiConfigurationField("reasoningEffort", value as any, true)
