@@ -214,11 +214,17 @@ export class DiffViewProvider {
 			await updatedDocument.save()
 		}
 
+		// Close diff views first to avoid interference with the text editor
+		await this.closeAllDiffViews()
+
+		// Show the text document
 		const editor = await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), {
 			preview: false,
 			preserveFocus: true,
 		})
-		await this.closeAllDiffViews()
+
+		// Add a small delay to ensure the editor is fully initialized before restoring scroll position
+		await new Promise((resolve) => setTimeout(resolve, 50))
 
 		// Restore the cursor position and scroll position from the diff view
 		// First set the selection to where the cursor was
@@ -437,11 +443,18 @@ export class DiffViewProvider {
 			await vscode.workspace.applyEdit(edit)
 			await updatedDocument.save()
 
+			// Close diff views first to avoid interference with the text editor
+			await this.closeAllDiffViews()
+
 			if (this.documentWasOpen) {
+				// Show the text document
 				const editor = await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), {
 					preview: false,
 					preserveFocus: true,
 				})
+
+				// Add a small delay to ensure the editor is fully initialized before restoring scroll position
+				await new Promise((resolve) => setTimeout(resolve, 50))
 
 				// Restore the cursor position and scroll position from the diff view
 				// First set the selection to where the cursor was
@@ -462,8 +475,6 @@ export class DiffViewProvider {
 					editor.revealRange(new vscode.Range(midPoint, 0, midPoint, 0), vscode.TextEditorRevealType.InCenter)
 				}
 			}
-
-			await this.closeAllDiffViews()
 		}
 
 		// Edit is done.
