@@ -206,12 +206,23 @@ export class DiffViewProvider {
 		const updatedDocument = this.activeDiffEditor.document
 		const editedContent = updatedDocument.getText()
 
+		// Capture the visible ranges before closing the diff view to restore scroll position later
+		const visibleRanges = this.activeDiffEditor.visibleRanges
+
 		if (updatedDocument.isDirty) {
 			await updatedDocument.save()
 		}
 
-		await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), { preview: false, preserveFocus: true })
+		const editor = await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), {
+			preview: false,
+			preserveFocus: true,
+		})
 		await this.closeAllDiffViews()
+
+		// Restore the scroll position from the diff view
+		if (visibleRanges && visibleRanges.length > 0) {
+			editor.revealRange(visibleRanges[0], vscode.TextEditorRevealType.InCenter)
+		}
 
 		// Getting diagnostics before and after the file edit is a better approach than
 		// automatically tracking problems in real-time. This method ensures we only
@@ -378,6 +389,9 @@ export class DiffViewProvider {
 		const updatedDocument = this.activeDiffEditor.document
 		const absolutePath = path.resolve(this.cwd, this.relPath)
 
+		// Capture the visible ranges before closing the diff view to restore scroll position later
+		const visibleRanges = this.activeDiffEditor.visibleRanges
+
 		if (!fileExists) {
 			if (updatedDocument.isDirty) {
 				await updatedDocument.save()
@@ -408,10 +422,15 @@ export class DiffViewProvider {
 			await updatedDocument.save()
 
 			if (this.documentWasOpen) {
-				await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), {
+				const editor = await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), {
 					preview: false,
 					preserveFocus: true,
 				})
+
+				// Restore the scroll position from the diff view
+				if (visibleRanges && visibleRanges.length > 0) {
+					editor.revealRange(visibleRanges[0], vscode.TextEditorRevealType.InCenter)
+				}
 			}
 
 			await this.closeAllDiffViews()

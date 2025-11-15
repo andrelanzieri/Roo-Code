@@ -450,11 +450,14 @@ describe("DiffViewProvider", () => {
 					isDirty: false,
 					save: vi.fn().mockResolvedValue(undefined),
 				},
+				visibleRanges: [{ start: { line: 10 }, end: { line: 20 } }],
 			}
 			;(diffViewProvider as any).preDiagnostics = []
 
 			// Mock vscode functions
-			vi.mocked(vscode.window.showTextDocument).mockResolvedValue({} as any)
+			vi.mocked(vscode.window.showTextDocument).mockResolvedValue({
+				revealRange: vi.fn(),
+			} as any)
 			vi.mocked(vscode.languages.getDiagnostics).mockReturnValue([])
 		})
 
@@ -515,6 +518,128 @@ describe("DiffViewProvider", () => {
 			// Verify custom delay was used
 			expect(mockDelay).toHaveBeenCalledWith(5000)
 			expect(vscode.languages.getDiagnostics).toHaveBeenCalled()
+		})
+	})
+
+	describe("scroll position preservation", () => {
+		let mockEditor: any
+
+		beforeEach(() => {
+			// Setup common mocks for scroll position tests
+			mockEditor = {
+				revealRange: vi.fn(),
+			}
+			;(diffViewProvider as any).relPath = "test.ts"
+			;(diffViewProvider as any).newContent = "new content"
+			;(diffViewProvider as any).originalContent = "original content"
+			;(diffViewProvider as any).documentWasOpen = true
+			;(diffViewProvider as any).editType = "modify"
+			;(diffViewProvider as any).activeDiffEditor = {
+				document: {
+					getText: vi.fn().mockReturnValue("new content"),
+					isDirty: false,
+					save: vi.fn().mockResolvedValue(undefined),
+					uri: { fsPath: `${mockCwd}/test.ts` },
+					positionAt: vi.fn((offset) => ({ line: 0, character: offset })),
+				},
+				visibleRanges: [{ start: { line: 15 }, end: { line: 25 } }],
+			}
+			;(diffViewProvider as any).preDiagnostics = []
+
+			// Mock vscode functions
+			vi.mocked(vscode.window.showTextDocument).mockResolvedValue(mockEditor)
+			vi.mocked(vscode.languages.getDiagnostics).mockReturnValue([])
+			;(diffViewProvider as any).closeAllDiffViews = vi.fn().mockResolvedValue(undefined)
+
+			// Mock WorkspaceEdit
+			const mockWorkspaceEdit = {
+				replace: vi.fn(),
+			}
+			vi.mocked(vscode.WorkspaceEdit).mockImplementation(() => mockWorkspaceEdit as any)
+			vi.mocked(vscode.workspace.applyEdit).mockResolvedValue(true)
+		})
+
+		it("should restore scroll position in saveChanges", async () => {
+			const result = await diffViewProvider.saveChanges(false, 0)
+
+			// Verify the editor was shown
+			expect(vscode.window.showTextDocument).toHaveBeenCalledWith(
+				expect.objectContaining({ fsPath: `${mockCwd}/test.ts` }),
+				{ preview: false, preserveFocus: true },
+			)
+
+			// Verify scroll position was restored
+			expect(mockEditor.revealRange).toHaveBeenCalledWith(
+				{ start: { line: 15 }, end: { line: 25 } },
+				vscode.TextEditorRevealType.InCenter,
+			)
+
+			expect(result.newProblemsMessage).toBe("")
+		})
+
+		it("should restore scroll position in revertChanges for existing file", async () => {
+			const result = await diffViewProvider.revertChanges()
+
+			// Verify the editor was shown (since documentWasOpen was true)
+			expect(vscode.window.showTextDocument).toHaveBeenCalledWith(
+				expect.objectContaining({ fsPath: `${mockCwd}/test.ts` }),
+				{ preview: false, preserveFocus: true },
+			)
+
+			// Verify scroll position was restored
+			expect(mockEditor.revealRange).toHaveBeenCalledWith(
+				{ start: { line: 15 }, end: { line: 25 } },
+				vscode.TextEditorRevealType.InCenter,
+			)
+		})
+
+		it("should handle missing visible ranges gracefully", async () => {
+			// Remove visible ranges
+			;(diffViewProvider as any).activeDiffEditor.visibleRanges = undefined
+
+			const result = await diffViewProvider.saveChanges(false, 0)
+
+			// Verify the editor was shown
+			expect(vscode.window.showTextDocument).toHaveBeenCalledWith(
+				expect.objectContaining({ fsPath: `${mockCwd}/test.ts` }),
+				{ preview: false, preserveFocus: true },
+			)
+
+			// Verify revealRange was NOT called
+			expect(mockEditor.revealRange).not.toHaveBeenCalled()
+
+			expect(result.newProblemsMessage).toBe("")
+		})
+
+		it("should handle empty visible ranges array gracefully", async () => {
+			// Set empty visible ranges
+			;(diffViewProvider as any).activeDiffEditor.visibleRanges = []
+
+			const result = await diffViewProvider.saveChanges(false, 0)
+
+			// Verify the editor was shown
+			expect(vscode.window.showTextDocument).toHaveBeenCalledWith(
+				expect.objectContaining({ fsPath: `${mockCwd}/test.ts` }),
+				{ preview: false, preserveFocus: true },
+			)
+
+			// Verify revealRange was NOT called
+			expect(mockEditor.revealRange).not.toHaveBeenCalled()
+
+			expect(result.newProblemsMessage).toBe("")
+		})
+
+		it("should not restore scroll position if document was not previously open", async () => {
+			// Set documentWasOpen to false
+			;(diffViewProvider as any).documentWasOpen = false
+
+			await diffViewProvider.revertChanges()
+
+			// Verify the editor was NOT shown (since documentWasOpen was false)
+			expect(vscode.window.showTextDocument).not.toHaveBeenCalled()
+
+			// Verify revealRange was NOT called
+			expect(mockEditor.revealRange).not.toHaveBeenCalled()
 		})
 	})
 })
