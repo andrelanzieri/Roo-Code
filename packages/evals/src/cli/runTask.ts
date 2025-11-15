@@ -153,25 +153,6 @@ export const runTask = async ({ run, task, publish, logger }: RunTaskOptions) =>
 	const prompt = fs.readFileSync(path.resolve(EVALS_REPO_PATH, `prompts/${language}.md`), "utf-8")
 	const workspacePath = path.resolve(EVALS_REPO_PATH, language, exercise)
 
-	// Create .vscode/settings.json with toolProtocol set to native
-	const vscodeDirPath = path.join(workspacePath, ".vscode")
-	const settingsFilePath = path.join(vscodeDirPath, "settings.json")
-
-	try {
-		if (!fs.existsSync(vscodeDirPath)) {
-			fs.mkdirSync(vscodeDirPath, { recursive: true })
-		}
-
-		const settings = {
-			"roo-cline.toolProtocol": "native",
-		}
-
-		fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2), "utf-8")
-		logger.info(`Created VSCode settings at ${settingsFilePath} with toolProtocol=native`)
-	} catch (error) {
-		logger.error(`Failed to create VSCode settings: ${error}`)
-	}
-
 	const ipcSocketPath = path.resolve(os.tmpdir(), `evals-${run.id}-${task.id}.sock`)
 	const env = { ROO_CODE_IPC_SOCKET_PATH: ipcSocketPath }
 	const controller = new AbortController()
