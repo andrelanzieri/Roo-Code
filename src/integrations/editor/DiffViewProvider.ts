@@ -206,7 +206,8 @@ export class DiffViewProvider {
 		const updatedDocument = this.activeDiffEditor.document
 		const editedContent = updatedDocument.getText()
 
-		// Capture the visible ranges before closing the diff view to restore scroll position later
+		// Capture the cursor position (selection) and visible ranges before closing the diff view
+		const selection = this.activeDiffEditor.selection
 		const visibleRanges = this.activeDiffEditor.visibleRanges
 
 		if (updatedDocument.isDirty) {
@@ -219,9 +220,23 @@ export class DiffViewProvider {
 		})
 		await this.closeAllDiffViews()
 
-		// Restore the scroll position from the diff view
-		if (visibleRanges && visibleRanges.length > 0) {
-			editor.revealRange(visibleRanges[0], vscode.TextEditorRevealType.InCenter)
+		// Restore the cursor position and scroll position from the diff view
+		// First set the selection to where the cursor was
+		editor.selection = selection
+		// Then reveal the range to ensure it's visible
+		if (selection && !selection.isEmpty) {
+			// If there's an actual selection, reveal it
+			editor.revealRange(selection, vscode.TextEditorRevealType.InCenterIfOutsideViewport)
+		} else if (selection) {
+			// If just a cursor position, reveal that position
+			editor.revealRange(
+				new vscode.Range(selection.active, selection.active),
+				vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+			)
+		} else if (visibleRanges && visibleRanges.length > 0) {
+			// Fallback to visible ranges if no selection
+			const midPoint = Math.floor((visibleRanges[0].start.line + visibleRanges[0].end.line) / 2)
+			editor.revealRange(new vscode.Range(midPoint, 0, midPoint, 0), vscode.TextEditorRevealType.InCenter)
 		}
 
 		// Getting diagnostics before and after the file edit is a better approach than
@@ -389,7 +404,8 @@ export class DiffViewProvider {
 		const updatedDocument = this.activeDiffEditor.document
 		const absolutePath = path.resolve(this.cwd, this.relPath)
 
-		// Capture the visible ranges before closing the diff view to restore scroll position later
+		// Capture the cursor position (selection) and visible ranges before closing the diff view
+		const selection = this.activeDiffEditor.selection
 		const visibleRanges = this.activeDiffEditor.visibleRanges
 
 		if (!fileExists) {
@@ -427,9 +443,23 @@ export class DiffViewProvider {
 					preserveFocus: true,
 				})
 
-				// Restore the scroll position from the diff view
-				if (visibleRanges && visibleRanges.length > 0) {
-					editor.revealRange(visibleRanges[0], vscode.TextEditorRevealType.InCenter)
+				// Restore the cursor position and scroll position from the diff view
+				// First set the selection to where the cursor was
+				editor.selection = selection
+				// Then reveal the range to ensure it's visible
+				if (selection && !selection.isEmpty) {
+					// If there's an actual selection, reveal it
+					editor.revealRange(selection, vscode.TextEditorRevealType.InCenterIfOutsideViewport)
+				} else if (selection) {
+					// If just a cursor position, reveal that position
+					editor.revealRange(
+						new vscode.Range(selection.active, selection.active),
+						vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+					)
+				} else if (visibleRanges && visibleRanges.length > 0) {
+					// Fallback to visible ranges if no selection
+					const midPoint = Math.floor((visibleRanges[0].start.line + visibleRanges[0].end.line) / 2)
+					editor.revealRange(new vscode.Range(midPoint, 0, midPoint, 0), vscode.TextEditorRevealType.InCenter)
 				}
 			}
 
