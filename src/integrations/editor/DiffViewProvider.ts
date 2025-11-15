@@ -232,12 +232,12 @@ export class DiffViewProvider {
 		// Then reveal the range to ensure it's visible
 		if (selection && !selection.isEmpty) {
 			// If there's an actual selection, reveal it
-			editor.revealRange(selection, vscode.TextEditorRevealType.InCenterIfOutsideViewport)
+			editor.revealRange(selection, vscode.TextEditorRevealType.InCenter)
 		} else if (selection) {
 			// If just a cursor position, reveal that position
 			editor.revealRange(
 				new vscode.Range(selection.active, selection.active),
-				vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+				vscode.TextEditorRevealType.InCenter,
 			)
 		} else if (visibleRanges && visibleRanges.length > 0) {
 			// Fallback to visible ranges if no selection
@@ -462,12 +462,12 @@ export class DiffViewProvider {
 				// Then reveal the range to ensure it's visible
 				if (selection && !selection.isEmpty) {
 					// If there's an actual selection, reveal it
-					editor.revealRange(selection, vscode.TextEditorRevealType.InCenterIfOutsideViewport)
+					editor.revealRange(selection, vscode.TextEditorRevealType.InCenter)
 				} else if (selection) {
 					// If just a cursor position, reveal that position
 					editor.revealRange(
 						new vscode.Range(selection.active, selection.active),
-						vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+						vscode.TextEditorRevealType.InCenter,
 					)
 				} else if (visibleRanges && visibleRanges.length > 0) {
 					// Fallback to visible ranges if no selection

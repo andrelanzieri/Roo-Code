@@ -600,7 +600,7 @@ describe("DiffViewProvider", () => {
 					start: { line: 18, character: 10 },
 					end: { line: 18, character: 10 },
 				}),
-				vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+				vscode.TextEditorRevealType.InCenter,
 			)
 
 			expect(result.newProblemsMessage).toBe("")
@@ -623,7 +623,7 @@ describe("DiffViewProvider", () => {
 			// Verify the full selection range was revealed
 			expect(mockEditor.revealRange).toHaveBeenCalledWith(
 				selectionWithRange,
-				vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+				vscode.TextEditorRevealType.InCenter,
 			)
 
 			expect(result.newProblemsMessage).toBe("")
@@ -665,7 +665,7 @@ describe("DiffViewProvider", () => {
 					start: { line: 18, character: 10 },
 					end: { line: 18, character: 10 },
 				}),
-				vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+				vscode.TextEditorRevealType.InCenter,
 			)
 		})
 
@@ -682,7 +682,7 @@ describe("DiffViewProvider", () => {
 					start: { line: 18, character: 10 },
 					end: { line: 18, character: 10 },
 				}),
-				vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+				vscode.TextEditorRevealType.InCenter,
 			)
 
 			expect(result.newProblemsMessage).toBe("")
@@ -701,7 +701,7 @@ describe("DiffViewProvider", () => {
 					start: { line: 18, character: 10 },
 					end: { line: 18, character: 10 },
 				}),
-				vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+				vscode.TextEditorRevealType.InCenter,
 			)
 
 			expect(result.newProblemsMessage).toBe("")
