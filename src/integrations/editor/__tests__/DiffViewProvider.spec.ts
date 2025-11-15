@@ -78,9 +78,21 @@ vi.mock("vscode", () => ({
 		Eight: 8,
 		Nine: 9,
 	},
-	Range: vi.fn(),
-	Position: vi.fn(),
-	Selection: vi.fn(),
+	Range: vi.fn((startLine, startChar, endLine, endChar) => {
+		if (typeof startLine === "object" && typeof startChar === "object") {
+			return { start: startLine, end: startChar }
+		}
+		return {
+			start: { line: startLine, character: startChar },
+			end: { line: endLine, character: endChar },
+		}
+	}),
+	Position: vi.fn((line, character) => ({ line, character })),
+	Selection: vi.fn((anchor, active) => ({
+		anchor,
+		active,
+		isEmpty: anchor.line === active.line && anchor.character === active.character,
+	})),
 	TextEditorRevealType: {
 		InCenter: 2 as any,
 		InCenterIfOutsideViewport: 1 as any,

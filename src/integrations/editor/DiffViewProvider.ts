@@ -227,8 +227,13 @@ export class DiffViewProvider {
 		await new Promise((resolve) => setTimeout(resolve, 50))
 
 		// Restore the cursor position and scroll position from the diff view
-		// First set the selection to where the cursor was
-		editor.selection = selection
+		// Create new Position/Selection objects instead of direct assignment to ensure proper transfer
+		if (selection) {
+			editor.selection = new vscode.Selection(
+				new vscode.Position(selection.anchor.line, selection.anchor.character),
+				new vscode.Position(selection.active.line, selection.active.character),
+			)
+		}
 		// Then reveal the range to ensure it's visible
 		if (selection && !selection.isEmpty) {
 			// If there's an actual selection, reveal it
@@ -457,8 +462,13 @@ export class DiffViewProvider {
 				await new Promise((resolve) => setTimeout(resolve, 50))
 
 				// Restore the cursor position and scroll position from the diff view
-				// First set the selection to where the cursor was
-				editor.selection = selection
+				// Create new Position/Selection objects instead of direct assignment to ensure proper transfer
+				if (selection) {
+					editor.selection = new vscode.Selection(
+						new vscode.Position(selection.anchor.line, selection.anchor.character),
+						new vscode.Position(selection.active.line, selection.active.character),
+					)
+				}
 				// Then reveal the range to ensure it's visible
 				if (selection && !selection.isEmpty) {
 					// If there's an actual selection, reveal it
