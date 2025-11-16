@@ -114,6 +114,13 @@ export class ServiceManager {
 				// If stopping, status changes from stopping to stopped/failed
 				// If unexpected exit, status changes from starting/ready/running to stopped/failed
 				serviceHandle.status = details.exitCode === 0 ? "stopped" : "failed"
+
+				// Clean up health check interval to prevent memory leak
+				if (serviceHandle.healthCheckIntervalId) {
+					clearInterval(serviceHandle.healthCheckIntervalId)
+					serviceHandle.healthCheckIntervalId = undefined
+				}
+
 				this.notifyStatusChange(serviceHandle)
 			},
 		}
