@@ -27,6 +27,7 @@ export interface ServiceHandle {
 	healthCheckUrl?: string
 	healthCheckIntervalMs?: number
 	healthCheckIntervalId?: NodeJS.Timeout
+	cleanupTimeoutId?: NodeJS.Timeout
 }
 
 /**
@@ -122,6 +123,11 @@ export class ServiceManager {
 				}
 
 				this.notifyStatusChange(serviceHandle)
+
+				// Schedule cleanup for failed services to prevent memory leak
+				if (serviceHandle.status === "failed") {
+					this.scheduleCleanup(serviceHandle)
+				}
 			},
 		}
 
@@ -159,6 +165,12 @@ export class ServiceManager {
 		service.status = "stopping"
 		this.notifyStatusChange(service)
 
+		// Clear any scheduled cleanup since we're manually stopping
+		if (service.cleanupTimeoutId) {
+			clearTimeout(service.cleanupTimeoutId)
+			service.cleanupTimeoutId = undefined
+		}
+
 		// Stop health check
 		if (service.healthCheckIntervalId) {
 			clearInterval(service.healthCheckIntervalId)
@@ -184,7 +196,7 @@ export class ServiceManager {
 					return
 				}
 
-				// If timeout, mark as failed but keep in list
+				// If timeout, mark as failed and schedule cleanup
 				if (waitedTime >= maxWaitTime) {
 					clearInterval(interval)
 					// Check if process is really still running
@@ -192,14 +204,15 @@ export class ServiceManager {
 						try {
 							// Try sending signal 0 to check if process exists (won't terminate process)
 							process.kill(service.pid, 0)
-							// If process still exists, mark as failed status, keep in list
+							// If process still exists, mark as failed status and schedule cleanup
 							service.status = "failed"
 							service.logs.push(
 								`[ServiceManager] Warning: Service did not terminate within ${maxWaitTime}ms. Process may still be running.`,
 							)
 							this.notifyStatusChange(service)
+							this.scheduleCleanup(service)
 							console.warn(
-								`[ServiceManager] Service ${serviceId} (PID: ${service.pid}) did not terminate within timeout. Marked as failed but kept in list.`,
+								`[ServiceManager] Service ${serviceId} (PID: ${service.pid}) did not terminate within timeout. Marked as failed and scheduled for cleanup.`,
 							)
 						} catch (error) {
 							// Process doesn't exist (errno === ESRCH), means it has terminated
@@ -207,12 +220,13 @@ export class ServiceManager {
 							this.notifyStatusChange(service)
 						}
 					} else {
-						// No PID, mark as failed
+						// No PID, mark as failed and schedule cleanup
 						service.status = "failed"
 						service.logs.push(
 							`[ServiceManager] Warning: Service did not terminate within ${maxWaitTime}ms. No PID available.`,
 						)
 						this.notifyStatusChange(service)
+						this.scheduleCleanup(service)
 					}
 					resolve(undefined)
 				}
@@ -273,6 +287,23 @@ export class ServiceManager {
 	}
 
 	/**
+	 * Schedule cleanup of a failed service after a delay
+	 * This prevents memory leaks from failed services accumulating indefinitely
+	 */
+	private static scheduleCleanup(serviceHandle: ServiceHandle, delayMs: number = 300000): void {
+		// Clear any existing cleanup timeout
+		if (serviceHandle.cleanupTimeoutId) {
+			clearTimeout(serviceHandle.cleanupTimeoutId)
+		}
+
+		// Schedule cleanup after delay (default 5 minutes)
+		serviceHandle.cleanupTimeoutId = setTimeout(() => {
+			this.services.delete(serviceHandle.serviceId)
+			console.log(`[ServiceManager] Cleaned up failed service ${serviceHandle.serviceId} after ${delayMs}ms`)
+		}, delayMs) as unknown as NodeJS.Timeout
+	}
+
+	/**
 	 * Start health check
 	 */
 	private static startHealthCheck(serviceHandle: ServiceHandle, url: string, intervalMs: number): void {
@@ -281,6 +312,10 @@ export class ServiceManager {
 				if (serviceHandle.healthCheckIntervalId) {
 					clearInterval(serviceHandle.healthCheckIntervalId)
 					serviceHandle.healthCheckIntervalId = undefined
+				}
+				// If failed, schedule cleanup
+				if (serviceHandle.status === "failed") {
+					this.scheduleCleanup(serviceHandle)
 				}
 				return
 			}
