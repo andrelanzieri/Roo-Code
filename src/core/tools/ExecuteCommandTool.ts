@@ -756,6 +756,7 @@ async function waitForPattern(
 			if (regex.test(allLogs)) {
 				serviceHandle.status = "ready"
 				serviceHandle.readyAt = Date.now()
+				ServiceManager.notifyStatusChange(serviceHandle)
 				clearInterval(checkInterval)
 				resolve()
 				return
