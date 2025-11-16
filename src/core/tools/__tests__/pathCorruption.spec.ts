@@ -4,6 +4,7 @@ import { GenerateImageTool } from "../GenerateImageTool"
 import { Task } from "../../task/Task"
 import type { ToolCallbacks } from "../BaseTool"
 import { EXPERIMENT_IDS } from "../../../shared/experiments"
+import { getReadablePath } from "../../../utils/path"
 
 describe("File path corruption fix", () => {
 	let mockTask: Task
@@ -170,7 +171,9 @@ describe("File path corruption fix", () => {
 			const mockAskApproval = mockCallbacks.askApproval as any
 			const approvalCall = mockAskApproval.mock.calls[0]
 			const approvalMessage = JSON.parse(approvalCall[1])
-			expect(approvalMessage.path).toBe(testPath)
+			// Use getReadablePath to get the expected value (platform-independent)
+			const expectedPath = getReadablePath(mockTask.cwd, testPath)
+			expect(approvalMessage.path).toBe(expectedPath)
 		})
 
 		it("should handle paths containing 'str' correctly", async () => {
@@ -187,7 +190,9 @@ describe("File path corruption fix", () => {
 			const mockAskApproval = mockCallbacks.askApproval as any
 			const approvalCall = mockAskApproval.mock.calls[0]
 			const approvalMessage = JSON.parse(approvalCall[1])
-			expect(approvalMessage.path).toBe(testPath)
+			// Use getReadablePath to get the expected value (platform-independent)
+			const expectedPath = getReadablePath(mockTask.cwd, testPath)
+			expect(approvalMessage.path).toBe(expectedPath)
 		})
 	})
 
