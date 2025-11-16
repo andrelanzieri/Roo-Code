@@ -77,27 +77,13 @@ export class ServiceManager {
 			healthCheckIntervalMs: options.healthCheckIntervalMs || 1000,
 		}
 
-		// Set up callbacks to collect logs and detect readiness
+		// Set up callbacks to collect logs
 		const callbacks: RooTerminalCallbacks = {
 			onLine: (line: string, process: RooTerminalProcess) => {
 				// Add to logs
 				serviceHandle.logs.push(line)
 				if (serviceHandle.logs.length > (serviceHandle.maxLogLines || 1000)) {
 					serviceHandle.logs.shift() // Remove oldest log
-				}
-
-				// If status is starting, check if readyPattern matches
-				if (serviceHandle.status === "starting" && serviceHandle.readyPattern) {
-					const regex =
-						typeof serviceHandle.readyPattern === "string"
-							? new RegExp(serviceHandle.readyPattern, "i")
-							: serviceHandle.readyPattern
-
-					if (regex.test(line)) {
-						serviceHandle.status = "ready"
-						serviceHandle.readyAt = Date.now()
-						this.notifyStatusChange(serviceHandle)
-					}
 				}
 			},
 			onCompleted: () => {

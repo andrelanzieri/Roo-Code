@@ -149,7 +149,7 @@ describe("ServiceManager", () => {
 			expect(logs.length).toBeLessThanOrEqual(5)
 		})
 
-		it("should detect service ready via readyPattern", async () => {
+		it("should store readyPattern but not automatically detect it (detection happens in ExecuteCommandTool)", async () => {
 			const serviceHandle = await ServiceManager.startService("npm run dev", "/test/workspace", {
 				readyPattern: "Local:.*http://localhost",
 			})
@@ -162,8 +162,21 @@ describe("ServiceManager", () => {
 				mockCallbacks.onLine("Local: http://localhost:3000", mockProcess)
 			}
 
-			// Wait for status update
+			// Wait a bit
 			await new Promise((resolve) => setTimeout(resolve, 50))
+
+			// ServiceManager should NOT automatically update status - it only collects logs
+			// The status update happens in ExecuteCommandTool.waitForPattern
+			expect(serviceHandle.status).toBe("starting")
+
+			// But logs should be collected
+			const logs = ServiceManager.getServiceLogs(serviceHandle.serviceId)
+			expect(logs).toContain("Local: http://localhost:3000")
+
+			// Manually update status (simulating what ExecuteCommandTool.waitForPattern does)
+			serviceHandle.status = "ready"
+			serviceHandle.readyAt = Date.now()
+			ServiceManager.notifyStatusChange(serviceHandle)
 
 			expect(serviceHandle.status).toBe("ready")
 			expect(serviceHandle.readyAt).toBeDefined()
@@ -362,7 +375,7 @@ describe("ServiceManager", () => {
 	})
 
 	describe("Service state machine", () => {
-		it("should correctly transition states: pending -> starting -> ready", async () => {
+		it("should correctly transition states: pending -> starting (ready detection happens in ExecuteCommandTool)", async () => {
 			const serviceHandle = await ServiceManager.startService("npm run dev", "/test/workspace", {
 				readyPattern: "Local:.*http://localhost",
 			})
@@ -373,12 +386,20 @@ describe("ServiceManager", () => {
 			await new Promise((resolve) => setTimeout(resolve, 50))
 			expect(serviceHandle.status).toBe("starting")
 
-			// Trigger ready pattern
+			// Trigger ready pattern - ServiceManager only collects logs
 			if (mockCallbacks?.onLine) {
 				mockCallbacks.onLine("Local: http://localhost:3000", mockProcess)
 			}
 
 			await new Promise((resolve) => setTimeout(resolve, 50))
+			// Status should still be starting - ExecuteCommandTool.waitForPattern handles ready detection
+			expect(serviceHandle.status).toBe("starting")
+
+			// Manually transition to ready (simulating ExecuteCommandTool.waitForPattern)
+			serviceHandle.status = "ready"
+			serviceHandle.readyAt = Date.now()
+			ServiceManager.notifyStatusChange(serviceHandle)
+
 			expect(serviceHandle.status).toBe("ready")
 		})
 
