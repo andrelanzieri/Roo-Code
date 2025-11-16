@@ -348,7 +348,7 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 
 		// If PID update is in progress, wait for it before killing
 		if (this.pidUpdatePromise) {
-			this.pidUpdatePromise.then(() => performKill()).catch(() => performKill())
+			this.pidUpdatePromise.finally(performKill)
 		} else {
 			performKill()
 		}
