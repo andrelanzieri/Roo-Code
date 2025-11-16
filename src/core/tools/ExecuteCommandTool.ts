@@ -15,6 +15,7 @@ import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import { ExitCodeDetails, RooTerminalCallbacks, RooTerminalProcess } from "../../integrations/terminal/types"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { Terminal } from "../../integrations/terminal/Terminal"
+import { ServiceManager } from "../../integrations/terminal/ServiceManager"
 import { Package } from "../../shared/package"
 import { t } from "../../i18n"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
@@ -187,8 +188,13 @@ export async function executeCommandInTerminal(
 		return [false, `Working directory '${workingDir}' does not exist.`]
 	}
 
+	// Check if this is a service command
+	const provider = await task.providerRef.deref()
+	const serviceManager = ServiceManager.getInstance({ provider })
+	const isService = serviceManager.isServiceCommand(command)
+
 	let message: { text?: string; images?: string[] } | undefined
-	let runInBackground = false
+	let runInBackground = isService // If it's a service, run in background by default
 	let completed = false
 	let result: string = ""
 	let exitDetails: ExitCodeDetails | undefined
@@ -196,7 +202,6 @@ export async function executeCommandInTerminal(
 	let hasAskedForCommandOutput = false
 
 	const terminalProvider = terminalShellIntegrationDisabled ? "execa" : "vscode"
-	const provider = await task.providerRef.deref()
 
 	let accumulatedOutput = ""
 	const callbacks: RooTerminalCallbacks = {
@@ -214,19 +219,22 @@ export async function executeCommandInTerminal(
 				return
 			}
 
-			// Mark that we've asked to prevent multiple concurrent asks
-			hasAskedForCommandOutput = true
+			// For non-service commands, ask if we should continue
+			if (!isService) {
+				// Mark that we've asked to prevent multiple concurrent asks
+				hasAskedForCommandOutput = true
 
-			try {
-				const { response, text, images } = await task.ask("command_output", "")
-				runInBackground = true
+				try {
+					const { response, text, images } = await task.ask("command_output", "")
+					runInBackground = true
 
-				if (response === "messageResponse") {
-					message = { text, images }
-					process.continue()
+					if (response === "messageResponse") {
+						message = { text, images }
+						process.continue()
+					}
+				} catch (_error) {
+					// Silently handle ask errors (e.g., "Current ask promise was ignored")
 				}
-			} catch (_error) {
-				// Silently handle ask errors (e.g., "Current ask promise was ignored")
 			}
 		},
 		onCompleted: (output: string | undefined) => {
@@ -270,6 +278,41 @@ export async function executeCommandInTerminal(
 
 	const process = terminal.runCommand(command, callbacks)
 	task.terminalProcess = process
+
+	// If this is a service command, start service management and return early
+	if (isService) {
+		const serviceInfo = await serviceManager.startService(
+			command,
+			executionId,
+			workingDir,
+			terminal,
+			process,
+			task.taskId,
+		)
+
+		// Wait a short time for initial output
+		await delay(2000)
+
+		const serviceName = serviceManager.getServiceName(command)
+		const initialOutput = Terminal.compressTerminalOutput(
+			accumulatedOutput,
+			terminalOutputLineLimit,
+			terminalOutputCharacterLimit,
+		)
+
+		return [
+			false,
+			[
+				`Started ${serviceName} service in background.`,
+				serviceInfo.url ? `Service will be available at: ${serviceInfo.url}` : "",
+				initialOutput.length > 0 ? `Initial output:\n${initialOutput}` : "",
+				`The service is running in the background and will continue running.`,
+				`You can proceed with other tasks while the service runs.`,
+			]
+				.filter(Boolean)
+				.join("\n"),
+		]
+	}
 
 	// Implement command execution timeout (skip if timeout is 0).
 	if (commandExecutionTimeout > 0) {

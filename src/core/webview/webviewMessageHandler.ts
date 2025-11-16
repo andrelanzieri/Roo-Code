@@ -62,6 +62,7 @@ const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
 import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
 import { setPendingTodoList } from "../tools/UpdateTodoListTool"
+import { ServiceManager } from "../../integrations/terminal/ServiceManager"
 
 export const webviewMessageHandler = async (
 	provider: ClineProvider,
@@ -437,6 +438,13 @@ export const webviewMessageHandler = async (
 			provider.workspaceTracker?.initializeFilePaths() // Don't await.
 
 			getTheme().then((theme) => provider.postMessageToWebview({ type: "theme", text: JSON.stringify(theme) }))
+
+			// Send current services status to webview
+			const serviceManager = ServiceManager.getInstance({ provider })
+			const services = serviceManager.getServices()
+			if (services.length > 0) {
+				provider.postMessageToWebview({ type: "servicesUpdate", services })
+			}
 
 			// If MCP Hub is already initialized, update the webview with
 			// current server list.
@@ -2885,6 +2893,32 @@ export const webviewMessageHandler = async (
 				provider.getCurrentTask()?.messageQueueService.updateMessage(id, text, images)
 			}
 
+			break
+		}
+
+		case "stopService": {
+			if (message.serviceId) {
+				try {
+					const serviceManager = ServiceManager.getInstance({ provider })
+					await serviceManager.stopService(message.serviceId)
+
+					// Get updated service list and send to webview
+					const services = serviceManager.getServices()
+					await provider.postMessageToWebview({
+						type: "servicesUpdate",
+						services,
+					})
+
+					provider.log(`Service ${message.serviceId} stopped successfully`)
+				} catch (error) {
+					provider.log(
+						`Failed to stop service ${message.serviceId}: ${error instanceof Error ? error.message : String(error)}`,
+					)
+					vscode.window.showErrorMessage(
+						`Failed to stop service: ${error instanceof Error ? error.message : String(error)}`,
+					)
+				}
+			}
 			break
 		}
 

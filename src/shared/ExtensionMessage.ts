@@ -14,6 +14,7 @@ import type {
 	OrganizationAllowList,
 	ShareVisibility,
 	QueuedMessage,
+	ServiceInfo,
 } from "@roo-code/types"
 
 import { GitCommit } from "../utils/git"
@@ -128,6 +129,7 @@ export interface ExtensionMessage {
 		| "dismissedUpsells"
 		| "organizationSwitchResult"
 		| "interactionRequired"
+		| "servicesUpdate"
 	text?: string
 	payload?: any // Add a generic payload for now, can refine later
 	// Checkpoint warning message
@@ -212,6 +214,7 @@ export interface ExtensionMessage {
 	queuedMessages?: QueuedMessage[]
 	list?: string[] // For dismissedUpsells
 	organizationId?: string | null // For organizationSwitchResult
+	services?: ServiceInfo[] // For servicesUpdate
 }
 
 export type ExtensionState = Pick<

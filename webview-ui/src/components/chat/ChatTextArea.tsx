@@ -7,6 +7,7 @@ import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } 
 import { WebviewMessage } from "@roo/WebviewMessage"
 import { Mode, getAllModes } from "@roo/modes"
 import { ExtensionMessage } from "@roo/ExtensionMessage"
+import { ServiceInfo } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
@@ -30,6 +31,7 @@ import { AutoApproveDropdown } from "./AutoApproveDropdown"
 import { MAX_IMAGES_PER_MESSAGE } from "./ChatView"
 import ContextMenu from "./ContextMenu"
 import { IndexingStatusBadge } from "./IndexingStatusBadge"
+import { BackgroundTasksBadge } from "./BackgroundTasksBadge"
 import { usePromptHistory } from "./hooks/usePromptHistory"
 import { CloudAccountSwitcher } from "../cloud/CloudAccountSwitcher"
 
@@ -880,6 +882,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		)
 
 		const [isTtsPlaying, setIsTtsPlaying] = useState(false)
+		const [services, setServices] = useState<ServiceInfo[]>([])
 
 		useEvent("message", (event: MessageEvent) => {
 			const message: ExtensionMessage = event.data
@@ -888,6 +891,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				setIsTtsPlaying(true)
 			} else if (message.type === "ttsStop") {
 				setIsTtsPlaying(false)
+			} else if (message.type === "servicesUpdate") {
+				setServices(message.services || [])
 			}
 		})
 
@@ -1209,6 +1214,8 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						}}
 					/>
 				)}
+
+				{!isEditMode && services.length > 0 && <BackgroundTasksBadge services={services} />}
 
 				<div className="flex items-center gap-2">
 					<div className="flex items-center gap-2 min-w-0 overflow-clip flex-1">

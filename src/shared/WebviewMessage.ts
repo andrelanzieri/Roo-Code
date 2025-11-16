@@ -165,6 +165,8 @@ export interface WebviewMessage {
 		| "dismissUpsell"
 		| "getDismissedUpsells"
 		| "updateSettings"
+		| "stopService"
+		| "servicesUpdate"
 	text?: string
 	editedMessageContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
@@ -213,6 +215,8 @@ export interface WebviewMessage {
 	upsellId?: string // For dismissUpsell
 	list?: string[] // For dismissedUpsells response
 	organizationId?: string | null // For organization switching
+	serviceId?: string // For stopService
+	services?: any[] // For servicesUpdate
 	codeIndexSettings?: {
 		// Global state settings
 		codebaseIndexEnabled: boolean
