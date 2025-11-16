@@ -165,8 +165,8 @@ export class ServiceManager {
 			service.healthCheckIntervalId = undefined
 		}
 
-		// Terminate process (multiple attempts to ensure process is terminated)
-		service.process.abort()
+		// Terminate process and wait for it to complete
+		await service.process.abort()
 
 		// Wait for process to actually stop, maximum wait 10 seconds
 		const maxWaitTime = 10000 // 10 seconds

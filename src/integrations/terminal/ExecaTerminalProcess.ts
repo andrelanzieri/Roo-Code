@@ -280,7 +280,7 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 		this.emit("continue")
 	}
 
-	public override abort() {
+	public override async abort(): Promise<void> {
 		this.aborted = true
 
 		// Simplified process termination function: directly use process group kill (most reliable method)
@@ -348,9 +348,9 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 
 		// If PID update is in progress, wait for it before killing
 		if (this.pidUpdatePromise) {
-			this.pidUpdatePromise.finally(performKill)
+			await this.pidUpdatePromise.then(() => performKill()).catch(() => performKill())
 		} else {
-			performKill()
+			await performKill()
 		}
 	}
 

@@ -507,9 +507,9 @@ export async function executeCommandInTerminal(
 		let isTimedOut = false
 
 		const timeoutPromise = new Promise<void>((_, reject) => {
-			timeoutId = setTimeout(() => {
+			timeoutId = setTimeout(async () => {
 				isTimedOut = true
-				task.terminalProcess?.abort()
+				await task.terminalProcess?.abort()
 				reject(new Error(`Command execution timed out after ${commandExecutionTimeout}ms`))
 			}, commandExecutionTimeout)
 		})
