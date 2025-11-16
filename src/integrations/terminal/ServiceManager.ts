@@ -323,7 +323,7 @@ export class ServiceManager {
 	/**
 	 * Notify status change
 	 */
-	private static notifyStatusChange(serviceHandle: ServiceHandle): void {
+	static notifyStatusChange(serviceHandle: ServiceHandle): void {
 		for (const callback of this.statusChangeCallbacks) {
 			try {
 				callback(serviceHandle)

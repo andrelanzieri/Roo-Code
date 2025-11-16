@@ -700,6 +700,7 @@ async function executeServiceCommand(
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		serviceHandle.status = "failed"
+		ServiceManager.notifyStatusChange(serviceHandle)
 		const status: CommandExecutionStatus = {
 			executionId,
 			status: "service_failed",
@@ -763,6 +764,7 @@ async function waitForPattern(
 			// Timeout check
 			if (Date.now() - startTime > timeoutMs) {
 				serviceHandle.status = "failed"
+				ServiceManager.notifyStatusChange(serviceHandle)
 				clearInterval(checkInterval)
 				reject(new Error(`Service ready pattern not matched within ${timeoutMs}ms`))
 			}
