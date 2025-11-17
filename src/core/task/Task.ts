@@ -1079,6 +1079,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	public async condenseContext(): Promise<void> {
+		// Create a checkpoint before context compression to preserve the full conversation history
+		if (this.enableCheckpoints) {
+			await this.checkpointSave(true, true) // force=true to ensure checkpoint even if no file changes, suppressMessage=true to avoid cluttering chat
+		}
+
 		const systemPrompt = await this.getSystemPrompt()
 
 		// Get condensing configuration
@@ -3011,6 +3016,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				currentProfileId,
 			})
 			if (truncateResult.messages !== this.apiConversationHistory) {
+				// Create a checkpoint before overwriting with compressed history
+				if (truncateResult.summary && this.enableCheckpoints) {
+					await this.checkpointSave(true, true) // force=true, suppressMessage=true
+				}
 				await this.overwriteApiConversationHistory(truncateResult.messages)
 			}
 			if (truncateResult.error) {
