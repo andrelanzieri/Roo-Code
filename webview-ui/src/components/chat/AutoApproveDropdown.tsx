@@ -149,13 +149,13 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 		vscode.postMessage({ type: "autoApprovalEnabled", bool: newValue })
 	}, [autoApprovalEnabled, setAutoApprovalEnabled])
 
-	// Calculate enabled and total counts as separate properties
-	const settingsArray = Object.values(autoApproveSettingsConfig)
-
 	// Filter out Browser toggle when browser tool is disabled
 	const visibleSettingsArray = React.useMemo(
-		() => settingsArray.filter((s) => browserToolEnabled || s.key !== "alwaysAllowBrowser"),
-		[settingsArray, browserToolEnabled],
+		() =>
+			Object.values(autoApproveSettingsConfig).filter(
+				(s) => browserToolEnabled || s.key !== "alwaysAllowBrowser",
+			),
+		[browserToolEnabled],
 	)
 
 	const visibleKeys = React.useMemo(() => visibleSettingsArray.map((s) => s.key), [visibleSettingsArray])
