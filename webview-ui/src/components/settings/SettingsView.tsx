@@ -852,7 +852,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						<About
 							telemetrySetting={telemetrySetting}
 							setTelemetrySetting={setTelemetrySetting}
-							taskHistoryRetention={taskHistoryRetention ?? "never"}
+							taskHistoryRetention={(taskHistoryRetention ?? "never").toString()}
 							setTaskHistoryRetention={(value) =>
 								setCachedStateField(
 									"taskHistoryRetention",
