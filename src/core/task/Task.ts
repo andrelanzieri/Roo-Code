@@ -2147,12 +2147,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// limit error, which gets thrown on the first chunk).
 				const stream = this.attemptApiRequest()
 				let assistantMessage = ""
-				const reasoningDetails: ReasoningDetail[] = []
 				let reasoningMessage = ""
-<<<<<<< HEAD
-				const reasoningDetails: any[] = []
-=======
->>>>>>> 01c77f5c6 (Merge branch 'pr-9127-base' into feature/pr-9127-extended and resolve conflicts)
+				const reasoningDetails: ReasoningDetail[] = []
 				let pendingGroundingSources: GroundingSource[] = []
 				this.isStreaming = true
 
@@ -2639,19 +2635,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					const assistantContent: Array<Anthropic.TextBlockParam | Anthropic.ToolUseBlockParam> = []
 
 					// Add text content if present
-<<<<<<< HEAD
 					if (finalAssistantMessage) {
 						assistantContent.push({
 							type: "text" as const,
 							text: finalAssistantMessage,
-=======
-					if (finalAssistantMessage || reasoningDetails.length > 0) {
-						assistantContent.push({
-							type: "text" as const,
-							text: finalAssistantMessage,
-							// @ts-ignore-next-line OpenRouter-specific property
-							reasoning_details: reasoningDetails.length > 0 ? reasoningDetails : undefined,
->>>>>>> 01c77f5c6 (Merge branch 'pr-9127-base' into feature/pr-9127-extended and resolve conflicts)
 						})
 					}
 
@@ -2662,10 +2649,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						const toolCallId = (toolUse as any).id
 						if (toolCallId) {
 							// nativeArgs is already in the correct API format for all tools
-<<<<<<< HEAD
-=======
-							// @ts-ignore-next-line
->>>>>>> 01c77f5c6 (Merge branch 'pr-9127-base' into feature/pr-9127-extended and resolve conflicts)
 							const input = toolUse.nativeArgs || toolUse.params
 
 							assistantContent.push({
@@ -2676,10 +2659,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							})
 						}
 					}
-<<<<<<< HEAD
 
-=======
->>>>>>> 01c77f5c6 (Merge branch 'pr-9127-base' into feature/pr-9127-extended and resolve conflicts)
 					await this.addToApiConversationHistory({
 						role: "assistant",
 						content: assistantContent.map((block) => {
@@ -3135,9 +3115,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const messagesSinceLastSummary = getMessagesSinceLastSummary(this.apiConversationHistory)
 		const messagesWithoutImages = maybeRemoveImageBlocks(messagesSinceLastSummary, this.api)
-<<<<<<< HEAD
-		const cleanConversationHistory = this.buildCleanConversationHistory(messagesWithoutImages as ApiMessage[])
-=======
 		const messagesWithoutReasoningDetails = maybeRemoveReasoningDetails(
 			messagesWithoutImages as ApiMessage[],
 			apiConfiguration?.apiProvider,
@@ -3150,7 +3127,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Given the conflict, I will use the upstream logic but apply the reasoning details removal from stashed changes.
 
 		let cleanConversationHistory = messagesWithoutReasoningDetails.map(({ role, content }) => ({ role, content }))
->>>>>>> 01c77f5c6 (Merge branch 'pr-9127-base' into feature/pr-9127-extended and resolve conflicts)
 
 		// Check auto-approval limits
 		const approvalResult = await this.autoApprovalHandler.checkAutoApprovalLimits(
