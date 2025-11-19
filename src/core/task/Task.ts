@@ -3341,6 +3341,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const cleanConversationHistory: (Anthropic.Messages.MessageParam | ReasoningItemForRequest)[] = []
 
+		// Check if current provider is Gemini to decide whether to keep thoughtSignature blocks
+		const isGeminiProvider =
+			this.apiConfiguration.apiProvider === "gemini" || this.apiConfiguration.apiProvider === "vertex"
+
 		for (const msg of messages) {
 			// Legacy path: standalone reasoning items stored as separate messages
 			if (msg.type === "reasoning" && msg.encrypted_content) {
@@ -3365,7 +3369,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							] as Anthropic.Messages.ContentBlockParam[])
 						: []
 
-				const [first, ...rest] = contentArray
+				// Filter out thoughtSignature blocks when not using Gemini
+				const filteredContent = contentArray.filter((block: any) => {
+					// Keep all blocks except thoughtSignature when not using Gemini
+					if (block.type === "thoughtSignature" && !isGeminiProvider) {
+						return false
+					}
+					return true
+				})
+
+				const [first, ...rest] = filteredContent
 
 				const hasEmbeddedReasoning =
 					first && (first as any).type === "reasoning" && typeof (first as any).encrypted_content === "string"
@@ -3399,13 +3412,36 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					continue
 				}
+
+				// Handle the filtered content
+				let assistantContent: Anthropic.Messages.MessageParam["content"]
+				if (filteredContent.length === 0) {
+					assistantContent = ""
+				} else if (filteredContent.length === 1 && filteredContent[0].type === "text") {
+					assistantContent = (filteredContent[0] as Anthropic.Messages.TextBlockParam).text
+				} else {
+					assistantContent = filteredContent
+				}
+
+				cleanConversationHistory.push({
+					role: "assistant",
+					content: assistantContent,
+				} satisfies Anthropic.Messages.MessageParam)
+
+				continue
 			}
 
 			// Default path for regular messages (no embedded reasoning)
 			if (msg.role) {
+				// Filter out thoughtSignature blocks from user messages too
+				let content = msg.content
+				if (Array.isArray(content) && !isGeminiProvider) {
+					content = content.filter((block: any) => block.type !== "thoughtSignature")
+				}
+
 				cleanConversationHistory.push({
 					role: msg.role,
-					content: msg.content as Anthropic.Messages.ContentBlockParam[] | string,
+					content: content as Anthropic.Messages.ContentBlockParam[] | string,
 				})
 			}
 		}
