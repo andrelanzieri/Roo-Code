@@ -44,14 +44,24 @@ export const EMBEDDING_MODEL_PROFILES: EmbeddingModelProfiles = {
 		// 'default': { dimension: 768 } // Assuming a default dimension
 	},
 	"openai-compatible": {
+		// OpenAI models
 		"text-embedding-3-small": { dimension: 1536, scoreThreshold: 0.4 },
 		"text-embedding-3-large": { dimension: 3072, scoreThreshold: 0.4 },
 		"text-embedding-ada-002": { dimension: 1536, scoreThreshold: 0.4 },
+		// Nomic models
 		"nomic-embed-code": {
 			dimension: 3584,
 			scoreThreshold: 0.15,
 			queryPrefix: "Represent this query for searching relevant code: ",
 		},
+		// Amazon Bedrock models
+		"amazon.titan-embed-text-v1": { dimension: 1536, scoreThreshold: 0.4 },
+		"amazon.titan-embed-text-v2:0": { dimension: 1024, scoreThreshold: 0.4 },
+		"amazon.titan-embed-image-v1": { dimension: 1024, scoreThreshold: 0.4 },
+		"cohere.embed-english-v3": { dimension: 1024, scoreThreshold: 0.4 },
+		"cohere.embed-multilingual-v3": { dimension: 1024, scoreThreshold: 0.4 },
+		// Custom model placeholder - users can use any model with manual dimension
+		// When model is not in this list, the system will use manual modelDimension if provided
 	},
 	gemini: {
 		"text-embedding-004": { dimension: 768 },
