@@ -81,6 +81,9 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			? (this.options.modelMaxTokens ?? maxTokens ?? undefined)
 			: (maxTokens ?? undefined)
 
+		// Check if this is Gemini 3 Pro model - its thoughts should not be shown to users
+		const isGemini3Pro = model === "gemini-3-pro-preview"
+
 		// Only forward encrypted reasoning continuations (thoughtSignature) when we are
 		// using reasoning (thinkingConfig is present). Both effort-based (thinkingLevel)
 		// and budget-based (thinkingBudget) models require this for active loops.
@@ -170,7 +173,9 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 
 							if (part.thought) {
 								// This is a thinking/reasoning part
-								if (part.text) {
+								// For Gemini 3 Pro models, we skip yielding reasoning chunks
+								// to prevent internal thoughts from being shown to users
+								if (part.text && !isGemini3Pro) {
 									yield { type: "reasoning", text: part.text }
 								}
 							} else {
