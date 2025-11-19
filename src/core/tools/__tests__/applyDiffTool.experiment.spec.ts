@@ -68,6 +68,10 @@ describe("applyDiffTool experiment routing", () => {
 				}),
 			},
 			processQueuedMessages: vi.fn(),
+			// Add toolProtocol getter that returns XML by default
+			get toolProtocol() {
+				return TOOL_PROTOCOL.XML
+			},
 		} as any
 
 		mockBlock = {
@@ -168,6 +172,12 @@ describe("applyDiffTool experiment routing", () => {
 				supportsNativeTools: true, // Model supports native tools
 				defaultToolProtocol: "native", // Model defaults to native protocol
 			},
+		})
+
+		// Update mockCline to return native protocol
+		Object.defineProperty(mockCline, "toolProtocol", {
+			get: () => TOOL_PROTOCOL.NATIVE,
+			configurable: true,
 		})
 
 		mockProvider.getState.mockResolvedValue({

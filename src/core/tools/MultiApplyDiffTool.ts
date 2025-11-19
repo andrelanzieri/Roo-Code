@@ -17,7 +17,6 @@ import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { applyDiffTool as applyDiffToolClass } from "./ApplyDiffTool"
 import { computeDiffStats, sanitizeUnifiedDiff } from "../diff/stats"
 import { isNativeProtocol } from "@roo-code/types"
-import { resolveToolProtocol } from "../../utils/resolveToolProtocol"
 
 interface DiffOperation {
 	path: string
@@ -62,14 +61,13 @@ export async function applyDiffTool(
 	removeClosingTag: RemoveClosingTag,
 ) {
 	// Check if native protocol is enabled - if so, always use single-file class-based tool
-	const toolProtocol = resolveToolProtocol(cline.apiConfiguration, cline.api.getModel().info)
-	if (isNativeProtocol(toolProtocol)) {
+	if (isNativeProtocol(cline.toolProtocol)) {
 		return applyDiffToolClass.handle(cline, block as ToolUse<"apply_diff">, {
 			askApproval,
 			handleError,
 			pushToolResult,
 			removeClosingTag,
-			toolProtocol,
+			toolProtocol: cline.toolProtocol,
 		})
 	}
 
@@ -89,7 +87,7 @@ export async function applyDiffTool(
 				handleError,
 				pushToolResult,
 				removeClosingTag,
-				toolProtocol,
+				toolProtocol: cline.toolProtocol,
 			})
 		}
 	}
@@ -737,10 +735,9 @@ ${errorDetails ? `\nTechnical details:\n${errorDetails}\n` : ""}
 		}
 
 		// Check protocol for notice formatting
-		const toolProtocol = resolveToolProtocol(cline.apiConfiguration, cline.api.getModel().info)
 		const singleBlockNotice =
 			totalSearchBlocks === 1
-				? isNativeProtocol(toolProtocol)
+				? isNativeProtocol(cline.toolProtocol)
 					? "\n" +
 						JSON.stringify({
 							notice: "Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.",

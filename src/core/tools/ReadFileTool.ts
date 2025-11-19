@@ -15,7 +15,6 @@ import { readLines } from "../../integrations/misc/read-lines"
 import { extractTextFromFile, addLineNumbers, getSupportedBinaryFormats } from "../../integrations/misc/extract-text"
 import { parseSourceCodeDefinitionsForFile } from "../../services/tree-sitter"
 import { parseXml } from "../../utils/xml"
-import { resolveToolProtocol } from "../../utils/resolveToolProtocol"
 import {
 	DEFAULT_MAX_IMAGE_FILE_SIZE_MB,
 	DEFAULT_MAX_TOTAL_IMAGE_SIZE_MB,
@@ -109,8 +108,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		const { handleError, pushToolResult, toolProtocol } = callbacks
 		const fileEntries = params.files
 		const modelInfo = task.api.getModel().info
-		const protocol = resolveToolProtocol(task.apiConfiguration, modelInfo)
-		const useNative = isNativeProtocol(protocol)
+		const useNative = isNativeProtocol(task.toolProtocol)
 
 		if (!fileEntries || fileEntries.length === 0) {
 			task.consecutiveMistakeCount++

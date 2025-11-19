@@ -13,7 +13,6 @@ import { diagnosticsToProblemsString, getNewDiagnostics } from "../diagnostics"
 import { ClineSayTool } from "../../shared/ExtensionMessage"
 import { Task } from "../../core/task/Task"
 import { DEFAULT_WRITE_DELAY_MS, isNativeProtocol } from "@roo-code/types"
-import { resolveToolProtocol } from "../../utils/resolveToolProtocol"
 
 import { DecorationController } from "./DecorationController"
 
@@ -326,9 +325,8 @@ export class DiffViewProvider {
 			await task.say("user_feedback_diff", JSON.stringify(say))
 		}
 
-		// Check which protocol we're using
-		const toolProtocol = resolveToolProtocol(task.apiConfiguration, task.api.getModel().info)
-		const useNative = isNativeProtocol(toolProtocol)
+		// Check which protocol we're using (cached to avoid race conditions)
+		const useNative = isNativeProtocol(task.toolProtocol)
 
 		// Build notices array
 		const notices = [
