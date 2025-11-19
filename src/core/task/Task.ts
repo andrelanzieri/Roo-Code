@@ -2193,7 +2193,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const stream = this.attemptApiRequest()
 				let assistantMessage = ""
 				let reasoningMessage = ""
-				const reasoningDetails = []
+				const reasoningDetails: any[] = []
 				let pendingGroundingSources: GroundingSource[] = []
 				this.isStreaming = true
 
@@ -2706,7 +2706,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 									return {
 										...block,
 										// reasoning_details only exists for cline/openrouter providers
-										// @ts-ignore-next-line (reasoning_details is not a valid property for TextBlockParam)
+										// @ts-ignore (reasoning_details is not a valid property for TextBlockParam)
 										reasoning_details: reasoningDetails,
 									}
 								}
