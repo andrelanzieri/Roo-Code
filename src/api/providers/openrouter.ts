@@ -25,7 +25,12 @@ import { getModelEndpoints } from "./fetchers/modelEndpointCache"
 
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
+<<<<<<< HEAD
 import type { ApiHandlerCreateMessageMetadata, SingleCompletionHandler } from "../index"
+=======
+import type { SingleCompletionHandler } from "../index"
+import { ReasoningDetail } from "../transform/openrouter-reasoning"
+>>>>>>> 01c77f5c6 (Merge branch 'pr-9127-base' into feature/pr-9127-extended and resolve conflicts)
 import { handleOpenAIError } from "./utils/openai-error-handler"
 
 // Image generation types
@@ -216,6 +221,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			const finishReason = chunk.choices[0]?.finish_reason
 
 			if (delta) {
+<<<<<<< HEAD
 				if ("reasoning" in delta && delta.reasoning && typeof delta.reasoning === "string") {
 					yield { type: "reasoning", text: delta.reasoning }
 				}
@@ -257,6 +263,19 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 
 				if (delta.content) {
 					yield { type: "text", text: delta.content }
+=======
+				// OpenRouter passes reasoning details that we can pass back unmodified in api requests to preserve reasoning traces for model
+				// See: https://openrouter.ai/docs/use-cases/reasoning-tokens#preserving-reasoning-blocks
+				if (delta && "reasoning_details" in delta && delta.reasoning_details) {
+					yield {
+						type: "reasoning_details",
+						reasoning_details: delta.reasoning_details as ReasoningDetail,
+					}
+				}
+
+				if ("reasoning" in delta && delta.reasoning && typeof delta.reasoning === "string") {
+					yield { type: "reasoning", text: delta.reasoning }
+>>>>>>> 01c77f5c6 (Merge branch 'pr-9127-base' into feature/pr-9127-extended and resolve conflicts)
 				}
 			}
 

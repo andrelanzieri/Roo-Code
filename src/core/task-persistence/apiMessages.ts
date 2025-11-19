@@ -17,6 +17,8 @@ export type ApiMessage = Anthropic.MessageParam & {
 	type?: "reasoning"
 	summary?: any[]
 	encrypted_content?: string
+	// OpenRouter reasoning details
+	reasoning_details?: any
 }
 
 export async function readApiMessages({
