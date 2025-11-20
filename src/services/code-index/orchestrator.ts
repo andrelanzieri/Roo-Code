@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 import * as path from "path"
+import * as os from "os"
 import { CodeIndexConfigManager } from "./config-manager"
 import { CodeIndexStateManager, IndexingState } from "./state-manager"
 import { IFileWatcher, IVectorStore, BatchProcessingSummary } from "./interfaces"
@@ -94,6 +95,29 @@ export class CodeIndexOrchestrator {
 	 */
 
 	/**
+	 * Gets the current memory usage percentage
+	 */
+	private getMemoryUsagePercent(): number {
+		const totalMem = os.totalmem()
+		const freeMem = os.freemem()
+		const usedMem = totalMem - freeMem
+		return (usedMem / totalMem) * 100
+	}
+
+	/**
+	 * Checks if memory usage is at a critical level
+	 */
+	private isMemoryCritical(): boolean {
+		const memUsage = this.getMemoryUsagePercent()
+		const MEMORY_THRESHOLD = 90 // 90% memory usage is critical
+		if (memUsage > MEMORY_THRESHOLD) {
+			console.warn(`[CodeIndexOrchestrator] High memory usage detected: ${memUsage.toFixed(2)}%`)
+			return true
+		}
+		return false
+	}
+
+	/**
 	 * Initiates the indexing process (initial scan and starts watcher).
 	 */
 	public async startIndexing(): Promise<void> {
@@ -143,6 +167,16 @@ export class CodeIndexOrchestrator {
 				this.stopWatcher()
 				this._stopProgressMonitor()
 			}, INDEXING_TIMEOUT_MS)
+
+			// Check initial memory before starting
+			if (this.isMemoryCritical()) {
+				this.stateManager.setSystemState(
+					"Error",
+					"Not enough memory available to start indexing. Please close other applications and try again.",
+				)
+				this._isProcessing = false
+				return
+			}
 
 			// Start progress monitoring to detect stuck state
 			this._startProgressMonitor()
@@ -444,6 +478,21 @@ export class CodeIndexOrchestrator {
 
 		this._progressMonitorInterval = setInterval(() => {
 			const timeSinceLastProgress = Date.now() - this._lastProgressUpdate
+
+			// Check memory usage
+			if (this.isMemoryCritical()) {
+				console.error(
+					`[CodeIndexOrchestrator] Critical memory usage detected during indexing - stopping process`,
+				)
+				this.stateManager.setSystemState(
+					"Error",
+					"Indexing stopped due to high memory usage. Try indexing smaller portions or increasing available memory.",
+				)
+				this._isProcessing = false
+				this.stopWatcher()
+				this._stopProgressMonitor()
+				return
+			}
 
 			if (this._isProcessing && timeSinceLastProgress > STUCK_THRESHOLD) {
 				console.error(
