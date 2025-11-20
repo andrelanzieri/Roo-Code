@@ -634,6 +634,11 @@ export const getApiProtocol = (provider: ProviderName | undefined, modelId?: str
 		return "anthropic"
 	}
 
+	// Azure uses anthropic protocol for Claude models, openai for GPT models
+	if (provider && provider === "azure" && modelId && modelId.toLowerCase().includes("claude")) {
+		return "anthropic"
+	}
+
 	return "openai"
 }
 
