@@ -7,7 +7,7 @@ export const geminiDefaultModelId: GeminiModelId = "gemini-2.5-pro"
 
 export const geminiModels = {
 	"gemini-3-pro-preview": {
-		maxTokens: 65_536,
+		maxTokens: 64_000,
 		contextWindow: 1_048_576,
 		supportsImages: true,
 		supportsNativeTools: true,

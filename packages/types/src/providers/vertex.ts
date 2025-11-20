@@ -7,7 +7,7 @@ export const vertexDefaultModelId: VertexModelId = "claude-sonnet-4-5@20250929"
 
 export const vertexModels = {
 	"gemini-3-pro-preview": {
-		maxTokens: 65_536,
+		maxTokens: 64_000,
 		contextWindow: 1_048_576,
 		supportsImages: true,
 		supportsPromptCache: true,
