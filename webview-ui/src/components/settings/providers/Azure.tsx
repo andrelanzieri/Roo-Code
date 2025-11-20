@@ -11,100 +11,100 @@ import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import { inputEventTransform } from "../transforms"
 
 type AzureProps = {
-\tapiConfiguration: ProviderSettings
-\tsetApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
+	apiConfiguration: ProviderSettings
+	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
 }
 
 export const Azure = ({ apiConfiguration, setApiConfigurationField }: AzureProps) => {
-\tconst { t } = useAppTranslation()
-\tconst selectedModel = useSelectedModel(apiConfiguration)
+	const { t } = useAppTranslation()
+	const selectedModel = useSelectedModel(apiConfiguration)
 
-\tconst [showAdvanced, setShowAdvanced] = useState(
-\t\t!!(apiConfiguration?.azureDeploymentName || apiConfiguration?.azureApiVersion),
-\t)
+	const [showAdvanced, setShowAdvanced] = useState(
+		!!(apiConfiguration?.azureDeploymentName || apiConfiguration?.azureApiVersion),
+	)
 
-\tconst handleInputChange = useCallback(
-\t\t<K extends keyof ProviderSettings, E>(
-\t\t\tfield: K,
-\t\t\ttransform: (event: E) => ProviderSettings[K] = inputEventTransform,
-\t\t) =>
-\t\t\t(event: E | Event) => {
-\t\t\t\tsetApiConfigurationField(field, transform(event as E))
-\t\t\t},
-\t\t[setApiConfigurationField],
-\t)
+	const handleInputChange = useCallback(
+		<K extends keyof ProviderSettings, E>(
+			field: K,
+			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
+		) =>
+			(event: E | Event) => {
+				setApiConfigurationField(field, transform(event as E))
+			},
+		[setApiConfigurationField],
+	)
 
-\treturn (
-\t\t<>
-\t\t\t<VSCodeTextField
-\t\t\t\tvalue={apiConfiguration?.azureApiKey || apiConfiguration?.apiKey || ""}
-\t\t\t\ttype="password"
-\t\t\t\tonInput={handleInputChange("azureApiKey")}
-\t\t\t\tplaceholder={t("settings:placeholders.apiKey")}
-\t\t\t\tclassName="w-full">
-\t\t\t\t<label className="block font-medium mb-1">{t("settings:providers.azureApiKey")}</label>
-\t\t\t</VSCodeTextField>
-\t\t\t<div className="text-sm text-vscode-descriptionForeground -mt-2">
-\t\t\t\t{t("settings:providers.apiKeyStorageNotice")}
-\t\t\t</div>
-\t\t\t{!apiConfiguration?.azureApiKey && !apiConfiguration?.apiKey && (
-\t\t\t\t<VSCodeButtonLink href="https://portal.azure.com https://ai.azure.com" appearance="secondary">
-\t\t\t\t\t{t("settings:providers.getAzureApiKey")}
-\t\t\t\t</VSCodeButtonLink>
-\t\t\t)}
+	return (
+		<>
+			<VSCodeTextField
+				value={apiConfiguration?.azureApiKey || apiConfiguration?.apiKey || ""}
+				type="password"
+				onInput={handleInputChange("azureApiKey")}
+				placeholder={t("settings:placeholders.apiKey")}
+				className="w-full">
+				<label className="block font-medium mb-1">{t("settings:providers.azureApiKey")}</label>
+			</VSCodeTextField>
+			<div className="text-sm text-vscode-descriptionForeground -mt-2">
+				{t("settings:providers.apiKeyStorageNotice")}
+			</div>
+			{!apiConfiguration?.azureApiKey && !apiConfiguration?.apiKey && (
+				<VSCodeButtonLink href="https://portal.azure.com" appearance="secondary">
+					{t("settings:providers.getAzureApiKey")}
+				</VSCodeButtonLink>
+			)}
 
-\t\t\t<VSCodeTextField
-\t\t\t\tvalue={apiConfiguration?.azureBaseUrl || ""}
-\t\t\t\ttype="url"
-\t\t\t\tonInput={handleInputChange("azureBaseUrl")}
-\t\t\t\tplaceholder="https://your-endpoint.cognitiveservices.azure.com/"
-\t\t\t\tclassName="w-full">
-\t\t\t\t<label className="block font-medium mb-1">{t("settings:providers.azureBaseUrl")}</label>
-\t\t\t</VSCodeTextField>
-\t\t\t<div className="text-sm text-vscode-descriptionForeground -mt-2">
-\t\t\t\t{t("settings:providers.azureBaseUrlHint")}
-\t\t\t</div>
+			<VSCodeTextField
+				value={apiConfiguration?.azureBaseUrl || ""}
+				type="url"
+				onInput={handleInputChange("azureBaseUrl")}
+				placeholder="https://your-endpoint.cognitiveservices.azure.com/"
+				className="w-full">
+				<label className="block font-medium mb-1">{t("settings:providers.azureBaseUrl")}</label>
+			</VSCodeTextField>
+			<div className="text-sm text-vscode-descriptionNote -mt-2">{t("settings:providers.azureBaseUrlHint")}</div>
 
-\t\t\t<div>
-\t\t\t\t<Checkbox
-\t\t\t\t\tchecked={showAdvanced}
-\t\t\t\t\tonChange={(checked: boolean) => {
-\t\t\t\t\t\tsetShowAdvanced(checked)
-\t\t\t\t\t\tif (!checked) {
-\t\t\t\t\t\t\tsetApiConfigurationField("azureDeploymentName", "")
-\t\t\t\t\t\t\tsetApiConfigurationField("azureApiVersion", "")
-\t\t\t\t\t\t}
-\t\t\t\t\t}}>
-\t\t\t\t\t{t("settings:providers.azureShowAdvanced")}
-\t\t\t\t</Checkbox>
-\t\t\t\t{showAdvanced && (
-\t\t\t\t\t<>
-\t\t\t\t\t\t<VSCodeTextField
-\t\t\t\t\t\t\tvalue={apiConfiguration?.azureDeploymentName || ""}
-\t\t\t\t\t\t\ttype="text"
-\t\t\t\t\t\t\tonInput={handleInputChange("azureDeploymentName")}
-\t\t\t\t\t\t\tplaceholder={selectedModel?.id || "claude-sonnet-4-5"}
-\t\t\t\t\t\t\tclassName="w-full mt-2">
-\t\t\t\t\t\t\t<label className="block font-medium mb-1">{t("settings:providers.azureDeploymentName")}</label>
-\t\t\t\t\t\t</VSCodeTextField>
-\t\t\t\t\t\t<div className="text-sm text-vscode-descriptionForeground -mt-2">
-\t\t\t\t\t\t\t{t("settings:providers.azureDeploymentNameHint")}
-\t\t\t\t\t\t</div>
+			<div>
+				<Checkbox
+					checked={showAdvanced}
+					onChange={(checked: boolean) => {
+						setShowAdvanced(checked)
+						if (!checked) {
+							setApiConfigurationField("azureDeploymentName", "")
+							setApiConfigurationField("azureApiVersion", "")
+						}
+					}}>
+					{t("settings:providers.azureShowAdvanced")}
+				</Checkbox>
+				{showAdvanced && (
+					<>
+						<VSCodeTextField
+							value={apiConfiguration?.azureDeploymentName || ""}
+							type="text"
+							onInput={handleInputChange("azureDeploymentName")}
+							placeholder={selectedModel?.id || "claude-sonnet-4-5"}
+							className="w-full mt-2">
+							<label className="block font-medium mb-1">
+								{t("settings:providers.azureDeploymentName")}
+							</label>
+						</VSCodeTextField>
+						<div className="text-sm text-vscode-descriptionForeground -mt-2">
+							{t("settings:providers.azureDeploymentNameHint")}
+						</div>
 
-\t\t\t\t\t\t<VSCodeTextField
-\t\t\t\t\t\t\tvalue={apiConfiguration?.azureApiVersion || ""}
-\t\t\t\t\t\t\ttype="text"
-\t\t\t\t\t\t\tonInput={handleInputChange("azureApiVersion")}
-\t\t\t\t\t\t\tplaceholder="2024-12-01-preview"
-\t\t\t\t\t\t\tclassName="w-full mt-2">
-\t\t\t\t\t\t\t<label className="block font-medium mb-1">{t("settings:providers.azureApiVersion")}</label>
-\t\t\t\t\t\t</VSCodeTextField>
-\t\t\t\t\t\t<div className="text-sm text-vscode-descriptionForeground -mt-2">
-\t\t\t\t\t\t\t{t("settings:providers.azureApiVersionHint")}
-\t\t\t\t\t\t</div>
-\t\t\t\t\t</>
-\t\t\t\t)}
-\t\t\t</div>
-\t\t</>
-\t)
+						<VSCodeTextField
+							value={apiConfiguration?.azureApiVersion || ""}
+							type="text"
+							onInput={handleInputChange("azureApiVersion")}
+							placeholder="2024-12-01-preview"
+							className="w-full mt-2">
+							<label className="block font-medium mb-1">{t("settings:providers.azureApiVersion")}</label>
+						</VSCodeTextField>
+						<div className="text-sm text-vscode-descriptionForeground -mt-2">
+							{t("settings:providers.azureApiVersionHint")}
+						</div>
+					</>
+				)}
+			</div>
+		</>
+	)
 }
