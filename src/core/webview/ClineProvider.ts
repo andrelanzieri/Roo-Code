@@ -151,7 +151,7 @@ export class ClineProvider
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
-	public readonly latestAnnouncementId = "nov-2025-v3.30.0-pr-fixer" // v3.30.0 PR Fixer announcement
+	public readonly latestAnnouncementId = "nov-2025-v3.33.0-gemini-native-tools" // v3.33.0 Gemini 3 & Native Tools announcement
 	public readonly providerSettingsManager: ProviderSettingsManager
 	public readonly customModesManager: CustomModesManager
 
@@ -1196,7 +1196,7 @@ export class ClineProvider
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
             <meta name="theme-color" content="#000000">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com data:; media-src ${webview.cspSource}; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' https://us-assets.i.posthog.com 'strict-dynamic'; connect-src ${webview.cspSource} ${openRouterDomain} https://api.requesty.ai https://us.i.posthog.com https://us-assets.i.posthog.com;">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com data:; media-src ${webview.cspSource}; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' https://ph.roocode.com 'strict-dynamic'; connect-src ${webview.cspSource} ${openRouterDomain} https://api.requesty.ai https://ph.roocode.com;">
             <link rel="stylesheet" type="text/css" href="${stylesUri}">
 			<link href="${codiconsUri}" rel="stylesheet" />
 			<script nonce="${nonce}">
@@ -1918,6 +1918,7 @@ export class ClineProvider
 			includeTaskHistoryInEnhance,
 			includeCurrentTime,
 			includeCurrentCost,
+			maxGitStatusFiles,
 			taskSyncEnabled,
 			remoteControlEnabled,
 			openRouterImageApiKey,
@@ -2082,6 +2083,7 @@ export class ClineProvider
 			includeTaskHistoryInEnhance: includeTaskHistoryInEnhance ?? true,
 			includeCurrentTime: includeCurrentTime ?? true,
 			includeCurrentCost: includeCurrentCost ?? true,
+			maxGitStatusFiles: maxGitStatusFiles ?? 0,
 			taskSyncEnabled,
 			remoteControlEnabled,
 			openRouterImageApiKey,
@@ -2297,6 +2299,7 @@ export class ClineProvider
 			includeTaskHistoryInEnhance: stateValues.includeTaskHistoryInEnhance ?? true,
 			includeCurrentTime: stateValues.includeCurrentTime ?? true,
 			includeCurrentCost: stateValues.includeCurrentCost ?? true,
+			maxGitStatusFiles: stateValues.maxGitStatusFiles ?? 0,
 			taskSyncEnabled,
 			remoteControlEnabled: (() => {
 				try {

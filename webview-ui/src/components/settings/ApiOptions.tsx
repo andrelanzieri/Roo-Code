@@ -38,6 +38,8 @@ import {
 	vercelAiGatewayDefaultModelId,
 	deepInfraDefaultModelId,
 	minimaxDefaultModelId,
+	type ToolProtocol,
+	TOOL_PROTOCOL,
 } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
@@ -113,6 +115,7 @@ import { TemperatureControl } from "./TemperatureControl"
 import { RateLimitSecondsControl } from "./RateLimitSecondsControl"
 import { ConsecutiveMistakeLimitControl } from "./ConsecutiveMistakeLimitControl"
 import { BedrockCustomArn } from "./providers/BedrockCustomArn"
+import { RooBalanceDisplay } from "./providers/RooBalanceDisplay"
 import { buildDocLink } from "@src/utils/docLinks"
 
 export interface ApiOptionsProps {
@@ -409,6 +412,16 @@ const ApiOptions = ({
 		}
 	}, [selectedProvider])
 
+	// Calculate the default protocol that would be used if toolProtocol is not set
+	// Mirrors the simplified logic in resolveToolProtocol.ts:
+	// 1. User preference (toolProtocol) - handled by the select value binding
+	// 2. Model default - use if available
+	// 3. XML fallback
+	const defaultProtocol = selectedModelInfo?.defaultToolProtocol || TOOL_PROTOCOL.XML
+
+	// Show the tool protocol selector when model supports native tools
+	const showToolProtocolSelector = selectedModelInfo?.supportsNativeTools === true
+
 	// Convert providers to SearchableSelect options
 	const providerOptions = useMemo(() => {
 		// First filter by organization allow list
@@ -448,12 +461,16 @@ const ApiOptions = ({
 			<div className="flex flex-col gap-1 relative">
 				<div className="flex justify-between items-center">
 					<label className="block font-medium mb-1">{t("settings:providers.apiProvider")}</label>
-					{docs && (
-						<div className="text-xs text-vscode-descriptionForeground">
-							<VSCodeLink href={docs.url} className="hover:text-vscode-foreground" target="_blank">
-								{t("settings:providers.providerDocumentation", { provider: docs.name })}
-							</VSCodeLink>
-						</div>
+					{selectedProvider === "roo" && cloudIsAuthenticated ? (
+						<RooBalanceDisplay />
+					) : (
+						docs && (
+							<div className="text-xs text-vscode-descriptionForeground">
+								<VSCodeLink href={docs.url} className="hover:text-vscode-foreground" target="_blank">
+									{t("settings:providers.providerDocumentation", { provider: docs.name })}
+								</VSCodeLink>
+							</div>
+						)
 					)}
 				</div>
 				<SearchableSelect
@@ -868,6 +885,39 @@ const ApiOptions = ({
 									</div>
 								</div>
 							)}
+						{showToolProtocolSelector && (
+							<div>
+								<label className="block font-medium mb-1">{t("settings:toolProtocol.label")}</label>
+								<Select
+									value={apiConfiguration.toolProtocol || "default"}
+									onValueChange={(value) => {
+										const newValue = value === "default" ? undefined : (value as ToolProtocol)
+										setApiConfigurationField("toolProtocol", newValue)
+									}}>
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder={t("settings:common.select")} />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="default">
+											{t("settings:toolProtocol.default")} (
+											{defaultProtocol === TOOL_PROTOCOL.NATIVE
+												? t("settings:toolProtocol.native")
+												: t("settings:toolProtocol.xml")}
+											)
+										</SelectItem>
+										<SelectItem value={TOOL_PROTOCOL.XML}>
+											{t("settings:toolProtocol.xml")}
+										</SelectItem>
+										<SelectItem value={TOOL_PROTOCOL.NATIVE}>
+											{t("settings:toolProtocol.native")}
+										</SelectItem>
+									</SelectContent>
+								</Select>
+								<div className="text-sm text-vscode-descriptionForeground mt-1">
+									{t("settings:toolProtocol.description")}
+								</div>
+							</div>
+						)}
 					</CollapsibleContent>
 				</Collapsible>
 			)}

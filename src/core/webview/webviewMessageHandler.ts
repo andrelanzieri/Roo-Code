@@ -61,7 +61,7 @@ import { getCommand } from "../../utils/commands"
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
 import { MarketplaceManager, MarketplaceItemType } from "../../services/marketplace"
-import { setPendingTodoList } from "../tools/updateTodoListTool"
+import { setPendingTodoList } from "../tools/UpdateTodoListTool"
 
 export const webviewMessageHandler = async (
 	provider: ClineProvider,
@@ -1002,6 +1002,31 @@ export const webviewMessageHandler = async (
 					success: false,
 					error: errorMessage,
 					values: { provider: "roo" },
+				})
+			}
+			break
+		}
+		case "requestRooCreditBalance": {
+			// Fetch Roo credit balance using CloudAPI
+			const requestId = message.requestId
+			try {
+				if (!CloudService.hasInstance() || !CloudService.instance.cloudAPI) {
+					throw new Error("Cloud service not available")
+				}
+
+				const balance = await CloudService.instance.cloudAPI.creditBalance()
+
+				provider.postMessageToWebview({
+					type: "rooCreditBalance",
+					requestId,
+					values: { balance },
+				})
+			} catch (error) {
+				const errorMessage = error instanceof Error ? error.message : String(error)
+				provider.postMessageToWebview({
+					type: "rooCreditBalance",
+					requestId,
+					values: { error: errorMessage },
 				})
 			}
 			break

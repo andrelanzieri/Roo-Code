@@ -112,6 +112,7 @@ export interface ExtensionMessage {
 		| "authenticatedUser"
 		| "condenseTaskContextResponse"
 		| "singleRouterModelFetchResponse"
+		| "rooCreditBalance"
 		| "indexingStatusUpdate"
 		| "indexCleared"
 		| "codebaseIndexConfig"
@@ -282,6 +283,7 @@ export type ExtensionState = Pick<
 	| "reasoningBlockCollapsed"
 	| "includeCurrentTime"
 	| "includeCurrentCost"
+	| "maxGitStatusFiles"
 > & {
 	version: string
 	clineMessages: ClineMessage[]
