@@ -110,21 +110,16 @@ export function convertToOpenAiMessages(
 
 				// Process non-tool messages
 				let content: string | undefined
-				const reasoningDetails: any[] = []
+				const reasoningDetails: ReasoningDetail[] = []
 				if (nonToolMessages.length > 0) {
 					nonToolMessages.forEach((part) => {
-						// @ts-ignore-next-line
-						if (part.type === "text" && part.reasoning_details) {
-							// @ts-ignore-next-line
-							if (Array.isArray(part.reasoning_details)) {
-								// @ts-ignore-next-line
-								reasoningDetails.push(...part.reasoning_details)
+						if (part.type === "text" && "reasoning_details" in part) {
+							const details = (part as any).reasoning_details
+							if (Array.isArray(details)) {
+								reasoningDetails.push(...details)
 							} else {
-								// @ts-ignore-next-line
-								reasoningDetails.push(part.reasoning_details)
+								reasoningDetails.push(details)
 							}
-							// @ts-ignore-next-line
-							// delete part.reasoning_details
 						}
 					})
 					content = nonToolMessages
@@ -148,19 +143,23 @@ export function convertToOpenAiMessages(
 					},
 				}))
 
-				// @ts-ignore-next-line
 				const consolidatedReasoning =
 					reasoningDetails.length > 0 ? consolidateReasoningDetails(reasoningDetails) : undefined
 
-				openAiMessages.push({
+				const assistantMessage: OpenAI.Chat.ChatCompletionAssistantMessageParam & {
+					reasoning_details?: ReasoningDetail[]
+				} = {
 					role: "assistant",
 					content,
 					// Cannot be an empty array. API expects an array with minimum length 1, and will respond with an error if it's empty
 					tool_calls: tool_calls.length > 0 ? tool_calls : undefined,
-					// @ts-ignore-next-line
-					reasoning_details:
-						consolidatedReasoning && consolidatedReasoning.length > 0 ? consolidatedReasoning : undefined,
-				})
+				}
+
+				if (consolidatedReasoning && consolidatedReasoning.length > 0) {
+					assistantMessage.reasoning_details = consolidatedReasoning
+				}
+
+				openAiMessages.push(assistantMessage)
 			}
 		}
 	}

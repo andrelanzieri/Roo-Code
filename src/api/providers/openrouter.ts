@@ -124,6 +124,11 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		}
 	}
 
+	private shouldSkipReasoningForModel(modelId: string): boolean {
+		// Grok-4 models shouldn't use reasoning by default
+		return modelId.includes("grok-4")
+	}
+
 	override async *createMessage(
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
@@ -142,6 +147,11 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			(modelId === "google/gemini-2.5-pro-preview" || modelId === "google/gemini-2.5-pro") &&
 			typeof reasoning === "undefined"
 		) {
+			reasoning = { exclude: true }
+		}
+
+		// Skip reasoning for Grok-4 as mentioned in the PR description
+		if (this.shouldSkipReasoningForModel(modelId) && typeof reasoning === "undefined") {
 			reasoning = { exclude: true }
 		}
 
