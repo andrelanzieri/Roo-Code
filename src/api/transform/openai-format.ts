@@ -148,6 +148,10 @@ export function convertToOpenAiMessages(
 					},
 				}))
 
+				// @ts-ignore-next-line
+				const consolidatedReasoning =
+					reasoningDetails.length > 0 ? consolidateReasoningDetails(reasoningDetails) : undefined
+
 				openAiMessages.push({
 					role: "assistant",
 					content,
@@ -155,7 +159,7 @@ export function convertToOpenAiMessages(
 					tool_calls: tool_calls.length > 0 ? tool_calls : undefined,
 					// @ts-ignore-next-line
 					reasoning_details:
-						reasoningDetails.length > 0 ? consolidateReasoningDetails(reasoningDetails) : undefined,
+						consolidatedReasoning && consolidatedReasoning.length > 0 ? consolidatedReasoning : undefined,
 				})
 			}
 		}
@@ -203,18 +207,21 @@ function consolidateReasoningDetails(reasoningDetails: ReasoningDetail[]): Reaso
 
 	// Consolidate each group
 	const consolidated: ReasoningDetail[] = []
+	let outputIndex = 0
 
-	for (const [index, details] of groupedByIndex.entries()) {
+	for (const [_, details] of groupedByIndex.entries()) {
 		// Concatenate all text parts
 		let concatenatedText = ""
+		let hasText = false
 		let signature: string | undefined
 		let id: string | undefined
 		let format = "unknown"
 		let type = "reasoning.text"
 
 		for (const detail of details) {
-			if (detail.text) {
+			if (detail.text !== undefined) {
 				concatenatedText += detail.text
+				hasText = true
 			}
 			// Keep the signature from the last item that has one
 			if (detail.signature) {
@@ -233,15 +240,16 @@ function consolidateReasoningDetails(reasoningDetails: ReasoningDetail[]): Reaso
 			}
 		}
 
-		// Create consolidated entry for text
-		if (concatenatedText) {
+		// Create consolidated entry for text if any text parts were found
+		// This avoids creating text entries for purely encrypted blocks or metadata-only updates that belong to encrypted blocks
+		if (hasText) {
 			const consolidatedEntry: ReasoningDetail = {
 				type: type,
 				text: concatenatedText,
 				signature: signature,
 				id: id,
 				format: format,
-				index: index,
+				index: outputIndex++,
 			}
 			consolidated.push(consolidatedEntry)
 		}
@@ -256,7 +264,7 @@ function consolidateReasoningDetails(reasoningDetails: ReasoningDetail[]): Reaso
 					signature: detail.signature,
 					id: detail.id,
 					format: detail.format,
-					index: index,
+					index: outputIndex++,
 				}
 			}
 		}
