@@ -48,12 +48,10 @@ export class AzureHandler extends BaseProvider implements SingleCompletionHandle
 			const { default: AnthropicFoundry } = await import("@anthropic-ai/foundry-sdk")
 			const baseURL = this.options.azureBaseUrl || "https://your-endpoint.services.ai.azure.com/anthropic/"
 			const apiKey = this.options.azureApiKey || this.options.apiKey || "not-provided"
-			const apiVersion = this.options.azureApiVersion || "2023-06-01"
 
 			this.claudeClient = new AnthropicFoundry({
 				apiKey,
 				baseURL,
-				apiVersion,
 			})
 		} catch (error) {
 			throw new Error("Failed to initialize Azure Claude client: " + (error as Error).message)
@@ -285,12 +283,14 @@ export class AzureHandler extends BaseProvider implements SingleCompletionHandle
 			}
 
 			if (chunk.usage) {
+				// Azure OpenAI may include cache usage properties
+				const usage = chunk.usage as any
 				yield {
 					type: "usage",
 					inputTokens: chunk.usage.prompt_tokens || 0,
 					outputTokens: chunk.usage.completion_tokens || 0,
-					cacheWriteTokens: chunk.usage.cache_creation_input_tokens || undefined,
-					cacheReadTokens: chunk.usage.cache_read_input_tokens || undefined,
+					cacheWriteTokens: usage.cache_creation_input_tokens || undefined,
+					cacheReadTokens: usage.cache_read_input_tokens || undefined,
 				}
 			}
 		}
@@ -305,14 +305,24 @@ export class AzureHandler extends BaseProvider implements SingleCompletionHandle
 		const id = modelId && modelId in azureModels ? (modelId as AzureModelId) : azureDefaultModelId
 		const info: ModelInfo = azureModels[id]
 
-		const params = getModelParams({
-			format: this.isClaudeModel(id) ? "anthropic" : "openai",
-			modelId: id,
-			model: info,
-			settings: this.options,
-		})
-
-		return { id, info, ...params }
+		// Handle Claude and GPT models separately to maintain type safety
+		if (this.isClaudeModel(id)) {
+			const params = getModelParams({
+				format: "anthropic",
+				modelId: id,
+				model: info,
+				settings: this.options,
+			})
+			return { id, info, ...params }
+		} else {
+			const params = getModelParams({
+				format: "openai",
+				modelId: id,
+				model: info,
+				settings: this.options,
+			})
+			return { id, info, ...params }
+		}
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
