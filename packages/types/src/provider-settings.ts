@@ -4,6 +4,7 @@ import { modelInfoSchema, reasoningEffortSettingSchema, verbosityLevelsSchema, s
 import { codebaseIndexProviderSchema } from "./codebase-index.js"
 import {
 	anthropicModels,
+	azureModels,
 	bedrockModels,
 	cerebrasModels,
 	claudeCodeModels,
@@ -119,6 +120,7 @@ export const providerNames = [
 	...customProviders,
 	...fauxProviders,
 	"anthropic",
+	"azure",
 	"bedrock",
 	"cerebras",
 	"claude-code",
@@ -197,6 +199,13 @@ const anthropicSchema = apiModelIdProviderModelSchema.extend({
 	anthropicBaseUrl: z.string().optional(),
 	anthropicUseAuthToken: z.boolean().optional(),
 	anthropicBeta1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
+})
+
+const azureSchema = apiModelIdProviderModelSchema.extend({
+	azureApiKey: z.string().optional(),
+	azureBaseUrl: z.string().optional(),
+	azureDeploymentName: z.string().optional(),
+	azureApiVersion: z.string().optional(),
 })
 
 const claudeCodeSchema = apiModelIdProviderModelSchema.extend({
@@ -430,6 +439,7 @@ const defaultSchema = z.object({
 
 export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProvider", [
 	anthropicSchema.merge(z.object({ apiProvider: z.literal("anthropic") })),
+	azureSchema.merge(z.object({ apiProvider: z.literal("azure") })),
 	claudeCodeSchema.merge(z.object({ apiProvider: z.literal("claude-code") })),
 	glamaSchema.merge(z.object({ apiProvider: z.literal("glama") })),
 	openRouterSchema.merge(z.object({ apiProvider: z.literal("openrouter") })),
@@ -472,6 +482,7 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 export const providerSettingsSchema = z.object({
 	apiProvider: providerNamesSchema.optional(),
 	...anthropicSchema.shape,
+	...azureSchema.shape,
 	...claudeCodeSchema.shape,
 	...glamaSchema.shape,
 	...openRouterSchema.shape,
@@ -562,6 +573,7 @@ export const isTypicalProvider = (key: unknown): key is TypicalProvider =>
 
 export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
 	anthropic: "apiModelId",
+	azure: "apiModelId",
 	"claude-code": "apiModelId",
 	glama: "glamaModelId",
 	openrouter: "openRouterModelId",
@@ -637,6 +649,11 @@ export const MODELS_BY_PROVIDER: Record<
 		id: "anthropic",
 		label: "Anthropic",
 		models: Object.keys(anthropicModels),
+	},
+	azure: {
+		id: "azure",
+		label: "Azure AI",
+		models: Object.keys(azureModels),
 	},
 	bedrock: {
 		id: "bedrock",

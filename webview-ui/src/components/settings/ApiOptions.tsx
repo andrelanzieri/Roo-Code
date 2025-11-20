@@ -15,6 +15,7 @@ import {
 	litellmDefaultModelId,
 	openAiNativeDefaultModelId,
 	anthropicDefaultModelId,
+	azureDefaultModelId,
 	doubaoDefaultModelId,
 	claudeCodeDefaultModelId,
 	qwenCodeDefaultModelId,
@@ -67,6 +68,7 @@ import {
 
 import {
 	Anthropic,
+	Azure,
 	Bedrock,
 	Cerebras,
 	Chutes,
@@ -342,6 +344,7 @@ const ApiOptions = ({
 				requesty: { field: "requestyModelId", default: requestyDefaultModelId },
 				litellm: { field: "litellmModelId", default: litellmDefaultModelId },
 				anthropic: { field: "apiModelId", default: anthropicDefaultModelId },
+				azure: { field: "apiModelId", default: azureDefaultModelId },
 				cerebras: { field: "apiModelId", default: cerebrasDefaultModelId },
 				"claude-code": { field: "apiModelId", default: claudeCodeDefaultModelId },
 				"qwen-code": { field: "apiModelId", default: qwenCodeDefaultModelId },
@@ -546,6 +549,10 @@ const ApiOptions = ({
 
 			{selectedProvider === "anthropic" && (
 				<Anthropic apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
+			)}
+
+			{selectedProvider === "azure" && (
+				<Azure apiConfiguration={apiConfiguration} setApiConfigurationField={setApiConfigurationField} />
 			)}
 
 			{selectedProvider === "claude-code" && (

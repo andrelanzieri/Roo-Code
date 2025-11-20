@@ -1,3 +1,4 @@
+export * from "./azure.js"
 export * from "./anthropic.js"
 export * from "./bedrock.js"
 export * from "./cerebras.js"
@@ -33,6 +34,7 @@ export * from "./deepinfra.js"
 export * from "./minimax.js"
 
 import { anthropicDefaultModelId } from "./anthropic.js"
+import { azureDefaultModelId } from "./azure.js"
 import { bedrockDefaultModelId } from "./bedrock.js"
 import { cerebrasDefaultModelId } from "./cerebras.js"
 import { chutesDefaultModelId } from "./chutes.js"
@@ -93,6 +95,8 @@ export function getProviderDefaultModelId(
 			return "meta-llama/Llama-3.3-70B-Instruct"
 		case "chutes":
 			return chutesDefaultModelId
+		case "azure":
+			return azureDefaultModelId
 		case "bedrock":
 			return bedrockDefaultModelId
 		case "vertex":
