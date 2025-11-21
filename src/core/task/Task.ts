@@ -651,10 +651,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// We only persist data reported by the current response body.
 		let metadata = this.api.getGenerationMetadata?.()
 
-		if (reasoning) {
-			metadata = { ...metadata, reasoning }
-		}
-
 		if (message.role === "assistant") {
 			// Start from the original assistant message
 			const messageWithTs: any = {
@@ -696,6 +692,52 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						})
 					}
 				}
+			}
+
+			// If we captured plain-text reasoning during streaming, persist it alongside the assistant message.
+			if (reasoning) {
+				const modelInfo = this.api.getModel().info
+				const shouldPreserveReasoning = modelInfo.preserveReasoning === true
+
+				// Normalize existing content into an array for manipulation
+				let contentArray: Anthropic.Messages.ContentBlockParam[]
+				if (Array.isArray(messageWithTs.content)) {
+					contentArray = messageWithTs.content as Anthropic.Messages.ContentBlockParam[]
+				} else if (typeof messageWithTs.content === "string") {
+					contentArray = [
+						{ type: "text", text: messageWithTs.content } satisfies Anthropic.Messages.TextBlockParam,
+					]
+				} else {
+					contentArray = []
+				}
+
+				if (shouldPreserveReasoning) {
+					// For models that preserve reasoning, prepend reasoning in <think> tags to the first text block.
+					let targetTextBlock = contentArray.find((block) => block.type === "text") as
+						| Anthropic.Messages.TextBlockParam
+						| undefined
+
+					if (!targetTextBlock) {
+						targetTextBlock = { type: "text", text: "" }
+						contentArray.unshift(targetTextBlock)
+					}
+
+					const existingText = targetTextBlock.text ?? ""
+					targetTextBlock.text = `<think>${reasoning}</think>\n${existingText}`
+				} else {
+					// For all other providers, store reasoning as a separate plain-text reasoning block
+					// before the assistant's visible response. This is kept in history but stripped
+					// from subsequent API requests unless preserveReasoning is enabled.
+					const reasoningBlock: any = {
+						type: "reasoning",
+						text: reasoning,
+						summary: [],
+					}
+
+					contentArray = [reasoningBlock, ...contentArray]
+				}
+
+				messageWithTs.content = contentArray
 			}
 
 			this.apiConversationHistory.push(messageWithTs)
@@ -2084,14 +2126,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 									outputTokens,
 									cacheWriteTokens,
 									cacheReadTokens,
-									)
+								)
 							: calculateApiCostOpenAI(
 									streamModelInfo,
 									inputTokens,
 									outputTokens,
 									cacheWriteTokens,
 									cacheReadTokens,
-									)
+								)
 
 					this.clineMessages[lastApiReqIndex].text = JSON.stringify({
 						...existingData,
@@ -2520,7 +2562,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 									currentItem.retryAttempt ?? 0,
 									error,
 									streamingFailedMessage,
-									)
+								)
 
 								// Check if task was aborted during the backoff
 								if (this.abort) {
@@ -3377,7 +3419,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Legacy support: Handle embedded reasoning blocks from the transitional period
 			// (where reasoning was a block inside content with type="reasoning")
 			if (msg.role === "assistant" && Array.isArray(msg.content)) {
-				const firstBlock = msg.content[0]
+				const contentArray = msg.content as Anthropic.Messages.ContentBlockParam[]
+				const [firstBlock, ...rest] = contentArray
+				const hasPlainTextReasoning =
+					firstBlock &&
+					(firstBlock as any).type === "reasoning" &&
+					typeof (firstBlock as any).text === "string"
 				if (
 					firstBlock &&
 					(firstBlock as any).type === "reasoning" &&
