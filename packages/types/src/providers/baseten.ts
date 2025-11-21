@@ -3,17 +3,14 @@ import type { ModelInfo } from "../model.js"
 // Baseten
 // https://baseten.co/products/model-apis/
 
-// Extended ModelInfo to include supportedFeatures, like tools
-export interface BasetenModelInfo extends ModelInfo {
-	supportedFeatures?: string[]
-}
-
 export const basetenModels = {
 	"moonshotai/Kimi-K2-Thinking": {
 		maxTokens: 163_800,
 		contextWindow: 262_000,
 		supportsImages: false,
 		supportsPromptCache: false,
+		supportsNativeTools: true,
+		defaultToolProtocol: "native",
 		inputPrice: 0.6,
 		outputPrice: 2.5,
 		cacheWritesPrice: 0,
@@ -25,6 +22,7 @@ export const basetenModels = {
 		contextWindow: 200_000,
 		supportsImages: false,
 		supportsPromptCache: false,
+		supportsNativeTools: true,
 		inputPrice: 0.6,
 		outputPrice: 2.2,
 		cacheWritesPrice: 0,
@@ -103,6 +101,7 @@ export const basetenModels = {
 		contextWindow: 128_072,
 		supportsImages: false,
 		supportsPromptCache: false,
+		supportsNativeTools: true,
 		inputPrice: 0.1,
 		outputPrice: 0.5,
 		cacheWritesPrice: 0,
@@ -114,6 +113,7 @@ export const basetenModels = {
 		contextWindow: 262_000,
 		supportsImages: false,
 		supportsPromptCache: false,
+		supportsNativeTools: true,
 		inputPrice: 0.6,
 		outputPrice: 2.5,
 		cacheWritesPrice: 0,
