@@ -124,4 +124,4 @@ export const basetenModels = {
 
 export type BasetenModelId = keyof typeof basetenModels
 
-export const basetenDefaultModelId = "zai-org/GLM-4.6" satisfies BasetenModelId
+export const basetenDefaultModelId = "moonshotai/Kimi-K2-Thinking" satisfies BasetenModelId
