@@ -1,5 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
+import type { ProviderMessageMetadata } from "../../shared/api"
 
 export function convertToOpenAiMessages(
 	anthropicMessages: Anthropic.Messages.MessageParam[],
@@ -113,12 +114,20 @@ export function convertToOpenAiMessages(
 				const reasoningDetails: ReasoningDetail[] = []
 				if (nonToolMessages.length > 0) {
 					nonToolMessages.forEach((part) => {
+						// Check for legacy reasoning_details on text block
 						if (part.type === "text" && "reasoning_details" in part) {
 							const details = (part as any).reasoning_details
 							if (Array.isArray(details)) {
 								reasoningDetails.push(...details)
 							} else {
 								reasoningDetails.push(details)
+							}
+						}
+						// Check for new providerMetadata on text block
+						else if (part.type === "text" && (part as any).providerMetadata) {
+							const metadata = (part as any).providerMetadata as ProviderMessageMetadata
+							if (metadata?.openRouterReasoningDetails) {
+								reasoningDetails.push(...metadata.openRouterReasoningDetails)
 							}
 						}
 					})
@@ -173,6 +182,7 @@ type ReasoningDetail = {
 	// https://openrouter.ai/docs/use-cases/reasoning-tokens#reasoning-detail-types
 	type: string // "reasoning.summary" | "reasoning.encrypted" | "reasoning.text"
 	text?: string
+	summary?: string
 	data?: string // Encrypted reasoning data
 	signature?: string | null
 	id?: string | null // Unique identifier for the reasoning detail
@@ -212,6 +222,7 @@ function consolidateReasoningDetails(reasoningDetails: ReasoningDetail[]): Reaso
 		// Concatenate all text parts
 		let concatenatedText = ""
 		let hasText = false
+		let summary: string | undefined
 		let signature: string | undefined
 		let id: string | undefined
 		let format = "unknown"
@@ -221,6 +232,9 @@ function consolidateReasoningDetails(reasoningDetails: ReasoningDetail[]): Reaso
 			if (detail.text !== undefined) {
 				concatenatedText += detail.text
 				hasText = true
+			}
+			if (detail.summary !== undefined) {
+				summary = detail.summary
 			}
 			// Keep the signature from the last item that has one
 			if (detail.signature) {
@@ -241,10 +255,11 @@ function consolidateReasoningDetails(reasoningDetails: ReasoningDetail[]): Reaso
 
 		// Create consolidated entry for text if any text parts were found
 		// This avoids creating text entries for purely encrypted blocks or metadata-only updates that belong to encrypted blocks
-		if (hasText) {
+		if (hasText || summary !== undefined) {
 			const consolidatedEntry: ReasoningDetail = {
 				type: type,
-				text: concatenatedText,
+				text: hasText ? concatenatedText : undefined,
+				summary: summary,
 				signature: signature,
 				id: id,
 				format: format,
