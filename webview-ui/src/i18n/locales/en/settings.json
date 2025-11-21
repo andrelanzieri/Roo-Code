@@ -157,8 +157,8 @@
 			},
 			"allowedDirectories": {
 				"label": "Allowed directories",
-				"description": "Specify directories outside the workspace that can be read automatically. Supports wildcards (* and ?).",
-				"placeholder": "Enter directory path (e.g., ~/projects/*, /usr/include/Qt*)"
+				"description": "Specify directories outside the workspace that can be read automatically. Uses gitignore-style patterns (same as .rooignore).",
+				"placeholder": "Enter directory path (e.g., ~/projects/*, /usr/include/Qt*, /tmp/*)"
 			}
 		},
 		"write": {
@@ -175,8 +175,8 @@
 			},
 			"allowedDirectories": {
 				"label": "Allowed directories",
-				"description": "Specify directories outside the workspace that can be written to automatically. Supports wildcards (* and ?).",
-				"placeholder": "Enter directory path (e.g., ~/output/*, /tmp/build*)"
+				"description": "Specify directories outside the workspace that can be written to automatically. Uses gitignore-style patterns (same as .rooignore).",
+				"placeholder": "Enter directory path (e.g., ~/output/*, /tmp/build*, /var/log/*)"
 			}
 		},
 		"browser": {
