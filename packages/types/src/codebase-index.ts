@@ -54,6 +54,7 @@ export const codebaseIndexModelsSchema = z.object({
 	gemini: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	mistral: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 	"vercel-ai-gateway": z.record(z.string(), z.object({ dimension: z.number() })).optional(),
+	bedrock: z.record(z.string(), z.object({ dimension: z.number() })).optional(),
 })
 
 export type CodebaseIndexModels = z.infer<typeof codebaseIndexModelsSchema>
