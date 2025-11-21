@@ -22,17 +22,21 @@ export class BedrockEmbedder implements IEmbedder {
 
 	/**
 	 * Creates a new AWS Bedrock embedder
-	 * @param region AWS region for Bedrock service
+	 * @param region AWS region for Bedrock service (required)
+	 * @param profile AWS profile name for credentials (required)
 	 * @param modelId Optional model ID override
-	 * @param profile Optional AWS profile name for credentials
 	 */
 	constructor(
-		private readonly region: string = "us-east-1",
+		private readonly region: string,
+		private readonly profile: string,
 		modelId?: string,
-		private readonly profile?: string,
 	) {
-		// Initialize the Bedrock client with appropriate credentials
-		const credentials = this.profile ? fromIni({ profile: this.profile }) : fromEnv()
+		if (!region || !profile) {
+			throw new Error("Both region and profile are required for AWS Bedrock embedder")
+		}
+
+		// Initialize the Bedrock client with credentials from the specified profile
+		const credentials = fromIni({ profile: this.profile })
 
 		this.bedrockClient = new BedrockRuntimeClient({
 			region: this.region,

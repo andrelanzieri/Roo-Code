@@ -76,7 +76,7 @@ describe("BedrockEmbedder", () => {
 			send: mockSend,
 		}))
 
-		embedder = new BedrockEmbedder("us-east-1", "amazon.titan-embed-text-v2:0")
+		embedder = new BedrockEmbedder("us-east-1", "test-profile", "amazon.titan-embed-text-v2:0")
 	})
 
 	afterEach(() => {
@@ -84,17 +84,21 @@ describe("BedrockEmbedder", () => {
 	})
 
 	describe("constructor", () => {
-		it("should initialize with provided region and model", () => {
+		it("should initialize with provided region, profile and model", () => {
 			expect(embedder.embedderInfo.name).toBe("bedrock")
 		})
 
-		it("should use default region if not provided", () => {
-			const defaultEmbedder = new BedrockEmbedder()
-			expect(defaultEmbedder).toBeDefined()
+		it("should require both region and profile", () => {
+			expect(() => new BedrockEmbedder("", "profile", "model")).toThrow(
+				"Both region and profile are required for AWS Bedrock embedder",
+			)
+			expect(() => new BedrockEmbedder("us-east-1", "", "model")).toThrow(
+				"Both region and profile are required for AWS Bedrock embedder",
+			)
 		})
 
-		it("should use profile if provided", () => {
-			const profileEmbedder = new BedrockEmbedder("us-west-2", undefined, "dev-profile")
+		it("should use profile for credentials", () => {
+			const profileEmbedder = new BedrockEmbedder("us-west-2", "dev-profile")
 			expect(profileEmbedder).toBeDefined()
 		})
 	})
@@ -169,7 +173,7 @@ describe("BedrockEmbedder", () => {
 		})
 
 		it("should handle Cohere model format", async () => {
-			const cohereEmbedder = new BedrockEmbedder("us-east-1", "cohere.embed-english-v3")
+			const cohereEmbedder = new BedrockEmbedder("us-east-1", "test-profile", "cohere.embed-english-v3")
 			const testTexts = ["Hello world"]
 			const mockResponse = {
 				body: new TextEncoder().encode(

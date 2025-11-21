@@ -139,9 +139,9 @@ export class CodeIndexConfigManager {
 		this.geminiOptions = geminiApiKey ? { apiKey: geminiApiKey } : undefined
 		this.mistralOptions = mistralApiKey ? { apiKey: mistralApiKey } : undefined
 		this.vercelAiGatewayOptions = vercelAiGatewayApiKey ? { apiKey: vercelAiGatewayApiKey } : undefined
-		this.bedrockOptions = bedrockRegion
-			? { region: bedrockRegion, profile: bedrockProfile || undefined }
-			: undefined
+		// Set bedrockOptions only if both region and profile are provided
+		this.bedrockOptions =
+			bedrockRegion && bedrockProfile ? { region: bedrockRegion, profile: bedrockProfile } : undefined
 	}
 
 	/**
@@ -252,9 +252,11 @@ export class CodeIndexConfigManager {
 			const isConfigured = !!(apiKey && qdrantUrl)
 			return isConfigured
 		} else if (this.embedderProvider === "bedrock") {
+			// Both region and profile are required for Bedrock
 			const region = this.bedrockOptions?.region
+			const profile = this.bedrockOptions?.profile
 			const qdrantUrl = this.qdrantUrl
-			const isConfigured = !!(region && qdrantUrl)
+			const isConfigured = !!(region && profile && qdrantUrl)
 			return isConfigured
 		}
 		return false // Should not happen if embedderProvider is always set correctly

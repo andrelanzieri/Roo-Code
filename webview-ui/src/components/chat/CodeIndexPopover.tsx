@@ -65,6 +65,10 @@ interface LocalCodeIndexSettings {
 	codebaseIndexSearchMaxResults?: number
 	codebaseIndexSearchMinScore?: number
 
+	// Bedrock-specific settings
+	codebaseIndexBedrockRegion?: string
+	codebaseIndexBedrockProfile?: string
+
 	// Secret settings (start empty, will be loaded separately)
 	codeIndexOpenAiKey?: string
 	codeIndexQdrantApiKey?: string
@@ -149,6 +153,17 @@ const createValidationSchema = (provider: EmbedderProvider, t: any) => {
 					.min(1, t("settings:codeIndex.validation.modelSelectionRequired")),
 			})
 
+		case "bedrock":
+			return baseSchema.extend({
+				codebaseIndexBedrockRegion: z.string().min(1, t("settings:codeIndex.validation.bedrockRegionRequired")),
+				codebaseIndexBedrockProfile: z
+					.string()
+					.min(1, t("settings:codeIndex.validation.bedrockProfileRequired")),
+				codebaseIndexEmbedderModelId: z
+					.string()
+					.min(1, t("settings:codeIndex.validation.modelSelectionRequired")),
+			})
+
 		default:
 			return baseSchema
 	}
@@ -187,6 +202,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		codebaseIndexEmbedderModelDimension: undefined,
 		codebaseIndexSearchMaxResults: CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_RESULTS,
 		codebaseIndexSearchMinScore: CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_MIN_SCORE,
+		codebaseIndexBedrockRegion: "",
+		codebaseIndexBedrockProfile: "",
 		codeIndexOpenAiKey: "",
 		codeIndexQdrantApiKey: "",
 		codebaseIndexOpenAiCompatibleBaseUrl: "",
@@ -210,6 +227,14 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 	// Initialize settings from global state
 	useEffect(() => {
 		if (codebaseIndexConfig) {
+			// DEBUG: Log what we're loading from config
+			console.log("[CodeIndexPopover] Loading settings from codebaseIndexConfig:", {
+				bedrockRegion: codebaseIndexConfig.codebaseIndexBedrockRegion,
+				bedrockProfile: codebaseIndexConfig.codebaseIndexBedrockProfile,
+				provider: codebaseIndexConfig.codebaseIndexEmbedderProvider,
+				fullConfig: codebaseIndexConfig,
+			})
+
 			const settings = {
 				codebaseIndexEnabled: codebaseIndexConfig.codebaseIndexEnabled ?? true,
 				codebaseIndexQdrantUrl: codebaseIndexConfig.codebaseIndexQdrantUrl || "",
@@ -222,6 +247,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					codebaseIndexConfig.codebaseIndexSearchMaxResults ?? CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_RESULTS,
 				codebaseIndexSearchMinScore:
 					codebaseIndexConfig.codebaseIndexSearchMinScore ?? CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_MIN_SCORE,
+				codebaseIndexBedrockRegion: codebaseIndexConfig.codebaseIndexBedrockRegion || "",
+				codebaseIndexBedrockProfile: codebaseIndexConfig.codebaseIndexBedrockProfile || "",
 				codeIndexOpenAiKey: "",
 				codeIndexQdrantApiKey: "",
 				codebaseIndexOpenAiCompatibleBaseUrl: codebaseIndexConfig.codebaseIndexOpenAiCompatibleBaseUrl || "",
@@ -230,6 +257,12 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 				codebaseIndexMistralApiKey: "",
 				codebaseIndexVercelAiGatewayApiKey: "",
 			}
+
+			console.log("[CodeIndexPopover] Setting initial/current settings to:", {
+				bedrockRegion: settings.codebaseIndexBedrockRegion,
+				bedrockProfile: settings.codebaseIndexBedrockProfile,
+			})
+
 			setInitialSettings(settings)
 			setCurrentSettings(settings)
 
@@ -278,15 +311,64 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 			} else if (event.data.type === "codeIndexSettingsSaved") {
 				if (event.data.success) {
 					setSaveStatus("saved")
-					// Update initial settings to match current settings after successful save
-					// This ensures hasUnsavedChanges becomes false
-					const savedSettings = { ...currentSettingsRef.current }
-					setInitialSettings(savedSettings)
-					// Also update current settings to maintain consistency
-					setCurrentSettings(savedSettings)
+
+					// DEBUG: Log what backend returned
+					console.log("[CodeIndexPopover] Received save success from backend:", {
+						bedrockRegion: event.data.settings?.codebaseIndexBedrockRegion,
+						bedrockProfile: event.data.settings?.codebaseIndexBedrockProfile,
+						allSettings: event.data.settings,
+					})
+
+					// Use the settings returned from the backend to update both initial and current settings
+					// This ensures we have the exact values that were saved
+					if (event.data.settings) {
+						const savedSettings = {
+							codebaseIndexEnabled: event.data.settings.codebaseIndexEnabled ?? true,
+							codebaseIndexQdrantUrl: event.data.settings.codebaseIndexQdrantUrl || "",
+							codebaseIndexEmbedderProvider:
+								event.data.settings.codebaseIndexEmbedderProvider || "openai",
+							codebaseIndexEmbedderBaseUrl: event.data.settings.codebaseIndexEmbedderBaseUrl || "",
+							codebaseIndexEmbedderModelId: event.data.settings.codebaseIndexEmbedderModelId || "",
+							codebaseIndexEmbedderModelDimension:
+								event.data.settings.codebaseIndexEmbedderModelDimension || undefined,
+							codebaseIndexSearchMaxResults:
+								event.data.settings.codebaseIndexSearchMaxResults ??
+								CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_RESULTS,
+							codebaseIndexSearchMinScore:
+								event.data.settings.codebaseIndexSearchMinScore ??
+								CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_MIN_SCORE,
+							codebaseIndexBedrockRegion: event.data.settings.codebaseIndexBedrockRegion || "",
+							codebaseIndexBedrockProfile: event.data.settings.codebaseIndexBedrockProfile || "",
+							codeIndexOpenAiKey: currentSettingsRef.current.codeIndexOpenAiKey,
+							codeIndexQdrantApiKey: currentSettingsRef.current.codeIndexQdrantApiKey,
+							codebaseIndexOpenAiCompatibleBaseUrl:
+								event.data.settings.codebaseIndexOpenAiCompatibleBaseUrl || "",
+							codebaseIndexOpenAiCompatibleApiKey:
+								currentSettingsRef.current.codebaseIndexOpenAiCompatibleApiKey,
+							codebaseIndexGeminiApiKey: currentSettingsRef.current.codebaseIndexGeminiApiKey,
+							codebaseIndexMistralApiKey: currentSettingsRef.current.codebaseIndexMistralApiKey,
+							codebaseIndexVercelAiGatewayApiKey:
+								currentSettingsRef.current.codebaseIndexVercelAiGatewayApiKey,
+						}
+
+						console.log("[CodeIndexPopover] Updated settings after save:", {
+							bedrockRegion: savedSettings.codebaseIndexBedrockRegion,
+							bedrockProfile: savedSettings.codebaseIndexBedrockProfile,
+						})
+
+						console.log("[CodeIndexPopover] About to update state with saved settings:", {
+							bedrockRegion: savedSettings.codebaseIndexBedrockRegion,
+							bedrockProfile: savedSettings.codebaseIndexBedrockProfile,
+						})
+
+						setInitialSettings(savedSettings)
+						setCurrentSettings(savedSettings)
+
+						console.log("[CodeIndexPopover] State updated with saved settings")
+					}
+
 					// Request secret status to ensure we have the latest state
 					// This is important to maintain placeholder display after save
-
 					vscode.postMessage({ type: "requestCodeIndexSecretStatus" })
 
 					setSaveStatus("idle")
@@ -440,6 +522,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 						errors[err.path[0] as string] = err.message
 					}
 				})
+				console.log("[CodeIndexPopover] Validation errors:", errors)
 				setFormErrors(errors)
 			}
 			return false
@@ -483,6 +566,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 	useEscapeKey(open, handlePopoverClose)
 
 	const handleSaveSettings = () => {
+		console.log("[CodeIndexPopover] handleSaveSettings called")
+
 		// Validate settings before saving
 		if (!validateSettings()) {
 			return
@@ -511,6 +596,14 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 		// Always include codebaseIndexEnabled to ensure it's persisted
 		settingsToSave.codebaseIndexEnabled = currentSettings.codebaseIndexEnabled
 
+		// DEBUG: Log Bedrock settings being saved
+		console.log("[CodeIndexPopover] Saving settings:", {
+			provider: settingsToSave.codebaseIndexEmbedderProvider,
+			bedrockRegion: settingsToSave.codebaseIndexBedrockRegion,
+			bedrockProfile: settingsToSave.codebaseIndexBedrockProfile,
+			allSettings: settingsToSave,
+		})
+
 		// Save settings to backend
 		vscode.postMessage({
 			type: "saveCodeIndexSettingsAtomic",
@@ -531,7 +624,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 	const getAvailableModels = () => {
 		if (!codebaseIndexModels) return []
 
-		const models = codebaseIndexModels[currentSettings.codebaseIndexEmbedderProvider]
+		const models =
+			codebaseIndexModels[currentSettings.codebaseIndexEmbedderProvider as keyof typeof codebaseIndexModels]
 		return models ? Object.keys(models) : []
 	}
 
@@ -669,6 +763,9 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 												<SelectItem value="vercel-ai-gateway">
 													{t("settings:codeIndex.vercelAiGatewayProvider")}
 												</SelectItem>
+												<SelectItem value="bedrock">
+													{t("settings:codeIndex.bedrockProvider")}
+												</SelectItem>
 											</SelectContent>
 										</Select>
 									</div>
@@ -716,7 +813,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													{getAvailableModels().map((modelId) => {
 														const model =
 															codebaseIndexModels?.[
-																currentSettings.codebaseIndexEmbedderProvider
+																currentSettings.codebaseIndexEmbedderProvider as keyof typeof codebaseIndexModels
 															]?.[modelId]
 														return (
 															<VSCodeOption key={modelId} value={modelId} className="p-2">
@@ -973,7 +1070,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													{getAvailableModels().map((modelId) => {
 														const model =
 															codebaseIndexModels?.[
-																currentSettings.codebaseIndexEmbedderProvider
+																currentSettings.codebaseIndexEmbedderProvider as keyof typeof codebaseIndexModels
 															]?.[modelId]
 														return (
 															<VSCodeOption key={modelId} value={modelId} className="p-2">
@@ -1038,7 +1135,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													{getAvailableModels().map((modelId) => {
 														const model =
 															codebaseIndexModels?.[
-																currentSettings.codebaseIndexEmbedderProvider
+																currentSettings.codebaseIndexEmbedderProvider as keyof typeof codebaseIndexModels
 															]?.[modelId]
 														return (
 															<VSCodeOption key={modelId} value={modelId} className="p-2">
@@ -1108,7 +1205,97 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													{getAvailableModels().map((modelId) => {
 														const model =
 															codebaseIndexModels?.[
-																currentSettings.codebaseIndexEmbedderProvider
+																currentSettings.codebaseIndexEmbedderProvider as keyof typeof codebaseIndexModels
+															]?.[modelId]
+														return (
+															<VSCodeOption key={modelId} value={modelId} className="p-2">
+																{modelId}{" "}
+																{model
+																	? t("settings:codeIndex.modelDimensions", {
+																			dimension: model.dimension,
+																		})
+																	: ""}
+															</VSCodeOption>
+														)
+													})}
+												</VSCodeDropdown>
+												{formErrors.codebaseIndexEmbedderModelId && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.codebaseIndexEmbedderModelId}
+													</p>
+												)}
+											</div>
+										</>
+									)}
+
+									{currentSettings.codebaseIndexEmbedderProvider === "bedrock" && (
+										<>
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.bedrockRegionLabel")}
+												</label>
+												<VSCodeTextField
+													value={currentSettings.codebaseIndexBedrockRegion || ""}
+													onInput={(e: any) =>
+														updateSetting("codebaseIndexBedrockRegion", e.target.value)
+													}
+													placeholder={t("settings:codeIndex.bedrockRegionPlaceholder")}
+													className={cn("w-full", {
+														"border-red-500": formErrors.codebaseIndexBedrockRegion,
+													})}
+												/>
+												{formErrors.codebaseIndexBedrockRegion && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.codebaseIndexBedrockRegion}
+													</p>
+												)}
+											</div>
+
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.bedrockProfileLabel")}
+												</label>
+												<VSCodeTextField
+													value={currentSettings.codebaseIndexBedrockProfile || ""}
+													onInput={(e: any) =>
+														updateSetting("codebaseIndexBedrockProfile", e.target.value)
+													}
+													placeholder={t("settings:codeIndex.bedrockProfilePlaceholder")}
+													className={cn("w-full", {
+														"border-red-500": formErrors.codebaseIndexBedrockProfile,
+													})}
+												/>
+												{formErrors.codebaseIndexBedrockProfile && (
+													<p className="text-xs text-vscode-errorForeground mt-1 mb-0">
+														{formErrors.codebaseIndexBedrockProfile}
+													</p>
+												)}
+												{!formErrors.codebaseIndexBedrockProfile && (
+													<p className="text-xs text-vscode-descriptionForeground mt-1 mb-0">
+														{t("settings:codeIndex.bedrockProfileDescription")}
+													</p>
+												)}
+											</div>
+
+											<div className="space-y-2">
+												<label className="text-sm font-medium">
+													{t("settings:codeIndex.modelLabel")}
+												</label>
+												<VSCodeDropdown
+													value={currentSettings.codebaseIndexEmbedderModelId}
+													onChange={(e: any) =>
+														updateSetting("codebaseIndexEmbedderModelId", e.target.value)
+													}
+													className={cn("w-full", {
+														"border-red-500": formErrors.codebaseIndexEmbedderModelId,
+													})}>
+													<VSCodeOption value="" className="p-2">
+														{t("settings:codeIndex.selectModel")}
+													</VSCodeOption>
+													{getAvailableModels().map((modelId) => {
+														const model =
+															codebaseIndexModels?.[
+																currentSettings.codebaseIndexEmbedderProvider as keyof typeof codebaseIndexModels
 															]?.[modelId]
 														return (
 															<VSCodeOption key={modelId} value={modelId} className="p-2">

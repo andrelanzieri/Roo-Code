@@ -81,10 +81,11 @@ export class CodeIndexServiceFactory {
 			}
 			return new VercelAiGatewayEmbedder(config.vercelAiGatewayOptions.apiKey, config.modelId)
 		} else if (provider === "bedrock") {
-			if (!config.bedrockOptions?.region) {
+			// Both region and profile are required for Bedrock
+			if (!config.bedrockOptions?.region || !config.bedrockOptions?.profile) {
 				throw new Error(t("embeddings:serviceFactory.bedrockConfigMissing"))
 			}
-			return new BedrockEmbedder(config.bedrockOptions.region, config.modelId, config.bedrockOptions.profile)
+			return new BedrockEmbedder(config.bedrockOptions.region, config.bedrockOptions.profile, config.modelId)
 		}
 
 		throw new Error(
