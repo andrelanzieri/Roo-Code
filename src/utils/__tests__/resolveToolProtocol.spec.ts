@@ -317,4 +317,100 @@ describe("resolveToolProtocol", () => {
 			expect(result).toBe(TOOL_PROTOCOL.XML) // Model default wins
 		})
 	})
+
+	describe("OpenAI Compatible and Ollama Provider Special Handling", () => {
+		it("should allow native protocol for OpenAI Compatible provider even without model support", () => {
+			const settings: ProviderSettings = {
+				toolProtocol: "native",
+				apiProvider: "openai",
+			}
+			// No model info provided (unknown model)
+			const result = resolveToolProtocol(settings, undefined)
+			expect(result).toBe(TOOL_PROTOCOL.NATIVE) // User preference is respected
+		})
+
+		it("should allow native protocol for Ollama provider even without model support", () => {
+			const settings: ProviderSettings = {
+				toolProtocol: "native",
+				apiProvider: "ollama",
+			}
+			const modelInfo: ModelInfo = {
+				maxTokens: 4096,
+				contextWindow: 128000,
+				supportsPromptCache: false,
+				supportsNativeTools: false, // Model doesn't support native
+			}
+			const result = resolveToolProtocol(settings, modelInfo)
+			expect(result).toBe(TOOL_PROTOCOL.NATIVE) // User preference is respected for Ollama
+		})
+
+		it("should allow XML protocol for OpenAI Compatible provider when user chooses it", () => {
+			const settings: ProviderSettings = {
+				toolProtocol: "xml",
+				apiProvider: "openai",
+			}
+			const modelInfo: ModelInfo = {
+				maxTokens: 4096,
+				contextWindow: 128000,
+				supportsPromptCache: false,
+				supportsNativeTools: true, // Model supports native
+				defaultToolProtocol: "native",
+			}
+			const result = resolveToolProtocol(settings, modelInfo)
+			expect(result).toBe(TOOL_PROTOCOL.XML) // User preference is respected
+		})
+
+		it("should use model default for OpenAI Compatible when no user preference", () => {
+			const settings: ProviderSettings = {
+				apiProvider: "openai",
+			}
+			const modelInfo: ModelInfo = {
+				maxTokens: 4096,
+				contextWindow: 128000,
+				supportsPromptCache: false,
+				supportsNativeTools: true,
+				defaultToolProtocol: "native",
+			}
+			const result = resolveToolProtocol(settings, modelInfo)
+			expect(result).toBe(TOOL_PROTOCOL.NATIVE) // Model default is used
+		})
+
+		it("should fall back to XML for OpenAI Compatible when no preference and no model info", () => {
+			const settings: ProviderSettings = {
+				apiProvider: "openai",
+			}
+			const result = resolveToolProtocol(settings, undefined)
+			expect(result).toBe(TOOL_PROTOCOL.XML) // XML fallback
+		})
+
+		it("should still enforce support check for non-OpenAI/Ollama providers", () => {
+			const settings: ProviderSettings = {
+				toolProtocol: "native",
+				apiProvider: "anthropic", // Not OpenAI or Ollama
+			}
+			const modelInfo: ModelInfo = {
+				maxTokens: 4096,
+				contextWindow: 128000,
+				supportsPromptCache: false,
+				supportsNativeTools: false, // Model doesn't support native
+			}
+			const result = resolveToolProtocol(settings, modelInfo)
+			expect(result).toBe(TOOL_PROTOCOL.XML) // Falls back to XML for non-OpenAI/Ollama
+		})
+
+		it("should allow native for Ollama with undefined model support", () => {
+			const settings: ProviderSettings = {
+				toolProtocol: "native",
+				apiProvider: "ollama",
+			}
+			const modelInfo: ModelInfo = {
+				maxTokens: 4096,
+				contextWindow: 128000,
+				supportsPromptCache: false,
+				// supportsNativeTools is undefined
+			}
+			const result = resolveToolProtocol(settings, modelInfo)
+			expect(result).toBe(TOOL_PROTOCOL.NATIVE) // User preference is respected for Ollama
+		})
+	})
 })
