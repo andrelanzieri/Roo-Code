@@ -93,6 +93,7 @@ export interface WebviewMessage {
 		| "deleteMessageConfirm"
 		| "submitEditedMessage"
 		| "editMessageConfirm"
+		| "submitEditedSubtask"
 		| "enableMcpServerCreation"
 		| "remoteControlEnabled"
 		| "taskSyncEnabled"
@@ -175,6 +176,7 @@ export interface WebviewMessage {
 		| "browserPanelDidLaunch"
 	text?: string
 	editedMessageContent?: string
+	editedSubtaskContent?: string
 	tab?: "settings" | "history" | "mcp" | "modes" | "chat" | "marketplace" | "cloud"
 	disabled?: boolean
 	context?: string
