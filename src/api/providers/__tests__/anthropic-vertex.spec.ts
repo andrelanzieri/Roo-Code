@@ -809,4 +809,96 @@ describe("VertexHandler", () => {
 			)
 		})
 	})
+
+	describe("reasoning message filtering", () => {
+		it("should filter out reasoning type messages before sending to API", async () => {
+			handler = new AnthropicVertexHandler({
+				apiModelId: "claude-3-5-sonnet-v2@20241022",
+				vertexProjectId: "test-project",
+				vertexRegion: "us-central1",
+			})
+
+			// Include a reasoning type message that should be filtered out
+			const messagesWithReasoning = [
+				{
+					role: "user",
+					content: "Hello",
+				} as Anthropic.Messages.MessageParam,
+				{
+					type: "reasoning",
+					encrypted_content: "encrypted_payload",
+					summary: [],
+				} as any, // This should be filtered out
+				{
+					role: "assistant",
+					content: "Hi there!",
+				} as Anthropic.Messages.MessageParam,
+			]
+
+			const mockStream = [
+				{
+					type: "message_start",
+					message: {
+						usage: {
+							input_tokens: 10,
+							output_tokens: 0,
+						},
+					},
+				},
+				{
+					type: "content_block_start",
+					index: 0,
+					content_block: {
+						type: "text",
+						text: "Response",
+					},
+				},
+			]
+
+			const asyncIterator = {
+				async *[Symbol.asyncIterator]() {
+					for (const chunk of mockStream) {
+						yield chunk
+					}
+				},
+			}
+
+			const mockCreate = vitest.fn().mockResolvedValue(asyncIterator)
+			;(handler["client"].messages as any).create = mockCreate
+
+			const stream = handler.createMessage("System prompt", messagesWithReasoning)
+			const chunks: ApiStreamChunk[] = []
+
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// Verify that the reasoning message was filtered out
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: [
+						{
+							role: "user",
+							content: [
+								{
+									type: "text",
+									text: "Hello",
+									cache_control: { type: "ephemeral" },
+								},
+							],
+						},
+						{
+							role: "assistant",
+							content: "Hi there!",
+						},
+					],
+				}),
+			)
+
+			// Verify the reasoning message was not included
+			const calledMessages = mockCreate.mock.calls[0][0].messages
+			expect(calledMessages).toHaveLength(2)
+			expect(calledMessages.every((msg: any) => msg.type !== "reasoning")).toBe(true)
+		})
+	})
 })

@@ -70,6 +70,20 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			reasoning: thinking,
 		} = this.getModel()
 
+		// Filter out reasoning type messages that are not valid for Vertex AI API
+		// The message list can include provider-specific meta entries such as
+		// `{ type: "reasoning", ... }` that are intended only for providers like
+		// openai-native. Vertex AI doesn't recognize these and will return an error.
+		type ReasoningMetaLike = { type?: string }
+
+		const filteredMessages = messages.filter((message): message is Anthropic.Messages.MessageParam => {
+			const meta = message as ReasoningMetaLike
+			if (meta.type === "reasoning") {
+				return false
+			}
+			return true
+		})
+
 		/**
 		 * Vertex API has specific limitations for prompt caching:
 		 * 1. Maximum of 4 blocks can have cache_control
@@ -92,7 +106,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			system: supportsPromptCache
 				? [{ text: systemPrompt, type: "text" as const, cache_control: { type: "ephemeral" } }]
 				: systemPrompt,
-			messages: supportsPromptCache ? addCacheBreakpoints(messages) : messages,
+			messages: supportsPromptCache ? addCacheBreakpoints(filteredMessages) : filteredMessages,
 			stream: true,
 		}
 
