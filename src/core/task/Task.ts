@@ -2574,7 +2574,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								tokens.input > 0 ||
 								tokens.output > 0 ||
 								tokens.cacheWrite > 0 ||
-								tokens.cacheRead > 0
+								tokens.cacheRead > 0 ||
+								tokens.total !== undefined
 							) {
 								// Update the shared variables atomically
 								inputTokens = tokens.input
@@ -2663,7 +2664,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								bgInputTokens > 0 ||
 								bgOutputTokens > 0 ||
 								bgCacheWriteTokens > 0 ||
-								bgCacheReadTokens > 0
+								bgCacheReadTokens > 0 ||
+								bgTotalCost !== undefined
 							) {
 								// We have usage data either from a usage chunk or accumulated tokens
 								await captureUsageData(
@@ -2688,7 +2690,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								bgInputTokens > 0 ||
 								bgOutputTokens > 0 ||
 								bgCacheWriteTokens > 0 ||
-								bgCacheReadTokens > 0
+								bgCacheReadTokens > 0 ||
+								bgTotalCost !== undefined
 							) {
 								await captureUsageData(
 									{
