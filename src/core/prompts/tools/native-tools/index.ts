@@ -26,16 +26,19 @@ export { convertOpenAIToolToAnthropic, convertOpenAIToolsToAnthropic } from "./c
  * Get native tools array, optionally customizing based on settings.
  *
  * @param partialReadsEnabled - Whether to include line_ranges support in read_file tool (default: true)
+ * @param codebaseSearchEnabled - Whether to include codebase_search tool (default: true)
  * @returns Array of native tool definitions
  */
-export function getNativeTools(partialReadsEnabled: boolean = true): OpenAI.Chat.ChatCompletionTool[] {
-	return [
+export function getNativeTools(
+	partialReadsEnabled: boolean = true,
+	codebaseSearchEnabled: boolean = true,
+): OpenAI.Chat.ChatCompletionTool[] {
+	const tools: OpenAI.Chat.ChatCompletionTool[] = [
 		accessMcpResource,
 		apply_diff_single_file,
 		askFollowupQuestion,
 		attemptCompletion,
 		browserAction,
-		codebaseSearch,
 		executeCommand,
 		fetchInstructions,
 		generateImage,
@@ -49,7 +52,13 @@ export function getNativeTools(partialReadsEnabled: boolean = true): OpenAI.Chat
 		switchMode,
 		updateTodoList,
 		writeToFile,
-	] satisfies OpenAI.Chat.ChatCompletionTool[]
+	]
+
+	if (codebaseSearchEnabled) {
+		tools.push(codebaseSearch)
+	}
+
+	return tools
 }
 
 // Backward compatibility: export default tools with line ranges enabled

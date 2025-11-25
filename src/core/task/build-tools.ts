@@ -41,8 +41,15 @@ export async function buildNativeToolsArray(options: BuildToolsOptions): Promise
 	// Determine if partial reads are enabled based on maxReadFileLine setting
 	const partialReadsEnabled = maxReadFileLine !== -1
 
+	// Determine if codebase_search should be included
+	const codebaseSearchEnabled = !!(
+		codeIndexManager?.isFeatureEnabled &&
+		codeIndexManager?.isFeatureConfigured &&
+		codeIndexManager?.isInitialized
+	)
+
 	// Build native tools with dynamic read_file tool based on partialReadsEnabled
-	const nativeTools = getNativeTools(partialReadsEnabled)
+	const nativeTools = getNativeTools(partialReadsEnabled, codebaseSearchEnabled)
 
 	// Filter native tools based on mode restrictions
 	const filteredNativeTools = filterNativeToolsForMode(
