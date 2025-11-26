@@ -75,6 +75,14 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			fileExists = task.diffViewProvider.editType === "modify"
 		} else {
 			const absolutePath = path.resolve(task.cwd, relPath)
+			// Ensure parent directories exist before checking file existence
+			const dirPath = path.dirname(absolutePath)
+			try {
+				await fs.mkdir(dirPath, { recursive: true })
+			} catch (dirError) {
+				// Ignore errors - directory might already exist or other issues
+				// The important thing is we tried to create it
+			}
 			fileExists = await fileExistsAtPath(absolutePath)
 			task.diffViewProvider.editType = fileExists ? "modify" : "create"
 		}
@@ -311,6 +319,14 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			fileExists = task.diffViewProvider.editType === "modify"
 		} else {
 			const absolutePath = path.resolve(task.cwd, relPath)
+			// Ensure parent directories exist before checking file existence
+			const dirPath = path.dirname(absolutePath)
+			try {
+				await fs.mkdir(dirPath, { recursive: true })
+			} catch (dirError) {
+				// Ignore errors - directory might already exist or other issues
+				// The important thing is we tried to create it
+			}
 			fileExists = await fileExistsAtPath(absolutePath)
 			task.diffViewProvider.editType = fileExists ? "modify" : "create"
 		}
