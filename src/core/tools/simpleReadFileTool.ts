@@ -41,7 +41,15 @@ export async function simpleReadFileTool(
 	_removeClosingTag: RemoveClosingTag,
 	toolProtocol?: ToolProtocol,
 ) {
-	const filePath: string | undefined = block.params.path
+	// For native protocol, extract path from nativeArgs.files[0].path
+	// For XML protocol, use block.params.path
+	let filePath: string | undefined = block.params.path
+
+	// Check for native protocol format (nativeArgs with files array)
+	const nativeArgs = block.nativeArgs as { files?: Array<{ path: string }> } | undefined
+	if (nativeArgs?.files && Array.isArray(nativeArgs.files) && nativeArgs.files.length > 0) {
+		filePath = nativeArgs.files[0].path
+	}
 
 	// Check if the current model supports images
 	const modelInfo = cline.api.getModel().info
