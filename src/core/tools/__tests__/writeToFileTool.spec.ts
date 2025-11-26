@@ -354,10 +354,13 @@ describe("writeToFileTool", () => {
 			expect(mockCline.diffViewProvider.open).not.toHaveBeenCalled()
 		})
 
-		it("returns early when content is undefined in partial block", async () => {
+		it("opens file even when content is undefined in partial block", async () => {
 			await executeWriteFileTool({ content: undefined }, { isPartial: true })
 
-			expect(mockCline.diffViewProvider.open).not.toHaveBeenCalled()
+			// File should be opened to create it, even if content is not yet available
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath)
+			// But update should not be called since there's no content
+			expect(mockCline.diffViewProvider.update).not.toHaveBeenCalled()
 		})
 
 		it("streams content updates during partial execution", async () => {

@@ -330,11 +330,11 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		const partialMessage = JSON.stringify(sharedMessageProps)
 		await task.ask("tool", partialMessage, block.partial).catch(() => {})
 
-		if (newContent) {
-			if (!task.diffViewProvider.isEditing) {
-				await task.diffViewProvider.open(relPath)
-			}
+		if (!task.diffViewProvider.isEditing) {
+			await task.diffViewProvider.open(relPath)
+		}
 
+		if (newContent) {
 			await task.diffViewProvider.update(
 				everyLineHasLineNumbers(newContent) ? stripLineNumbers(newContent) : newContent,
 				false,
