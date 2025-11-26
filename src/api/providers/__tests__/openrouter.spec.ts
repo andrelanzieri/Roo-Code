@@ -75,6 +75,7 @@ describe("OpenRouterHandler", () => {
 				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Cline",
 				"X-Title": "Roo Code",
 				"User-Agent": `RooCode/${Package.version}`,
+				"x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14",
 			},
 		})
 	})
