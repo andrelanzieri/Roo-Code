@@ -687,6 +687,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			getReasoningDetails?: () => any[] | undefined
 		}
 
+		// Track the tool protocol used for this message
+		const modelInfo = this.api.getModel().info
+		const currentToolProtocol = resolveToolProtocol(this.apiConfiguration, modelInfo)
+
 		if (message.role === "assistant") {
 			const responseId = handler.getResponseId?.()
 			const reasoningData = handler.getEncryptedContent?.()
@@ -766,9 +770,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 			}
 
-			this.apiConversationHistory.push(messageWithTs)
+			this.apiConversationHistory.push({ ...messageWithTs, toolProtocol: currentToolProtocol })
 		} else {
-			const messageWithTs = { ...message, ts: Date.now() }
+			const messageWithTs = { ...message, ts: Date.now(), toolProtocol: currentToolProtocol }
 			this.apiConversationHistory.push(messageWithTs)
 		}
 

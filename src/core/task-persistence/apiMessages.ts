@@ -20,6 +20,8 @@ export type ApiMessage = Anthropic.MessageParam & {
 	text?: string
 	// For OpenRouter reasoning_details array format (used by Gemini 3, etc.)
 	reasoning_details?: any[]
+	// Tool protocol used when this message was created ("xml" or "native")
+	toolProtocol?: "xml" | "native"
 }
 
 export async function readApiMessages({
