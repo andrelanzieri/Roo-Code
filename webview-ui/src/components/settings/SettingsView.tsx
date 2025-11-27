@@ -25,6 +25,7 @@ import {
 	LucideIcon,
 	SquareSlash,
 	Glasses,
+	Users,
 } from "lucide-react"
 
 import {
@@ -74,6 +75,7 @@ import { Section } from "./Section"
 import PromptsSettings from "./PromptsSettings"
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { UISettings } from "./UISettings"
+import ModesView from "../modes/ModesView"
 
 export const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
 export const settingsTabList =
@@ -88,6 +90,7 @@ export interface SettingsViewRef {
 
 const sectionNames = [
 	"providers",
+	"modes",
 	"autoApprove",
 	"slashCommands",
 	"browser",
@@ -502,6 +505,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const sections: { id: SectionName; icon: LucideIcon }[] = useMemo(
 		() => [
 			{ id: "providers", icon: Webhook },
+			{ id: "modes", icon: Users },
 			{ id: "autoApprove", icon: CheckCheck },
 			{ id: "slashCommands", icon: SquareSlash },
 			{ id: "browser", icon: SquareMousePointer },
@@ -698,6 +702,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							</Section>
 						</div>
 					)}
+
+					{/* Modes Section */}
+					{activeTab === "modes" && <ModesView onDone={() => setActiveTab("providers")} />}
 
 					{/* Auto-Approve Section */}
 					{activeTab === "autoApprove" && (

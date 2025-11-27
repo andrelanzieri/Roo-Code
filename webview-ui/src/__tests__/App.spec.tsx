@@ -78,17 +78,6 @@ vi.mock("@src/components/mcp/McpView", () => ({
 	},
 }))
 
-vi.mock("@src/components/modes/ModesView", () => ({
-	__esModule: true,
-	default: function ModesView({ onDone }: { onDone: () => void }) {
-		return (
-			<div data-testid="prompts-view" onClick={onDone}>
-				Modes View
-			</div>
-		)
-	},
-}))
-
 vi.mock("@src/components/marketplace/MarketplaceView", () => ({
 	MarketplaceView: function MarketplaceView({ onDone }: { onDone: () => void }) {
 		return (
@@ -267,15 +256,16 @@ describe("App", () => {
 		expect(chatView.getAttribute("data-hidden")).toBe("true")
 	})
 
-	it("switches to prompts view when receiving promptsButtonClicked action", async () => {
+	it("switches to settings view with modes section when receiving promptsButtonClicked action", async () => {
 		render(<AppWithProviders />)
 
 		act(() => {
 			triggerMessage("promptsButtonClicked")
 		})
 
-		const promptsView = await screen.findByTestId("prompts-view")
-		expect(promptsView).toBeInTheDocument()
+		// promptsButtonClicked now navigates to settings view (with modes section)
+		const settingsView = await screen.findByTestId("settings-view")
+		expect(settingsView).toBeInTheDocument()
 
 		const chatView = screen.getByTestId("chat-view")
 		expect(chatView.getAttribute("data-hidden")).toBe("true")
@@ -299,7 +289,7 @@ describe("App", () => {
 		expect(screen.queryByTestId("settings-view")).not.toBeInTheDocument()
 	})
 
-	it.each(["history", "mcp", "prompts"])("returns to chat view when clicking done in %s view", async (view) => {
+	it.each(["history", "mcp"])("returns to chat view when clicking done in %s view", async (view) => {
 		render(<AppWithProviders />)
 
 		act(() => {

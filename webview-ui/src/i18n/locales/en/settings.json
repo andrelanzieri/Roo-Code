@@ -22,6 +22,7 @@
 	},
 	"sections": {
 		"providers": "Providers",
+		"modes": "Modes",
 		"autoApprove": "Auto-Approve",
 		"browser": "Browser",
 		"checkpoints": "Checkpoints",
