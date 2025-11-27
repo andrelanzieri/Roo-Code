@@ -454,4 +454,154 @@ describe("Task toolProtocol tracking", () => {
 			expect(msg).toHaveProperty("content")
 		}
 	})
+
+	describe("XML parser activation based on history", () => {
+		it("should activate XML parser when history contains XML protocol messages even if current model uses native", async () => {
+			// Create a task instance with a model that supports native tools
+			const nativeApiConfiguration: ProviderSettings = {
+				apiProvider: "openai",
+				apiKey: "test-key",
+				toolProtocol: "native",
+			} as ProviderSettings
+
+			const task = new Task({
+				provider: mockProvider as ClineProvider,
+				apiConfiguration: nativeApiConfiguration,
+				task: "Test task",
+				startTask: false,
+			})
+
+			// Mock the API to return a model that supports native tools
+			const mockModelInfo: ModelInfo = {
+				contextWindow: 16000,
+				supportsPromptCache: true,
+				supportsNativeTools: true,
+			}
+
+			task.api = {
+				getModel: vi.fn().mockReturnValue({
+					id: "gpt-4o",
+					info: mockModelInfo,
+				}),
+			}
+
+			// Initially with native protocol and no history, parser should NOT be active
+			// (We would need to call updateApiConfiguration to check this)
+
+			// Populate history with XML protocol messages (simulating a resumed task)
+			task.apiConversationHistory = [
+				{
+					role: "user",
+					content: [{ type: "text", text: "Hello" }],
+					ts: Date.now() - 1000,
+					toolProtocol: "xml",
+				} as any,
+				{
+					role: "assistant",
+					content: [{ type: "text", text: "Hi there!" }],
+					ts: Date.now() - 500,
+					toolProtocol: "xml",
+				} as any,
+			]
+
+			// Call updateApiConfiguration which should activate the parser due to XML history
+			task.updateApiConfiguration(nativeApiConfiguration)
+
+			// Parser should now be activated because history contains XML protocol messages
+			expect(task.assistantMessageParser).toBeDefined()
+		})
+
+		it("should NOT activate XML parser when history is empty and using native protocol", async () => {
+			// Create a task instance with a model that supports native tools
+			const nativeApiConfiguration: ProviderSettings = {
+				apiProvider: "openai",
+				apiKey: "test-key",
+				toolProtocol: "native",
+			} as ProviderSettings
+
+			const task = new Task({
+				provider: mockProvider as ClineProvider,
+				apiConfiguration: nativeApiConfiguration,
+				task: "Test task",
+				startTask: false,
+			})
+
+			// Mock the API to return a model that supports native tools
+			const mockModelInfo: ModelInfo = {
+				contextWindow: 16000,
+				supportsPromptCache: true,
+				supportsNativeTools: true,
+			}
+
+			task.api = {
+				getModel: vi.fn().mockReturnValue({
+					id: "gpt-4o",
+					info: mockModelInfo,
+				}),
+			}
+
+			// Empty history with native protocol
+			task.apiConversationHistory = []
+
+			// Force recreate parser state based on configuration
+			task.assistantMessageParser = undefined
+			task.updateApiConfiguration(nativeApiConfiguration)
+
+			// Parser should NOT be activated - no XML history and using native protocol
+			expect(task.assistantMessageParser).toBeUndefined()
+		})
+
+		it("should NOT activate XML parser when history only contains native protocol messages", async () => {
+			// Create a task instance with a model that supports native tools
+			const nativeApiConfiguration: ProviderSettings = {
+				apiProvider: "openai",
+				apiKey: "test-key",
+				toolProtocol: "native",
+			} as ProviderSettings
+
+			const task = new Task({
+				provider: mockProvider as ClineProvider,
+				apiConfiguration: nativeApiConfiguration,
+				task: "Test task",
+				startTask: false,
+			})
+
+			// Mock the API to return a model that supports native tools
+			const mockModelInfo: ModelInfo = {
+				contextWindow: 16000,
+				supportsPromptCache: true,
+				supportsNativeTools: true,
+			}
+
+			task.api = {
+				getModel: vi.fn().mockReturnValue({
+					id: "gpt-4o",
+					info: mockModelInfo,
+				}),
+			}
+
+			// Populate history with native protocol messages only
+			task.apiConversationHistory = [
+				{
+					role: "user",
+					content: [{ type: "text", text: "Hello" }],
+					ts: Date.now() - 1000,
+					toolProtocol: "native",
+				} as any,
+				{
+					role: "assistant",
+					content: [{ type: "text", text: "Hi there!" }],
+					ts: Date.now() - 500,
+					toolProtocol: "native",
+				} as any,
+			]
+
+			// Force recreate parser state based on configuration
+			task.assistantMessageParser = undefined
+			task.updateApiConfiguration(nativeApiConfiguration)
+
+			// Parser should NOT be activated - only native history and using native protocol
+			expect(task.assistantMessageParser).toBeUndefined()
+		})
+	})
 })

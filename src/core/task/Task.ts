@@ -443,9 +443,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			TelemetryService.instance.captureTaskCreated(this.taskId)
 		}
 
-		// Initialize the assistant message parser only for XML protocol.
+		// Initialize the assistant message parser for XML protocol.
 		// For native protocol, tool calls come as tool_call chunks, not XML.
-		// experiments is always provided via TaskOptions (defaults to experimentDefault in provider)
+		// The parser will be properly initialized after history is loaded (for resumed tasks)
+		// or based on current protocol (for new tasks).
 		const modelInfo = this.api.getModel().info
 		const toolProtocol = resolveToolProtocol(this.apiConfiguration, modelInfo)
 		this.assistantMessageParser = toolProtocol !== "native" ? new AssistantMessageParser() : undefined
@@ -1172,15 +1173,29 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 *
 	 * @param newApiConfiguration - The new API configuration to use
 	 */
+	/**
+	 * Checks if there are any XML protocol messages in the conversation history.
+	 * This is used to determine if the XML parser should be activated for resumed tasks
+	 * that may have been started with a different model/protocol.
+	 *
+	 * @returns true if any message in the conversation history was created with XML protocol
+	 */
+	public hasXmlMessagesInHistory(): boolean {
+		return this.apiConversationHistory.some((msg) => (msg as any).toolProtocol === "xml")
+	}
+
 	public updateApiConfiguration(newApiConfiguration: ProviderSettings): void {
 		// Update the configuration and rebuild the API handler
 		this.apiConfiguration = newApiConfiguration
 		this.api = buildApiHandler(newApiConfiguration)
 
-		// Determine what the tool protocol should be
+		// Determine what the tool protocol should be based on current config
 		const modelInfo = this.api.getModel().info
 		const protocol = resolveToolProtocol(this.apiConfiguration, modelInfo)
-		const shouldUseXmlParser = protocol === "xml"
+
+		// Also check if there are any XML protocol messages in history
+		// This ensures we can parse XML tool calls from resumed conversations even if model changed
+		const shouldUseXmlParser = protocol === "xml" || this.hasXmlMessagesInHistory()
 
 		// Ensure parser state matches protocol requirement
 		const parserStateCorrect =
@@ -2308,7 +2323,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				const streamModelInfo = this.cachedStreamingModel.info
 				const cachedModelId = this.cachedStreamingModel.id
 				const streamProtocol = resolveToolProtocol(this.apiConfiguration, streamModelInfo)
-				const shouldUseXmlParser = streamProtocol === "xml"
+				// Activate XML parser if current protocol is XML OR if there are any XML protocol messages in history
+				// This ensures we can parse XML tool calls from resumed conversations even if model changed
+				const shouldUseXmlParser = streamProtocol === "xml" || this.hasXmlMessagesInHistory()
 
 				// Yields only if the first chunk is successful, otherwise will
 				// allow the user to retry the request (most likely due to rate
