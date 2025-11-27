@@ -137,6 +137,7 @@ export interface ExtensionMessage {
 	checkpointWarning?: {
 		type: "WAIT_TIMEOUT" | "INIT_TIMEOUT"
 		timeout: number
+		configuredTimeout: number // The user-configured checkpoint timeout in seconds
 	}
 	action?:
 		| "chatButtonClicked"

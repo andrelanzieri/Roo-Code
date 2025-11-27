@@ -18,10 +18,18 @@ import { CheckpointServiceOptions, RepoPerTaskCheckpointService } from "../../se
 
 const WARNING_THRESHOLD_MS = 5000
 
-function sendCheckpointInitWarn(task: Task, type?: "WAIT_TIMEOUT" | "INIT_TIMEOUT", timeout?: number) {
+function sendCheckpointInitWarn(
+	task: Task,
+	type?: "WAIT_TIMEOUT" | "INIT_TIMEOUT",
+	timeout?: number,
+	configuredTimeout?: number,
+) {
 	task.providerRef.deref()?.postMessageToWebview({
 		type: "checkpointInitWarning",
-		checkpointWarning: type && timeout ? { type, timeout } : undefined,
+		checkpointWarning:
+			type && timeout !== undefined && configuredTimeout !== undefined
+				? { type, timeout, configuredTimeout }
+				: undefined,
 	})
 }
 
@@ -86,7 +94,12 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 					// Show warning if we're past the threshold and haven't shown it yet
 					if (!warningShown && elapsed >= WARNING_THRESHOLD_MS) {
 						warningShown = true
-						sendCheckpointInitWarn(task, "WAIT_TIMEOUT", WARNING_THRESHOLD_MS / 1000)
+						sendCheckpointInitWarn(
+							task,
+							"WAIT_TIMEOUT",
+							WARNING_THRESHOLD_MS / 1000,
+							task.checkpointTimeout,
+						)
 					}
 
 					console.log(
@@ -97,7 +110,7 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 				{ interval, timeout: checkpointTimeoutMs },
 			)
 			if (!task?.checkpointService) {
-				sendCheckpointInitWarn(task, "INIT_TIMEOUT", task.checkpointTimeout)
+				sendCheckpointInitWarn(task, "INIT_TIMEOUT", task.checkpointTimeout, task.checkpointTimeout)
 				task.enableCheckpoints = false
 				return undefined
 			} else {
@@ -120,7 +133,7 @@ export async function getCheckpointService(task: Task, { interval = 250 }: { int
 		return service
 	} catch (err) {
 		if (err.name === "TimeoutError" && task.enableCheckpoints) {
-			sendCheckpointInitWarn(task, "INIT_TIMEOUT", task.checkpointTimeout)
+			sendCheckpointInitWarn(task, "INIT_TIMEOUT", task.checkpointTimeout, task.checkpointTimeout)
 		}
 		log(`[Task#getCheckpointService] ${err.message}`)
 		task.enableCheckpoints = false

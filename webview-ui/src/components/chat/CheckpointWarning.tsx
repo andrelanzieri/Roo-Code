@@ -5,6 +5,7 @@ interface CheckpointWarningProps {
 	warning: {
 		type: "WAIT_TIMEOUT" | "INIT_TIMEOUT"
 		timeout: number
+		configuredTimeout: number
 	}
 }
 
@@ -38,7 +39,7 @@ export const CheckpointWarning = ({ warning }: CheckpointWarningProps) => {
 				<Trans
 					i18nKey={i18nKey}
 					ns="common"
-					values={{ timeout: warning.timeout }}
+					values={{ timeout: warning.timeout, configuredTimeout: warning.configuredTimeout }}
 					components={{ settingsLink }}
 				/>
 			</span>
