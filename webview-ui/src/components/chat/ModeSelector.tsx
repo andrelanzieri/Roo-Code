@@ -46,6 +46,8 @@ export const ModeSelector = ({
 	const searchInputRef = React.useRef<HTMLInputElement>(null)
 	const selectedItemRef = React.useRef<HTMLDivElement>(null)
 	const scrollContainerRef = React.useRef<HTMLDivElement>(null)
+	// Track the last invalid mode value we've notified about to prevent infinite loops
+	const lastNotifiedInvalidModeRef = React.useRef<string | null>(null)
 	const portalContainer = useRooPortal("roo-portal")
 	const { hasOpenedModeSelector, setHasOpenedModeSelector } = useExtensionState()
 	const { t } = useAppTranslation()
@@ -85,19 +87,29 @@ export const ModeSelector = ({
 		return modes.find((mode) => mode.slug === defaultModeSlug)
 	}, [modes, value])
 
-	// Handle fallback notification separately in useEffect to avoid infinite loops
-	// when parent doesn't memoize onChange callback
+	// Handle fallback notification separately in useEffect to avoid infinite loops.
+	// We intentionally omit `onChange` from dependencies because:
+	// 1. If the parent doesn't memoize onChange, it would cause infinite re-renders
+	// 2. We use a ref to track if we've already notified about this specific invalid mode
+	// 3. The effect should only trigger when modes or value changes, not when onChange reference changes
 	React.useEffect(() => {
 		const currentMode = modes.find((mode) => mode.slug === value)
 
-		// If the current mode doesn't exist, notify parent to switch to default mode
-		if (!currentMode) {
-			const fallbackMode = modes.find((mode) => mode.slug === defaultModeSlug)
-			if (fallbackMode && fallbackMode.slug !== value) {
-				onChange(fallbackMode.slug as Mode)
+		if (currentMode) {
+			// Mode is valid, reset the notification tracker
+			lastNotifiedInvalidModeRef.current = null
+		} else {
+			// Mode is invalid - only notify if we haven't already notified about this specific value
+			if (lastNotifiedInvalidModeRef.current !== value) {
+				const fallbackMode = modes.find((mode) => mode.slug === defaultModeSlug)
+				if (fallbackMode) {
+					lastNotifiedInvalidModeRef.current = value
+					onChange(fallbackMode.slug as Mode)
+				}
 			}
 		}
-	}, [modes, value, onChange])
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- onChange is intentionally omitted to prevent infinite loops when parent doesn't memoize the callback
+	}, [modes, value])
 
 	// Memoize searchable items for fuzzy search with separate name and
 	// description search.
