@@ -259,7 +259,7 @@ describe("ModeSelector", () => {
 		)
 
 		// The component should automatically call onChange with the fallback mode (code)
-		// We need to wait for the setTimeout to execute
+		// via useEffect after render
 		await vi.waitFor(() => {
 			expect(onChange).toHaveBeenCalledWith("code")
 		})

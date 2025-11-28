@@ -71,7 +71,7 @@ export const ModeSelector = ({
 		}))
 	}, [customModes, customModePrompts])
 
-	// Find the selected mode, with fallback logic if the current mode isn't available
+	// Find the selected mode (pure computation, no side effects)
 	const selectedMode = React.useMemo(() => {
 		const currentMode = modes.find((mode) => mode.slug === value)
 
@@ -82,18 +82,21 @@ export const ModeSelector = ({
 
 		// If the current mode doesn't exist (e.g., after workspace switch),
 		// fall back to the default "code" mode
-		const fallbackMode = modes.find((mode) => mode.slug === defaultModeSlug)
+		return modes.find((mode) => mode.slug === defaultModeSlug)
+	}, [modes, value])
 
-		// If we found a fallback mode and it's different from the current value,
-		// notify the parent to update the mode
-		if (fallbackMode && fallbackMode.slug !== value) {
-			// Use setTimeout to avoid updating state during render
-			setTimeout(() => {
+	// Handle fallback notification separately in useEffect to avoid infinite loops
+	// when parent doesn't memoize onChange callback
+	React.useEffect(() => {
+		const currentMode = modes.find((mode) => mode.slug === value)
+
+		// If the current mode doesn't exist, notify parent to switch to default mode
+		if (!currentMode) {
+			const fallbackMode = modes.find((mode) => mode.slug === defaultModeSlug)
+			if (fallbackMode && fallbackMode.slug !== value) {
 				onChange(fallbackMode.slug as Mode)
-			}, 0)
+			}
 		}
-
-		return fallbackMode
 	}, [modes, value, onChange])
 
 	// Memoize searchable items for fuzzy search with separate name and
