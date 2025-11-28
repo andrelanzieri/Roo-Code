@@ -4,7 +4,7 @@ import { Check, X } from "lucide-react"
 
 import { type ModeConfig, type CustomModePrompts, TelemetryEventName } from "@roo-code/types"
 
-import { type Mode, getAllModes } from "@roo/modes"
+import { type Mode, getAllModes, defaultModeSlug } from "@roo/modes"
 
 import { vscode } from "@/utils/vscode"
 import { telemetryClient } from "@/utils/TelemetryClient"
@@ -71,8 +71,30 @@ export const ModeSelector = ({
 		}))
 	}, [customModes, customModePrompts])
 
-	// Find the selected mode.
-	const selectedMode = React.useMemo(() => modes.find((mode) => mode.slug === value), [modes, value])
+	// Find the selected mode, with fallback logic if the current mode isn't available
+	const selectedMode = React.useMemo(() => {
+		const currentMode = modes.find((mode) => mode.slug === value)
+
+		// If the current mode exists in the available modes, use it
+		if (currentMode) {
+			return currentMode
+		}
+
+		// If the current mode doesn't exist (e.g., after workspace switch),
+		// fall back to the default "code" mode
+		const fallbackMode = modes.find((mode) => mode.slug === defaultModeSlug)
+
+		// If we found a fallback mode and it's different from the current value,
+		// notify the parent to update the mode
+		if (fallbackMode && fallbackMode.slug !== value) {
+			// Use setTimeout to avoid updating state during render
+			setTimeout(() => {
+				onChange(fallbackMode.slug as Mode)
+			}, 0)
+		}
+
+		return fallbackMode
+	}, [modes, value, onChange])
 
 	// Memoize searchable items for fuzzy search with separate name and
 	// description search.
