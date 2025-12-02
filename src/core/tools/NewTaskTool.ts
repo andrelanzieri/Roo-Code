@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import { Anthropic } from "@anthropic-ai/sdk"
 
 import { TodoItem } from "@roo-code/types"
 
@@ -15,6 +16,32 @@ interface NewTaskParams {
 	mode: string
 	message: string
 	todos?: string
+}
+
+/** Counts completed new_task tool blocks in the current assistant message. */
+function countNewTaskBlocks(task: Task): number {
+	if (!task.assistantMessageContent) {
+		return 0
+	}
+	return task.assistantMessageContent.filter(
+		(block) => block.type === "tool_use" && (block as any).name === "new_task" && !(block as any).partial,
+	).length
+}
+
+/** Checks if there are any tool blocks AFTER the current streaming index that haven't been processed yet. */
+function hasRemainingToolBlocks(task: Task): boolean {
+	if (!task.assistantMessageContent) {
+		return false
+	}
+	// Check all blocks after the current streaming index (which is the new_task we're processing)
+	// If there are any non-partial tool blocks remaining, we need to queue this new_task
+	for (let i = task.currentStreamingContentIndex + 1; i < task.assistantMessageContent.length; i++) {
+		const block = task.assistantMessageContent[i]
+		if (block.type === "tool_use" && !(block as any).partial) {
+			return true
+		}
+	}
+	return false
 }
 
 export class NewTaskTool extends BaseTool<"new_task"> {
@@ -92,8 +119,7 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 
 			task.consecutiveMistakeCount = 0
 
-			// Un-escape one level of backslashes before '@' for hierarchical subtasks
-			// Un-escape one level: \\@ -> \@ (removes one backslash for hierarchical subtasks)
+			// Un-escape \\@ -> \@ for hierarchical subtasks
 			const unescapedMessage = message.replace(/\\\\@/g, "\\@")
 
 			// Verify the mode exists
@@ -117,13 +143,45 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 				return
 			}
 
-			// Provider is guaranteed to be defined here due to earlier check.
-
 			if (task.enableCheckpoints) {
 				task.checkpointSave(true)
 			}
 
-			// Delegate parent and open child as sole active task
+			// Queue this new_task if there are:
+			// 1. Multiple new_task blocks (to execute sequentially), OR
+			// 2. Any remaining tool blocks after this one (so they can execute before delegation)
+			const newTaskBlockCount = countNewTaskBlocks(task)
+			const hasRemainingTools = hasRemainingToolBlocks(task)
+
+			if (newTaskBlockCount > 1 || hasRemainingTools) {
+				task.pendingSubtasks.push({
+					toolCallId: toolCallId ?? "",
+					message: unescapedMessage,
+					mode,
+					todoItems,
+				})
+				return
+			}
+
+			// Save other tool results (e.g., update_todo_list) that were called in the same turn.
+			// This prevents them from being lost or incorrectly ordered when the parent resumes.
+			const currentToolCallId = toolCallId ?? ""
+			const otherToolResults = task.userMessageContent.filter(
+				(block): block is Anthropic.ToolResultBlockParam =>
+					block.type === "tool_result" && block.tool_use_id !== currentToolCallId,
+			)
+
+			if (otherToolResults.length > 0) {
+				task.pendingOtherToolResults = otherToolResults
+			}
+
+			// Track this subtask and clear userMessageContent to prevent incorrect flushing
+			task.currentSubtaskToolCallId = currentToolCallId
+			task.userMessageContent = []
+
+			// Save state before delegation so it survives parent disposal
+			await task.savePendingSubtasks()
+
 			const child = await (provider as any).delegateParentAndOpenChild({
 				parentTaskId: task.taskId,
 				message: unescapedMessage,
@@ -131,7 +189,6 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 				mode,
 			})
 
-			// Reflect delegation in tool result (no pause/unpause, no wait)
 			pushToolResult(`Delegated to child task ${child.taskId}`)
 			return
 		} catch (error) {

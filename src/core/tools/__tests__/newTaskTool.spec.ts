@@ -98,6 +98,10 @@ const mockCline = {
 	enableCheckpoints: false,
 	checkpointSave: mockCheckpointSave,
 	startSubtask: mockStartSubtask,
+	userMessageContent: [] as any[],
+	pendingOtherToolResults: [] as any[],
+	currentSubtaskToolCallId: undefined as string | undefined,
+	savePendingSubtasks: vi.fn().mockResolvedValue(undefined),
 	providerRef: {
 		deref: vi.fn(() => ({
 			getState: vi.fn(() => ({ customModes: [], mode: "ask" })),
@@ -651,6 +655,10 @@ describe("newTaskTool delegation flow", () => {
 			enableCheckpoints: false,
 			checkpointSave: mockCheckpointSave,
 			startSubtask: localStartSubtask,
+			userMessageContent: [] as any[],
+			pendingOtherToolResults: [] as any[],
+			currentSubtaskToolCallId: undefined as string | undefined,
+			savePendingSubtasks: vi.fn().mockResolvedValue(undefined),
 			providerRef: {
 				deref: vi.fn(() => providerSpy),
 			},
@@ -695,5 +703,189 @@ describe("newTaskTool delegation flow", () => {
 
 		// Assert: tool result reflects delegation
 		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task child-1"))
+	})
+})
+
+describe("newTaskTool parallel execution", () => {
+	it("should queue subtasks when multiple new_task blocks are detected", async () => {
+		const providerSpy = {
+			getState: vi.fn().mockResolvedValue({
+				mode: "ask",
+				experiments: {},
+			}),
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }),
+			handleModeSwitch: vi.fn(),
+		} as any
+
+		const pendingSubtasks: any[] = []
+		const localCline = {
+			ask: vi.fn(),
+			sayAndCreateMissingParamError: vi.fn(),
+			emit: vi.fn(),
+			recordToolError: vi.fn(),
+			consecutiveMistakeCount: 0,
+			isPaused: false,
+			pausedModeSlug: "ask",
+			taskId: "mock-parent-task-id",
+			enableCheckpoints: false,
+			checkpointSave: vi.fn(),
+			startSubtask: vi.fn(),
+			userMessageContent: [] as any[],
+			pendingOtherToolResults: [] as any[],
+			currentSubtaskToolCallId: undefined as string | undefined,
+			savePendingSubtasks: vi.fn().mockResolvedValue(undefined),
+			providerRef: {
+				deref: vi.fn(() => providerSpy),
+			},
+			assistantMessageContent: [
+				{
+					type: "tool_use",
+					name: "new_task",
+					id: "tool-1",
+					params: { mode: "code", message: "First task" },
+					partial: false,
+				},
+				{
+					type: "tool_use",
+					name: "new_task",
+					id: "tool-2",
+					params: { mode: "code", message: "Second task" },
+					partial: false,
+				},
+			],
+			pendingSubtasks,
+		}
+
+		const mockPushToolResult = vi.fn()
+		const mockAskApproval = vi.fn().mockResolvedValue(true)
+
+		const block1: ToolUse = {
+			type: "tool_use",
+			id: "tool-1",
+			name: "new_task",
+			params: {
+				mode: "code",
+				message: "First task",
+			},
+			partial: false,
+		}
+
+		await newTaskTool.handle(localCline as any, block1 as ToolUse<"new_task">, {
+			askApproval: mockAskApproval,
+			handleError: vi.fn(),
+			pushToolResult: mockPushToolResult,
+			removeClosingTag: vi.fn((_: string, v?: string) => v ?? ""),
+			toolProtocol: "xml",
+			toolCallId: "tool-1",
+		})
+
+		expect(pendingSubtasks.length).toBe(1)
+		expect(pendingSubtasks[0].mode).toBe("code")
+		expect(pendingSubtasks[0].message).toBe("First task")
+		expect(pendingSubtasks[0].toolCallId).toBe("tool-1")
+		expect(mockPushToolResult).not.toHaveBeenCalled()
+		expect(providerSpy.delegateParentAndOpenChild).not.toHaveBeenCalled()
+
+		const block2: ToolUse = {
+			type: "tool_use",
+			id: "tool-2",
+			name: "new_task",
+			params: {
+				mode: "code",
+				message: "Second task",
+			},
+			partial: false,
+		}
+
+		await newTaskTool.handle(localCline as any, block2 as ToolUse<"new_task">, {
+			askApproval: mockAskApproval,
+			handleError: vi.fn(),
+			pushToolResult: mockPushToolResult,
+			removeClosingTag: vi.fn((_: string, v?: string) => v ?? ""),
+			toolProtocol: "xml",
+			toolCallId: "tool-2",
+		})
+
+		expect(pendingSubtasks.length).toBe(2)
+		expect(pendingSubtasks[1].mode).toBe("code")
+		expect(pendingSubtasks[1].message).toBe("Second task")
+		expect(pendingSubtasks[1].toolCallId).toBe("tool-2")
+		expect(mockPushToolResult).not.toHaveBeenCalled()
+		expect(providerSpy.delegateParentAndOpenChild).not.toHaveBeenCalled()
+	})
+
+	it("should execute immediately when only one new_task block is present", async () => {
+		const providerSpy = {
+			getState: vi.fn().mockResolvedValue({
+				mode: "ask",
+				experiments: {},
+			}),
+			delegateParentAndOpenChild: vi.fn().mockResolvedValue({ taskId: "child-1" }),
+			handleModeSwitch: vi.fn(),
+		} as any
+
+		const pendingSubtasks: any[] = []
+		const localCline = {
+			ask: vi.fn(),
+			sayAndCreateMissingParamError: vi.fn(),
+			emit: vi.fn(),
+			recordToolError: vi.fn(),
+			consecutiveMistakeCount: 0,
+			isPaused: false,
+			pausedModeSlug: "ask",
+			taskId: "mock-parent-task-id",
+			enableCheckpoints: false,
+			checkpointSave: vi.fn(),
+			startSubtask: vi.fn(),
+			userMessageContent: [] as any[],
+			pendingOtherToolResults: [] as any[],
+			currentSubtaskToolCallId: undefined as string | undefined,
+			savePendingSubtasks: vi.fn().mockResolvedValue(undefined),
+			providerRef: {
+				deref: vi.fn(() => providerSpy),
+			},
+			assistantMessageContent: [
+				{
+					type: "tool_use",
+					name: "new_task",
+					id: "tool-1",
+					params: { mode: "code", message: "Single task" },
+					partial: false,
+				},
+			],
+			pendingSubtasks,
+		}
+
+		const mockPushToolResult = vi.fn()
+		const mockAskApproval = vi.fn().mockResolvedValue(true)
+
+		const block: ToolUse = {
+			type: "tool_use",
+			id: "tool-1",
+			name: "new_task",
+			params: {
+				mode: "code",
+				message: "Single task",
+			},
+			partial: false,
+		}
+
+		await newTaskTool.handle(localCline as any, block as ToolUse<"new_task">, {
+			askApproval: mockAskApproval,
+			handleError: vi.fn(),
+			pushToolResult: mockPushToolResult,
+			removeClosingTag: vi.fn((_: string, v?: string) => v ?? ""),
+			toolProtocol: "xml",
+			toolCallId: "tool-1",
+		})
+
+		expect(pendingSubtasks.length).toBe(0)
+		expect(providerSpy.delegateParentAndOpenChild).toHaveBeenCalledWith({
+			parentTaskId: "mock-parent-task-id",
+			message: "Single task",
+			initialTodos: [],
+			mode: "code",
+		})
+		expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("Delegated to child task"))
 	})
 })
