@@ -147,13 +147,16 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 				task.checkpointSave(true)
 			}
 
-			// Queue this new_task if there are:
+			// Queue this new_task if using native tool protocol AND there are:
 			// 1. Multiple new_task blocks (to execute sequentially), OR
 			// 2. Any remaining tool blocks after this one (so they can execute before delegation)
+			// NOTE: XML protocol processes tools one at a time, so this condition is always false for XML.
+			// We add an explicit check for clarity and defensive safety.
+			const isNativeToolProtocol = toolProtocol === "native"
 			const newTaskBlockCount = countNewTaskBlocks(task)
 			const hasRemainingTools = hasRemainingToolBlocks(task)
 
-			if (newTaskBlockCount > 1 || hasRemainingTools) {
+			if (isNativeToolProtocol && (newTaskBlockCount > 1 || hasRemainingTools)) {
 				task.pendingSubtasks.push({
 					toolCallId: toolCallId ?? "",
 					message: unescapedMessage,

@@ -775,7 +775,7 @@ describe("newTaskTool parallel execution", () => {
 			handleError: vi.fn(),
 			pushToolResult: mockPushToolResult,
 			removeClosingTag: vi.fn((_: string, v?: string) => v ?? ""),
-			toolProtocol: "xml",
+			toolProtocol: "native", // Native protocol is required for parallel tool execution
 			toolCallId: "tool-1",
 		})
 
@@ -802,7 +802,7 @@ describe("newTaskTool parallel execution", () => {
 			handleError: vi.fn(),
 			pushToolResult: mockPushToolResult,
 			removeClosingTag: vi.fn((_: string, v?: string) => v ?? ""),
-			toolProtocol: "xml",
+			toolProtocol: "native", // Native protocol is required for parallel tool execution
 			toolCallId: "tool-2",
 		})
 
