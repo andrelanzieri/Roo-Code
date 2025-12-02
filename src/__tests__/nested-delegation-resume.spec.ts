@@ -128,6 +128,8 @@ describe("Nested delegation resume (A → B → C)", () => {
 					resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
 					overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 					overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
+					loadPendingSubtasks: vi.fn(),
+					hasPendingSubtasks: vi.fn().mockReturnValue(false),
 				}
 			})
 
@@ -156,6 +158,9 @@ describe("Nested delegation resume (A → B → C)", () => {
 			removeClineFromStack,
 			createTaskWithHistoryItem,
 			updateTaskHistory,
+			getSubtaskState: vi.fn().mockReturnValue(undefined),
+			setSubtaskState: vi.fn().mockResolvedValue(undefined),
+			clearSubtaskState: vi.fn().mockResolvedValue(undefined),
 			// Wire through provider method so attemptCompletionTool can call it
 			reopenParentFromDelegation: vi.fn(async (params: any) => {
 				return await (ClineProvider.prototype as any).reopenParentFromDelegation.call(provider, params)

@@ -47,6 +47,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			updateTaskHistory,
 			handleModeSwitch,
 			log: vi.fn(),
+			getSubtaskState: vi.fn().mockReturnValue(undefined),
 		} as unknown as ClineProvider
 
 		const params = {
