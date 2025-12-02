@@ -16,7 +16,7 @@ import type { ApiHandlerCreateMessageMetadata } from "../index"
 import { handleOpenAIError } from "./utils/openai-error-handler"
 
 export class DeepSeekHandler extends OpenAiHandler {
-	private client: OpenAI
+	private deepSeekClient: OpenAI
 
 	constructor(options: ApiHandlerOptions) {
 		super({
@@ -29,7 +29,7 @@ export class DeepSeekHandler extends OpenAiHandler {
 		})
 
 		// Create our own OpenAI client since the parent's is private
-		this.client = new OpenAI({
+		this.deepSeekClient = new OpenAI({
 			baseURL: options.deepSeekBaseUrl ?? "https://api.deepseek.com",
 			apiKey: options.deepSeekApiKey ?? "not-provided",
 		})
@@ -85,7 +85,7 @@ export class DeepSeekHandler extends OpenAiHandler {
 
 		let stream
 		try {
-			stream = await this.client.chat.completions.create(requestOptions)
+			stream = await this.deepSeekClient.chat.completions.create(requestOptions)
 		} catch (error) {
 			throw handleOpenAIError(error, "DeepSeek")
 		}
