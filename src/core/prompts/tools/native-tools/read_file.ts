@@ -43,7 +43,7 @@ export function createReadFileTool(partialReadsEnabled: boolean = true): OpenAI.
 	// Only include line_ranges if partial reads are enabled
 	if (partialReadsEnabled) {
 		fileProperties.line_ranges = {
-			type: ["array", "null"],
+			type: "array",
 			description:
 				"Optional line ranges to read. Each range is a [start, end] tuple with 1-based inclusive line numbers. Use multiple ranges for non-contiguous sections.",
 			items: {
