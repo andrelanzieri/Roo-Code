@@ -266,5 +266,23 @@ export const parseOpenRouterModel = ({
 		modelInfo.maxTokens = 32768
 	}
 
+	// Configure DeepSeek V3 models properly
+	// These models support standard tool calling but NOT R1 format
+	if (
+		id.startsWith("deepseek/deepseek-v3") ||
+		id.startsWith("deepseek/deepseek-3") ||
+		id === "deepseek/deepseek-chat"
+	) {
+		// Ensure these models are marked as supporting native tools
+		// but NOT reasoning format (they're not R1 models)
+		if (modelInfo.supportsNativeTools === undefined) {
+			modelInfo.supportsNativeTools = true
+		}
+		// Ensure reasonable max tokens if not set
+		if (!modelInfo.maxTokens || modelInfo.maxTokens < 8192) {
+			modelInfo.maxTokens = 8192
+		}
+	}
+
 	return modelInfo
 }

@@ -338,4 +338,129 @@ describe("OpenRouterHandler", () => {
 			await expect(handler.completePrompt("test prompt")).rejects.toThrow("Unexpected error")
 		})
 	})
+
+	describe("DeepSeek V3 Model Handling", () => {
+		it("should NOT use R1 format for DeepSeek V3 models", async () => {
+			const deepseekV3Handler = new OpenRouterHandler({
+				...mockOptions,
+				openRouterModelId: "deepseek/deepseek-v3",
+			})
+
+			const mockStream = {
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						choices: [{ delta: { content: "test" }, finish_reason: null }],
+						usage: null,
+					}
+					yield {
+						choices: [{ delta: {}, finish_reason: "stop" }],
+						usage: { prompt_tokens: 10, completion_tokens: 5 },
+					}
+				},
+			}
+
+			const mockCreate = vitest.fn().mockResolvedValue(mockStream)
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: mockCreate },
+			} as any
+
+			const generator = deepseekV3Handler.createMessage("system prompt", [])
+			const chunks = []
+			for await (const chunk of generator) {
+				chunks.push(chunk)
+			}
+
+			// Verify that the messages were NOT converted to R1 format
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: expect.arrayContaining([
+						expect.objectContaining({ role: "system", content: expect.anything() }),
+					]),
+				}),
+				undefined,
+			)
+		})
+
+		it("should NOT use R1 format for DeepSeek 3.2 models", async () => {
+			const deepseek32Handler = new OpenRouterHandler({
+				...mockOptions,
+				openRouterModelId: "deepseek/deepseek-3.2",
+			})
+
+			const mockStream = {
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						choices: [{ delta: { content: "test" }, finish_reason: null }],
+						usage: null,
+					}
+					yield {
+						choices: [{ delta: {}, finish_reason: "stop" }],
+						usage: { prompt_tokens: 10, completion_tokens: 5 },
+					}
+				},
+			}
+
+			const mockCreate = vitest.fn().mockResolvedValue(mockStream)
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: mockCreate },
+			} as any
+
+			const generator = deepseek32Handler.createMessage("system prompt", [])
+			const chunks = []
+			for await (const chunk of generator) {
+				chunks.push(chunk)
+			}
+
+			// Verify that the messages were NOT converted to R1 format
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: expect.arrayContaining([
+						expect.objectContaining({ role: "system", content: expect.anything() }),
+					]),
+				}),
+				undefined,
+			)
+		})
+
+		it("should still use R1 format for DeepSeek R1 models", async () => {
+			const deepseekR1Handler = new OpenRouterHandler({
+				...mockOptions,
+				openRouterModelId: "deepseek/deepseek-r1",
+			})
+
+			const mockStream = {
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						choices: [{ delta: { content: "test" }, finish_reason: null }],
+						usage: null,
+					}
+					yield {
+						choices: [{ delta: {}, finish_reason: "stop" }],
+						usage: { prompt_tokens: 10, completion_tokens: 5 },
+					}
+				},
+			}
+
+			const mockCreate = vitest.fn().mockResolvedValue(mockStream)
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: mockCreate },
+			} as any
+
+			const generator = deepseekR1Handler.createMessage("system prompt", [])
+			const chunks = []
+			for await (const chunk of generator) {
+				chunks.push(chunk)
+			}
+
+			// Verify that the messages WERE converted to R1 format (user role instead of system)
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: expect.arrayContaining([
+						expect.objectContaining({ role: "user", content: expect.anything() }),
+					]),
+				}),
+				undefined,
+			)
+		})
+	})
 })
