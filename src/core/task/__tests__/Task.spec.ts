@@ -1967,3 +1967,40 @@ describe("Queued message processing after condense", () => {
 		expect(taskB.messageQueueService.isEmpty()).toBe(true)
 	})
 })
+
+describe("Partial tool_use blocks at stream end", () => {
+	/**
+	 * Regression test for: https://github.com/RooCodeInc/Roo-Code/pull/9758
+	 *
+	 * The bug: malformed native tool calls leave partial=true, causing infinite hang.
+	 *
+	 * The fix at Task.ts line ~2947 must be:
+	 *   if (partialBlocks.length > 0) { presentAssistantMessage(this) }
+	 *
+	 * THE BROKEN CONDITION (causes infinite hang):
+	 *   if (partialBlocks.length > 0 && partialBlocks.some(block => block.type !== "tool_use"))
+	 *
+	 * This test reads the actual Task.ts source code and verifies the fix is correct.
+	 */
+	it("Task.ts must NOT filter out tool_use blocks when calling presentAssistantMessage", async () => {
+		const fs = await import("fs")
+		const path = await import("path")
+
+		// Read Task.ts source
+		const taskTsPath = path.join(__dirname, "..", "Task.ts")
+		const taskSource = fs.readFileSync(taskTsPath, "utf-8")
+
+		// The BROKEN pattern we must NOT have:
+		const hasBrokenCondition = taskSource.includes('partialBlocks.some((block) => block.type !== "tool_use")')
+
+		// The CORRECT pattern we MUST have:
+		const hasCorrectCondition = taskSource.includes(
+			"if (partialBlocks.length > 0) {\n\t\t\t\t\t// If there is content to update",
+		)
+
+		// The code MUST NOT use the broken condition (filtering out tool_use)
+		expect(hasBrokenCondition).toBe(false)
+		// The code MUST use the correct condition (simple length check)
+		expect(hasCorrectCondition).toBe(true)
+	})
+})
