@@ -31,6 +31,10 @@ export const deepSeekModels = {
 		...deepSeekV3Info,
 		description: `DeepSeek V3.2 (alias for deepseek-chat). ${deepSeekV3Info.description}`,
 	},
+	"deepseek-3.2-exp": {
+		...deepSeekV3Info,
+		description: `DeepSeek V3.2 Experimental (alias for deepseek-chat). ${deepSeekV3Info.description}`,
+	},
 	"deepseek-reasoner": {
 		maxTokens: 65536, // 64K max output for reasoning mode
 		contextWindow: 128_000,
