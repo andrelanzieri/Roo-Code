@@ -12,6 +12,7 @@ import type {
 	ApiStreamToolCallDeltaChunk,
 	ApiStreamToolCallEndChunk,
 } from "../../api/transform/stream"
+import { safeParsePossiblyTabCorruptedJson } from "../../utils/safeParseJson"
 
 /**
  * Helper type to extract properly typed native arguments for a given tool.
@@ -558,10 +559,16 @@ export class NativeToolCallParser {
 			return null
 		}
 
-		try {
-			// Parse the arguments JSON string
-			const args = JSON.parse(toolCall.arguments)
+		// Parse the arguments JSON string using safe parser that handles tab corruption
+		const parseResult = safeParsePossiblyTabCorruptedJson<Record<string, unknown>>(toolCall.arguments)
+		if (!parseResult.ok) {
+			console.error(`Failed to parse tool call arguments:`, parseResult.error)
+			console.error(`Error details:`, parseResult.error.message)
+			return null
+		}
+		const args = parseResult.value
 
+		try {
 			// Build legacy params object for backward compatibility with XML protocol and UI.
 			// Native execution path uses nativeArgs instead, which has proper typing.
 			const params: Partial<Record<ToolParamName, string>> = {}
@@ -804,10 +811,15 @@ export class NativeToolCallParser {
 	 * The use_mcp_tool wrapper is only used in XML mode.
 	 */
 	public static parseDynamicMcpTool(toolCall: { id: string; name: string; arguments: string }): McpToolUse | null {
-		try {
-			// Parse the arguments - these are the actual tool arguments passed directly
-			const args = JSON.parse(toolCall.arguments || "{}")
+		// Parse the arguments using safe parser that handles tab corruption
+		const parseResult = safeParsePossiblyTabCorruptedJson<Record<string, unknown>>(toolCall.arguments || "{}")
+		if (!parseResult.ok) {
+			console.error(`Failed to parse dynamic MCP tool arguments:`, parseResult.error)
+			return null
+		}
+		const args = parseResult.value
 
+		try {
 			// Extract server_name and tool_name from the tool name itself
 			// Format: mcp_serverName_toolName
 			const nameParts = toolCall.name.split("_")
