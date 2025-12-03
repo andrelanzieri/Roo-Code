@@ -559,8 +559,9 @@ export class NativeToolCallParser {
 		}
 
 		try {
-			// Parse the arguments JSON string
-			const args = JSON.parse(toolCall.arguments)
+			// Parse the arguments JSON string using partial-json to handle malformed JSON
+			// (e.g., unescaped tab characters that strict JSON.parse would reject)
+			const args = parseJSON(toolCall.arguments)
 
 			// Build legacy params object for backward compatibility with XML protocol and UI.
 			// Native execution path uses nativeArgs instead, which has proper typing.
@@ -805,8 +806,9 @@ export class NativeToolCallParser {
 	 */
 	public static parseDynamicMcpTool(toolCall: { id: string; name: string; arguments: string }): McpToolUse | null {
 		try {
-			// Parse the arguments - these are the actual tool arguments passed directly
-			const args = JSON.parse(toolCall.arguments || "{}")
+			// Parse the arguments using partial-json to handle malformed JSON
+			// (e.g., unescaped tab characters that strict JSON.parse would reject)
+			const args = parseJSON(toolCall.arguments || "{}")
 
 			// Extract server_name and tool_name from the tool name itself
 			// Format: mcp_serverName_toolName
