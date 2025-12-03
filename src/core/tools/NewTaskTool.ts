@@ -147,43 +147,24 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 				task.checkpointSave(true)
 			}
 
-			// Queue this new_task if using native tool protocol AND there are:
-			// 1. Multiple new_task blocks (to execute sequentially), OR
-			// 2. Any remaining tool blocks after this one (so they can execute before delegation)
+			// For native tool protocol with multiple new_task blocks or remaining tools:
+			// Don't execute immediately - let the tool result accumulate in userMessageContent.
+			// After all tools process, executePendingSubtasks() will derive pending tasks from
+			// api_conversation_history (comparing tool_use vs tool_result blocks).
 			// NOTE: XML protocol processes tools one at a time, so this condition is always false for XML.
-			// We add an explicit check for clarity and defensive safety.
 			const isNativeToolProtocol = toolProtocol === "native"
 			const newTaskBlockCount = countNewTaskBlocks(task)
 			const hasRemainingTools = hasRemainingToolBlocks(task)
 
 			if (isNativeToolProtocol && (newTaskBlockCount > 1 || hasRemainingTools)) {
-				task.pendingSubtasks.push({
-					toolCallId: toolCallId ?? "",
-					message: unescapedMessage,
-					mode,
-					todoItems,
-				})
+				// Don't push to pendingSubtasks - the info is already in the assistant message's tool_use block.
+				// Just return without executing, and executePendingSubtasks() will handle it later.
 				return
 			}
 
-			// Save other tool results (e.g., update_todo_list) that were called in the same turn.
-			// This prevents them from being lost or incorrectly ordered when the parent resumes.
-			const currentToolCallId = toolCallId ?? ""
-			const otherToolResults = task.userMessageContent.filter(
-				(block): block is Anthropic.ToolResultBlockParam =>
-					block.type === "tool_result" && block.tool_use_id !== currentToolCallId,
-			)
-
-			if (otherToolResults.length > 0) {
-				task.pendingOtherToolResults = otherToolResults
-			}
-
-			// Track this subtask and clear userMessageContent to prevent incorrect flushing
-			task.currentSubtaskToolCallId = currentToolCallId
+			// For single new_task call or XML protocol, delegate immediately.
+			// Clear userMessageContent to prevent incorrect flushing during delegation.
 			task.userMessageContent = []
-
-			// Save state before delegation so it survives parent disposal
-			await task.savePendingSubtasks()
 
 			const child = await (provider as any).delegateParentAndOpenChild({
 				parentTaskId: task.taskId,

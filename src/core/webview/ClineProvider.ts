@@ -93,7 +93,15 @@ import { getSystemPromptFilePath } from "../prompts/sections/custom-system-promp
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { ClineMessage, TodoItem } from "@roo-code/types"
-import { readApiMessages, saveApiMessages, saveTaskMessages } from "../task-persistence"
+import {
+	readApiMessages,
+	saveApiMessages,
+	saveTaskMessages,
+	getPendingSubtasks,
+	appendToolResult,
+	getOtherToolResults,
+	hasPendingSubtasksInHistory,
+} from "../task-persistence"
 import { readTaskMessages } from "../task-persistence/taskMessages"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
@@ -116,32 +124,6 @@ interface PendingEditOperation {
 	apiConversationHistoryIndex: number
 	timeoutId: NodeJS.Timeout
 	createdAt: number
-}
-
-/**
- * State for pending subtasks during parallel new_task execution.
- * Stored in VSCode's workspaceState for persistence across extension restarts.
- */
-export interface SubtaskState {
-	pendingSubtasks: Array<{
-		toolCallId: string
-		message: string
-		mode: string
-		todoItems: TodoItem[]
-	}>
-	completedSubtaskResults: Array<{
-		toolCallId: string
-		result: string
-	}>
-	currentSubtaskToolCallId?: string
-	/** Pending tool results from OTHER tools called in the same turn as new_task.
-	 * These are saved before the first subtask executes so they can be combined
-	 * with subtask results into a single user message when all complete. */
-	pendingOtherToolResults?: Array<{
-		type: "tool_result"
-		tool_use_id: string
-		content: string | Array<{ type: "text"; text: string } | { type: "image"; source: any }>
-	}>
 }
 
 export class ClineProvider
@@ -171,9 +153,6 @@ export class ClineProvider
 	private recentTasksCache?: string[]
 	private pendingOperations: Map<string, PendingEditOperation> = new Map()
 	private static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
-
-	// Storage key prefix for subtask state in VSCode workspaceState
-	private static readonly SUBTASK_STATE_KEY_PREFIX = "subtaskState:"
 
 	private cloudOrganizationsCache: CloudOrganizationMembership[] | null = null
 	private cloudOrganizationsCacheTimestamp: number | null = null
@@ -577,47 +556,6 @@ export class ClineProvider
 		}
 		this.pendingOperations.clear()
 		this.log(`[clearAllPendingEditOperations] Cleared all pending operations`)
-	}
-
-	// Subtask State Management
-	// These methods manage state for parallel new_task execution using VSCode's workspaceState.
-	// workspaceState persists data across extension restarts for the current workspace.
-
-	/**
-	 * Gets the subtask state key for a given task ID.
-	 */
-	private getSubtaskStateKey(taskId: string): string {
-		return `${ClineProvider.SUBTASK_STATE_KEY_PREFIX}${taskId}`
-	}
-
-	/**
-	 * Gets the subtask state for a given task ID from workspaceState.
-	 */
-	public getSubtaskState(taskId: string): SubtaskState | undefined {
-		const key = this.getSubtaskStateKey(taskId)
-		return this.context.workspaceState.get<SubtaskState>(key)
-	}
-
-	/**
-	 * Sets the subtask state for a given task ID in workspaceState.
-	 */
-	public async setSubtaskState(taskId: string, state: SubtaskState): Promise<void> {
-		const key = this.getSubtaskStateKey(taskId)
-		await this.context.workspaceState.update(key, state)
-		this.log(`[setSubtaskState] Set subtask state for task ${taskId}`)
-	}
-
-	/**
-	 * Clears the subtask state for a given task ID from workspaceState.
-	 * Should be called after all subtasks complete.
-	 */
-	public async clearSubtaskState(taskId: string): Promise<void> {
-		const key = this.getSubtaskStateKey(taskId)
-		const exists = this.context.workspaceState.get(key) !== undefined
-		await this.context.workspaceState.update(key, undefined)
-		if (exists) {
-			this.log(`[clearSubtaskState] Cleared subtask state for task ${taskId}`)
-		}
 	}
 
 	/*
@@ -3061,16 +2999,16 @@ export class ClineProvider
 			)
 		}
 		// 2) DON'T flush pending tool results to history when we're in subtask execution flow.
-		//    The executePendingSubtasks() method saves other tool results (like update_todo_list)
-		//    to pendingOtherToolResults, which will be combined with subtask results into a
-		//    SINGLE user message when all subtasks complete. If we flush here, we'd create
+		//    The executePendingSubtasks() method handles saving other tool results that were
+		//    called in the same turn as new_task. These will be combined with subtask results
+		//    into a SINGLE user message when all subtasks complete. If we flush here, we'd create
 		//    a separate user message that breaks the conversation structure (tool results
 		//    MUST follow the assistant message that called them in a single user message).
 		//
-		//    Only flush if this is a direct delegation (no pending subtask state), which means
+		//    Only flush if this is a direct delegation (no pending subtasks in history), which means
 		//    the parent called new_task without the parallel subtask execution flow.
-		const hasSubtaskState = this.getSubtaskState(parentTaskId) !== undefined
-		if (!hasSubtaskState) {
+		const hasParallelSubtasks = hasPendingSubtasksInHistory(parent.apiConversationHistory)
+		if (!hasParallelSubtasks) {
 			try {
 				await parent.flushPendingToolResultsToHistory()
 			} catch (error) {
@@ -3151,6 +3089,12 @@ export class ClineProvider
 
 	/**
 	 * Reopen parent task from delegation with write-back and events.
+	 *
+	 * This method derives pending subtask state directly from api_conversation_history.json
+	 * instead of using workspaceState. The state is determined by comparing:
+	 * - tool_use blocks with name: "new_task" in the last assistant message
+	 * - tool_result blocks in the last user message
+	 * - Pending = tool_use.id NOT in tool_results
 	 */
 	public async reopenParentFromDelegation(params: {
 		parentTaskId: string
@@ -3183,17 +3127,6 @@ export class ClineProvider
 			parentApiMessages = []
 		}
 
-		// Load subtask state from workspaceState
-		const subtaskState = this.getSubtaskState(parentTaskId)
-		let pendingSubtasks: Array<{ toolCallId: string; message: string; mode: string; todoItems: any[] }> =
-			subtaskState?.pendingSubtasks ?? []
-		let completedSubtaskResults: Array<{ toolCallId: string; result: string }> =
-			subtaskState?.completedSubtaskResults ?? []
-		let currentSubtaskToolCallId: string | undefined = subtaskState?.currentSubtaskToolCallId
-		// Other tool results (like update_todo_list) that were called in the same turn as new_task
-		const pendingOtherToolResults: Array<{ type: string; tool_use_id: string; content: any }> =
-			(subtaskState?.pendingOtherToolResults as any) ?? []
-
 		const ts = Date.now()
 		if (!Array.isArray(parentClineMessages)) parentClineMessages = []
 		if (!Array.isArray(parentApiMessages)) parentApiMessages = []
@@ -3208,12 +3141,26 @@ export class ClineProvider
 		parentClineMessages.push(subtaskUiMessage)
 		await saveTaskMessages({ messages: parentClineMessages, taskId: parentTaskId, globalStoragePath })
 
-		// Determine the toolUseId for this subtask result
-		// Priority: 1) currentSubtaskToolCallId from state, 2) fallback to finding the last one
-		let toolUseId: string | undefined = currentSubtaskToolCallId
+		// Derive pending subtasks from the api_conversation_history
+		// The getPendingSubtasks function compares tool_use blocks vs tool_result blocks
+		const pendingSubtasksFromHistory = getPendingSubtasks(parentApiMessages)
 
-		if (!toolUseId) {
-			// Fallback: find the tool_use_id from the last assistant message's new_task tool_use
+		// Get other tool results (non-new_task tools) from the last assistant message
+		// that haven't been added to history yet
+		const otherToolResults = getOtherToolResults(parentApiMessages)
+
+		// Find the toolUseId for the child that just completed
+		// First, check if there's a pending subtask matching the child's details
+		// Since we execute subtasks in order, the first pending one should be the one that just completed
+		let toolUseId: string | undefined
+
+		// Look through assistant message to find the new_task tool_use that matches
+		// We need to find which one was being executed - look for the first pending one
+		if (pendingSubtasksFromHistory.length > 0) {
+			// The first pending subtask is the one we just completed
+			toolUseId = pendingSubtasksFromHistory[0].toolCallId
+		} else {
+			// Fallback: find the last new_task tool_use in the assistant message
 			for (let i = parentApiMessages.length - 1; i >= 0; i--) {
 				const msg = parentApiMessages[i]
 				if (msg.role === "assistant" && Array.isArray(msg.content)) {
@@ -3228,83 +3175,41 @@ export class ClineProvider
 			}
 		}
 
-		// Store this subtask's result
+		// Append the completed subtask's tool_result to the conversation history
 		if (toolUseId) {
-			completedSubtaskResults.push({
-				toolCallId: toolUseId,
-				result: `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`,
-			})
+			const resultContent = `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`
+			parentApiMessages = appendToolResult(parentApiMessages, toolUseId, resultContent)
 		}
 
-		// Clear currentSubtaskToolCallId since this subtask is complete
-		currentSubtaskToolCallId = undefined
+		// Check if there are more pending subtasks to execute after adding this result
+		const remainingPendingSubtasks = getPendingSubtasks(parentApiMessages)
+		const hasMoreSubtasks = remainingPendingSubtasks.length > 0
 
-		// Check if there are more pending subtasks to execute
-		const hasMoreSubtasks = pendingSubtasks.length > 0
-
-		if (!hasMoreSubtasks && completedSubtaskResults.length > 0) {
-			// All subtasks complete - add ALL tool_results to the conversation now
-			// The API expects: user → assistant (with tool_use) → user (with tool_result)
-
-			// Check if the last message is already a user message we can append to
+		// If no more subtasks and we have other tool results that need to be flushed,
+		// add them to the conversation (they come before subtask results)
+		if (!hasMoreSubtasks && otherToolResults.length > 0) {
+			// The other tool results should be added to the last user message
 			const lastMsg = parentApiMessages[parentApiMessages.length - 1]
-			let userMessageContent: any[] = []
-
 			if (lastMsg?.role === "user" && Array.isArray(lastMsg.content)) {
-				// Filter out any existing tool_results for our subtask IDs (to avoid duplicates)
-				const allToolResultIds = new Set([
-					...completedSubtaskResults.map((r) => r.toolCallId),
-					...pendingOtherToolResults.map((r) => r.tool_use_id),
-				])
-				userMessageContent = lastMsg.content.filter(
-					(block: any) => !(block.type === "tool_result" && allToolResultIds.has(block.tool_use_id)),
+				// Check if these results are already in the message
+				const existingToolResultIds = new Set(
+					lastMsg.content.filter((b: any) => b.type === "tool_result").map((b: any) => b.tool_use_id),
 				)
-				// Remove the last message so we can replace it with an updated one
-				parentApiMessages.pop()
+
+				// Add missing other tool results at the beginning (before subtask results)
+				const newContent = [...otherToolResults.filter((r) => !existingToolResultIds.has(r.tool_use_id))]
+
+				if (newContent.length > 0) {
+					// Insert other tool results at the beginning of the content array
+					// to maintain original tool call order
+					lastMsg.content = [...newContent, ...lastMsg.content]
+				}
 			}
-
-			// FIRST: Add other tool results (e.g., update_todo_list) that were called in the same turn
-			// These should come before subtask results to maintain the original tool call order
-			for (const toolResult of pendingOtherToolResults) {
-				userMessageContent.push({
-					type: "tool_result" as const,
-					tool_use_id: toolResult.tool_use_id,
-					content: toolResult.content,
-				})
-			}
-
-			// THEN: Add all completed subtask results as tool_result blocks
-			for (const result of completedSubtaskResults) {
-				userMessageContent.push({
-					type: "tool_result" as const,
-					tool_use_id: result.toolCallId,
-					content: result.result,
-				})
-			}
-
-			parentApiMessages.push({
-				role: "user",
-				content: userMessageContent,
-				ts,
-			})
-
-			// Clear completed results since they're now in the conversation
-			completedSubtaskResults = []
-
-			// Clean up the subtask state from workspaceState
-			await this.clearSubtaskState(parentTaskId)
-		} else {
-			// More subtasks remain - save state for the next resumption
-			await this.setSubtaskState(parentTaskId, {
-				pendingSubtasks,
-				completedSubtaskResults,
-				currentSubtaskToolCallId,
-			})
 		}
 
 		await saveApiMessages({ messages: parentApiMessages as any, taskId: parentTaskId, globalStoragePath })
 
-		// 3) Update child metadata to "completed" status
+		// 2) Update child metadata to "completed" status
 		try {
 			const { historyItem: childHistory } = await this.getTaskWithId(childTaskId)
 			await this.updateTaskHistory({
@@ -3319,7 +3224,7 @@ export class ClineProvider
 			)
 		}
 
-		// 4) Update parent metadata and persist BEFORE emitting completion event
+		// 3) Update parent metadata and persist BEFORE emitting completion event
 		const childIds = Array.from(new Set([...(historyItem.childIds ?? []), childTaskId]))
 		const updatedHistory: typeof historyItem = {
 			...historyItem,
@@ -3331,24 +3236,24 @@ export class ClineProvider
 		}
 		await this.updateTaskHistory(updatedHistory)
 
-		// 5) Emit TaskDelegationCompleted (provider-level)
+		// 4) Emit TaskDelegationCompleted (provider-level)
 		try {
 			this.emit(RooCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, completionResultSummary)
 		} catch {
 			// non-fatal
 		}
 
-		// 6) Close child instance if still open (single-open-task invariant)
+		// 5) Close child instance if still open (single-open-task invariant)
 		const current = this.getCurrentTask()
 		if (current?.taskId === childTaskId) {
 			await this.removeClineFromStack()
 		}
 
-		// 7) Reopen the parent from history as the sole active task (restores saved mode)
+		// 6) Reopen the parent from history as the sole active task (restores saved mode)
 		//    IMPORTANT: startTask=false to suppress resume-from-history ask scheduling
 		const parentInstance = await this.createTaskWithHistoryItem(updatedHistory, { startTask: false })
 
-		// 8) Inject restored histories into the in-memory instance before resuming
+		// 7) Inject restored histories into the in-memory instance before resuming
 		if (parentInstance) {
 			try {
 				await parentInstance.overwriteClineMessages(parentClineMessages)
@@ -3361,15 +3266,13 @@ export class ClineProvider
 				// non-fatal
 			}
 
-			// Load subtask state into the parent instance (synchronous - reads from provider's in-memory state)
-			parentInstance.loadPendingSubtasks()
-
-			// Check if there are more pending subtasks to execute
-			if (parentInstance.hasPendingSubtasks()) {
+			// Check if there are more pending subtasks to execute (derived from history)
+			const pendingFromHistory = getPendingSubtasks(parentApiMessages)
+			if (pendingFromHistory.length > 0) {
 				// Execute the next pending subtask
 				// This will cause the parent to be "paused" again and a new child will run
 				this.log(
-					`[reopenParentFromDelegation] Parent ${parentTaskId} has ${parentInstance.pendingSubtasks.length} more subtasks, executing next one`,
+					`[reopenParentFromDelegation] Parent ${parentTaskId} has ${pendingFromHistory.length} more subtasks, executing next one`,
 				)
 				await parentInstance.executePendingSubtasks()
 			} else {
@@ -3378,7 +3281,7 @@ export class ClineProvider
 			}
 		}
 
-		// 9) Emit TaskDelegationResumed (provider-level)
+		// 8) Emit TaskDelegationResumed (provider-level)
 		try {
 			this.emit(RooCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
 		} catch {

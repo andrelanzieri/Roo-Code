@@ -33,6 +33,19 @@ vi.mock("../core/task-persistence", () => ({
 	readApiMessages: vi.fn().mockResolvedValue([]),
 	saveApiMessages: vi.fn().mockResolvedValue(undefined),
 	saveTaskMessages: vi.fn().mockResolvedValue(undefined),
+	getPendingSubtasks: vi.fn().mockReturnValue([]),
+	// appendToolResult should actually add the tool_result to the messages
+	appendToolResult: vi.fn().mockImplementation((msgs, toolUseId, result) => {
+		const newMsgs = [...msgs]
+		newMsgs.push({
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: toolUseId, content: result }],
+			ts: Date.now(),
+		})
+		return newMsgs
+	}),
+	getOtherToolResults: vi.fn().mockReturnValue([]),
+	hasPendingSubtasksInHistory: vi.fn().mockReturnValue(false),
 }))
 
 import { ClineProvider } from "../core/webview/ClineProvider"
@@ -69,7 +82,6 @@ describe("History resume delegation - parent metadata transitions", () => {
 			taskId: "parent-1",
 			skipPrevResponseIdOnce: false,
 			resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
-			loadPendingSubtasks: vi.fn(),
 			hasPendingSubtasks: vi.fn().mockReturnValue(false),
 		})
 
@@ -81,9 +93,6 @@ describe("History resume delegation - parent metadata transitions", () => {
 			removeClineFromStack,
 			createTaskWithHistoryItem,
 			updateTaskHistory,
-			getSubtaskState: vi.fn().mockReturnValue(undefined),
-			setSubtaskState: vi.fn().mockResolvedValue(undefined),
-			clearSubtaskState: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		// Mock persistence reads to return empty arrays
@@ -148,13 +157,9 @@ describe("History resume delegation - parent metadata transitions", () => {
 				resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
-				loadPendingSubtasks: vi.fn(),
 				hasPendingSubtasks: vi.fn().mockReturnValue(false),
 			}),
 			updateTaskHistory: vi.fn().mockResolvedValue([]),
-			getSubtaskState: vi.fn().mockReturnValue(undefined),
-			setSubtaskState: vi.fn().mockResolvedValue(undefined),
-			clearSubtaskState: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		// Start with existing messages in history
@@ -219,13 +224,9 @@ describe("History resume delegation - parent metadata transitions", () => {
 				resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
-				loadPendingSubtasks: vi.fn(),
 				hasPendingSubtasks: vi.fn().mockReturnValue(false),
 			}),
 			updateTaskHistory: vi.fn().mockResolvedValue([]),
-			getSubtaskState: vi.fn().mockReturnValue(undefined),
-			setSubtaskState: vi.fn().mockResolvedValue(undefined),
-			clearSubtaskState: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		// Include an assistant message with new_task tool_use to exercise the tool_result path
@@ -295,7 +296,6 @@ describe("History resume delegation - parent metadata transitions", () => {
 			}),
 			overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 			overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
-			loadPendingSubtasks: vi.fn(),
 			hasPendingSubtasks: vi.fn().mockReturnValue(false),
 		}
 
@@ -319,9 +319,6 @@ describe("History resume delegation - parent metadata transitions", () => {
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
 			createTaskWithHistoryItem: vi.fn().mockResolvedValue(parentInstance),
 			updateTaskHistory: vi.fn().mockResolvedValue([]),
-			getSubtaskState: vi.fn().mockReturnValue(undefined),
-			setSubtaskState: vi.fn().mockResolvedValue(undefined),
-			clearSubtaskState: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		vi.mocked(readTaskMessages).mockResolvedValue([])
@@ -363,13 +360,9 @@ describe("History resume delegation - parent metadata transitions", () => {
 				resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
-				loadPendingSubtasks: vi.fn(),
 				hasPendingSubtasks: vi.fn().mockReturnValue(false),
 			}),
 			updateTaskHistory: vi.fn().mockResolvedValue([]),
-			getSubtaskState: vi.fn().mockReturnValue(undefined),
-			setSubtaskState: vi.fn().mockResolvedValue(undefined),
-			clearSubtaskState: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		vi.mocked(readTaskMessages).mockResolvedValue([])
@@ -418,13 +411,9 @@ describe("History resume delegation - parent metadata transitions", () => {
 				resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
-				loadPendingSubtasks: vi.fn(),
 				hasPendingSubtasks: vi.fn().mockReturnValue(false),
 			}),
 			updateTaskHistory: vi.fn().mockResolvedValue([]),
-			getSubtaskState: vi.fn().mockReturnValue(undefined),
-			setSubtaskState: vi.fn().mockResolvedValue(undefined),
-			clearSubtaskState: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		vi.mocked(readTaskMessages).mockResolvedValue([])
@@ -466,13 +455,9 @@ describe("History resume delegation - parent metadata transitions", () => {
 				resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
-				loadPendingSubtasks: vi.fn(),
 				hasPendingSubtasks: vi.fn().mockReturnValue(false),
 			}),
 			updateTaskHistory: vi.fn().mockResolvedValue([]),
-			getSubtaskState: vi.fn().mockReturnValue(undefined),
-			setSubtaskState: vi.fn().mockResolvedValue(undefined),
-			clearSubtaskState: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		// Mock read failures or empty returns

@@ -47,6 +47,19 @@ vi.mock("../core/task-persistence", () => ({
 	readApiMessages: vi.fn().mockResolvedValue([]),
 	saveApiMessages: vi.fn().mockResolvedValue(undefined),
 	saveTaskMessages: vi.fn().mockResolvedValue(undefined),
+	getPendingSubtasks: vi.fn().mockReturnValue([]),
+	// appendToolResult should actually add the tool_result to the messages
+	appendToolResult: vi.fn().mockImplementation((msgs, toolUseId, result) => {
+		const newMsgs = [...msgs]
+		newMsgs.push({
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: toolUseId, content: result }],
+			ts: Date.now(),
+		})
+		return newMsgs
+	}),
+	getOtherToolResults: vi.fn().mockReturnValue([]),
+	hasPendingSubtasksInHistory: vi.fn().mockReturnValue(false),
 }))
 
 import { attemptCompletionTool } from "../core/tools/AttemptCompletionTool"
@@ -57,7 +70,7 @@ import { readApiMessages, saveApiMessages, saveTaskMessages } from "../core/task
 
 describe("Nested delegation resume (A → B → C)", () => {
 	beforeEach(() => {
-		vi.restoreAllMocks()
+		vi.clearAllMocks()
 	})
 
 	it("C completes → reopens B; then B completes → reopens A; emits correct events; no resume_task asks", async () => {
@@ -128,7 +141,6 @@ describe("Nested delegation resume (A → B → C)", () => {
 					resumeAfterDelegation: vi.fn().mockResolvedValue(undefined),
 					overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 					overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
-					loadPendingSubtasks: vi.fn(),
 					hasPendingSubtasks: vi.fn().mockReturnValue(false),
 				}
 			})
@@ -158,9 +170,6 @@ describe("Nested delegation resume (A → B → C)", () => {
 			removeClineFromStack,
 			createTaskWithHistoryItem,
 			updateTaskHistory,
-			getSubtaskState: vi.fn().mockReturnValue(undefined),
-			setSubtaskState: vi.fn().mockResolvedValue(undefined),
-			clearSubtaskState: vi.fn().mockResolvedValue(undefined),
 			// Wire through provider method so attemptCompletionTool can call it
 			reopenParentFromDelegation: vi.fn(async (params: any) => {
 				return await (ClineProvider.prototype as any).reopenParentFromDelegation.call(provider, params)

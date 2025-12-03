@@ -99,9 +99,6 @@ const mockCline = {
 	checkpointSave: mockCheckpointSave,
 	startSubtask: mockStartSubtask,
 	userMessageContent: [] as any[],
-	pendingOtherToolResults: [] as any[],
-	currentSubtaskToolCallId: undefined as string | undefined,
-	savePendingSubtasks: vi.fn().mockResolvedValue(undefined),
 	providerRef: {
 		deref: vi.fn(() => ({
 			getState: vi.fn(() => ({ customModes: [], mode: "ask" })),
@@ -656,9 +653,6 @@ describe("newTaskTool delegation flow", () => {
 			checkpointSave: mockCheckpointSave,
 			startSubtask: localStartSubtask,
 			userMessageContent: [] as any[],
-			pendingOtherToolResults: [] as any[],
-			currentSubtaskToolCallId: undefined as string | undefined,
-			savePendingSubtasks: vi.fn().mockResolvedValue(undefined),
 			providerRef: {
 				deref: vi.fn(() => providerSpy),
 			},
@@ -707,7 +701,10 @@ describe("newTaskTool delegation flow", () => {
 })
 
 describe("newTaskTool parallel execution", () => {
-	it("should queue subtasks when multiple new_task blocks are detected", async () => {
+	it("should defer delegation when multiple new_task blocks are detected (native protocol)", async () => {
+		// With the new approach, when multiple new_task blocks exist in native protocol,
+		// the tool just returns without executing - the subtask info is in the assistant message's
+		// tool_use blocks and will be derived by executePendingSubtasks() later.
 		const providerSpy = {
 			getState: vi.fn().mockResolvedValue({
 				mode: "ask",
@@ -717,7 +714,6 @@ describe("newTaskTool parallel execution", () => {
 			handleModeSwitch: vi.fn(),
 		} as any
 
-		const pendingSubtasks: any[] = []
 		const localCline = {
 			ask: vi.fn(),
 			sayAndCreateMissingParamError: vi.fn(),
@@ -731,9 +727,6 @@ describe("newTaskTool parallel execution", () => {
 			checkpointSave: vi.fn(),
 			startSubtask: vi.fn(),
 			userMessageContent: [] as any[],
-			pendingOtherToolResults: [] as any[],
-			currentSubtaskToolCallId: undefined as string | undefined,
-			savePendingSubtasks: vi.fn().mockResolvedValue(undefined),
 			providerRef: {
 				deref: vi.fn(() => providerSpy),
 			},
@@ -753,7 +746,7 @@ describe("newTaskTool parallel execution", () => {
 					partial: false,
 				},
 			],
-			pendingSubtasks,
+			currentStreamingContentIndex: 0,
 		}
 
 		const mockPushToolResult = vi.fn()
@@ -779,38 +772,10 @@ describe("newTaskTool parallel execution", () => {
 			toolCallId: "tool-1",
 		})
 
-		expect(pendingSubtasks.length).toBe(1)
-		expect(pendingSubtasks[0].mode).toBe("code")
-		expect(pendingSubtasks[0].message).toBe("First task")
-		expect(pendingSubtasks[0].toolCallId).toBe("tool-1")
+		// With new approach: tool returns without delegating when multiple new_task blocks exist
+		// No pushToolResult call (deferred)
 		expect(mockPushToolResult).not.toHaveBeenCalled()
-		expect(providerSpy.delegateParentAndOpenChild).not.toHaveBeenCalled()
-
-		const block2: ToolUse = {
-			type: "tool_use",
-			id: "tool-2",
-			name: "new_task",
-			params: {
-				mode: "code",
-				message: "Second task",
-			},
-			partial: false,
-		}
-
-		await newTaskTool.handle(localCline as any, block2 as ToolUse<"new_task">, {
-			askApproval: mockAskApproval,
-			handleError: vi.fn(),
-			pushToolResult: mockPushToolResult,
-			removeClosingTag: vi.fn((_: string, v?: string) => v ?? ""),
-			toolProtocol: "native", // Native protocol is required for parallel tool execution
-			toolCallId: "tool-2",
-		})
-
-		expect(pendingSubtasks.length).toBe(2)
-		expect(pendingSubtasks[1].mode).toBe("code")
-		expect(pendingSubtasks[1].message).toBe("Second task")
-		expect(pendingSubtasks[1].toolCallId).toBe("tool-2")
-		expect(mockPushToolResult).not.toHaveBeenCalled()
+		// No delegation yet (deferred to executePendingSubtasks)
 		expect(providerSpy.delegateParentAndOpenChild).not.toHaveBeenCalled()
 	})
 
@@ -824,7 +789,6 @@ describe("newTaskTool parallel execution", () => {
 			handleModeSwitch: vi.fn(),
 		} as any
 
-		const pendingSubtasks: any[] = []
 		const localCline = {
 			ask: vi.fn(),
 			sayAndCreateMissingParamError: vi.fn(),
@@ -838,9 +802,6 @@ describe("newTaskTool parallel execution", () => {
 			checkpointSave: vi.fn(),
 			startSubtask: vi.fn(),
 			userMessageContent: [] as any[],
-			pendingOtherToolResults: [] as any[],
-			currentSubtaskToolCallId: undefined as string | undefined,
-			savePendingSubtasks: vi.fn().mockResolvedValue(undefined),
 			providerRef: {
 				deref: vi.fn(() => providerSpy),
 			},
@@ -853,7 +814,7 @@ describe("newTaskTool parallel execution", () => {
 					partial: false,
 				},
 			],
-			pendingSubtasks,
+			currentStreamingContentIndex: 0,
 		}
 
 		const mockPushToolResult = vi.fn()
@@ -879,7 +840,6 @@ describe("newTaskTool parallel execution", () => {
 			toolCallId: "tool-1",
 		})
 
-		expect(pendingSubtasks.length).toBe(0)
 		expect(providerSpy.delegateParentAndOpenChild).toHaveBeenCalledWith({
 			parentTaskId: "mock-parent-task-id",
 			message: "Single task",

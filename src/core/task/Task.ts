@@ -109,6 +109,9 @@ import {
 	readTaskMessages,
 	saveTaskMessages,
 	taskMetadata,
+	getPendingSubtasks,
+	getPendingSubtasksFromContent,
+	getOtherToolResults,
 } from "../task-persistence"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
@@ -160,27 +163,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly parentTaskId?: string
 	childTaskId?: string
 	pendingNewTaskToolCallId?: string
-
-	/** Queue of subtasks to execute sequentially when multiple new_task calls are made in parallel. */
-	pendingSubtasks: Array<{
-		toolCallId: string
-		message: string
-		mode: string
-		todoItems: TodoItem[]
-	}> = []
-
-	/** Results from completed subtasks, added to conversation only after ALL subtasks finish. */
-	completedSubtaskResults: Array<{
-		toolCallId: string
-		result: string
-	}> = []
-
-	/** Pending tool results from OTHER tools called in the same turn.
-	 * Saved with subtask state so they're combined with subtask results at the end. */
-	pendingOtherToolResults: Array<Anthropic.ToolResultBlockParam> = []
-
-	/** Tool call ID of the currently-executing subtask. */
-	currentSubtaskToolCallId?: string
 
 	readonly instanceId: string
 	readonly metadata: TaskMetadata
@@ -842,9 +824,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.userMessageContent = []
 	}
 
-	/** Execute pending subtasks sequentially. Returns empty array since delegation suspends the parent. */
+	/**
+	 * Execute pending subtasks sequentially, deriving pending subtasks from api_conversation_history
+	 * and in-memory userMessageContent.
+	 * Returns empty array since delegation suspends the parent.
+	 */
 	public async executePendingSubtasks(): Promise<Array<{ toolCallId: string; result: string }>> {
-		if (this.pendingSubtasks.length === 0) {
+		// Derive pending subtasks - use the in-memory version since user message may not be in history yet
+		const pendingSubtasks = getPendingSubtasksFromContent(this.apiConversationHistory, this.userMessageContent)
+		if (pendingSubtasks.length === 0) {
 			return []
 		}
 
@@ -853,35 +841,31 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			throw new Error("Provider not available for subtask execution")
 		}
 
-		// Save other tool results (like update_todo_list) that were called in the same turn.
-		// Don't flush them to history yet - they'll be combined with subtask results later.
-		// Only save non-new_task tool results (filter out new_task tool results which are pending subtasks).
-		const pendingSubtaskToolIds = new Set(this.pendingSubtasks.map((s) => s.toolCallId))
-		if (this.currentSubtaskToolCallId) {
-			pendingSubtaskToolIds.add(this.currentSubtaskToolCallId)
+		// Before delegating first subtask, flush other tool results to api_conversation_history.
+		// We need to create a user message with ALL tool_results including a placeholder for this new_task.
+		// This ensures the API conversation is valid (every tool_use has a tool_result).
+
+		// Get all new_task tool IDs from the last assistant message
+		const newTaskToolIds = new Set(pendingSubtasks.map((s) => s.toolCallId))
+
+		// Find non-new_task tool results in userMessageContent
+		const nonNewTaskToolResults = this.userMessageContent.filter(
+			(block): block is Anthropic.ToolResultBlockParam =>
+				block.type === "tool_result" && !newTaskToolIds.has(block.tool_use_id),
+		)
+
+		// Flush all pending tool results (for non-new_task tools) to history
+		if (nonNewTaskToolResults.length > 0) {
+			await this.flushPendingToolResultsToHistory()
+		} else {
+			// Clear userMessageContent since we're about to delegate
+			this.userMessageContent = []
 		}
 
-		// Extract tool_result blocks from userMessageContent that are NOT subtask-related
-		const otherToolResults = this.userMessageContent.filter((block): block is Anthropic.ToolResultBlockParam => {
-			if (block.type !== "tool_result") return false
-			return !pendingSubtaskToolIds.has(block.tool_use_id)
-		})
-
-		// If this is the first subtask, save the other tool results
-		if (this.pendingOtherToolResults.length === 0 && otherToolResults.length > 0) {
-			this.pendingOtherToolResults = otherToolResults
-		}
-
-		// Clear userMessageContent since we're about to delegate (don't flush to history)
-		this.userMessageContent = []
-
-		const currentSubtask = this.pendingSubtasks.shift()!
-		this.currentSubtaskToolCallId = currentSubtask.toolCallId
+		// Get the first pending subtask to execute
+		const currentSubtask = pendingSubtasks[0]
 
 		try {
-			// State must be saved before delegating since a new parent instance is created on resume
-			await this.savePendingSubtasks()
-
 			await (provider as any).delegateParentAndOpenChild({
 				parentTaskId: this.taskId,
 				message: currentSubtask.message,
@@ -890,91 +874,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			})
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
-			this.completedSubtaskResults.push({
-				toolCallId: currentSubtask.toolCallId,
-				result: `Failed to execute subtask: ${errorMessage}`,
-			})
-			this.currentSubtaskToolCallId = undefined
-			await this.savePendingSubtasks()
+			console.error(`[Task#executePendingSubtasks] Failed to execute subtask: ${errorMessage}`)
 		}
 
 		return []
 	}
 
+	/**
+	 * Check if there are pending subtasks by examining api_conversation_history
+	 * and in-memory userMessageContent.
+	 * Pending = new_task tool_use blocks without corresponding tool_result blocks.
+	 */
 	public hasPendingSubtasks(): boolean {
-		return this.pendingSubtasks.length > 0
-	}
-
-	/**
-	 * Save subtask state to VSCode's workspaceState via the provider.
-	 * The workspaceState persists across extension restarts, so this state survives
-	 * when the parent is disposed and recreated after a child task completes.
-	 */
-	public async savePendingSubtasks(): Promise<void> {
-		const provider = this.providerRef.deref()
-		if (!provider) {
-			console.error(`[Task#savePendingSubtasks] Provider not available`)
-			return
-		}
-
-		const hasState =
-			this.pendingSubtasks.length > 0 ||
-			this.completedSubtaskResults.length > 0 ||
-			this.currentSubtaskToolCallId ||
-			this.pendingOtherToolResults.length > 0
-
-		if (hasState) {
-			await provider.setSubtaskState(this.taskId, {
-				pendingSubtasks: this.pendingSubtasks,
-				completedSubtaskResults: this.completedSubtaskResults,
-				currentSubtaskToolCallId: this.currentSubtaskToolCallId,
-				pendingOtherToolResults: this.pendingOtherToolResults as any,
-			})
-		} else {
-			// Clean up state if nothing to store
-			await provider.clearSubtaskState(this.taskId)
-		}
-	}
-
-	/**
-	 * Load subtask state from workspaceState via the provider.
-	 * Called when the parent resumes after a child task completes.
-	 */
-	public loadPendingSubtasks(): void {
-		const provider = this.providerRef.deref()
-		if (!provider) {
-			return
-		}
-
-		const state = provider.getSubtaskState(this.taskId)
-		if (state) {
-			if (Array.isArray(state.pendingSubtasks)) {
-				this.pendingSubtasks = state.pendingSubtasks
-			}
-			if (Array.isArray(state.completedSubtaskResults)) {
-				this.completedSubtaskResults = state.completedSubtaskResults
-			}
-			if (state.currentSubtaskToolCallId) {
-				this.currentSubtaskToolCallId = state.currentSubtaskToolCallId
-			}
-			if (Array.isArray(state.pendingOtherToolResults)) {
-				this.pendingOtherToolResults = state.pendingOtherToolResults as Anthropic.ToolResultBlockParam[]
-			}
-		}
-	}
-
-	/**
-	 * Clear subtask state from workspaceState after all subtasks are complete.
-	 */
-	public async clearSubtaskState(): Promise<void> {
-		const provider = this.providerRef.deref()
-		if (provider) {
-			await provider.clearSubtaskState(this.taskId)
-		}
-		this.pendingSubtasks = []
-		this.completedSubtaskResults = []
-		this.currentSubtaskToolCallId = undefined
-		this.pendingOtherToolResults = []
+		// Use the in-memory version since user message may not be in history yet
+		// This is called after streaming completes but before the user message is saved
+		return getPendingSubtasksFromContent(this.apiConversationHistory, this.userMessageContent).length > 0
 	}
 
 	private async saveApiConversationHistory() {
@@ -2201,11 +2115,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Save the updated history
 		await this.saveApiConversationHistory()
-
-		// Load any pending subtasks from the provider's in-memory storage.
-		// When multiple new_task tools are called in parallel, remaining subtasks are
-		// saved before each delegation. We load them here on resume.
-		this.loadPendingSubtasks()
 
 		// Check if there are pending subtasks to execute sequentially.
 		// This happens when multiple new_task tools were called in parallel -
