@@ -22,18 +22,12 @@ const deepSeekV3Info: ModelInfo = {
 
 export const deepSeekModels = {
 	"deepseek-chat": deepSeekV3Info,
-	// Aliases for DeepSeek V3 - these all map to deepseek-chat when calling the API
-	"deepseek-v3": {
-		...deepSeekV3Info,
-		description: `DeepSeek-V3 (alias for deepseek-chat). ${deepSeekV3Info.description}`,
-	},
+	// deepseek-3.2 is an alias for deepseek-chat (V3.2 is the current version)
+	// Note: The DeepSeek API only supports "deepseek-chat" and "deepseek-reasoner"
+	// See: https://api-docs.deepseek.com/quick_start/pricing
 	"deepseek-3.2": {
 		...deepSeekV3Info,
 		description: `DeepSeek V3.2 (alias for deepseek-chat). ${deepSeekV3Info.description}`,
-	},
-	"deepseek-3.2-exp": {
-		...deepSeekV3Info,
-		description: `DeepSeek V3.2 Experimental (alias for deepseek-chat). ${deepSeekV3Info.description}`,
 	},
 	"deepseek-reasoner": {
 		maxTokens: 65536, // 64K max output for reasoning mode
@@ -50,11 +44,10 @@ export const deepSeekModels = {
 } as const satisfies Record<string, ModelInfo>
 
 // Map of model aliases to their official API model names
-// The DeepSeek API uses specific model names, but users may use alternative names
+// The DeepSeek API only supports "deepseek-chat" and "deepseek-reasoner"
+// See: https://api-docs.deepseek.com/quick_start/pricing
 export const deepSeekModelAliases: Record<string, string> = {
-	"deepseek-v3": "deepseek-chat",
 	"deepseek-3.2": "deepseek-chat",
-	"deepseek-3.2-exp": "deepseek-chat",
 }
 
 export const DEEP_SEEK_DEFAULT_TEMPERATURE = 0.6
