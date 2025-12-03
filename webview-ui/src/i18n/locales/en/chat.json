@@ -425,5 +425,19 @@
 		"updated": "Updated the to-do list",
 		"completed": "Completed",
 		"started": "Started"
+	},
+	"taskHistoryWarning": {
+		"title": "High Task History",
+		"description": "You have {{count}} tasks in your history. Consider cleaning up old tasks to improve performance.",
+		"cleanupButton": "Clean up tasks older than 30 days",
+		"dismiss": "Dismiss",
+		"cleanupDialog": {
+			"title": "Clean Up Old Tasks",
+			"description": "This will permanently delete all tasks older than 30 days ({{count}} tasks). This action cannot be undone.",
+			"cancel": "Cancel",
+			"confirm": "Clean Up"
+		},
+		"cleanupSuccess": "Successfully deleted {{count}} old tasks",
+		"cleanupError": "Failed to clean up tasks: {{error}}"
 	}
 }
