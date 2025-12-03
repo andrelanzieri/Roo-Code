@@ -381,10 +381,10 @@ describe("OpenRouterHandler", () => {
 			)
 		})
 
-		it("should NOT use R1 format for DeepSeek 3.2 models", async () => {
+		it("should NOT use R1 format for DeepSeek V3.2 models", async () => {
 			const deepseek32Handler = new OpenRouterHandler({
 				...mockOptions,
-				openRouterModelId: "deepseek/deepseek-3.2",
+				openRouterModelId: "deepseek/deepseek-v3.2",
 			})
 
 			const mockStream = {

@@ -268,9 +268,9 @@ export const parseOpenRouterModel = ({
 
 	// Configure DeepSeek V3 models properly
 	// These models support standard tool calling but NOT R1 format
+	// OpenRouter uses deepseek/deepseek-v3 and deepseek/deepseek-v3.2 naming
 	if (
-		id.startsWith("deepseek/deepseek-v3") ||
-		id.startsWith("deepseek/deepseek-3") ||
+		id.startsWith("deepseek/deepseek-v3") || // Matches deepseek/deepseek-v3, deepseek/deepseek-v3.2, etc.
 		id === "deepseek/deepseek-chat"
 	) {
 		// Ensure these models are marked as supporting native tools

@@ -136,7 +136,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		]
 
 		// DeepSeek R1 models require user instead of system role.
-		// Note: DeepSeek V3 models (deepseek-v3, deepseek-3.2, etc.) do NOT use R1 format
+		// Note: DeepSeek V3 models (deepseek-v3, deepseek-v3.2, etc.) do NOT use R1 format
 		if (modelId.startsWith("deepseek/deepseek-r1") || modelId === "perplexity/sonar-reasoning") {
 			openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
 		}
@@ -390,11 +390,10 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		}
 
 		// Only DeepSeek R1 models use special temperature and topP settings
-		// DeepSeek V3 models (v3, 3.2, 3.2-exp) use standard settings
+		// DeepSeek V3 models (v3, v3.2, etc.) use standard settings
 		const isDeepSeekR1 = id.startsWith("deepseek/deepseek-r1") || id === "perplexity/sonar-reasoning"
 		const isDeepSeekV3 =
-			id.startsWith("deepseek/deepseek-v3") ||
-			id.startsWith("deepseek/deepseek-3") ||
+			id.startsWith("deepseek/deepseek-v3") || // Matches deepseek/deepseek-v3, deepseek/deepseek-v3.2, etc.
 			id === "deepseek/deepseek-chat"
 
 		const params = getModelParams({
