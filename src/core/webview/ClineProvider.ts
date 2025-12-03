@@ -1660,9 +1660,6 @@ export class ClineProvider
 	}
 
 	async showTaskWithId(id: string) {
-		// Clear draft when switching tasks
-		await this.clearDraftMessage()
-
 		if (id !== this.getCurrentTask()?.taskId) {
 			// Non-current task.
 			const { historyItem } = await this.getTaskWithId(id)
