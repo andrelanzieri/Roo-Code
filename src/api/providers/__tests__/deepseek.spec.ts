@@ -147,6 +147,44 @@ describe("DeepSeekHandler", () => {
 			const _handler = new DeepSeekHandler(mockOptions)
 			expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: mockOptions.deepSeekApiKey }))
 		})
+
+		it("should map deepseek-v3 alias to deepseek-chat for API calls", async () => {
+			vi.clearAllMocks()
+			const handlerWithV3 = new DeepSeekHandler({
+				...mockOptions,
+				apiModelId: "deepseek-v3",
+			})
+			const stream = handlerWithV3.createMessage("test", [])
+			for await (const _chunk of stream) {
+				// consume stream
+			}
+			// Verify the API was called with deepseek-chat (not deepseek-v3)
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: "deepseek-chat",
+				}),
+				expect.anything(),
+			)
+		})
+
+		it("should map deepseek-3.2 alias to deepseek-chat for API calls", async () => {
+			vi.clearAllMocks()
+			const handlerWith32 = new DeepSeekHandler({
+				...mockOptions,
+				apiModelId: "deepseek-3.2",
+			})
+			const stream = handlerWith32.createMessage("test", [])
+			for await (const _chunk of stream) {
+				// consume stream
+			}
+			// Verify the API was called with deepseek-chat (not deepseek-3.2)
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: "deepseek-chat",
+				}),
+				expect.anything(),
+			)
+		})
 	})
 
 	describe("getModel", () => {
@@ -172,6 +210,32 @@ describe("DeepSeekHandler", () => {
 			expect(model.info.contextWindow).toBe(128_000)
 			expect(model.info.supportsImages).toBe(false)
 			expect(model.info.supportsPromptCache).toBe(true)
+		})
+
+		it("should return correct model info for deepseek-v3 alias", () => {
+			const handlerWithV3 = new DeepSeekHandler({
+				...mockOptions,
+				apiModelId: "deepseek-v3",
+			})
+			const model = handlerWithV3.getModel()
+			expect(model.id).toBe("deepseek-v3") // Returns user's model ID
+			expect(model.info).toBeDefined()
+			expect(model.info.maxTokens).toBe(8192) // Same as deepseek-chat
+			expect(model.info.contextWindow).toBe(128_000)
+			expect(model.info.supportsNativeTools).toBe(true)
+		})
+
+		it("should return correct model info for deepseek-3.2 alias", () => {
+			const handlerWith32 = new DeepSeekHandler({
+				...mockOptions,
+				apiModelId: "deepseek-3.2",
+			})
+			const model = handlerWith32.getModel()
+			expect(model.id).toBe("deepseek-3.2") // Returns user's model ID
+			expect(model.info).toBeDefined()
+			expect(model.info.maxTokens).toBe(8192) // Same as deepseek-chat
+			expect(model.info.contextWindow).toBe(128_000)
+			expect(model.info.supportsNativeTools).toBe(true)
 		})
 
 		it("should return provided model ID with default model info if model does not exist", () => {
