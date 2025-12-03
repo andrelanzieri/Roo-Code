@@ -428,15 +428,19 @@
 	},
 	"taskHistoryWarning": {
 		"title": "High Task History",
-		"description": "You have {{count}} tasks in your history. Consider cleaning up old tasks to improve performance.",
-		"cleanupButton": "Clean up tasks older than 30 days",
+		"ariaLabel": "High Task History",
+		"tooltip": "You have {{count}} tasks in your history",
+		"message": "You have {{count}} tasks in your history. Consider cleaning up old tasks to improve performance.",
+		"performance": "Large task histories can slow down the extension.",
+		"cleanupButton": "Clean up {{count}} tasks older than 30 days",
+		"cleaning": "Cleaning up...",
+		"noOldTasks": "No tasks older than 30 days",
+		"allRecent": "All your tasks are from the last 30 days",
 		"dismiss": "Dismiss",
-		"cleanupDialog": {
-			"title": "Clean Up Old Tasks",
-			"description": "This will permanently delete all tasks older than 30 days ({{count}} tasks). This action cannot be undone.",
-			"cancel": "Cancel",
-			"confirm": "Clean Up"
-		},
+		"confirmTitle": "Clean Up Old Tasks",
+		"confirmMessage": "This will permanently delete {{count}} tasks older than {{days}} days.",
+		"confirmWarning": "This action cannot be undone.",
+		"confirmButton": "Clean Up",
 		"cleanupSuccess": "Successfully deleted {{count}} old tasks",
 		"cleanupError": "Failed to clean up tasks: {{error}}"
 	}
