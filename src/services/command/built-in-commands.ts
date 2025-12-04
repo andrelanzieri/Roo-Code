@@ -11,11 +11,11 @@ const BUILT_IN_COMMANDS: Record<string, BuiltInCommandDefinition> = {
 	init: {
 		name: "init",
 		description: "Analyze codebase and create concise AGENTS.md files for AI assistants",
-		content: `<user_message>
+		content: `<task>
 Please analyze this codebase and create an AGENTS.md file containing:
 1. Build/lint/test commands - especially for running a single test
 2. Code style guidelines including imports, formatting, types, naming conventions, error handling, etc.
-</user_message>
+</task>
 
 <initialization>
   <purpose>
