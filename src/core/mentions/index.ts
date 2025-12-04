@@ -278,7 +278,8 @@ async function getFileOrFolderContent(
 				return `(File ${mentionPath} is ignored by .rooignore)`
 			}
 			try {
-				const content = await extractTextFromFile(absPath, maxReadFileLine)
+				// Always read full file for @ mentions (bypass maxReadFileLine)
+				const content = await extractTextFromFile(absPath, -1)
 				return content
 			} catch (error) {
 				return `(Failed to read contents of ${mentionPath}): ${error.message}`
@@ -318,7 +319,8 @@ async function getFileOrFolderContent(
 									if (isBinary) {
 										return undefined
 									}
-									const content = await extractTextFromFile(absoluteFilePath, maxReadFileLine)
+									// Always read full file for @ mentions (bypass maxReadFileLine)
+									const content = await extractTextFromFile(absoluteFilePath, -1)
 									return `<file_content path="${filePath.toPosix()}">\n${content}\n</file_content>`
 								} catch (error) {
 									return undefined
