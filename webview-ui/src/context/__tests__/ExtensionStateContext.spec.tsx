@@ -217,6 +217,7 @@ describe("mergeExtensionState", () => {
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 			isGitRepository: false,
 			isGithubRepository: false,
+			isBrowserSessionActive: false,
 		}
 
 		const prevState: ExtensionState = {
@@ -239,6 +240,8 @@ describe("mergeExtensionState", () => {
 				newTaskRequireTodos: false,
 				imageGeneration: false,
 				runSlashCommand: false,
+				nativeToolCalling: false,
+				multipleNativeToolCalls: false,
 			} as Record<ExperimentId, boolean>,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS + 5,
 		}
@@ -260,6 +263,8 @@ describe("mergeExtensionState", () => {
 			newTaskRequireTodos: false,
 			imageGeneration: false,
 			runSlashCommand: false,
+			nativeToolCalling: false,
+			multipleNativeToolCalls: false,
 		})
 	})
 })

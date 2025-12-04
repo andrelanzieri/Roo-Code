@@ -43,11 +43,6 @@ export const clineAsks = [
 export const clineAskSchema = z.enum(clineAsks)
 
 export type ClineAsk = z.infer<typeof clineAskSchema>
-
-// Needs classification:
-// - `followup`
-// - `command_output
-
 /**
  * IdleAsk
  *
@@ -100,6 +95,21 @@ export type InteractiveAsk = (typeof interactiveAsks)[number]
 
 export function isInteractiveAsk(ask: ClineAsk): ask is InteractiveAsk {
 	return (interactiveAsks as readonly ClineAsk[]).includes(ask)
+}
+
+/**
+ * NonBlockingAsk
+ *
+ * Asks that are not associated with an actual approval, and are only used
+ * to update chat messages.
+ */
+
+export const nonBlockingAsks = ["command_output"] as const satisfies readonly ClineAsk[]
+
+export type NonBlockingAsk = (typeof nonBlockingAsks)[number]
+
+export function isNonBlockingAsk(ask: ClineAsk): ask is NonBlockingAsk {
+	return (nonBlockingAsks as readonly ClineAsk[]).includes(ask)
 }
 
 /**
@@ -156,6 +166,7 @@ export const clineSays = [
 	"shell_integration_warning",
 	"browser_action",
 	"browser_action_result",
+	"browser_session_status",
 	"mcp_server_request_started",
 	"mcp_server_response",
 	"subtask_result",
@@ -164,6 +175,7 @@ export const clineSays = [
 	"diff_error",
 	"condense_context",
 	"condense_context_error",
+	"sliding_window_truncation",
 	"codebase_search_result",
 	"user_edit_todos",
 ] as const
@@ -192,9 +204,24 @@ export const contextCondenseSchema = z.object({
 	prevContextTokens: z.number(),
 	newContextTokens: z.number(),
 	summary: z.string(),
+	condenseId: z.string().optional(),
 })
 
 export type ContextCondense = z.infer<typeof contextCondenseSchema>
+
+/**
+ * ContextTruncation
+ *
+ * Used to track sliding window truncation events for the UI.
+ */
+
+export const contextTruncationSchema = z.object({
+	truncationId: z.string(),
+	messagesRemoved: z.number(),
+	prevContextTokens: z.number(),
+})
+
+export type ContextTruncation = z.infer<typeof contextTruncationSchema>
 
 /**
  * ClineMessage
@@ -213,18 +240,10 @@ export const clineMessageSchema = z.object({
 	checkpoint: z.record(z.string(), z.unknown()).optional(),
 	progressStatus: toolProgressStatusSchema.optional(),
 	contextCondense: contextCondenseSchema.optional(),
+	contextTruncation: contextTruncationSchema.optional(),
 	isProtected: z.boolean().optional(),
 	apiProtocol: z.union([z.literal("openai"), z.literal("anthropic")]).optional(),
 	isAnswered: z.boolean().optional(),
-	metadata: z
-		.object({
-			gpt5: z
-				.object({
-					previous_response_id: z.string().optional(),
-				})
-				.optional(),
-		})
-		.optional(),
 })
 
 export type ClineMessage = z.infer<typeof clineMessageSchema>

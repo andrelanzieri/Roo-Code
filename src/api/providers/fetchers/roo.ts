@@ -1,9 +1,19 @@
-import { RooModelsResponseSchema } from "@roo-code/types"
+import { RooModelsResponseSchema, type ModelInfo } from "@roo-code/types"
 
 import type { ModelRecord } from "../../../shared/api"
 import { parseApiPrice } from "../../../shared/cost"
 
 import { DEFAULT_HEADERS } from "../constants"
+
+// Model-specific defaults that should be applied even when models come from API cache
+// These override API-provided values for specific models
+// Exported so RooHandler.getModel() can also apply these for fallback cases
+export const MODEL_DEFAULTS: Record<string, Partial<ModelInfo>> = {
+	"minimax/minimax-m2:free": {
+		includedTools: ["search_and_replace"],
+		excludedTools: ["apply_diff"],
+	},
+}
 
 /**
  * Fetches available models from the Roo Code Cloud provider
@@ -14,6 +24,11 @@ import { DEFAULT_HEADERS } from "../constants"
  * @throws Will throw an error if the request fails or the response is not as expected.
  */
 export async function getRooModels(baseUrl: string, apiKey?: string): Promise<ModelRecord> {
+	// Construct the models endpoint URL early so it's available in catch block for logging
+	// Strip trailing /v1 or /v1/ to avoid /v1/v1/models
+	const normalizedBase = baseUrl.replace(/\/?v1\/?$/, "")
+	const url = `${normalizedBase}/v1/models`
+
 	try {
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
@@ -23,11 +38,6 @@ export async function getRooModels(baseUrl: string, apiKey?: string): Promise<Mo
 		if (apiKey) {
 			headers["Authorization"] = `Bearer ${apiKey}`
 		}
-
-		// Construct the models endpoint URL
-		// Strip trailing /v1 or /v1/ to avoid /v1/v1/models
-		const normalizedBase = baseUrl.replace(/\/?v1\/?$/, "")
-		const url = `${normalizedBase}/v1/models`
 
 		// Use fetch with AbortController for better timeout handling
 		const controller = new AbortController()
@@ -40,6 +50,21 @@ export async function getRooModels(baseUrl: string, apiKey?: string): Promise<Mo
 			})
 
 			if (!response.ok) {
+				// Log detailed error information
+				let errorBody = ""
+				try {
+					errorBody = await response.text()
+				} catch {
+					errorBody = "(unable to read response body)"
+				}
+
+				console.error(`[getRooModels] HTTP error:`, {
+					status: response.status,
+					statusText: response.statusText,
+					url,
+					body: errorBody,
+				})
+
 				throw new Error(`HTTP ${response.status}: ${response.statusText}`)
 			}
 
@@ -77,18 +102,26 @@ export async function getRooModels(baseUrl: string, apiKey?: string): Promise<Mo
 				// Determine if the model requires reasoning effort based on tags
 				const requiredReasoningEffort = tags.includes("reasoning-required")
 
+				// Determine if the model supports native tool calling based on tags
+				const supportsNativeTools = tags.includes("tool-use")
+
+				// Determine if the model should hide vendor/company identity (stealth mode)
+				const isStealthModel = tags.includes("stealth")
+
 				// Parse pricing (API returns strings, convert to numbers)
 				const inputPrice = parseApiPrice(pricing.input)
 				const outputPrice = parseApiPrice(pricing.output)
 				const cacheReadPrice = pricing.input_cache_read ? parseApiPrice(pricing.input_cache_read) : undefined
 				const cacheWritePrice = pricing.input_cache_write ? parseApiPrice(pricing.input_cache_write) : undefined
 
-				models[modelId] = {
+				// Build the base model info from API response
+				const baseModelInfo = {
 					maxTokens,
 					contextWindow,
 					supportsImages,
 					supportsReasoningEffort,
 					requiredReasoningEffort,
+					supportsNativeTools,
 					supportsPromptCache: Boolean(cacheReadPrice !== undefined),
 					inputPrice,
 					outputPrice,
@@ -97,7 +130,14 @@ export async function getRooModels(baseUrl: string, apiKey?: string): Promise<Mo
 					description: model.description || model.name,
 					deprecated: model.deprecated || false,
 					isFree: tags.includes("free"),
+					defaultTemperature: model.default_temperature,
+					defaultToolProtocol: "native" as const,
+					isStealthModel: isStealthModel || undefined,
 				}
+
+				// Apply model-specific defaults (e.g., defaultToolProtocol)
+				const modelDefaults = MODEL_DEFAULTS[modelId]
+				models[modelId] = modelDefaults ? { ...baseModelInfo, ...modelDefaults } : baseModelInfo
 			}
 
 			return models
@@ -105,7 +145,14 @@ export async function getRooModels(baseUrl: string, apiKey?: string): Promise<Mo
 			clearTimeout(timeoutId)
 		}
 	} catch (error: any) {
-		console.error("Error fetching Roo Code Cloud models:", error.message ? error.message : error)
+		// Enhanced error logging
+		console.error("[getRooModels] Error fetching Roo Code Cloud models:", {
+			message: error.message || String(error),
+			name: error.name,
+			stack: error.stack,
+			url,
+			hasApiKey: Boolean(apiKey),
+		})
 
 		// Handle abort/timeout
 		if (error.name === "AbortError") {
