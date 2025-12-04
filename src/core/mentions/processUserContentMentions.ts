@@ -39,11 +39,7 @@ export async function processUserContentMentions({
 	// should parse mentions).
 	return Promise.all(
 		userContent.map(async (block) => {
-			const shouldProcessMentions = (text: string) =>
-				text.includes("<task>") ||
-				text.includes("<feedback>") ||
-				text.includes("<answer>") ||
-				text.includes("<user_message>")
+			const shouldProcessMentions = (text: string) => text.includes("<user_message>")
 
 			if (block.type === "text") {
 				if (shouldProcessMentions(block.text)) {

@@ -1546,7 +1546,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		await this.initiateTaskLoop([
 			{
 				type: "text",
-				text: `<task>\n${task}\n</task>`,
+				text: `<user_message>\n${task}\n</user_message>`,
 			},
 			...imageBlocks,
 		]).catch((error) => {
@@ -1801,7 +1801,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (responseText) {
 			newUserContent.push({
 				type: "text",
-				text: `\n\nNew instructions for task continuation:\n<user_message>\n${responseText}\n</user_message>`,
+				text: `<user_message>\n${responseText}\n</user_message>`,
 			})
 		}
 
