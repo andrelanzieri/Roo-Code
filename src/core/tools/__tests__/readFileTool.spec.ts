@@ -86,8 +86,14 @@ const { toolResultMock, imageBlocksMock } = vi.hoisted(() => {
 vi.mock("../../prompts/responses", () => ({
 	formatResponse: {
 		toolDenied: vi.fn(() => "The user denied this operation."),
-		toolDeniedWithFeedback: vi.fn((feedback?: string) => `<user_message>\n${feedback}\n</user_message>`),
-		toolApprovedWithFeedback: vi.fn((feedback?: string) => `<user_message>\n${feedback}\n</user_message>`),
+		toolDeniedWithFeedback: vi.fn(
+			(feedback?: string) =>
+				`The user denied this operation and responded with the message:\n<user_message>\n${feedback}\n</user_message>`,
+		),
+		toolApprovedWithFeedback: vi.fn(
+			(feedback?: string) =>
+				`The user approved this operation and responded with the message:\n<user_message>\n${feedback}\n</user_message>`,
+		),
 		rooIgnoreError: vi.fn(
 			(path: string) =>
 				`Access to ${path} is blocked by the .rooignore file settings. You must try to continue in the task without using this file, or ask the user to update the .rooignore file.`,

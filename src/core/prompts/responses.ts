@@ -23,7 +23,7 @@ export const formatResponse = {
 				feedback: feedback,
 			})
 		}
-		return `<user_message>\n${feedback}\n</user_message>`
+		return `The user denied this operation and responded with the message:\n<user_message>\n${feedback}\n</user_message>`
 	},
 
 	toolApprovedWithFeedback: (feedback?: string, protocol?: ToolProtocol) => {
@@ -33,7 +33,7 @@ export const formatResponse = {
 				feedback: feedback,
 			})
 		}
-		return `<user_message>\n${feedback}\n</user_message>`
+		return `The user approved this operation and responded with the message:\n<user_message>\n${feedback}\n</user_message>`
 	},
 
 	toolError: (error?: string, protocol?: ToolProtocol) => {
@@ -82,7 +82,7 @@ Otherwise, if you have not completed the task and do not need additional informa
 				feedback: feedback,
 			})
 		}
-		return `<user_message>\n${feedback}\n</user_message>`
+		return `You seem to be having trouble proceeding. The user has provided the following feedback to help guide you:\n<user_message>\n${feedback}\n</user_message>`
 	},
 
 	missingToolParameterError: (paramName: string, protocol?: ToolProtocol) => {
