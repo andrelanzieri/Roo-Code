@@ -452,9 +452,6 @@ export const webviewMessageHandler = async (
 				}
 			}
 
-			if (apiMessage && Array.isArray(apiMessage.content)) {
-			}
-
 			const isToolResultMessage =
 				apiMessage?.role === "user" &&
 				Array.isArray(apiMessage.content) &&
@@ -465,7 +462,9 @@ export const webviewMessageHandler = async (
 				// This is critical for native tool protocol - creating a new message would pick up the wrong tool_use_id
 				const apiMessageContent = apiMessage.content as any[]
 
-				// Update tool_result content while preserving tool_use_id
+				// Update only the first tool_result content while preserving tool_use_id
+				// Important: If multiple tool_result blocks exist, we only update the first one
+				// to avoid overwriting unrelated tool results with the same content
 				for (const block of apiMessageContent) {
 					if (block.type === "tool_result") {
 						// Update the content - preserve images if they exist
@@ -486,6 +485,8 @@ export const webviewMessageHandler = async (
 						} else {
 							block.content = editedContent
 						}
+						// Only update the first tool_result block, then exit the loop
+						break
 					}
 				}
 
@@ -508,14 +509,18 @@ export const webviewMessageHandler = async (
 					}
 				}
 
-				// Delete only subsequent messages
+				// Delete only subsequent messages and clean up orphaned references
+				// This mirrors the cleanup logic in removeMessagesThisAndSubsequent
 				if (deleteFromClineIndex < currentCline.clineMessages.length) {
 					await currentCline.overwriteClineMessages(currentCline.clineMessages.slice(0, deleteFromClineIndex))
 				}
 				if (deleteFromApiIndex < currentCline.apiConversationHistory.length) {
-					await currentCline.overwriteApiConversationHistory(
-						currentCline.apiConversationHistory.slice(0, deleteFromApiIndex),
-					)
+					// Truncate API history and clean up orphaned condenseParent/truncationParent references
+					// This ensures messages that reference now-deleted summaries or truncation markers
+					// don't have dangling references
+					const truncatedApiHistory = currentCline.apiConversationHistory.slice(0, deleteFromApiIndex)
+					const cleanedApiHistory = cleanupAfterTruncation(truncatedApiHistory)
+					await currentCline.overwriteApiConversationHistory(cleanedApiHistory)
 				}
 
 				// Restore checkpoint associations
