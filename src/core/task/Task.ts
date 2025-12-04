@@ -3338,12 +3338,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const { profileThresholds = {} } = state ?? {}
 
 		const { contextTokens } = this.getTokenUsage()
-		// Get the actual model info from the API handler which includes 1M context updates
-		const actualModel = this.api.getModel()
-		const modelInfo = actualModel.info
+		const modelInfo = this.api.getModel().info
 
 		const maxTokens = getModelMaxOutputTokens({
-			modelId: actualModel.id,
+			modelId: this.api.getModel().id,
 			model: modelInfo,
 			settings: this.apiConfiguration,
 		})
@@ -3485,12 +3483,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const { contextTokens } = this.getTokenUsage()
 
 		if (contextTokens) {
-			// Get the actual model info from the API handler which includes 1M context updates
-			const actualModel = this.api.getModel()
-			const modelInfo = actualModel.info
+			const modelInfo = this.api.getModel().info
 
 			const maxTokens = getModelMaxOutputTokens({
-				modelId: actualModel.id,
+				modelId: this.api.getModel().id,
 				model: modelInfo,
 				settings: this.apiConfiguration,
 			})
