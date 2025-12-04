@@ -7,17 +7,20 @@ export type DeepSeekModelId = keyof typeof deepSeekModels
 export const deepSeekDefaultModelId: DeepSeekModelId = "deepseek-chat"
 
 // DeepSeek V3 model info (shared between deepseek-chat and aliases)
+// DeepSeek V3.2 supports thinking mode with tool calling via the "thinking" parameter
+// See: https://api-docs.deepseek.com/guides/thinking_mode
 const deepSeekV3Info: ModelInfo = {
 	maxTokens: 8192, // 8K max output
 	contextWindow: 128_000,
 	supportsImages: false,
 	supportsPromptCache: true,
 	supportsNativeTools: true,
+	supportsReasoningBinary: true, // Supports thinking mode via { thinking: { type: "enabled" } }
 	inputPrice: 0.56, // $0.56 per million tokens (cache miss) - Updated Sept 5, 2025
 	outputPrice: 1.68, // $1.68 per million tokens - Updated Sept 5, 2025
 	cacheWritesPrice: 0.56, // $0.56 per million tokens (cache miss) - Updated Sept 5, 2025
 	cacheReadsPrice: 0.07, // $0.07 per million tokens (cache hit) - Updated Sept 5, 2025
-	description: `DeepSeek-V3 achieves a significant breakthrough in inference speed over previous models. It tops the leaderboard among open-source models and rivals the most advanced closed-source models globally.`,
+	description: `DeepSeek-V3 achieves a significant breakthrough in inference speed over previous models. It tops the leaderboard among open-source models and rivals the most advanced closed-source models globally. Supports thinking mode with tool calling when enabled.`,
 }
 
 export const deepSeekModels = {
