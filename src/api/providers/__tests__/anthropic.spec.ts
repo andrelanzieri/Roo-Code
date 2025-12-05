@@ -4,6 +4,7 @@ import { AnthropicHandler } from "../anthropic"
 import { ApiHandlerOptions } from "../../../shared/api"
 
 const mockCreate = vitest.fn()
+const mockCountTokens = vitest.fn()
 
 vitest.mock("@anthropic-ai/sdk", () => {
 	const mockAnthropicConstructor = vitest.fn().mockImplementation(() => ({
@@ -52,6 +53,7 @@ vitest.mock("@anthropic-ai/sdk", () => {
 					},
 				}
 			}),
+			countTokens: mockCountTokens.mockResolvedValue({ input_tokens: 42 }),
 		},
 	}))
 
@@ -59,6 +61,11 @@ vitest.mock("@anthropic-ai/sdk", () => {
 		Anthropic: mockAnthropicConstructor,
 	}
 })
+
+// Mock the base countTokens utility used by BaseProvider fallback
+vitest.mock("../../../utils/countTokens", () => ({
+	countTokens: vitest.fn().mockResolvedValue(15),
+}))
 
 // Import after mock
 import { Anthropic } from "@anthropic-ai/sdk"
@@ -725,6 +732,89 @@ describe("AnthropicHandler", () => {
 				name: undefined,
 				arguments: '"London"}',
 			})
+		})
+	})
+
+	describe("countTokens", () => {
+		beforeEach(() => {
+			mockCountTokens.mockClear()
+		})
+
+		it("should use Anthropic API for regular text content", async () => {
+			const content = [{ type: "text" as const, text: "Hello, world!" }]
+
+			const result = await handler.countTokens(content)
+
+			expect(result).toBe(42)
+			expect(mockCountTokens).toHaveBeenCalledTimes(1)
+			expect(mockCountTokens).toHaveBeenCalledWith({
+				model: "claude-3-5-sonnet-20241022",
+				messages: [{ role: "user", content }],
+			})
+		})
+
+		it("should fall back to local estimation when content contains tool_result blocks", async () => {
+			const content = [
+				{
+					type: "tool_result" as const,
+					tool_use_id: "toolu_123",
+					content: "File contents here",
+				},
+			]
+
+			const result = await handler.countTokens(content)
+
+			// Should return the fallback value (15) from the mocked countTokens utility
+			expect(result).toBe(15)
+			// Should NOT call the Anthropic API
+			expect(mockCountTokens).not.toHaveBeenCalled()
+		})
+
+		it("should fall back when content has mixed blocks including tool_result", async () => {
+			const content = [
+				{ type: "text" as const, text: "Some text" },
+				{
+					type: "tool_result" as const,
+					tool_use_id: "toolu_456",
+					content: "Tool output",
+				},
+			]
+
+			const result = await handler.countTokens(content)
+
+			// Should return the fallback value
+			expect(result).toBe(15)
+			// Should NOT call the Anthropic API
+			expect(mockCountTokens).not.toHaveBeenCalled()
+		})
+
+		it("should fall back to local estimation when API call fails", async () => {
+			mockCountTokens.mockRejectedValueOnce(new Error("API Error"))
+
+			const content = [{ type: "text" as const, text: "Hello, world!" }]
+
+			const result = await handler.countTokens(content)
+
+			// Should return the fallback value
+			expect(result).toBe(15)
+		})
+
+		it("should handle image blocks via API", async () => {
+			const content = [
+				{
+					type: "image" as const,
+					source: {
+						type: "base64" as const,
+						media_type: "image/png" as const,
+						data: "base64data",
+					},
+				},
+			]
+
+			const result = await handler.countTokens(content)
+
+			expect(result).toBe(42)
+			expect(mockCountTokens).toHaveBeenCalledTimes(1)
 		})
 	})
 })

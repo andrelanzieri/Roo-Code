@@ -410,6 +410,17 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	 * @returns A promise resolving to the token count
 	 */
 	override async countTokens(content: Array<Anthropic.Messages.ContentBlockParam>): Promise<number> {
+		// Check if content contains tool_result blocks - these cannot be sent as standalone
+		// user messages because Anthropic requires tool_result to follow a tool_use message
+		// from the assistant. Fall back to local estimation in this case.
+		const hasToolResult = content.some(
+			(block) => typeof block === "object" && "type" in block && block.type === "tool_result",
+		)
+
+		if (hasToolResult) {
+			return super.countTokens(content)
+		}
+
 		try {
 			// Use the current model
 			const { id: model } = this.getModel()
