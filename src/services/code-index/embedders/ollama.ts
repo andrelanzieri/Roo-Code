@@ -78,6 +78,8 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 			// Add timeout to prevent indefinite hanging
 			const controller = new AbortController()
 			let embeddingTimeoutId = undefined
+			// If embeddingTimeoutMs <= 0, the timeout is disabled and requests may hang indefinitely.
+			// To enable the timeout, set embeddingTimeoutMs to a positive integer (milliseconds).
 			if (this.embeddingTimeoutMs > 0) {
 				embeddingTimeoutId = setTimeout(() => controller.abort(), this.embeddingTimeoutMs)
 			}
