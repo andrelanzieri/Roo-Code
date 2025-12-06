@@ -222,6 +222,8 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 				// Add timeout for test request too
 				const testController = new AbortController()
 				let testTimeoutId = undefined
+				// If validationTimeoutMs is <= 0, the timeout is disabled (no abort will be triggered).
+				// Set validationTimeoutMs to a positive integer (milliseconds) to enable the timeout.
 				if (this.validationTimeoutMs > 0) {
 					testTimeoutId = setTimeout(() => testController.abort(), this.validationTimeoutMs)
 				}
