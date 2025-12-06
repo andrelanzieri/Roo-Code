@@ -265,6 +265,8 @@ const ollamaSchema = baseProviderSettingsSchema.extend({
 	ollamaModelId: z.string().optional(),
 	ollamaBaseUrl: z.string().optional(),
 	ollamaApiKey: z.string().optional(),
+	ollamaEmbeddingTimeoutMs: z.number().int().optional(),
+	ollamaValidationTimeoutMs: z.number().int().optional(),
 	ollamaNumCtx: z.number().int().min(128).optional(),
 })
 
