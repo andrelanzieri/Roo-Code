@@ -32,8 +32,8 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 		this.baseUrl = baseUrl
 		this.modelId = options.ollamaModelId || OLLAMA_DEFAULT_MODEL_ID
 
-		this.embeddingTimeoutMs = options.ollamaEmbeddingTimeoutMs || OLLAMA_EMBEDDING_TIMEOUT_MS
-		this.validationTimeoutMs = options.ollamaValidationTimeoutMs || OLLAMA_VALIDATION_TIMEOUT_MS
+		this.embeddingTimeoutMs = options.ollamaEmbeddingTimeoutMs ?? OLLAMA_EMBEDDING_TIMEOUT_MS
+		this.validationTimeoutMs = options.ollamaValidationTimeoutMs ?? OLLAMA_VALIDATION_TIMEOUT_MS
 	}
 
 	/**
