@@ -1,4 +1,3 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import os from "os"
 
 // Mock the modules - must be hoisted before imports
@@ -14,25 +13,6 @@ import { getSystemInfoSection } from "../system-info"
 import osName from "os-name"
 
 const mockOsName = osName as unknown as ReturnType<typeof vi.fn>
-
-// Extend String prototype for testing
-declare global {
-	interface String {
-		toPosix(): string
-	}
-}
-
-// Mock the toPosix extension
-beforeEach(() => {
-	String.prototype.toPosix = function () {
-		return this.replace(/\\/g, "/")
-	}
-})
-
-afterEach(() => {
-	// @ts-ignore - we know this exists because we added it
-	delete String.prototype.toPosix
-})
 
 describe("getSystemInfoSection", () => {
 	const mockCwd = "/test/workspace"
