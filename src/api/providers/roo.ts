@@ -2,6 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import { rooDefaultModelId, getApiProtocol, type ImageGenerationApiMethod } from "@roo-code/types"
+import { NativeToolCallParser } from "../../core/assistant-message/NativeToolCallParser"
 import { CloudService } from "@roo-code/cloud"
 
 import { Package } from "../../shared/package"
@@ -15,7 +16,6 @@ import { getRooReasoning } from "../transform/reasoning"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
 import { getModels, getModelsFromCache } from "../providers/fetchers/modelCache"
-import { MODEL_DEFAULTS } from "../providers/fetchers/roo"
 import { handleOpenAIError } from "./utils/openai-error-handler"
 import { generateImageWithProvider, generateImageWithImagesApi, ImageGenerationResult } from "./utils/image-generation"
 import { t } from "../../i18n"
@@ -158,6 +158,7 @@ export class RooHandler extends BaseOpenAiCompatibleProvider<string> {
 
 			for await (const chunk of stream) {
 				const delta = chunk.choices[0]?.delta
+				const finishReason = chunk.choices[0]?.finish_reason
 
 				if (delta) {
 					// Handle reasoning_details array format (used by Gemini 3, Claude, OpenAI o-series, etc.)
@@ -259,6 +260,13 @@ export class RooHandler extends BaseOpenAiCompatibleProvider<string> {
 					}
 				}
 
+				if (finishReason) {
+					const endEvents = NativeToolCallParser.processFinishReason(finishReason)
+					for (const event of endEvents) {
+						yield event
+					}
+				}
+
 				if (chunk.usage) {
 					lastUsage = chunk.usage as RooUsage
 				}
@@ -297,13 +305,15 @@ export class RooHandler extends BaseOpenAiCompatibleProvider<string> {
 				}
 			}
 		} catch (error) {
-			// Log streaming errors with context
-			console.error("[RooHandler] Error during message streaming:", {
+			const errorContext = {
 				error: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined,
 				modelId: this.options.apiModelId,
 				hasTaskId: Boolean(metadata?.taskId),
-			})
+			}
+
+			console.error(`[RooHandler] Error during message streaming: ${JSON.stringify(errorContext)}`)
+
 			throw error
 		}
 	}
@@ -335,17 +345,12 @@ export class RooHandler extends BaseOpenAiCompatibleProvider<string> {
 	override getModel() {
 		const modelId = this.options.apiModelId || rooDefaultModelId
 
-		// Get models from shared cache
+		// Get models from shared cache (settings are already applied by the fetcher)
 		const models = getModelsFromCache("roo") || {}
 		const modelInfo = models[modelId]
 
-		// Get model-specific defaults if they exist
-		const modelDefaults = MODEL_DEFAULTS[modelId]
-
 		if (modelInfo) {
-			// Merge model-specific defaults with cached model info
-			const mergedInfo = modelDefaults ? { ...modelInfo, ...modelDefaults } : modelInfo
-			return { id: modelId, info: mergedInfo }
+			return { id: modelId, info: modelInfo }
 		}
 
 		// Return the requested model ID even if not found, with fallback info.
