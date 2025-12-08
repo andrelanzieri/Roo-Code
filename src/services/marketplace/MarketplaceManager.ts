@@ -284,6 +284,20 @@ export class MarketplaceManager {
 			} catch (error) {
 				// File doesn't exist or can't be read, skip
 			}
+
+			// Check commands in .roo/commands
+			const projectCommandsDir = path.join(workspaceFolder.uri.fsPath, ".roo", "commands")
+			try {
+				const entries = await fs.readdir(projectCommandsDir, { withFileTypes: true })
+				for (const entry of entries) {
+					if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+						const commandName = entry.name.slice(0, -3)
+						metadata[commandName] = { type: "command" }
+					}
+				}
+			} catch (error) {
+				// Directory doesn't exist or can't be read, skip
+			}
 		} catch (error) {
 			console.error("Error checking project installations:", error)
 		}
@@ -328,6 +342,20 @@ export class MarketplaceManager {
 				}
 			} catch (error) {
 				// File doesn't exist or can't be read, skip
+			}
+
+			// Check global commands
+			const globalCommandsDir = path.join(globalSettingsPath, "commands")
+			try {
+				const entries = await fs.readdir(globalCommandsDir, { withFileTypes: true })
+				for (const entry of entries) {
+					if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+						const commandName = entry.name.slice(0, -3)
+						metadata[commandName] = { type: "command" }
+					}
+				}
+			} catch (error) {
+				// Directory doesn't exist or can't be read, skip
 			}
 		} catch (error) {
 			console.error("Error checking global installations:", error)
