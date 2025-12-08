@@ -1314,7 +1314,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				})
 				// Ensure profile and apiProvider exist before trying to build handler
 				if (profile && profile.apiProvider) {
-					condensingApiHandler = buildApiHandler(profile)
+					// For Gemini providers, disable reasoning features during condensing to prevent API errors
+					// Reasoning blocks can interfere with the condensing prompt structure
+					if (profile.apiProvider === "gemini" || profile.apiProvider === "vertex") {
+						condensingApiHandler = buildApiHandler({
+							...profile,
+							enableReasoningEffort: false,
+							modelMaxThinkingTokens: undefined,
+						})
+					} else {
+						condensingApiHandler = buildApiHandler(profile)
+					}
 				}
 			}
 		}
@@ -3460,7 +3470,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 				// Ensure profile and apiProvider exist before trying to build handler.
 				if (profile && profile.apiProvider) {
-					condensingApiHandler = buildApiHandler(profile)
+					// For Gemini providers, disable reasoning features during condensing to prevent API errors
+					// Reasoning blocks can interfere with the condensing prompt structure
+					if (profile.apiProvider === "gemini" || profile.apiProvider === "vertex") {
+						condensingApiHandler = buildApiHandler({
+							...profile,
+							enableReasoningEffort: false,
+							modelMaxThinkingTokens: undefined,
+						})
+					} else {
+						condensingApiHandler = buildApiHandler(profile)
+					}
 				}
 			}
 		}
