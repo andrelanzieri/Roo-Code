@@ -110,6 +110,7 @@ export interface ExtensionMessage {
 		| "mcpExecutionStatus"
 		| "vsCodeSetting"
 		| "authenticatedUser"
+		| "condenseTaskContextStarted"
 		| "condenseTaskContextResponse"
 		| "singleRouterModelFetchResponse"
 		| "rooCreditBalance"
@@ -140,10 +141,8 @@ export interface ExtensionMessage {
 	}
 	action?:
 		| "chatButtonClicked"
-		| "mcpButtonClicked"
 		| "settingsButtonClicked"
 		| "historyButtonClicked"
-		| "promptsButtonClicked"
 		| "marketplaceButtonClicked"
 		| "cloudButtonClicked"
 		| "didBecomeVisible"
@@ -358,6 +357,7 @@ export type ExtensionState = Pick<
 	remoteControlEnabled: boolean
 	taskSyncEnabled: boolean
 	featureRoomoteControlEnabled: boolean
+	debug?: boolean
 }
 
 export interface ClineSayTool {
@@ -375,7 +375,6 @@ export interface ClineSayTool {
 		| "switchMode"
 		| "newTask"
 		| "finishTask"
-		| "insertContent"
 		| "generateImage"
 		| "imageGenerated"
 		| "runSlashCommand"

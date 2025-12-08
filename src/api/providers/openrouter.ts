@@ -207,16 +207,20 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 						allow_fallbacks: false,
 					},
 				}),
-			parallel_tool_calls: false, // Ensure only one tool call at a time
 			...(transforms && { transforms }),
 			...(reasoning && { reasoning }),
-			...(metadata?.tools && { tools: metadata.tools }),
+			...(metadata?.tools && { tools: this.convertToolsForOpenAI(metadata.tools) }),
 			...(metadata?.tool_choice && { tool_choice: metadata.tool_choice }),
 		}
 
+		// Add Anthropic beta header for fine-grained tool streaming when using Anthropic models
+		const requestOptions = modelId.startsWith("anthropic/")
+			? { headers: { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" } }
+			: undefined
+
 		let stream
 		try {
-			stream = await this.client.chat.completions.create(completionParams)
+			stream = await this.client.chat.completions.create(completionParams, requestOptions)
 		} catch (error) {
 			throw handleOpenAIError(error, this.providerName)
 		}
@@ -418,9 +422,14 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			...(reasoning && { reasoning }),
 		}
 
+		// Add Anthropic beta header for fine-grained tool streaming when using Anthropic models
+		const requestOptions = modelId.startsWith("anthropic/")
+			? { headers: { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" } }
+			: undefined
+
 		let response
 		try {
-			response = await this.client.chat.completions.create(completionParams)
+			response = await this.client.chat.completions.create(completionParams, requestOptions)
 		} catch (error) {
 			throw handleOpenAIError(error, this.providerName)
 		}
@@ -435,7 +444,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	/**
-	 * Generate an image using OpenRouter's image generation API
+	 * Generate an image using OpenRouter's image generation API (chat completions with modalities)
+	 * Note: OpenRouter only supports the chat completions approach, not the /images/generations endpoint
 	 * @param prompt The text prompt for image generation
 	 * @param model The model to use for generation
 	 * @param apiKey The OpenRouter API key (must be explicitly provided)
@@ -456,6 +466,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		}
 
 		const baseURL = this.options.openRouterBaseUrl || "https://openrouter.ai/api/v1"
+
+		// OpenRouter only supports chat completions approach for image generation
 		return generateImageWithProvider({
 			baseURL,
 			authToken: apiKey,

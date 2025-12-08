@@ -21,6 +21,7 @@ import {
 	type ToolUsage,
 	type ToolName,
 	type ContextCondense,
+	type ContextTruncation,
 	type ClineMessage,
 	type ClineSay,
 	type ClineAsk,
@@ -98,7 +99,7 @@ import { RooProtectedController } from "../protect/RooProtectedController"
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { AssistantMessageParser } from "../assistant-message/AssistantMessageParser"
 import { NativeToolCallParser } from "../assistant-message/NativeToolCallParser"
-import { manageContext } from "../context-management"
+import { manageContext, willManageContext } from "../context-management"
 import { ClineProvider } from "../webview/ClineProvider"
 import { MultiSearchReplaceDiffStrategy } from "../diff/strategies/multi-search-replace"
 import { MultiFileSearchReplaceDiffStrategy } from "../diff/strategies/multi-file-search-replace"
@@ -121,9 +122,10 @@ import {
 	checkpointDiff,
 } from "../checkpoints"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
-import { getMessagesSinceLastSummary, summarizeConversation } from "../condense"
+import { getMessagesSinceLastSummary, summarizeConversation, getEffectiveApiHistory } from "../condense"
 import { MessageQueueService } from "../message-queue/MessageQueueService"
 import { AutoApprovalHandler, checkAutoApproval } from "../auto-approval"
+import { MessageManager } from "../message-manager"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -150,6 +152,8 @@ export interface TaskOptions extends CreateTaskOptions {
 	onCreated?: (task: Task) => void
 	initialTodos?: TodoItem[]
 	workspacePath?: string
+	/** Initial status for the task's history item (e.g., "active" for child tasks) */
+	initialStatus?: "active" | "delegated" | "completed"
 }
 
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
@@ -157,6 +161,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly rootTaskId?: string
 	readonly parentTaskId?: string
 	childTaskId?: string
+	pendingNewTaskToolCallId?: string
 
 	readonly instanceId: string
 	readonly metadata: TaskMetadata
@@ -216,6 +221,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	private readonly globalStoragePath: string
 	abort: boolean = false
 	currentRequestAbortController?: AbortController
+	skipPrevResponseIdOnce: boolean = false
 
 	// TaskStatus
 	idleAsk?: ClineMessage
@@ -227,8 +233,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	abortReason?: ClineApiReqCancelReason
 	isInitialized = false
 	isPaused: boolean = false
-	pausedModeSlug: string = defaultModeSlug
-	private pauseInterval: NodeJS.Timeout | undefined
 
 	// API
 	apiConfiguration: ProviderSettings
@@ -302,6 +306,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	userMessageContentReady = false
 	didRejectTool = false
 	didAlreadyUseTool = false
+	didToolFailInCurrentTurn = false
 	didCompleteReadingStream = false
 	assistantMessageParser?: AssistantMessageParser
 	private providerProfileChangeListener?: (config: { name: string; provider?: string }) => void
@@ -319,6 +324,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Cloud Sync Tracking
 	private cloudSyncedMessageTimestamps: Set<number> = new Set()
+
+	// Initial status for the task's history item (set at creation time to avoid race conditions)
+	private readonly initialStatus?: "active" | "delegated" | "completed"
+
+	// MessageManager for high-level message operations (lazy initialized)
+	private _messageManager?: MessageManager
 
 	constructor({
 		provider,
@@ -340,6 +351,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		onCreated,
 		initialTodos,
 		workspacePath,
+		initialStatus,
 	}: TaskOptions) {
 		super()
 
@@ -426,6 +438,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		this.parentTask = parentTask
 		this.taskNumber = taskNumber
+		this.initialStatus = initialStatus
 
 		// Store the task's mode when it's created.
 		// For history items, use the stored mode; for new tasks, we'll set it
@@ -549,7 +562,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			try {
 				const newState = await provider.getState()
 				if (newState?.apiConfiguration) {
-					await this.updateApiConfiguration(newState.apiConfiguration)
+					this.updateApiConfiguration(newState.apiConfiguration)
 				}
 			} catch (error) {
 				console.error(
@@ -778,6 +791,41 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		await this.saveApiConversationHistory()
 	}
 
+	/**
+	 * Flush any pending tool results to the API conversation history.
+	 *
+	 * This is critical for native tool protocol when the task is about to be
+	 * delegated (e.g., via new_task). Before delegation, if other tools were
+	 * called in the same turn before new_task, their tool_result blocks are
+	 * accumulated in `userMessageContent` but haven't been saved to the API
+	 * history yet. If we don't flush them before the parent is disposed,
+	 * the API conversation will be incomplete and cause 400 errors when
+	 * the parent resumes (missing tool_result for tool_use blocks).
+	 *
+	 * NOTE: The assistant message is typically already in history by the time
+	 * tools execute (added in recursivelyMakeClineRequests after streaming completes).
+	 * So we usually only need to flush the pending user message with tool_results.
+	 */
+	public async flushPendingToolResultsToHistory(): Promise<void> {
+		// Only flush if there's actually pending content to save
+		if (this.userMessageContent.length === 0) {
+			return
+		}
+
+		// Save the user message with tool_result blocks
+		const userMessage: Anthropic.MessageParam = {
+			role: "user",
+			content: this.userMessageContent,
+		}
+		const userMessageWithTs = { ...userMessage, ts: Date.now() }
+		this.apiConversationHistory.push(userMessageWithTs as ApiMessage)
+
+		await this.saveApiConversationHistory()
+
+		// Clear the pending content since it's now saved
+		this.userMessageContent = []
+	}
+
 	private async saveApiConversationHistory() {
 		try {
 			await saveApiMessages({
@@ -867,6 +915,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				globalStoragePath: this.globalStoragePath,
 				workspace: this.cwd,
 				mode: this._taskMode || defaultModeSlug, // Use the task's own mode, not the current provider mode.
+				initialStatus: this.initialStatus,
 			})
 
 			if (hasTokenUsageChanged(tokenUsage, this.tokenUsageSnapshot)) {
@@ -1166,7 +1215,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 *
 	 * @param newApiConfiguration - The new API configuration to use
 	 */
-	public async updateApiConfiguration(newApiConfiguration: ProviderSettings): Promise<void> {
+	public updateApiConfiguration(newApiConfiguration: ProviderSettings): void {
 		// Update the configuration and rebuild the API handler
 		this.apiConfiguration = newApiConfiguration
 		this.api = buildApiHandler(newApiConfiguration)
@@ -1221,7 +1270,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// This ensures the parser state is synchronized with the selected model
 					const newState = await provider.getState()
 					if (newState?.apiConfiguration) {
-						await this.updateApiConfiguration(newState.apiConfiguration)
+						this.updateApiConfiguration(newState.apiConfiguration)
 					}
 				}
 
@@ -1272,12 +1321,18 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const { contextTokens: prevContextTokens } = this.getTokenUsage()
 
+		// Determine if we're using native tool protocol for proper message handling
+		const modelInfo = this.api.getModel().info
+		const protocol = resolveToolProtocol(this.apiConfiguration, modelInfo)
+		const useNativeTools = isNativeProtocol(protocol)
+
 		const {
 			messages,
 			summary,
 			cost,
 			newContextTokens = 0,
 			error,
+			condenseId,
 		} = await summarizeConversation(
 			this.apiConversationHistory,
 			this.api, // Main API handler (fallback)
@@ -1287,6 +1342,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			false, // manual trigger
 			customCondensingPrompt, // User's custom prompt
 			condensingApiHandler, // Specific handler for condensing
+			useNativeTools, // Pass native tools flag for proper message handling
 		)
 		if (error) {
 			this.say(
@@ -1302,7 +1358,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 		await this.overwriteApiConversationHistory(messages)
 
-		const contextCondense: ContextCondense = { summary, cost, newContextTokens, prevContextTokens }
+		const contextCondense: ContextCondense = {
+			summary,
+			cost,
+			newContextTokens,
+			prevContextTokens,
+			condenseId: condenseId!,
+		}
 		await this.say(
 			"condense_context",
 			undefined /* text */,
@@ -1329,6 +1391,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			isNonInteractive?: boolean
 		} = {},
 		contextCondense?: ContextCondense,
+		contextTruncation?: ContextTruncation,
 	): Promise<undefined> {
 		if (this.abort) {
 			throw new Error(`[RooCode#say] task ${this.taskId}.${this.instanceId} aborted`)
@@ -1364,6 +1427,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						images,
 						partial,
 						contextCondense,
+						contextTruncation,
 					})
 				}
 			} else {
@@ -1401,6 +1465,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						text,
 						images,
 						contextCondense,
+						contextTruncation,
 					})
 				}
 			}
@@ -1424,6 +1489,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				images,
 				checkpoint,
 				contextCondense,
+				contextTruncation,
 			})
 		}
 
@@ -1487,7 +1553,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				text: `<task>\n${task}\n</task>`,
 			},
 			...imageBlocks,
-		])
+		]).catch((error) => {
+			// Swallow loop rejection when the task was intentionally abandoned/aborted
+			// during delegation or user cancellation to prevent unhandled rejections.
+			if (this.abandoned === true || this.abortReason === "user_cancelled") {
+				return
+			}
+			throw error
+		})
 	}
 
 	private async resumeTaskFromHistory() {
@@ -1835,12 +1908,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			console.error("Error removing event listeners:", error)
 		}
 
-		// Stop waiting for child task completion.
-		if (this.pauseInterval) {
-			clearInterval(this.pauseInterval)
-			this.pauseInterval = undefined
-		}
-
 		if (this.enableBridge) {
 			BridgeOrchestrator.getInstance()
 				?.unsubscribeFromTask(this.taskId)
@@ -1917,60 +1984,87 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			throw new Error("Provider not available")
 		}
 
-		const newTask = await provider.createTask(message, undefined, this, { initialTodos })
-
-		if (newTask) {
-			this.isPaused = true // Pause parent.
-			this.childTaskId = newTask.taskId
-
-			await provider.handleModeSwitch(mode) // Set child's mode.
-			await delay(500) // Allow mode change to take effect.
-
-			this.emit(RooCodeEventName.TaskPaused, this.taskId)
-			this.emit(RooCodeEventName.TaskSpawned, newTask.taskId)
-		}
-
-		return newTask
-	}
-
-	// Used when a sub-task is launched and the parent task is waiting for it to
-	// finish.
-	// TBD: Add a timeout to prevent infinite waiting.
-	public async waitForSubtask() {
-		await new Promise<void>((resolve) => {
-			this.pauseInterval = setInterval(() => {
-				if (!this.isPaused) {
-					clearInterval(this.pauseInterval)
-					this.pauseInterval = undefined
-					resolve()
-				}
-			}, 1000)
+		const child = await (provider as any).delegateParentAndOpenChild({
+			parentTaskId: this.taskId,
+			message,
+			initialTodos,
+			mode,
 		})
+		return child
 	}
 
-	public async completeSubtask(lastMessage: string) {
-		this.isPaused = false
-		this.childTaskId = undefined
+	/**
+	 * Resume parent task after delegation completion without showing resume ask.
+	 * Used in metadata-driven subtask flow.
+	 *
+	 * This method:
+	 * - Clears any pending ask states
+	 * - Resets abort and streaming flags
+	 * - Ensures next API call includes full context
+	 * - Immediately continues task loop without user interaction
+	 */
+	public async resumeAfterDelegation(): Promise<void> {
+		// Clear any ask states that might have been set during history load
+		this.idleAsk = undefined
+		this.resumableAsk = undefined
+		this.interactiveAsk = undefined
 
-		this.emit(RooCodeEventName.TaskUnpaused, this.taskId)
+		// Reset abort and streaming state to ensure clean continuation
+		this.abort = false
+		this.abandoned = false
+		this.abortReason = undefined
+		this.didFinishAbortingStream = false
+		this.isStreaming = false
+		this.isWaitingForFirstChunk = false
 
-		// Fake an answer from the subtask that it has completed running and
-		// this is the result of what it has done add the message to the chat
-		// history and to the webview ui.
-		try {
-			await this.say("subtask_result", lastMessage)
+		// Ensure next API call includes full context after delegation
+		this.skipPrevResponseIdOnce = true
 
-			await this.addToApiConversationHistory({
-				role: "user",
-				content: [{ type: "text", text: `[new_task completed] Result: ${lastMessage}` }],
-			})
-		} catch (error) {
-			this.providerRef
-				.deref()
-				?.log(`Error failed to add reply from subtask into conversation of parent task, error: ${error}`)
+		// Mark as initialized and active
+		this.isInitialized = true
+		this.emit(RooCodeEventName.TaskActive, this.taskId)
 
-			throw error
+		// Load conversation history if not already loaded
+		if (this.apiConversationHistory.length === 0) {
+			this.apiConversationHistory = await this.getSavedApiConversationHistory()
 		}
+
+		// Add environment details to the existing last user message (which contains the tool_result)
+		// This avoids creating a new user message which would cause consecutive user messages
+		const environmentDetails = await getEnvironmentDetails(this, true)
+		let lastUserMsgIndex = -1
+		for (let i = this.apiConversationHistory.length - 1; i >= 0; i--) {
+			if (this.apiConversationHistory[i].role === "user") {
+				lastUserMsgIndex = i
+				break
+			}
+		}
+		if (lastUserMsgIndex >= 0) {
+			const lastUserMsg = this.apiConversationHistory[lastUserMsgIndex]
+			if (Array.isArray(lastUserMsg.content)) {
+				// Remove any existing environment_details blocks before adding fresh ones
+				const contentWithoutEnvDetails = lastUserMsg.content.filter(
+					(block: Anthropic.Messages.ContentBlockParam) => {
+						if (block.type === "text" && typeof block.text === "string") {
+							const isEnvironmentDetailsBlock =
+								block.text.trim().startsWith("<environment_details>") &&
+								block.text.trim().endsWith("</environment_details>")
+							return !isEnvironmentDetailsBlock
+						}
+						return true
+					},
+				)
+				// Add fresh environment details
+				lastUserMsg.content = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
+			}
+		}
+
+		// Save the updated history
+		await this.saveApiConversationHistory()
+
+		// Continue task loop - pass empty array to signal no new user content needed
+		// The initiateTaskLoop will handle this by skipping user message addition
+		await this.initiateTaskLoop([])
 	}
 
 	// Task Loop
@@ -2058,29 +2152,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.consecutiveMistakeCount = 0
 			}
 
-			// In this Cline request loop, we need to check if this task instance
-			// has been asked to wait for a subtask to finish before continuing.
-			const provider = this.providerRef.deref()
-
-			if (this.isPaused && provider) {
-				provider.log(`[subtasks] paused ${this.taskId}.${this.instanceId}`)
-				await this.waitForSubtask()
-				provider.log(`[subtasks] resumed ${this.taskId}.${this.instanceId}`)
-				const currentMode = (await provider.getState())?.mode ?? defaultModeSlug
-
-				if (currentMode !== this.pausedModeSlug) {
-					// The mode has changed, we need to switch back to the paused mode.
-					await provider.handleModeSwitch(this.pausedModeSlug)
-
-					// Delay to allow mode change to take effect before next tool is executed.
-					await delay(500)
-
-					provider.log(
-						`[subtasks] task ${this.taskId}.${this.instanceId} has switched back to '${this.pausedModeSlug}' from '${currentMode}'`,
-					)
-				}
-			}
-
 			// Getting verbose details is an expensive operation, it uses ripgrep to
 			// top-down build file structure of project which for large projects can
 			// take a few seconds. For the best UX we show a placeholder api_req_started
@@ -2137,13 +2208,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			// Add environment details as its own text block, separate from tool
 			// results.
-			const finalUserContent = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
-
+			let finalUserContent = [...contentWithoutEnvDetails, { type: "text" as const, text: environmentDetails }]
 			// Only add user message to conversation history if:
-			// 1. This is the first attempt (retryAttempt === 0), OR
-			// 2. The message was removed in a previous iteration (userMessageWasRemoved === true)
+			// 1. This is the first attempt (retryAttempt === 0), AND
+			// 2. The original userContent was not empty (empty signals delegation resume where
+			//    the user message with tool_result and env details is already in history), OR
+			// 3. The message was removed in a previous iteration (userMessageWasRemoved === true)
 			// This prevents consecutive user messages while allowing re-add when needed
-			if ((currentItem.retryAttempt ?? 0) === 0 || currentItem.userMessageWasRemoved) {
+			const isEmptyUserContent = currentUserContent.length === 0
+			const shouldAddUserMessage =
+				((currentItem.retryAttempt ?? 0) === 0 && !isEmptyUserContent) || currentItem.userMessageWasRemoved
+			if (shouldAddUserMessage) {
 				await this.addToApiConversationHistory({ role: "user", content: finalUserContent })
 				TelemetryService.instance.captureConversationMessage(this.taskId, "user")
 			}
@@ -2159,7 +2234,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			} satisfies ClineApiReqInfo)
 
 			await this.saveClineMessages()
-			await provider?.postStateToWebview()
+			await this.providerRef.deref()?.postStateToWebview()
 
 			try {
 				let cacheWriteTokens = 0
@@ -2249,6 +2324,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.userMessageContentReady = false
 				this.didRejectTool = false
 				this.didAlreadyUseTool = false
+				// Reset tool failure flag for each new assistant turn - this ensures that tool failures
+				// only prevent attempt_completion within the same assistant message, not across turns
+				// (e.g., if a tool fails, then user sends a message saying "just complete anyway")
+				this.didToolFailInCurrentTurn = false
 				this.presentAssistantMessageLocked = false
 				this.presentAssistantMessageHasPendingUpdates = false
 				this.assistantMessageParser?.reset()
@@ -2410,12 +2489,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 										// Finalize the streaming tool call
 										const finalToolUse = NativeToolCallParser.finalizeStreamingToolCall(event.id)
 
+										// Get the index for this tool call
+										const toolUseIndex = this.streamingToolCallIndices.get(event.id)
+
 										if (finalToolUse) {
 											// Store the tool call ID
 											;(finalToolUse as any).id = event.id
 
 											// Get the index and replace partial with final
-											const toolUseIndex = this.streamingToolCallIndices.get(event.id)
 											if (toolUseIndex !== undefined) {
 												this.assistantMessageContent[toolUseIndex] = finalToolUse
 											}
@@ -2427,6 +2508,25 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 											this.userMessageContentReady = false
 
 											// Present the finalized tool call
+											presentAssistantMessage(this)
+										} else if (toolUseIndex !== undefined) {
+											// finalizeStreamingToolCall returned null (malformed JSON or missing args)
+											// We still need to mark the tool as non-partial so it gets executed
+											// The tool's validation will catch any missing required parameters
+											const existingToolUse = this.assistantMessageContent[toolUseIndex]
+											if (existingToolUse && existingToolUse.type === "tool_use") {
+												existingToolUse.partial = false
+												// Ensure it has the ID for native protocol
+												;(existingToolUse as any).id = event.id
+											}
+
+											// Clean up tracking
+											this.streamingToolCallIndices.delete(event.id)
+
+											// Mark that we have new content to process
+											this.userMessageContentReady = false
+
+											// Present the tool call - validation will handle missing params
 											presentAssistantMessage(this)
 										}
 									}
@@ -2458,7 +2558,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								// Mark that we have new content to process
 								this.userMessageContentReady = false
 
-								// Present the tool call to user
+								// Present the tool call to user - presentAssistantMessage will execute
+								// tools sequentially and accumulate all results in userMessageContent
 								presentAssistantMessage(this)
 								break
 							}
@@ -2535,6 +2636,58 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							assistantMessage +=
 								"\n\n[Response interrupted by a tool use result. Only one tool may be used at a time and should be placed at the end of the message.]"
 							break
+						}
+					}
+
+					// Finalize any remaining streaming tool calls that weren't explicitly ended
+					// This is critical for MCP tools which need tool_call_end events to be properly
+					// converted from ToolUse to McpToolUse via finalizeStreamingToolCall()
+					const finalizeEvents = NativeToolCallParser.finalizeRawChunks()
+					for (const event of finalizeEvents) {
+						if (event.type === "tool_call_end") {
+							// Finalize the streaming tool call
+							const finalToolUse = NativeToolCallParser.finalizeStreamingToolCall(event.id)
+
+							// Get the index for this tool call
+							const toolUseIndex = this.streamingToolCallIndices.get(event.id)
+
+							if (finalToolUse) {
+								// Store the tool call ID
+								;(finalToolUse as any).id = event.id
+
+								// Get the index and replace partial with final
+								if (toolUseIndex !== undefined) {
+									this.assistantMessageContent[toolUseIndex] = finalToolUse
+								}
+
+								// Clean up tracking
+								this.streamingToolCallIndices.delete(event.id)
+
+								// Mark that we have new content to process
+								this.userMessageContentReady = false
+
+								// Present the finalized tool call
+								presentAssistantMessage(this)
+							} else if (toolUseIndex !== undefined) {
+								// finalizeStreamingToolCall returned null (malformed JSON or missing args)
+								// We still need to mark the tool as non-partial so it gets executed
+								// The tool's validation will catch any missing required parameters
+								const existingToolUse = this.assistantMessageContent[toolUseIndex]
+								if (existingToolUse && existingToolUse.type === "tool_use") {
+									existingToolUse.partial = false
+									// Ensure it has the ID for native protocol
+									;(existingToolUse as any).id = event.id
+								}
+
+								// Clean up tracking
+								this.streamingToolCallIndices.delete(event.id)
+
+								// Mark that we have new content to process
+								this.userMessageContentReady = false
+
+								// Present the tool call - validation will handle missing params
+								presentAssistantMessage(this)
+							}
 						}
 					}
 
@@ -2803,12 +2956,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					this.assistantMessageContent = parsedBlocks
 				}
 
+				// Present any partial blocks that were just completed
+				// For XML protocol: includes both text and tool_use blocks parsed from the text stream
+				// For native protocol: tool_use blocks were already presented during streaming via
+				// tool_call_partial events, but we still need to present them if they exist (e.g., malformed)
 				if (partialBlocks.length > 0) {
 					// If there is content to update then it will complete and
 					// update `this.userMessageContentReady` to true, which we
-					// `pWaitFor` before making the next request. All this is really
-					// doing is presenting the last partial message that we just set
-					// to complete.
+					// `pWaitFor` before making the next request.
 					presentAssistantMessage(this)
 				}
 
@@ -2845,7 +3000,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 				// Check if we have any content to process (text or tool uses)
 				const hasTextContent = assistantMessage.length > 0
-				const hasToolUses = this.assistantMessageContent.some((block) => block.type === "tool_use")
+				const hasToolUses = this.assistantMessageContent.some(
+					(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
+				)
 
 				if (hasTextContent || hasToolUses) {
 					// Display grounding sources to the user if they exist
@@ -2870,20 +3027,38 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					}
 
 					// Add tool_use blocks with their IDs for native protocol
-					const toolUseBlocks = this.assistantMessageContent.filter((block) => block.type === "tool_use")
-					for (const toolUse of toolUseBlocks) {
-						// Get the tool call ID that was stored during parsing
-						const toolCallId = (toolUse as any).id
-						if (toolCallId) {
-							// nativeArgs is already in the correct API format for all tools
-							const input = toolUse.nativeArgs || toolUse.params
+					// This handles both regular ToolUse and McpToolUse types
+					const toolUseBlocks = this.assistantMessageContent.filter(
+						(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
+					)
+					for (const block of toolUseBlocks) {
+						if (block.type === "mcp_tool_use") {
+							// McpToolUse already has the original tool name (e.g., "mcp_serverName_toolName")
+							// The arguments are the raw tool arguments (matching the simplified schema)
+							const mcpBlock = block as import("../../shared/tools").McpToolUse
+							if (mcpBlock.id) {
+								assistantContent.push({
+									type: "tool_use" as const,
+									id: mcpBlock.id,
+									name: mcpBlock.name, // Original dynamic name
+									input: mcpBlock.arguments, // Direct tool arguments
+								})
+							}
+						} else {
+							// Regular ToolUse
+							const toolUse = block as import("../../shared/tools").ToolUse
+							const toolCallId = toolUse.id
+							if (toolCallId) {
+								// nativeArgs is already in the correct API format for all tools
+								const input = toolUse.nativeArgs || toolUse.params
 
-							assistantContent.push({
-								type: "tool_use" as const,
-								id: toolCallId,
-								name: toolUse.name,
-								input,
-							})
+								assistantContent.push({
+									type: "tool_use" as const,
+									id: toolCallId,
+									name: toolUse.name,
+									input,
+								})
+							}
 						}
 					}
 
@@ -2917,7 +3092,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					// If the model did not tool use, then we need to tell it to
 					// either use a tool or attempt_completion.
-					const didToolUse = this.assistantMessageContent.some((block) => block.type === "tool_use")
+					const didToolUse = this.assistantMessageContent.some(
+						(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
+					)
 
 					if (!didToolUse) {
 						const modelInfo = this.api.getModel().info
@@ -2927,7 +3104,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						this.consecutiveMistakeCount++
 					}
 
-					if (this.userMessageContent.length > 0) {
+					// Push to stack if there's content OR if we're paused waiting for a subtask.
+					// When paused, we push an empty item so the loop continues to the pause check.
+					if (this.userMessageContent.length > 0 || this.isPaused) {
 						stack.push({
 							userContent: [...this.userMessageContent], // Create a copy to avoid mutation issues
 							includeFileDetails: false, // Subsequent iterations don't need file details
@@ -3143,6 +3322,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						.getConfiguration(Package.name)
 						.get<boolean>("newTaskRequireTodos", false),
 					toolProtocol,
+					isStealthModel: modelInfo?.isStealthModel,
 				},
 				undefined, // todoList
 				this.api.getModel().id,
@@ -3182,6 +3362,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				`Forcing truncation to ${FORCED_CONTEXT_REDUCTION_PERCENT}% of current context.`,
 		)
 
+		// Determine if we're using native tool protocol for proper message handling
+		const protocol = resolveToolProtocol(this.apiConfiguration, modelInfo)
+		const useNativeTools = isNativeProtocol(protocol)
+
+		// Send condenseTaskContextStarted to show in-progress indicator
+		await this.providerRef.deref()?.postMessageToWebview({ type: "condenseTaskContextStarted", text: this.taskId })
+
 		// Force aggressive truncation by keeping only 75% of the conversation history
 		const truncateResult = await manageContext({
 			messages: this.apiConversationHistory,
@@ -3195,6 +3382,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			taskId: this.taskId,
 			profileThresholds,
 			currentProfileId,
+			useNativeTools,
 		})
 
 		if (truncateResult.messages !== this.apiConversationHistory) {
@@ -3214,7 +3402,29 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				{ isNonInteractive: true } /* options */,
 				contextCondense,
 			)
+		} else if (truncateResult.truncationId) {
+			// Sliding window truncation occurred (fallback when condensing fails or is disabled)
+			const contextTruncation: ContextTruncation = {
+				truncationId: truncateResult.truncationId,
+				messagesRemoved: truncateResult.messagesRemoved ?? 0,
+				prevContextTokens: truncateResult.prevContextTokens,
+				newContextTokens: truncateResult.newContextTokensAfterTruncation ?? 0,
+			}
+			await this.say(
+				"sliding_window_truncation",
+				undefined /* text */,
+				undefined /* images */,
+				false /* partial */,
+				undefined /* checkpoint */,
+				undefined /* progressStatus */,
+				{ isNonInteractive: true } /* options */,
+				undefined /* contextCondense */,
+				contextTruncation,
+			)
 		}
+
+		// Notify webview that context management is complete (removes in-progress spinner)
+		await this.providerRef.deref()?.postMessageToWebview({ type: "condenseTaskContextResponse", text: this.taskId })
 	}
 
 	public async *attemptApiRequest(retryAttempt: number = 0): ApiStream {
@@ -3297,6 +3507,43 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Get the current profile ID using the helper method
 			const currentProfileId = this.getCurrentProfileId(state)
 
+			// Determine if we're using native tool protocol for proper message handling
+			const modelInfoForProtocol = this.api.getModel().info
+			const protocol = resolveToolProtocol(this.apiConfiguration, modelInfoForProtocol)
+			const useNativeTools = isNativeProtocol(protocol)
+
+			// Check if context management will likely run (threshold check)
+			// This allows us to show an in-progress indicator to the user
+			// We use the centralized willManageContext helper to avoid duplicating threshold logic
+			const lastMessage = this.apiConversationHistory[this.apiConversationHistory.length - 1]
+			const lastMessageContent = lastMessage?.content
+			let lastMessageTokens = 0
+			if (lastMessageContent) {
+				lastMessageTokens = Array.isArray(lastMessageContent)
+					? await this.api.countTokens(lastMessageContent)
+					: await this.api.countTokens([{ type: "text", text: lastMessageContent as string }])
+			}
+
+			const contextManagementWillRun = willManageContext({
+				totalTokens: contextTokens,
+				contextWindow,
+				maxTokens,
+				autoCondenseContext,
+				autoCondenseContextPercent,
+				profileThresholds,
+				currentProfileId,
+				lastMessageTokens,
+			})
+
+			// Send condenseTaskContextStarted BEFORE manageContext to show in-progress indicator
+			// This notification must be sent here (not earlier) because the early check uses stale token count
+			// (before user message is added to history), which could incorrectly skip showing the indicator
+			if (contextManagementWillRun && autoCondenseContext) {
+				await this.providerRef
+					.deref()
+					?.postMessageToWebview({ type: "condenseTaskContextStarted", text: this.taskId })
+			}
+
 			const truncateResult = await manageContext({
 				messages: this.apiConversationHistory,
 				totalTokens: contextTokens,
@@ -3311,6 +3558,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				condensingApiHandler,
 				profileThresholds,
 				currentProfileId,
+				useNativeTools,
 			})
 			if (truncateResult.messages !== this.apiConversationHistory) {
 				await this.overwriteApiConversationHistory(truncateResult.messages)
@@ -3318,8 +3566,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			if (truncateResult.error) {
 				await this.say("condense_context_error", truncateResult.error)
 			} else if (truncateResult.summary) {
-				const { summary, cost, prevContextTokens, newContextTokens = 0 } = truncateResult
-				const contextCondense: ContextCondense = { summary, cost, newContextTokens, prevContextTokens }
+				const { summary, cost, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
+				const contextCondense: ContextCondense = {
+					summary,
+					cost,
+					newContextTokens,
+					prevContextTokens,
+					condenseId,
+				}
 				await this.say(
 					"condense_context",
 					undefined /* text */,
@@ -3330,10 +3584,41 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					{ isNonInteractive: true } /* options */,
 					contextCondense,
 				)
+			} else if (truncateResult.truncationId) {
+				// Sliding window truncation occurred (fallback when condensing fails or is disabled)
+				const contextTruncation: ContextTruncation = {
+					truncationId: truncateResult.truncationId,
+					messagesRemoved: truncateResult.messagesRemoved ?? 0,
+					prevContextTokens: truncateResult.prevContextTokens,
+					newContextTokens: truncateResult.newContextTokensAfterTruncation ?? 0,
+				}
+				await this.say(
+					"sliding_window_truncation",
+					undefined /* text */,
+					undefined /* images */,
+					false /* partial */,
+					undefined /* checkpoint */,
+					undefined /* progressStatus */,
+					{ isNonInteractive: true } /* options */,
+					undefined /* contextCondense */,
+					contextTruncation,
+				)
+			}
+
+			// Notify webview that context management is complete (sets isCondensing = false)
+			// This removes the in-progress spinner and allows the completed result to show
+			if (contextManagementWillRun && autoCondenseContext) {
+				await this.providerRef
+					.deref()
+					?.postMessageToWebview({ type: "condenseTaskContextResponse", text: this.taskId })
 			}
 		}
 
-		const messagesSinceLastSummary = getMessagesSinceLastSummary(this.apiConversationHistory)
+		// Get the effective API history by filtering out condensed messages
+		// This allows non-destructive condensing where messages are tagged but not deleted,
+		// enabling accurate rewind operations while still sending condensed history to the API.
+		const effectiveHistory = getEffectiveApiHistory(this.apiConversationHistory)
+		const messagesSinceLastSummary = getMessagesSinceLastSummary(effectiveHistory)
 		const messagesWithoutImages = maybeRemoveImageBlocks(messagesSinceLastSummary, this.api)
 		const cleanConversationHistory = this.buildCleanConversationHistory(messagesWithoutImages as ApiMessage[])
 
@@ -3373,19 +3658,29 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				apiConfiguration,
 				maxReadFileLine: state?.maxReadFileLine ?? -1,
 				browserToolEnabled: state?.browserToolEnabled ?? true,
+				modelInfo,
 			})
 		}
+
+		// Parallel tool calls are disabled - feature is on hold
+		// Previously resolved from experiments.isEnabled(..., EXPERIMENT_IDS.MULTIPLE_NATIVE_TOOL_CALLS)
+		const parallelToolCallsEnabled = false
 
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode: mode,
 			taskId: this.taskId,
+			suppressPreviousResponseId: this.skipPrevResponseIdOnce,
 			// Include tools and tool protocol when using native protocol and model supports it
-			...(shouldIncludeTools ? { tools: allTools, tool_choice: "auto", toolProtocol } : {}),
+			...(shouldIncludeTools
+				? { tools: allTools, tool_choice: "auto", toolProtocol, parallelToolCalls: parallelToolCallsEnabled }
+				: {}),
 		}
 
 		// Create an AbortController to allow cancelling the request mid-stream
 		this.currentRequestAbortController = new AbortController()
 		const abortSignal = this.currentRequestAbortController.signal
+		// Reset the flag after using it
+		this.skipPrevResponseIdOnce = false
 
 		// The provider accepts reasoning items alongside standard messages; cast to the expected parameter type.
 		const stream = this.api.createMessage(
@@ -3532,17 +3827,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			if (finalDelay <= 0) return
 
 			// Build header text; fall back to error message if none provided
-			let headerText = header
-			if (!headerText) {
-				if (error?.error?.metadata?.raw) {
-					headerText = JSON.stringify(error.error.metadata.raw, null, 2)
-				} else if (error?.message) {
-					headerText = error.message
-				} else {
-					headerText = "Unknown error"
-				}
+			let headerText
+			if (error.status) {
+				// This sets the message as just the error code, for which
+				// ChatRow knows how to handle and use an i18n'd error string
+				// In development, hardcode headerText to an HTTP status code to check it
+				headerText = error.status
+			} else if (error?.message) {
+				headerText = error.message
+			} else {
+				headerText = "Unknown error"
 			}
-			headerText = headerText ? `${headerText}\n\n` : ""
+
+			headerText = headerText ? `${headerText}\n` : ""
 
 			// Show countdown timer with exponential backoff
 			for (let i = finalDelay; i > 0; i--) {
@@ -3551,21 +3848,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					throw new Error(`[Task#${this.taskId}] Aborted during retry countdown`)
 				}
 
-				await this.say(
-					"api_req_retry_delayed",
-					`${headerText}Retry attempt ${retryAttempt + 1}\nRetrying in ${i} seconds...`,
-					undefined,
-					true,
-				)
+				await this.say("api_req_retry_delayed", `${headerText}\n↻ ${i}s...`, undefined, true)
 				await delay(1000)
 			}
 
-			await this.say(
-				"api_req_retry_delayed",
-				`${headerText}Retry attempt ${retryAttempt + 1}\nRetrying now...`,
-				undefined,
-				false,
-			)
+			await this.say("api_req_retry_delayed", headerText, undefined, false)
 		} catch (err) {
 			console.error("Exponential backoff failed:", err)
 		}
@@ -3795,6 +4082,35 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	public get cwd() {
 		return this.workspacePath
+	}
+
+	/**
+	 * Provides convenient access to high-level message operations.
+	 * Uses lazy initialization - the MessageManager is only created when first accessed.
+	 * Subsequent accesses return the same cached instance.
+	 *
+	 * ## Important: Single Coordination Point
+	 *
+	 * **All MessageManager operations must go through this getter** rather than
+	 * instantiating `new MessageManager(task)` directly. This ensures:
+	 * - A single shared instance for consistent behavior
+	 * - Centralized coordination of all rewind/message operations
+	 * - Ability to add internal state or instrumentation in the future
+	 *
+	 * @example
+	 * ```typescript
+	 * // Correct: Use the getter
+	 * await task.messageManager.rewindToTimestamp(ts)
+	 *
+	 * // Incorrect: Do NOT create new instances directly
+	 * // const manager = new MessageManager(task) // Don't do this!
+	 * ```
+	 */
+	get messageManager(): MessageManager {
+		if (!this._messageManager) {
+			this._messageManager = new MessageManager(this)
+		}
+		return this._messageManager
 	}
 
 	/**

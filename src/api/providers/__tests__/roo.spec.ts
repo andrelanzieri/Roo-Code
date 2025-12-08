@@ -101,6 +101,27 @@ vitest.mock("../../providers/fetchers/modelCache", () => ({
 					supportsPromptCache: true,
 					inputPrice: 0,
 					outputPrice: 0,
+					defaultToolProtocol: "native",
+				},
+				"minimax/minimax-m2:free": {
+					maxTokens: 32_768,
+					contextWindow: 1_000_000,
+					supportsImages: false,
+					supportsPromptCache: true,
+					supportsNativeTools: true,
+					inputPrice: 0.15,
+					outputPrice: 0.6,
+					defaultToolProtocol: "native",
+				},
+				"anthropic/claude-haiku-4.5": {
+					maxTokens: 8_192,
+					contextWindow: 200_000,
+					supportsImages: true,
+					supportsPromptCache: true,
+					supportsNativeTools: true,
+					inputPrice: 0.8,
+					outputPrice: 4,
+					defaultToolProtocol: "native",
 				},
 			}
 		}
@@ -286,7 +307,11 @@ describe("RooHandler", () => {
 						expect.objectContaining({ role: "user", content: "Second message" }),
 					]),
 				}),
-				undefined,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Roo-App-Version": expect.any(String),
+					}),
+				}),
 			)
 		})
 	})
@@ -402,6 +427,28 @@ describe("RooHandler", () => {
 				expect(modelInfo.info.contextWindow).toBeDefined()
 			}
 		})
+
+		it("should have defaultToolProtocol: native for all roo provider models", () => {
+			// Test that all models have defaultToolProtocol: native
+			const testModels = ["minimax/minimax-m2:free", "anthropic/claude-haiku-4.5", "xai/grok-code-fast-1"]
+			for (const modelId of testModels) {
+				const handlerWithModel = new RooHandler({ apiModelId: modelId })
+				const modelInfo = handlerWithModel.getModel()
+				expect(modelInfo.id).toBe(modelId)
+				expect((modelInfo.info as any).defaultToolProtocol).toBe("native")
+			}
+		})
+
+		it("should return cached model info with settings applied from API", () => {
+			const handlerWithMinimax = new RooHandler({
+				apiModelId: "minimax/minimax-m2:free",
+			})
+			const modelInfo = handlerWithMinimax.getModel()
+			// The settings from API should already be applied in the cached model info
+			expect(modelInfo.info.supportsNativeTools).toBe(true)
+			expect(modelInfo.info.inputPrice).toBe(0.15)
+			expect(modelInfo.info.outputPrice).toBe(0.6)
+		})
 	})
 
 	describe("temperature and model configuration", () => {
@@ -416,7 +463,11 @@ describe("RooHandler", () => {
 				expect.objectContaining({
 					temperature: 0.7,
 				}),
-				undefined,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Roo-App-Version": expect.any(String),
+					}),
+				}),
 			)
 		})
 
@@ -434,7 +485,11 @@ describe("RooHandler", () => {
 				expect.objectContaining({
 					temperature: 0.9,
 				}),
-				undefined,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Roo-App-Version": expect.any(String),
+					}),
+				}),
 			)
 		})
 
@@ -519,7 +574,11 @@ describe("RooHandler", () => {
 					stream_options: { include_usage: true },
 					reasoning: { enabled: false },
 				}),
-				undefined,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Roo-App-Version": expect.any(String),
+					}),
+				}),
 			)
 		})
 
@@ -537,7 +596,11 @@ describe("RooHandler", () => {
 				expect.objectContaining({
 					reasoning: { enabled: false },
 				}),
-				undefined,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Roo-App-Version": expect.any(String),
+					}),
+				}),
 			)
 		})
 
@@ -555,7 +618,11 @@ describe("RooHandler", () => {
 				expect.objectContaining({
 					reasoning: { enabled: true, effort: "low" },
 				}),
-				undefined,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Roo-App-Version": expect.any(String),
+					}),
+				}),
 			)
 		})
 
@@ -573,7 +640,11 @@ describe("RooHandler", () => {
 				expect.objectContaining({
 					reasoning: { enabled: true, effort: "medium" },
 				}),
-				undefined,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Roo-App-Version": expect.any(String),
+					}),
+				}),
 			)
 		})
 
@@ -591,7 +662,11 @@ describe("RooHandler", () => {
 				expect.objectContaining({
 					reasoning: { enabled: true, effort: "high" },
 				}),
-				undefined,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Roo-App-Version": expect.any(String),
+					}),
+				}),
 			)
 		})
 
@@ -626,7 +701,11 @@ describe("RooHandler", () => {
 				expect.objectContaining({
 					reasoning: { enabled: false },
 				}),
-				undefined,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						"X-Roo-App-Version": expect.any(String),
+					}),
+				}),
 			)
 		})
 	})
