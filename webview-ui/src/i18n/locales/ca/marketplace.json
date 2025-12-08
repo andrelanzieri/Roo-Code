@@ -156,7 +156,7 @@
 		},
 		"command": {
 			"title": "Eliminar comanda Slash",
-			"message": "Estàs segur que vols eliminar la comanda slash \"{{commandName}}\"?"
+			"message": "Estàs segur que vols eliminar la comanda Slash \"{{commandName}}\"?"
 		},
 		"cancel": "Cancel·lar",
 		"confirm": "Eliminar"
