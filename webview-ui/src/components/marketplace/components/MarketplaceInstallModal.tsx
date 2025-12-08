@@ -246,7 +246,7 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 								{item.type === "mcp"
 									? t("marketplace:install.whatNextMcp")
 									: item.type === "command"
-										? t("marketplace:install.whatNextCommand")
+										? t("marketplace:install.whatNextCommand", { name: item.id })
 										: t("marketplace:install.whatNextMode")}
 							</p>
 						</div>

@@ -12,6 +12,7 @@ import { GlobalFileNames } from "../../shared/globalFileNames"
 import { ensureSettingsDirectoryExists } from "../../utils/globalContext"
 import { t } from "../../i18n"
 import type { CustomModesManager } from "../../core/config/CustomModesManager"
+import { getGlobalRooDirectory } from "../roo-config"
 
 import { RemoteConfigLoader } from "./RemoteConfigLoader"
 import { SimpleInstaller } from "./SimpleInstaller"
@@ -345,7 +346,7 @@ export class MarketplaceManager {
 			}
 
 			// Check global commands
-			const globalCommandsDir = path.join(globalSettingsPath, "commands")
+			const globalCommandsDir = path.join(getGlobalRooDirectory(), "commands")
 			try {
 				const entries = await fs.readdir(globalCommandsDir, { withFileTypes: true })
 				for (const entry of entries) {
