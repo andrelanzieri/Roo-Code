@@ -766,7 +766,7 @@ export class NativeToolCallParser {
 							file_path: args.file_path,
 							old_string: args.old_string,
 							new_string: args.new_string,
-						} as NativeArgsFor<TName>
+						} as any
 					}
 					break
 
