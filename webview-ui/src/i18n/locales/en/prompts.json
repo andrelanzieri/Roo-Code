@@ -14,7 +14,9 @@
 	},
 	"apiConfiguration": {
 		"title": "API Configuration",
-		"select": "Select which API configuration to use for this mode"
+		"select": "Select which API configuration to use for this mode",
+		"useCurrentConfig": "Use currently selected API configuration",
+		"description": "You can select an API configuration to always use for this mode, or just use whatever is currently selected"
 	},
 	"tools": {
 		"title": "Available Tools",

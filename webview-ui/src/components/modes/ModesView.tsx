@@ -70,11 +70,11 @@ const ModesView = () => {
 	const {
 		customModePrompts,
 		listApiConfigMeta,
-		currentApiConfigName,
 		mode,
 		customInstructions,
 		setCustomInstructions,
 		customModes,
+		modeApiConfigs,
 	} = useExtensionState()
 
 	// Use a local state to track the visually active mode
@@ -910,32 +910,42 @@ const ModesView = () => {
 						)}
 					</div>
 
-					{/* API Configuration - Moved Here */}
+					{/* API Configuration - Per Mode */}
 					<div className="mb-3">
 						<div className="font-bold mb-1">{t("prompts:apiConfiguration.title")}</div>
-						<div className="text-sm text-vscode-descriptionForeground mb-2">
-							{t("prompts:apiConfiguration.select")}
-						</div>
 						<div className="mb-2">
 							<Select
-								value={currentApiConfigName}
+								value={modeApiConfigs?.[visualMode] || "-"}
 								onValueChange={(value) => {
+									const newConfigId = value === "-" ? "" : value
 									vscode.postMessage({
-										type: "loadApiConfiguration",
-										text: value,
+										type: "updateSettings",
+										updatedSettings: {
+											modeApiConfigs: {
+												...modeApiConfigs,
+												[visualMode]: newConfigId,
+											},
+										},
 									})
 								}}>
-								<SelectTrigger className="w-full">
-									<SelectValue placeholder={t("settings:common.select")} />
+								<SelectTrigger className="w-full" data-testid="mode-api-config-select">
+									<SelectValue placeholder={t("prompts:apiConfiguration.useCurrentConfig")} />
 								</SelectTrigger>
 								<SelectContent>
+									<SelectItem value="-">{t("prompts:apiConfiguration.useCurrentConfig")}</SelectItem>
 									{(listApiConfigMeta || []).map((config) => (
-										<SelectItem key={config.id} value={config.name}>
+										<SelectItem
+											key={config.id}
+											value={config.id}
+											data-testid={`${config.id}-option`}>
 											{config.name}
 										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
+						</div>
+						<div className="text-sm text-vscode-descriptionForeground">
+							{t("prompts:apiConfiguration.description")}
 						</div>
 					</div>
 				</div>
