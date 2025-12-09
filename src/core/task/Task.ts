@@ -2290,6 +2290,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				let inputTokens = 0
 				let outputTokens = 0
 				let totalCost: number | undefined
+				let firstChunkReceived = false
+				let streamStartTime = Date.now()
 
 				// We can't use `api_req_finished` anymore since it's a unique case
 				// where it could come after a streaming message (i.e. in the middle
@@ -2437,6 +2439,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							// Sometimes chunk is undefined, no idea that can cause
 							// it, but this workaround seems to fix it.
 							continue
+						}
+
+						// Track that we received the first chunk successfully
+						if (!firstChunkReceived) {
+							firstChunkReceived = true
+							const elapsedMs = Date.now() - streamStartTime
+							console.log(
+								`[Task#${this.taskId}.${this.instanceId}] First chunk received after ${elapsedMs}ms for model ${cachedModelId}`,
+							)
 						}
 
 						switch (chunk.type) {
@@ -2917,9 +2928,32 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						// Determine cancellation reason
 						const cancelReason: ClineApiReqCancelReason = this.abort ? "user_cancelled" : "streaming_failed"
 
-						const streamingFailedMessage = this.abort
-							? undefined
-							: (error.message ?? JSON.stringify(serializeError(error), null, 2))
+						// Enhanced error message with model and timing information
+						let streamingFailedMessage = this.abort ? undefined : error.message
+						if (!this.abort && error) {
+							const errorDetails = {
+								message: error.message,
+								model: cachedModelId,
+								firstChunkReceived,
+								streamDuration: Date.now() - streamStartTime,
+								hasThinkingCapability: streamModelInfo?.maxThinkingTokens ? true : false,
+								toolProtocol: streamProtocol,
+							}
+
+							// Log detailed error information for debugging
+							console.error(
+								`[Task#${this.taskId}.${this.instanceId}] Stream failed:`,
+								errorDetails,
+								error,
+							)
+
+							// Create user-friendly error message
+							if (!firstChunkReceived) {
+								streamingFailedMessage = `API request failed before receiving any response from ${cachedModelId}. ${error.message || "Unknown error"}`
+							} else {
+								streamingFailedMessage = `Stream interrupted after ${Math.round((Date.now() - streamStartTime) / 1000)}s. ${error.message || "Unknown error"}`
+							}
+						}
 
 						// Clean up partial state
 						await abortStream(cancelReason, streamingFailedMessage)
@@ -3794,6 +3828,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					errorMsg = "Unknown error"
 				}
 
+				// Model-specific retry strategy for thinking models
+				// Thinking models may need longer delays due to their processing requirements
+				const isThinkingModel = modelInfo.maxThinkingTokens ? true : false
+				if (isThinkingModel && retryAttempt === 0) {
+					console.log(
+						`[Task#${this.taskId}.${this.instanceId}] First-chunk failure for thinking model ${this.api.getModel().id}, applying extended delay`,
+					)
+				}
+
 				// Apply shared exponential backoff and countdown UX
 				await this.backoffAndAnnounce(retryAttempt, error, errorMsg)
 
@@ -3848,8 +3891,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const state = await this.providerRef.deref()?.getState()
 			const baseDelay = state?.requestDelaySeconds || 5
 
+			// Add jitter to avoid thundering herd - random factor between 0.5 and 1.5
+			const jitterFactor = 0.5 + Math.random()
 			let exponentialDelay = Math.min(
-				Math.ceil(baseDelay * Math.pow(2, retryAttempt)),
+				Math.ceil(baseDelay * Math.pow(2, retryAttempt) * jitterFactor),
 				MAX_EXPONENTIAL_BACKOFF_SECONDS,
 			)
 
@@ -3861,7 +3906,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				rateLimitDelay = Math.ceil(Math.min(rateLimit, Math.max(0, rateLimit * 1000 - elapsed) / 1000))
 			}
 
-			// Prefer RetryInfo on 429 if present
+			// Prefer RetryInfo on 429 if present (for Google APIs)
 			if (error?.status === 429) {
 				const retryInfo = error?.errorDetails?.find(
 					(d: any) => d["@type"] === "type.googleapis.com/google.rpc.RetryInfo",
@@ -3872,8 +3917,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 			}
 
+			// Check for Retry-After header (standard HTTP)
+			if (error?.headers?.["retry-after"]) {
+				const retryAfter = parseInt(error.headers["retry-after"])
+				if (!isNaN(retryAfter)) {
+					exponentialDelay = Math.max(exponentialDelay, retryAfter)
+				}
+			}
+
 			const finalDelay = Math.max(exponentialDelay, rateLimitDelay)
 			if (finalDelay <= 0) return
+
+			// Log retry attempt for debugging
+			console.log(
+				`[Task#${this.taskId}.${this.instanceId}] Retry attempt ${retryAttempt + 1} with ${finalDelay}s delay (jitter: ${jitterFactor.toFixed(2)})`,
+			)
 
 			// Build header text; fall back to error message if none provided
 			let headerText

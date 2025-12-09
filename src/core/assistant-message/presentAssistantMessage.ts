@@ -720,14 +720,27 @@ export async function presentAssistantMessage(cline: Task) {
 					// This prevents the stream from being interrupted with "Response interrupted by tool use result"
 					// which would cause the extension to appear to hang
 					const errorContent = formatResponse.toolError(error.message, toolProtocol)
+
+					// Log validation error with context for debugging
+					console.warn(`[presentAssistantMessage] Tool validation failed for ${block.name}:`, {
+						toolName: block.name,
+						toolCallId,
+						protocol: toolProtocol,
+						error: error.message,
+						mode,
+					})
+
 					if (toolProtocol === TOOL_PROTOCOL.NATIVE && toolCallId) {
 						// For native protocol, push tool_result directly without setting didAlreadyUseTool
+						// This allows the stream to continue processing other tools
 						cline.userMessageContent.push({
 							type: "tool_result",
 							tool_use_id: toolCallId,
 							content: typeof errorContent === "string" ? errorContent : "(validation error)",
 							is_error: true,
 						} as Anthropic.ToolResultBlockParam)
+						// Record the error but don't set didAlreadyUseTool to allow stream to continue
+						hasToolResult = true
 					} else {
 						// For XML protocol, use the standard pushToolResult
 						pushToolResult(errorContent)
