@@ -409,7 +409,6 @@
 				},
 				"roo-cline.enableCodebaseIndexing": {
 					"type": "boolean",
-					"default": false,
 					"description": "%settings.enableCodebaseIndexing.description%",
 					"scope": "resource"
 				},
