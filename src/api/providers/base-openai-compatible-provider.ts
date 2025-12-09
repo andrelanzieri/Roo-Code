@@ -129,6 +129,8 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		)
 
 		let lastUsage: OpenAI.CompletionUsage | undefined
+		let thinkingContent = ""
+		let hasRegularContent = false
 
 		for await (const chunk of stream) {
 			// Check for provider-specific error responses (e.g., MiniMax base_resp)
@@ -143,6 +145,13 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 			if (delta?.content) {
 				for (const processedChunk of matcher.update(delta.content)) {
+					// Track if we have regular content outside thinking tags
+					if (processedChunk.type === "text") {
+						hasRegularContent = true
+					} else if (processedChunk.type === "reasoning") {
+						// Accumulate thinking content for later processing
+						thinkingContent += processedChunk.text
+					}
 					yield processedChunk
 				}
 			}
@@ -152,6 +161,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 					if (key in delta) {
 						const reasoning_content = ((delta as any)[key] as string | undefined) || ""
 						if (reasoning_content?.trim()) {
+							thinkingContent += reasoning_content
 							yield { type: "reasoning", text: reasoning_content }
 						}
 						break
@@ -161,6 +171,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 			// Emit raw tool call chunks - NativeToolCallParser handles state management
 			if (delta?.tool_calls) {
+				hasRegularContent = true // Tool calls count as regular content
 				for (const toolCall of delta.tool_calls) {
 					yield {
 						type: "tool_call_partial",
@@ -183,8 +194,146 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 		// Process any remaining content
 		for (const processedChunk of matcher.final()) {
+			if (processedChunk.type === "text") {
+				hasRegularContent = true
+			} else if (processedChunk.type === "reasoning") {
+				thinkingContent += processedChunk.text
+			}
 			yield processedChunk
 		}
+
+		// If we only have thinking content and no regular content/tool calls,
+		// try to extract tool calls from the thinking content
+		if (!hasRegularContent && thinkingContent) {
+			yield* this.extractToolCallsFromThinking(thinkingContent)
+		}
+	}
+
+	/**
+	 * Extract tool calls from thinking content when no regular content exists.
+	 * This handles cases where models like kimi-k2-thinking embed tool calls
+	 * within <think> tags.
+	 */
+	private *extractToolCallsFromThinking(thinkingContent: string): Generator<any> {
+		// Look for tool call patterns in the thinking content
+		// Common patterns include XML-like tags for tool calls
+		const toolCallPatterns = [
+			// Pattern 1: <tool_name>...</tool_name>
+			/<(\w+)>([\s\S]*?)<\/\1>/g,
+			// Pattern 2: <tool_name param="value" />
+			/<(\w+)\s+([^>]+)\/>/g,
+		]
+
+		let toolCallIndex = 0
+
+		for (const pattern of toolCallPatterns) {
+			let match
+			while ((match = pattern.exec(thinkingContent)) !== null) {
+				const toolName = match[1]
+				const content = match[2] || ""
+
+				// Check if this looks like a known tool call
+				if (this.isKnownTool(toolName)) {
+					// Generate a unique ID for this tool call
+					const toolCallId = `tool_${Date.now()}_${toolCallIndex}`
+
+					// Try to parse arguments from the content
+					let args = {}
+					try {
+						// First try to parse as JSON
+						if (content.trim().startsWith("{")) {
+							args = JSON.parse(content)
+						} else {
+							// Try to extract structured data from the content
+							args = this.parseToolArguments(toolName, content)
+						}
+					} catch (e) {
+						// If parsing fails, pass the raw content
+						args = { content: content.trim() }
+					}
+
+					// Emit tool call partial chunks
+					yield {
+						type: "tool_call_partial",
+						index: toolCallIndex,
+						id: toolCallId,
+						name: toolName,
+						arguments: JSON.stringify(args),
+					}
+
+					toolCallIndex++
+				}
+			}
+		}
+	}
+
+	/**
+	 * Check if a string matches a known tool name.
+	 */
+	private isKnownTool(name: string): boolean {
+		const knownTools = [
+			"read_file",
+			"write_to_file",
+			"apply_diff",
+			"execute_command",
+			"list_files",
+			"search_files",
+			"ask_followup_question",
+			"attempt_completion",
+			"update_todo_list",
+			"list_code_definition_names",
+			"use_mcp_tool",
+			"switch_mode",
+			"new_task",
+			"fetch_instructions",
+		]
+		return knownTools.includes(name.toLowerCase())
+	}
+
+	/**
+	 * Parse tool arguments from content string.
+	 */
+	private parseToolArguments(toolName: string, content: string): any {
+		// Try to extract structured arguments from content
+		const args: any = {}
+
+		// Look for common parameter patterns
+		// Pattern: <param>value</param>
+		const paramPattern = /<(\w+)>([\s\S]*?)<\/\1>/g
+		let paramMatch
+		while ((paramMatch = paramPattern.exec(content)) !== null) {
+			const paramName = paramMatch[1]
+			const paramValue = paramMatch[2]
+			args[paramName] = paramValue
+		}
+
+		// If no structured params found, use content as the main parameter
+		if (Object.keys(args).length === 0) {
+			if (content.trim()) {
+				// Map to the primary parameter for each tool
+				const primaryParams: Record<string, string> = {
+					read_file: "files",
+					write_to_file: "content",
+					apply_diff: "diff",
+					execute_command: "command",
+					list_files: "path",
+					search_files: "regex",
+					ask_followup_question: "question",
+					attempt_completion: "result",
+					update_todo_list: "todos",
+				}
+
+				const primaryParam = primaryParams[toolName.toLowerCase()]
+				if (primaryParam) {
+					args[primaryParam] = content.trim()
+				} else {
+					// Fallback: use 'content' as a generic parameter name
+					args["content"] = content.trim()
+				}
+			}
+		}
+
+		return args
 	}
 
 	protected processUsageMetrics(usage: any, modelInfo?: any): ApiStreamUsageChunk {
