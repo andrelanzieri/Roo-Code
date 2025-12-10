@@ -38,7 +38,7 @@ import { Markdown } from "./Markdown"
 import { CommandExecution } from "./CommandExecution"
 import { CommandExecutionError } from "./CommandExecutionError"
 import { AutoApprovedRequestLimitWarning } from "./AutoApprovedRequestLimitWarning"
-import { CondenseContextErrorRow, CondensingContextRow, ContextCondenseRow } from "./ContextCondenseRow"
+import { InProgressRow, CondensationResultRow, CondensationErrorRow, TruncationResultRow } from "./context-management"
 import CodebaseSearchResultsDisplay from "./CodebaseSearchResultsDisplay"
 import { appendImages } from "@src/utils/imageUtils"
 import { McpExecution } from "./McpExecution"
@@ -162,7 +162,7 @@ export const ChatRowContent = ({
 	onBatchFileResponse,
 	isFollowUpAnswered,
 }: ChatRowContentProps) => {
-	const { t } = useTranslation()
+	const { t, i18n } = useTranslation()
 
 	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration, clineMessages } = useExtensionState()
 	const { info: model } = useSelectedModel(apiConfiguration)
@@ -536,7 +536,6 @@ export const ChatRowContent = ({
 			}
 			case "updateTodoList" as any: {
 				const todos = (tool as any).todos || []
-
 				// Get previous todos from the latest todos in the task context
 				const previousTodos = getPreviousTodos(clineMessages, message.ts)
 
@@ -990,13 +989,14 @@ export const ChatRowContent = ({
 						</div>
 						{message.type === "ask" && (
 							<div className="pl-6">
-								<CodeAccordian
-									path={tool.path}
-									code={tool.content}
-									language="text"
-									isExpanded={isExpanded}
-									onToggleExpand={handleToggleExpand}
-								/>
+								<ToolUseBlock>
+									<div className="p-2">
+										<div className="mb-2 break-words">{tool.content}</div>
+										<div className="flex items-center gap-1 text-xs text-vscode-descriptionForeground">
+											{tool.path}
+										</div>
+									</div>
+								</ToolUseBlock>
 							</div>
 						)}
 					</>
@@ -1099,24 +1099,55 @@ export const ChatRowContent = ({
 								<ErrorRow
 									type="api_failure"
 									message={apiRequestFailedMessage || apiReqStreamingFailedMessage || ""}
-									additionalContent={
-										apiRequestFailedMessage?.toLowerCase().includes("powershell") ? (
-											<>
-												<br />
-												<br />
-												{t("chat:powershell.issues")}{" "}
-												<a
-													href="https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22"
-													style={{ color: "inherit", textDecoration: "underline" }}>
-													troubleshooting guide
-												</a>
-												.
-											</>
-										) : undefined
+									docsURL={
+										apiRequestFailedMessage?.toLowerCase().includes("powershell")
+											? "https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22"
+											: undefined
 									}
 								/>
 							)}
 						</>
+					)
+				case "api_req_retry_delayed":
+					let body = t(`chat:apiRequest.failed`)
+					let retryInfo, code, docsURL
+					if (message.text !== undefined) {
+						// Try to show richer error message for that code, if available
+						const potentialCode = parseInt(message.text.substring(0, 3))
+						if (potentialCode >= 400) {
+							code = potentialCode
+							const stringForError = `chat:apiRequest.errorMessage.${code}`
+							if (i18n.exists(stringForError)) {
+								body = t(stringForError)
+								// Fill this out in upcoming PRs
+								// Do not remove this
+								// switch(code) {
+								// 	case ERROR_CODE:
+								// 		docsURL = ???
+								// 		break;
+								// }
+							} else {
+								body = t("chat:apiRequest.errorMessage.unknown")
+								docsURL = "mailto:support@roocode.com?subject=Unknown API Error"
+							}
+							retryInfo = (
+								<p className="mt-1 font-light text-xs text-vscode-errorForeground/80 cursor-default">
+									{message.text.substring(4)}
+								</p>
+							)
+						} else {
+							// Non-HTTP-status-code error message - display the actual error text
+							body = message.text
+						}
+					}
+					return (
+						<ErrorRow
+							type="api_req_retry_delayed"
+							code={code}
+							message={body}
+							docsURL={docsURL}
+							additionalContent={retryInfo}
+						/>
 					)
 				case "api_req_finished":
 					return null // we should never see this message type
@@ -1253,12 +1284,27 @@ export const ChatRowContent = ({
 						/>
 					)
 				case "condense_context":
+					// In-progress state
 					if (message.partial) {
-						return <CondensingContextRow />
+						return <InProgressRow eventType="condense_context" />
 					}
-					return message.contextCondense ? <ContextCondenseRow {...message.contextCondense} /> : null
+					// Completed state
+					if (message.contextCondense) {
+						return <CondensationResultRow data={message.contextCondense} />
+					}
+					return null
 				case "condense_context_error":
-					return <CondenseContextErrorRow errorText={message.text} />
+					return <CondensationErrorRow errorText={message.text} />
+				case "sliding_window_truncation":
+					// In-progress state
+					if (message.partial) {
+						return <InProgressRow eventType="sliding_window_truncation" />
+					}
+					// Completed state
+					if (message.contextTruncation) {
+						return <TruncationResultRow data={message.contextTruncation} />
+					}
+					return null
 				case "codebase_search_result":
 					let parsed: {
 						content: {
@@ -1381,6 +1427,10 @@ export const ChatRowContent = ({
 							<ImageBlock imageUri={imageInfo.imageUri} imagePath={imageInfo.imagePath} />
 						</div>
 					)
+				case "browser_action":
+				case "browser_action_result":
+					// Handled by BrowserSessionRow; prevent raw JSON (action/result) from rendering here
+					return null
 				default:
 					return (
 						<>

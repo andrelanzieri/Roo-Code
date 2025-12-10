@@ -159,6 +159,9 @@ describe("OpenAiNativeHandler", () => {
 						},
 					],
 				}),
+				expect.objectContaining({
+					signal: expect.any(Object),
+				}),
 			)
 		})
 
@@ -202,7 +205,7 @@ describe("OpenAiNativeHandler", () => {
 				openAiNativeApiKey: "test-api-key",
 			})
 			const modelInfo = handlerWithoutModel.getModel()
-			expect(modelInfo.id).toBe("gpt-5-2025-08-07") // Default model
+			expect(modelInfo.id).toBe("gpt-5.1") // Default model
 			expect(modelInfo.info).toBeDefined()
 		})
 	})
@@ -247,7 +250,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-2025-08-07",
+				apiModelId: "gpt-5.1",
 			})
 
 			const stream = handler.createMessage(systemPrompt, messages)
@@ -271,7 +274,7 @@ describe("OpenAiNativeHandler", () => {
 			)
 			const body1 = (mockFetch.mock.calls[0][1] as any).body as string
 			const parsedBody = JSON.parse(body1)
-			expect(parsedBody.model).toBe("gpt-5-2025-08-07")
+			expect(parsedBody.model).toBe("gpt-5.1")
 			expect(parsedBody.instructions).toBe("You are a helpful assistant.")
 			// Now using structured format with content arrays (no system prompt in input; it's provided via `instructions`)
 			expect(parsedBody.input).toEqual([
@@ -399,7 +402,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-2025-08-07",
+				apiModelId: "gpt-5.1",
 				verbosity: "low", // Set verbosity through options
 			})
 
@@ -442,7 +445,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-2025-08-07",
+				apiModelId: "gpt-5.1",
 				reasoningEffort: "minimal" as any, // GPT-5 supports minimal
 			})
 
@@ -459,6 +462,84 @@ describe("OpenAiNativeHandler", () => {
 					body: expect.stringContaining('"effort":"minimal"'),
 				}),
 			)
+		})
+
+		it("should support xhigh reasoning effort for GPT-5.1 Codex Max", async () => {
+			// Mock fetch for Responses API
+			const mockFetch = vitest.fn().mockResolvedValue({
+				ok: true,
+				body: new ReadableStream({
+					start(controller) {
+						controller.enqueue(
+							new TextEncoder().encode(
+								'data: {"type":"response.output_item.added","item":{"type":"text","text":"XHigh effort"}}\n\n',
+							),
+						)
+						controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+						controller.close()
+					},
+				}),
+			})
+			global.fetch = mockFetch as any
+
+			// Mock SDK to fail
+			mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+			handler = new OpenAiNativeHandler({
+				...mockOptions,
+				apiModelId: "gpt-5.1-codex-max",
+				reasoningEffort: "xhigh",
+			})
+
+			const stream = handler.createMessage(systemPrompt, messages)
+			for await (const _chunk of stream) {
+				// drain
+			}
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				"https://api.openai.com/v1/responses",
+				expect.objectContaining({
+					body: expect.stringContaining('"effort":"xhigh"'),
+				}),
+			)
+		})
+
+		it("should omit reasoning when selection is 'disable'", async () => {
+			// Mock fetch for Responses API
+			const mockFetch = vitest.fn().mockResolvedValue({
+				ok: true,
+				body: new ReadableStream({
+					start(controller) {
+						controller.enqueue(
+							new TextEncoder().encode(
+								'data: {"type":"response.output_item.added","item":{"type":"text","text":"No reasoning"}}\n\n',
+							),
+						)
+						controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"))
+						controller.close()
+					},
+				}),
+			})
+			global.fetch = mockFetch as any
+
+			// Mock SDK to fail
+			mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
+
+			const handler = new OpenAiNativeHandler({
+				...mockOptions,
+				apiModelId: "gpt-5.1",
+				reasoningEffort: "disable" as any,
+			})
+
+			const stream = handler.createMessage(systemPrompt, messages)
+			for await (const _ of stream) {
+				// drain
+			}
+
+			const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
+			const parsed = JSON.parse(bodyStr)
+			expect(parsed.reasoning).toBeUndefined()
+			expect(parsed.include).toBeUndefined()
 		})
 
 		it("should support low reasoning effort for GPT-5", async () => {
@@ -484,7 +565,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-2025-08-07",
+				apiModelId: "gpt-5.1",
 				reasoningEffort: "low",
 			})
 
@@ -503,7 +584,7 @@ describe("OpenAiNativeHandler", () => {
 			)
 			const body2 = (mockFetch.mock.calls[0][1] as any).body as string
 			const parsedBody = JSON.parse(body2)
-			expect(parsedBody.model).toBe("gpt-5-2025-08-07")
+			expect(parsedBody.model).toBe("gpt-5.1")
 			expect(parsedBody.reasoning?.effort).toBe("low")
 			expect(parsedBody.reasoning?.summary).toBe("auto")
 			expect(parsedBody.text?.verbosity).toBe("medium")
@@ -535,7 +616,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-2025-08-07",
+				apiModelId: "gpt-5.1",
 				verbosity: "high",
 				reasoningEffort: "minimal" as any,
 			})
@@ -555,7 +636,7 @@ describe("OpenAiNativeHandler", () => {
 			)
 			const body3 = (mockFetch.mock.calls[0][1] as any).body as string
 			const parsedBody = JSON.parse(body3)
-			expect(parsedBody.model).toBe("gpt-5-2025-08-07")
+			expect(parsedBody.model).toBe("gpt-5.1")
 			expect(parsedBody.reasoning?.effort).toBe("minimal")
 			expect(parsedBody.reasoning?.summary).toBe("auto")
 			expect(parsedBody.text?.verbosity).toBe("high")
@@ -613,7 +694,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-2025-08-07",
+				apiModelId: "gpt-5.1",
 			})
 
 			const stream = handler.createMessage(systemPrompt, messages)
@@ -669,7 +750,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-2025-08-07",
+				apiModelId: "gpt-5.1",
 			})
 
 			const stream = handler.createMessage(systemPrompt, messages)
@@ -714,7 +795,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-2025-08-07",
+				apiModelId: "gpt-5.1",
 			})
 
 			const stream = handler.createMessage(systemPrompt, messages)
@@ -755,7 +836,7 @@ describe("OpenAiNativeHandler", () => {
 
 			const gpt5Handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-2025-08-07",
+				apiModelId: "gpt-5.1",
 			})
 
 			const stream = gpt5Handler.createMessage(systemPrompt, messages, {
@@ -800,7 +881,7 @@ describe("OpenAiNativeHandler", () => {
 
 				handler = new OpenAiNativeHandler({
 					...mockOptions,
-					apiModelId: "gpt-5-2025-08-07",
+					apiModelId: "gpt-5.1",
 				})
 
 				const stream = handler.createMessage(systemPrompt, messages)
@@ -850,7 +931,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 		mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
 
 		const handler = new OpenAiNativeHandler({
-			apiModelId: "gpt-5-2025-08-07",
+			apiModelId: "gpt-5.1",
 			openAiNativeApiKey: "test-api-key",
 		})
 
@@ -893,7 +974,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 		mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
 
 		const handler = new OpenAiNativeHandler({
-			apiModelId: "gpt-5-2025-08-07",
+			apiModelId: "gpt-5.1",
 			openAiNativeApiKey: "test-api-key",
 		})
 
@@ -942,7 +1023,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 		mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
 
 		const handler = new OpenAiNativeHandler({
-			apiModelId: "gpt-5-2025-08-07",
+			apiModelId: "gpt-5.1",
 			openAiNativeApiKey: "test-api-key",
 		})
 
@@ -1097,6 +1178,9 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 					model: "codex-mini-latest",
 					stream: false,
 					store: false,
+				}),
+				expect.objectContaining({
+					signal: expect.any(Object),
 				}),
 			)
 		})

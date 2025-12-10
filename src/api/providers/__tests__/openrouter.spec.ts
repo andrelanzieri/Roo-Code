@@ -9,10 +9,21 @@ import OpenAI from "openai"
 import { OpenRouterHandler } from "../openrouter"
 import { ApiHandlerOptions } from "../../../shared/api"
 import { Package } from "../../../shared/package"
+import { ApiProviderError } from "@roo-code/types"
 
 // Mock dependencies
 vitest.mock("openai")
 vitest.mock("delay", () => ({ default: vitest.fn(() => Promise.resolve()) }))
+
+// Mock TelemetryService
+const mockCaptureException = vitest.fn()
+vitest.mock("@roo-code/telemetry", () => ({
+	TelemetryService: {
+		instance: {
+			captureException: (...args: unknown[]) => mockCaptureException(...args),
+		},
+	},
+}))
 vitest.mock("../fetchers/modelCache", () => ({
 	getModels: vitest.fn().mockImplementation(() => {
 		return Promise.resolve({
@@ -33,6 +44,7 @@ vitest.mock("../fetchers/modelCache", () => ({
 				contextWindow: 200000,
 				supportsImages: true,
 				supportsPromptCache: true,
+				supportsNativeTools: true,
 				inputPrice: 3,
 				outputPrice: 15,
 				cacheWritesPrice: 3.75,
@@ -97,6 +109,7 @@ describe("OpenRouterHandler", () => {
 			const result = await handler.fetchModel()
 			expect(result.id).toBe("anthropic/claude-sonnet-4.5")
 			expect(result.info.supportsPromptCache).toBe(true)
+			expect(result.info.supportsNativeTools).toBe(true)
 		})
 
 		it("honors custom maxTokens for thinking models", async () => {
@@ -192,6 +205,7 @@ describe("OpenRouterHandler", () => {
 					top_p: undefined,
 					transforms: ["middle-out"],
 				}),
+				{ headers: { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" } },
 			)
 		})
 
@@ -216,7 +230,9 @@ describe("OpenRouterHandler", () => {
 
 			await handler.createMessage("test", []).next()
 
-			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ transforms: ["middle-out"] }))
+			expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ transforms: ["middle-out"] }), {
+				headers: { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" },
+			})
 		})
 
 		it("adds cache control for supported models", async () => {
@@ -258,10 +274,11 @@ describe("OpenRouterHandler", () => {
 						}),
 					]),
 				}),
+				{ headers: { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" } },
 			)
 		})
 
-		it("handles API errors", async () => {
+		it("handles API errors and captures telemetry", async () => {
 			const handler = new OpenRouterHandler(mockOptions)
 			const mockStream = {
 				async *[Symbol.asyncIterator]() {
@@ -276,6 +293,125 @@ describe("OpenRouterHandler", () => {
 
 			const generator = handler.createMessage("test", [])
 			await expect(generator.next()).rejects.toThrow("OpenRouter API Error 500: API Error")
+
+			// Verify telemetry was captured
+			expect(mockCaptureException).toHaveBeenCalledWith(expect.any(ApiProviderError), {
+				provider: "OpenRouter",
+				modelId: mockOptions.openRouterModelId,
+				operation: "createMessage",
+				errorCode: 500,
+			})
+		})
+
+		it("captures telemetry when createMessage throws an exception", async () => {
+			const handler = new OpenRouterHandler(mockOptions)
+			const mockCreate = vitest.fn().mockRejectedValue(new Error("Connection failed"))
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: mockCreate },
+			} as any
+
+			const generator = handler.createMessage("test", [])
+			await expect(generator.next()).rejects.toThrow()
+
+			// Verify telemetry was captured
+			expect(mockCaptureException).toHaveBeenCalledWith(expect.any(ApiProviderError), {
+				provider: "OpenRouter",
+				modelId: mockOptions.openRouterModelId,
+				operation: "createMessage",
+			})
+		})
+
+		it("does NOT capture telemetry for 429 rate limit errors", async () => {
+			const handler = new OpenRouterHandler(mockOptions)
+			const mockStream = {
+				async *[Symbol.asyncIterator]() {
+					yield { error: { message: "Rate limit exceeded", code: 429 } }
+				},
+			}
+
+			const mockCreate = vitest.fn().mockResolvedValue(mockStream)
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: mockCreate },
+			} as any
+
+			const generator = handler.createMessage("test", [])
+			await expect(generator.next()).rejects.toThrow("OpenRouter API Error 429: Rate limit exceeded")
+
+			// Verify telemetry was NOT captured for 429 errors
+			expect(mockCaptureException).not.toHaveBeenCalled()
+		})
+
+		it("yields tool_call_end events when finish_reason is tool_calls", async () => {
+			// Import NativeToolCallParser to set up state
+			const { NativeToolCallParser } = await import("../../../core/assistant-message/NativeToolCallParser")
+
+			// Clear any previous state
+			NativeToolCallParser.clearRawChunkState()
+
+			const handler = new OpenRouterHandler(mockOptions)
+
+			const mockStream = {
+				async *[Symbol.asyncIterator]() {
+					yield {
+						id: "test-id",
+						choices: [
+							{
+								delta: {
+									tool_calls: [
+										{
+											index: 0,
+											id: "call_openrouter_test",
+											function: { name: "read_file", arguments: '{"path":"test.ts"}' },
+										},
+									],
+								},
+								index: 0,
+							},
+						],
+					}
+					yield {
+						id: "test-id",
+						choices: [
+							{
+								delta: {},
+								finish_reason: "tool_calls",
+								index: 0,
+							},
+						],
+						usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+					}
+				},
+			}
+
+			const mockCreate = vitest.fn().mockResolvedValue(mockStream)
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: mockCreate },
+			} as any
+
+			const generator = handler.createMessage("test", [])
+			const chunks = []
+
+			for await (const chunk of generator) {
+				// Simulate what Task.ts does: when we receive tool_call_partial,
+				// process it through NativeToolCallParser to populate rawChunkTracker
+				if (chunk.type === "tool_call_partial") {
+					NativeToolCallParser.processRawChunk({
+						index: chunk.index,
+						id: chunk.id,
+						name: chunk.name,
+						arguments: chunk.arguments,
+					})
+				}
+				chunks.push(chunk)
+			}
+
+			// Should have tool_call_partial and tool_call_end
+			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
+			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
+
+			expect(partialChunks).toHaveLength(1)
+			expect(endChunks).toHaveLength(1)
+			expect(endChunks[0].id).toBe("call_openrouter_test")
 		})
 	})
 
@@ -293,17 +429,19 @@ describe("OpenRouterHandler", () => {
 
 			expect(result).toBe("test completion")
 
-			expect(mockCreate).toHaveBeenCalledWith({
-				model: mockOptions.openRouterModelId,
-				max_tokens: 8192,
-				thinking: undefined,
-				temperature: 0,
-				messages: [{ role: "user", content: "test prompt" }],
-				stream: false,
-			})
+			expect(mockCreate).toHaveBeenCalledWith(
+				{
+					model: mockOptions.openRouterModelId,
+					max_tokens: 8192,
+					temperature: 0,
+					messages: [{ role: "user", content: "test prompt" }],
+					stream: false,
+				},
+				{ headers: { "x-anthropic-beta": "fine-grained-tool-streaming-2025-05-14" } },
+			)
 		})
 
-		it("handles API errors", async () => {
+		it("handles API errors and captures telemetry", async () => {
 			const handler = new OpenRouterHandler(mockOptions)
 			const mockError = {
 				error: {
@@ -318,9 +456,17 @@ describe("OpenRouterHandler", () => {
 			} as any
 
 			await expect(handler.completePrompt("test prompt")).rejects.toThrow("OpenRouter API Error 500: API Error")
+
+			// Verify telemetry was captured
+			expect(mockCaptureException).toHaveBeenCalledWith(expect.any(ApiProviderError), {
+				provider: "OpenRouter",
+				modelId: mockOptions.openRouterModelId,
+				operation: "completePrompt",
+				errorCode: 500,
+			})
 		})
 
-		it("handles unexpected errors", async () => {
+		it("handles unexpected errors and captures telemetry", async () => {
 			const handler = new OpenRouterHandler(mockOptions)
 			const mockCreate = vitest.fn().mockRejectedValue(new Error("Unexpected error"))
 			;(OpenAI as any).prototype.chat = {
@@ -328,6 +474,35 @@ describe("OpenRouterHandler", () => {
 			} as any
 
 			await expect(handler.completePrompt("test prompt")).rejects.toThrow("Unexpected error")
+
+			// Verify telemetry was captured
+			expect(mockCaptureException).toHaveBeenCalledWith(expect.any(ApiProviderError), {
+				provider: "OpenRouter",
+				modelId: mockOptions.openRouterModelId,
+				operation: "completePrompt",
+			})
+		})
+
+		it("does NOT capture telemetry for 429 rate limit errors", async () => {
+			const handler = new OpenRouterHandler(mockOptions)
+			const mockError = {
+				error: {
+					message: "Rate limit exceeded",
+					code: 429,
+				},
+			}
+
+			const mockCreate = vitest.fn().mockResolvedValue(mockError)
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: mockCreate },
+			} as any
+
+			await expect(handler.completePrompt("test prompt")).rejects.toThrow(
+				"OpenRouter API Error 429: Rate limit exceeded",
+			)
+
+			// Verify telemetry was NOT captured for 429 errors
+			expect(mockCaptureException).not.toHaveBeenCalled()
 		})
 	})
 })

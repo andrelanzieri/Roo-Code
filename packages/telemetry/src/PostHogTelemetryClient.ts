@@ -25,7 +25,7 @@ export class PostHogTelemetryClient extends BaseTelemetryClient {
 			debug,
 		)
 
-		this.client = new PostHog(process.env.POSTHOG_API_KEY || "", { host: "https://us.i.posthog.com" })
+		this.client = new PostHog(process.env.POSTHOG_API_KEY || "", { host: "https://ph.roocode.com" })
 	}
 
 	/**
@@ -59,6 +59,22 @@ export class PostHogTelemetryClient extends BaseTelemetryClient {
 			event: event.event,
 			properties: await this.getEventProperties(event),
 		})
+	}
+
+	public override captureException(error: Error, additionalProperties?: Record<string, unknown>): void {
+		if (!this.isTelemetryEnabled()) {
+			if (this.debug) {
+				console.info(`[PostHogTelemetryClient#captureException] Skipping exception: ${error.message}`)
+			}
+
+			return
+		}
+
+		if (this.debug) {
+			console.info(`[PostHogTelemetryClient#captureException] ${error.message}`)
+		}
+
+		this.client.captureException(error, this.distinctId, additionalProperties)
 	}
 
 	/**
