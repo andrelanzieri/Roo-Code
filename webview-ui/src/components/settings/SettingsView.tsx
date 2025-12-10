@@ -811,7 +811,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						/>
 					)}
 
-					{/* Modes Section */}
+					{/* Agents Section */}
 					{activeTab === "modes" && <ModesView />}
 
 					{/* MCP Section */}

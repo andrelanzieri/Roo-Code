@@ -1,7 +1,7 @@
 import type { ToolName, ModeConfig } from "@roo-code/types"
 import { toolNames as validToolNames } from "@roo-code/types"
 
-import { Mode, isToolAllowedForMode } from "../../shared/modes"
+import { Agent, isToolAllowedForMode } from "../../shared/modes"
 
 /**
  * Checks if a tool name is a valid, known tool.

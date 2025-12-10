@@ -402,7 +402,7 @@ export function UseExamplesSection({ agentTitle = false }: { agentTitle?: boolea
 
 				{/* Mobile: Vertical Staggered List */}
 				<div className="md:hidden flex flex-col gap-2 px-2 pb-12 max-w-md mx-auto">
-					<AnimatePresence mode="popLayout">
+					<AnimatePresence agent="popLayout">
 						{positionedItems.slice(0, showAllMobile ? undefined : 8).map((item, index) => (
 							<motion.div
 								key={item.use} // Use a unique key for proper animation tracking

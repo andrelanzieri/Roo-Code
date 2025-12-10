@@ -548,7 +548,7 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
 			{
-				name: "Test Project Mode",
+				name: "Test Project Agent",
 				slug,
 				roleDefinition: "Test Role",
 				groups: [],
@@ -573,7 +573,7 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
 			{
-				name: "Test Global Mode",
+				name: "Test Global Agent",
 				slug,
 				roleDefinition: "Test Role",
 				groups: [],
@@ -595,7 +595,7 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		const slug = "test-mode-no-rules"
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
 			{
-				name: "Test Mode No Rules",
+				name: "Test Agent No Rules",
 				slug,
 				roleDefinition: "Test Role",
 				groups: [],
@@ -620,7 +620,7 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 
 		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
 			{
-				name: "Test Mode Error",
+				name: "Test Agent Error",
 				slug,
 				roleDefinition: "Test Role",
 				groups: [],

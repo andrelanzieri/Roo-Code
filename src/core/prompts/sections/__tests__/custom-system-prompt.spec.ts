@@ -6,7 +6,7 @@ vi.mock("fs/promises")
 import type { Mock } from "vitest"
 import path from "path"
 import { readFile } from "fs/promises"
-import type { Mode } from "../../../../shared/modes" // Type-only import
+import type { Agent } from "../../../../shared/modes" // Type-only import
 import { loadSystemPromptFile, PromptVariables } from "../custom-system-prompt"
 
 // Cast the mocked readFile to the correct Mock type
@@ -18,7 +18,7 @@ describe("loadSystemPromptFile", () => {
 		workspace: "/path/to/workspace",
 	}
 	const mockCwd = "/mock/cwd"
-	const mockMode: Mode = "test" // Use Mode type, e.g., 'test'
+	const mockMode: Mode = "test" // Use Agent type, e.g., 'test'
 	// Corrected expected file path format
 	const expectedFilePath = path.join(mockCwd, ".roo", `system-prompt-${mockMode}`)
 

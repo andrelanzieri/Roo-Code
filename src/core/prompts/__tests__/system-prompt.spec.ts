@@ -49,7 +49,7 @@ import { ModeConfig } from "@roo-code/types"
 
 import { SYSTEM_PROMPT } from "../system"
 import { McpHub } from "../../../services/mcp/McpHub"
-import { defaultModeSlug, modes, Mode } from "../../../shared/modes"
+import { defaultModeSlug, modes, Agent } from "../../../shared/modes"
 import "../../../utils/path"
 import { addCustomInstructions } from "../sections/custom-instructions"
 import { MultiSearchReplaceDiffStrategy } from "../../diff/strategies/multi-search-replace"
@@ -97,7 +97,7 @@ __setMockImplementation(
 
 		// Add mode-specific instructions after
 		if (modeCustomInstructions?.trim()) {
-			sections.push(`Mode-specific Instructions:\n${modeCustomInstructions}`)
+			sections.push(`Agent-specific Instructions:\n${modeCustomInstructions}`)
 		}
 
 		// Add rules
@@ -486,7 +486,7 @@ describe("SYSTEM_PROMPT", () => {
 		const customModes: ModeConfig[] = [
 			{
 				slug: "custom-mode",
-				name: "Custom Mode",
+				name: "Custom Agent",
 				roleDefinition: "Custom role definition",
 				customInstructions: modeCustomInstructions,
 				groups: ["read"] as const,
@@ -538,7 +538,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug as Mode, // mode
+			defaultModeSlug as Agent, // mode
 			customModePrompts, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -571,7 +571,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug as Mode, // mode
+			defaultModeSlug as Agent, // mode
 			customModePrompts, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -618,7 +618,7 @@ describe("SYSTEM_PROMPT", () => {
 
 		// Should not contain the tool description
 		expect(prompt).not.toContain("## update_todo_list")
-		// Mode instructions will still reference the tool with a fallback to markdown
+		// Agent instructions will still reference the tool with a fallback to markdown
 	})
 
 	it("should include update_todo_list tool when todoListEnabled is true", async () => {

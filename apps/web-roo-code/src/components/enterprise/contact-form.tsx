@@ -87,7 +87,7 @@ export function ContactForm({ formType, buttonText, buttonClassName }: ContactFo
 						"Content-Type": "application/json",
 						Accept: "application/json",
 					},
-					mode: "cors", // Ensure proper CORS handling
+					agent: "cors", // Ensure proper CORS handling
 					body: JSON.stringify(data),
 				})
 

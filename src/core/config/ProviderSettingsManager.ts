@@ -15,7 +15,7 @@ import {
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { Mode, modes } from "../../shared/modes"
+import { Agent, modes } from "../../shared/modes"
 import { buildApiHandler } from "../../api"
 
 // Type-safe model migrations mapping
