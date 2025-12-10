@@ -1197,10 +1197,25 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 						Authorization: `Bearer ${apiKey}`,
 						Accept: "text/event-stream",
 					},
+					signal: this.abortController?.signal,
 				})
 
 				if (!res.ok) {
-					throw new Error(`Resume request failed (${res.status})`)
+					const status = res.status
+					if (status === 401 || status === 403 || status === 404) {
+						yield {
+							type: "status",
+							mode: "background",
+							status: "failed",
+							responseId,
+						}
+
+						const terminalErr = createTerminalBackgroundError(`Resume request failed (${status})`)
+						;(terminalErr as any).status = status
+						throw terminalErr
+					}
+
+					throw new Error(`Resume request failed (${status})`)
 				}
 				if (!res.body) {
 					throw new Error("Resume request failed (no body)")
@@ -1271,9 +1286,23 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					headers: {
 						Authorization: `Bearer ${apiKey}`,
 					},
+					signal: this.abortController?.signal,
 				})
 
 				if (!pollRes.ok) {
+					const status = pollRes.status
+					if (status === 401 || status === 403 || status === 404) {
+						yield {
+							type: "status",
+							mode: "background",
+							status: "failed",
+							responseId,
+						}
+						const terminalErr = createTerminalBackgroundError(`Polling failed with status ${status}`)
+						;(terminalErr as any).status = status
+						throw terminalErr
+					}
+
 					// transient; wait and retry
 					await new Promise((r) => setTimeout(r, pollIntervalMs))
 					continue
