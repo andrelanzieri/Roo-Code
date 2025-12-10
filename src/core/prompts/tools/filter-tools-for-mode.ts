@@ -25,6 +25,11 @@ export function parseToolAliases(toolAliases: string[] | undefined): Map<string,
 			const originalName = aliasSpec.substring(0, colonIndex)
 			const aliasName = aliasSpec.substring(colonIndex + 1)
 			aliasMap.set(originalName, aliasName)
+		} else {
+			// Log invalid alias specs to help users troubleshoot misconfigured aliases
+			console.warn(
+				`[toolAliases] Ignoring invalid alias spec "${aliasSpec}". Expected format: "originalName:aliasName"`,
+			)
 		}
 	}
 
