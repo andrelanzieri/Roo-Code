@@ -1703,7 +1703,7 @@ describe("OpenAI Native streaming metadata tracking", () => {
 		expect(chunks).toContainEqual({ type: "text", text: "A" })
 		expect(chunks).toContainEqual({ type: "reasoning", text: "B" })
 		expect(handler.getLastSequenceNumber()).toBe(3)
-		expect(handler.getLastResponseId()).toBe("resp_123")
+		expect(handler.getResponseId()).toBe("resp_123")
 	})
 })
 
