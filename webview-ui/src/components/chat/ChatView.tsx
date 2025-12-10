@@ -789,8 +789,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				case "action":
 					switch (message.action!) {
 						case "didBecomeVisible":
-							// Do not grab focus during follow-up questions
-							if (!isHidden && !sendingDisabled && !enableButtons && clineAsk !== "followup") {
+							if (!isHidden && !sendingDisabled && !enableButtons) {
 								textAreaRef.current?.focus()
 							}
 							break
@@ -859,7 +858,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			handleSecondaryButtonClick,
 			setCheckpointWarning,
 			playSound,
-			clineAsk,
 		],
 	)
 
@@ -978,13 +976,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	useDebounceEffect(
 		() => {
-			// Do not grab focus during follow-up questions
-			if (!isHidden && !sendingDisabled && !enableButtons && clineAsk !== "followup") {
+			if (!isHidden && !sendingDisabled && !enableButtons) {
 				textAreaRef.current?.focus()
 			}
 		},
 		50,
-		[isHidden, sendingDisabled, enableButtons, clineAsk],
+		[isHidden, sendingDisabled, enableButtons],
 	)
 
 	useEffect(() => {

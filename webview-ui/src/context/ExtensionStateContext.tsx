@@ -10,6 +10,7 @@ import {
 	type TelemetrySetting,
 	type OrganizationAllowList,
 	type CloudOrganizationMembership,
+	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 	ORGANIZATION_ALLOW_ALL,
 } from "@roo-code/types"
 
@@ -206,7 +207,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		ttsSpeed: 1.0,
 		diffEnabled: false,
 		enableCheckpoints: true,
-		checkpointTimeout: 15, // Default to 15 seconds
+		checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, // Default to 15 seconds
 		fuzzyMatchThreshold: 1.0,
 		language: "en", // Default language code
 		writeDelayMs: 1000,
