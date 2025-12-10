@@ -1,7 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import type { ModelInfo } from "@roo-code/types"
+import { type ModelInfo, toolNames } from "@roo-code/types"
 
 import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
 import { XmlMatcher } from "../../utils/xml-matcher"
@@ -269,25 +269,23 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 	/**
 	 * Check if a string matches a known tool name.
+	 * Uses toolNames from @roo-code/types as the source of truth,
+	 * and also recognizes dynamically generated MCP tools (mcp_* prefix).
 	 */
 	private isKnownTool(name: string): boolean {
-		const knownTools = [
-			"read_file",
-			"write_to_file",
-			"apply_diff",
-			"execute_command",
-			"list_files",
-			"search_files",
-			"ask_followup_question",
-			"attempt_completion",
-			"update_todo_list",
-			"list_code_definition_names",
-			"use_mcp_tool",
-			"switch_mode",
-			"new_task",
-			"fetch_instructions",
-		]
-		return knownTools.includes(name.toLowerCase())
+		const lowerName = name.toLowerCase()
+
+		// Check against the canonical tool names from @roo-code/types
+		if ((toolNames as readonly string[]).includes(lowerName)) {
+			return true
+		}
+
+		// Also recognize dynamically generated MCP tools (format: mcp_serverName_toolName)
+		if (lowerName.startsWith("mcp_")) {
+			return true
+		}
+
+		return false
 	}
 
 	/**
@@ -311,16 +309,37 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		if (Object.keys(args).length === 0) {
 			if (content.trim()) {
 				// Map to the primary parameter for each tool
+				// This covers all 22 tools from @roo-code/types
 				const primaryParams: Record<string, string> = {
+					// File operations
 					read_file: "files",
 					write_to_file: "content",
 					apply_diff: "diff",
-					execute_command: "command",
+					search_and_replace: "operations",
+					search_replace: "old_string",
+					apply_patch: "patch",
+					// Search and list operations
 					list_files: "path",
 					search_files: "regex",
+					list_code_definition_names: "path",
+					codebase_search: "query",
+					// Command execution
+					execute_command: "command",
+					run_slash_command: "command",
+					// Browser operations
+					browser_action: "action",
+					// MCP operations
+					use_mcp_tool: "arguments",
+					access_mcp_resource: "uri",
+					// Task and mode operations
 					ask_followup_question: "question",
 					attempt_completion: "result",
 					update_todo_list: "todos",
+					switch_mode: "mode_slug",
+					new_task: "message",
+					fetch_instructions: "task",
+					// Image generation
+					generate_image: "prompt",
 				}
 
 				const primaryParam = primaryParams[toolName.toLowerCase()]
@@ -328,6 +347,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 					args[primaryParam] = content.trim()
 				} else {
 					// Fallback: use 'content' as a generic parameter name
+					// This handles dynamically generated MCP tools (mcp_serverName_toolName)
 					args["content"] = content.trim()
 				}
 			}
