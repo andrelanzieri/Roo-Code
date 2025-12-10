@@ -15,8 +15,6 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
 import { vscode } from "@src/utils/vscode"
 import { formatPathTooltip } from "@src/utils/formatPathTooltip"
-import { removeLeadingNonAlphanumeric } from "@src/utils/removeLeadingNonAlphanumeric"
-import { getLanguageFromPath } from "@src/utils/getLanguageFromPath"
 import { labelForBackgroundStatus } from "@src/utils/backgroundStatus"
 
 import { ToolUseBlock, ToolUseBlockHeader } from "../common/ToolUseBlock"
