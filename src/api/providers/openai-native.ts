@@ -705,6 +705,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 							// Capture top-level response id
 							if (parsed.response?.id) {
 								this.lastResponseId = parsed.response.id as string
+								// Also track for per-request resume capability
+								this.currentRequestResponseId = parsed.response.id as string
 							}
 
 							// Delegate standard event types to the shared processor to avoid duplication
@@ -1412,6 +1414,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		// Capture top-level response id
 		if (event?.response?.id) {
 			this.lastResponseId = event.response.id as string
+			// Also track for per-request resume capability
+			this.currentRequestResponseId = event.response.id as string
 		}
 		// Record sequence number for cursor tracking
 		if (typeof event?.sequence_number === "number") {
