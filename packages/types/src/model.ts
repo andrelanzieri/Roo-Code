@@ -120,6 +120,10 @@ export const modelInfoSchema = z.object({
 	// These tools will be added if they belong to an allowed group in the current mode
 	// Cannot force-add tools from groups the mode doesn't allow
 	includedTools: z.array(z.string()).optional(),
+	// Define aliases for specific tools in this model (only applies to native protocol)
+	// Format: ["originalName:aliasName", ...] e.g., ["apply_diff:edit"]
+	// The tool will be presented to the model with the alias name, but executed as the original
+	toolAliases: z.array(z.string()).optional(),
 	/**
 	 * Service tiers with pricing information.
 	 * Each tier can have a name (for OpenAI service tiers) and pricing overrides.

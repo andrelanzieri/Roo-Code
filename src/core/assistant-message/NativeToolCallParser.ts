@@ -68,6 +68,48 @@ export class NativeToolCallParser {
 		}
 	>()
 
+	// Reverse alias map for mapping aliased tools back to original names
+	// Key: alias tool name (e.g., "edit"), Value: original tool name (e.g., "apply_diff")
+	private static toolAliasReverseMap = new Map<string, string>()
+
+	/**
+	 * Set the reverse alias map for the current request.
+	 * This maps alias tool names back to their original names.
+	 * Should be called before processing tool calls for each new request.
+	 *
+	 * @param reverseMap - Map from alias tool name to original tool name
+	 */
+	public static setToolAliasReverseMap(reverseMap: Map<string, string>): void {
+		this.toolAliasReverseMap = reverseMap
+	}
+
+	/**
+	 * Clear the tool alias reverse map.
+	 * Should be called when starting a new request to prevent stale mappings.
+	 */
+	public static clearToolAliasReverseMap(): void {
+		this.toolAliasReverseMap.clear()
+	}
+
+	/**
+	 * Map a tool name back to its original name if it was aliased.
+	 * Returns the original name if found, otherwise returns the input name.
+	 *
+	 * @param name - The tool name to resolve (possibly aliased)
+	 * @returns The original tool name
+	 */
+	public static resolveOriginalToolName(name: string): string {
+		return this.toolAliasReverseMap.get(name) || name
+	}
+
+	/**
+	 * Resolve and return both presented (aliased) and original tool names.
+	 */
+	public static resolveToolNames(name: string): { original: string; presented: string } {
+		const original = this.toolAliasReverseMap.get(name) || name
+		return { original, presented: name }
+	}
+
 	/**
 	 * Process a raw tool call chunk from the API stream.
 	 * Handles tracking, buffering, and emits start/delta/end events.
@@ -247,12 +289,17 @@ export class NativeToolCallParser {
 		try {
 			const partialArgs = parseJSON(toolCall.argumentsAccumulator)
 
+			// Resolve the tool name in case it was renamed and retain presented name
+			const { original, presented } = this.resolveToolNames(toolCall.name)
+			const resolvedName = original as ToolName
+
 			// Create partial ToolUse with extracted values
 			return this.createPartialToolUse(
 				toolCall.id,
-				toolCall.name as ToolName,
+				resolvedName,
 				partialArgs || {},
 				true, // partial
+				presented,
 			)
 		} catch {
 			// Even partial-json-parser can fail on severely malformed JSON
@@ -334,6 +381,7 @@ export class NativeToolCallParser {
 		name: ToolName,
 		partialArgs: Record<string, any>,
 		partial: boolean,
+		presentedName?: string,
 	): ToolUse | null {
 		// Build legacy params for display
 		// NOTE: For streaming partial updates, we MUST populate params even for complex types
@@ -525,11 +573,13 @@ export class NativeToolCallParser {
 			params,
 			partial,
 			nativeArgs,
+			...(presentedName ? { presentedName } : {}),
 		}
 	}
 
 	/**
 	 * Convert a native tool call chunk to a ToolUse object.
+	 * Handles renamed tools by resolving to their original names for execution.
 	 *
 	 * @param toolCall - The native tool call from the API stream
 	 * @returns A properly typed ToolUse object
@@ -544,9 +594,16 @@ export class NativeToolCallParser {
 			return this.parseDynamicMcpTool(toolCall)
 		}
 
-		// Validate tool name
-		if (!toolNames.includes(toolCall.name as ToolName)) {
+		// Resolve renamed tools back to their original names
+		// This handles cases where a tool was renamed via modelInfo.renamedTools
+		// e.g., if "apply_diff" was renamed to "edit_file", we resolve "edit_file" back to "apply_diff"
+		const { original, presented } = this.resolveToolNames(toolCall.name as string)
+		const resolvedName = original as TName
+
+		// Validate tool name (using resolved name)
+		if (!toolNames.includes(resolvedName as ToolName)) {
 			console.error(`Invalid tool name: ${toolCall.name}`)
+			console.error(`Resolved name: ${resolvedName}`)
 			console.error(`Valid tool names:`, toolNames)
 			return null
 		}
@@ -563,13 +620,13 @@ export class NativeToolCallParser {
 				// Skip complex parameters that have been migrated to nativeArgs.
 				// For read_file, the 'files' parameter is a FileEntry[] array that can't be
 				// meaningfully stringified. The properly typed data is in nativeArgs instead.
-				if (toolCall.name === "read_file" && key === "files") {
+				if (resolvedName === "read_file" && key === "files") {
 					continue
 				}
 
 				// Validate parameter name
 				if (!toolParamNames.includes(key as ToolParamName)) {
-					console.warn(`Unknown parameter '${key}' for tool '${toolCall.name}'`)
+					console.warn(`Unknown parameter '${key}' for tool '${resolvedName}'`)
 					console.warn(`Valid param names:`, toolParamNames)
 					continue
 				}
@@ -589,7 +646,7 @@ export class NativeToolCallParser {
 			// will fall back to legacy parameter parsing if supported.
 			let nativeArgs: NativeArgsFor<TName> | undefined = undefined
 
-			switch (toolCall.name) {
+			switch (resolvedName) {
 				case "read_file":
 					if (args.files && Array.isArray(args.files)) {
 						nativeArgs = { files: this.convertFileEntries(args.files) } as NativeArgsFor<TName>
@@ -778,10 +835,11 @@ export class NativeToolCallParser {
 
 			const result: ToolUse<TName> = {
 				type: "tool_use" as const,
-				name: toolCall.name,
+				name: resolvedName,
 				params,
 				partial: false, // Native tool calls are always complete when yielded
 				nativeArgs,
+				...(presented !== resolvedName ? { presentedName: presented } : {}),
 			}
 
 			return result

@@ -7,6 +7,81 @@ import type { CodeIndexManager } from "../../../services/code-index/manager"
 import type { McpHub } from "../../../services/mcp/McpHub"
 
 /**
+ * Parses a toolAliases configuration array and returns a map from original name to alias name.
+ *
+ * @param toolAliases - Array of alias strings in format "originalName:aliasName"
+ * @returns Map from original tool name to alias tool name
+ */
+export function parseToolAliases(toolAliases: string[] | undefined): Map<string, string> {
+	const aliasMap = new Map<string, string>()
+
+	if (!toolAliases || toolAliases.length === 0) {
+		return aliasMap
+	}
+
+	for (const aliasSpec of toolAliases) {
+		const colonIndex = aliasSpec.indexOf(":")
+		if (colonIndex > 0 && colonIndex < aliasSpec.length - 1) {
+			const originalName = aliasSpec.substring(0, colonIndex)
+			const aliasName = aliasSpec.substring(colonIndex + 1)
+			aliasMap.set(originalName, aliasName)
+		}
+	}
+
+	return aliasMap
+}
+
+/**
+ * Creates a reverse mapping from alias tool names back to original names.
+ *
+ * @param aliasMap - Map from original name to alias name
+ * @returns Map from alias tool name to original tool name
+ */
+export function createReverseAliasMap(aliasMap: Map<string, string>): Map<string, string> {
+	const reverseMap = new Map<string, string>()
+	for (const [original, alias] of aliasMap) {
+		reverseMap.set(alias, original)
+	}
+	return reverseMap
+}
+
+/**
+ * Applies tool aliasing to a set of native tools.
+ *
+ * @param tools - Array of native tools to alias
+ * @param aliasMap - Map from original tool name to alias name
+ * @returns Array of tools with names replaced according to the alias map
+ */
+export function applyToolAliases(
+	tools: OpenAI.Chat.ChatCompletionTool[],
+	aliasMap: Map<string, string>,
+): OpenAI.Chat.ChatCompletionTool[] {
+	if (aliasMap.size === 0) {
+		return tools
+	}
+
+	return tools.map((tool) => {
+		if (tool.type !== "function") {
+			return tool
+		}
+
+		const aliasName = aliasMap.get(tool.function.name)
+		if (!aliasName) {
+			return tool
+		}
+
+		// Create a new tool object with the aliased function name
+		return {
+			...tool,
+			function: {
+				...tool.function,
+				name: aliasName,
+			},
+		}
+	})
+}
+
+/**
  * Apply model-specific tool customization to a set of allowed tools.
  *
  * This function filters tools based on model configuration:

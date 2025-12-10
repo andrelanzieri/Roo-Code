@@ -121,6 +121,8 @@ export interface ToolUse<TName extends ToolName = ToolName> {
 	type: "tool_use"
 	id?: string // Optional ID to track tool calls
 	name: TName
+	/** The name as presented by the model (may be renamed). Falls back to `name` when not renamed. */
+	presentedName?: string
 	// params is a partial record, allowing only some or none of the possible parameters to be used
 	params: Partial<Record<ToolParamName, string>>
 	partial: boolean

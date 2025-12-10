@@ -2389,6 +2389,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Clear any leftover streaming tool call state from previous interrupted streams
 				NativeToolCallParser.clearAllStreamingToolCalls()
 				NativeToolCallParser.clearRawChunkState()
+				// Clear previous tool alias mappings (will be re-set when building tools for this request)
+				NativeToolCallParser.clearToolAliasReverseMap()
 
 				await this.diffViewProvider.reset()
 
@@ -3109,7 +3111,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								assistantContent.push({
 									type: "tool_use" as const,
 									id: toolCallId,
-									name: toolUse.name,
+									// Use presentedName for API history so the model sees consistent tool names
+									// (the name it originally called, which may be a renamed version)
+									name: toolUse.presentedName || toolUse.name,
 									input,
 								})
 							}
@@ -3703,7 +3707,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				throw new Error("Provider reference lost during tool building")
 			}
 
-			allTools = await buildNativeToolsArray({
+			const toolsResult = await buildNativeToolsArray({
 				provider,
 				cwd: this.cwd,
 				mode,
@@ -3715,6 +3719,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				modelInfo,
 				diffEnabled: this.diffEnabled,
 			})
+			allTools = toolsResult.tools
+			// Set the reverse alias map for parsing tool calls back to original names
+			NativeToolCallParser.setToolAliasReverseMap(toolsResult.toolAliasReverseMap)
 		}
 
 		// Parallel tool calls are disabled - feature is on hold

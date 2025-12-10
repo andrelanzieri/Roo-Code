@@ -2,7 +2,13 @@ import type OpenAI from "openai"
 import type { ProviderSettings, ModeConfig, ModelInfo } from "@roo-code/types"
 import type { ClineProvider } from "../webview/ClineProvider"
 import { getNativeTools, getMcpServerTools } from "../prompts/tools/native-tools"
-import { filterNativeToolsForMode, filterMcpToolsForMode } from "../prompts/tools/filter-tools-for-mode"
+import {
+	filterNativeToolsForMode,
+	filterMcpToolsForMode,
+	parseToolAliases,
+	applyToolAliases,
+	createReverseAliasMap,
+} from "../prompts/tools/filter-tools-for-mode"
 
 interface BuildToolsOptions {
 	provider: ClineProvider
@@ -18,13 +24,24 @@ interface BuildToolsOptions {
 }
 
 /**
+ * Result of building native tools array.
+ */
+export interface BuildToolsResult {
+	/** Array of filtered and optionally aliased native and MCP tools */
+	tools: OpenAI.Chat.ChatCompletionTool[]
+	/** Map from alias tool name back to original name (for reverse lookup when parsing tool calls) */
+	toolAliasReverseMap: Map<string, string>
+}
+
+/**
  * Builds the complete tools array for native protocol requests.
  * Combines native tools and MCP tools, filtered by mode restrictions.
+ * Applies any tool aliases specified in modelInfo.toolAliases.
  *
  * @param options - Configuration options for building the tools
- * @returns Array of filtered native and MCP tools
+ * @returns Object containing filtered tools and reverse alias map
  */
-export async function buildNativeToolsArray(options: BuildToolsOptions): Promise<OpenAI.Chat.ChatCompletionTool[]> {
+export async function buildNativeToolsArray(options: BuildToolsOptions): Promise<BuildToolsResult> {
 	const {
 		provider,
 		cwd,
@@ -73,5 +90,20 @@ export async function buildNativeToolsArray(options: BuildToolsOptions): Promise
 	const mcpTools = getMcpServerTools(mcpHub)
 	const filteredMcpTools = filterMcpToolsForMode(mcpTools, mode, customModes, experiments)
 
-	return [...filteredNativeTools, ...filteredMcpTools]
+	// Combine filtered tools
+	let allTools = [...filteredNativeTools, ...filteredMcpTools]
+
+	// Apply tool aliases if specified in modelInfo
+	const aliasMap = parseToolAliases(modelInfo?.toolAliases)
+	if (aliasMap.size > 0) {
+		allTools = applyToolAliases(allTools, aliasMap)
+	}
+
+	// Create reverse map for parsing tool calls back to original names
+	const toolAliasReverseMap = createReverseAliasMap(aliasMap)
+
+	return {
+		tools: allTools,
+		toolAliasReverseMap,
+	}
 }
