@@ -20,6 +20,7 @@ import { writeToFileTool } from "../tools/WriteToFileTool"
 import { applyDiffTool } from "../tools/MultiApplyDiffTool"
 import { searchAndReplaceTool } from "../tools/SearchAndReplaceTool"
 import { searchReplaceTool } from "../tools/SearchReplaceTool"
+import { editFileTool } from "../tools/EditFileTool"
 import { applyPatchTool } from "../tools/ApplyPatchTool"
 import { listCodeDefinitionNamesTool } from "../tools/ListCodeDefinitionNamesTool"
 import { searchFilesTool } from "../tools/SearchFilesTool"
@@ -391,6 +392,8 @@ export async function presentAssistantMessage(cline: Task) {
 					case "search_and_replace":
 						return `[${block.name} for '${block.params.path}']`
 					case "search_replace":
+						return `[${block.name} for '${block.params.file_path}']`
+					case "edit_file":
 						return `[${block.name} for '${block.params.file_path}']`
 					case "apply_patch":
 						return `[${block.name}]`
@@ -850,6 +853,16 @@ export async function presentAssistantMessage(cline: Task) {
 				case "search_replace":
 					await checkpointSaveAndMark(cline)
 					await searchReplaceTool.handle(cline, block as ToolUse<"search_replace">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+						removeClosingTag,
+						toolProtocol,
+					})
+					break
+				case "edit_file":
+					await checkpointSaveAndMark(cline)
+					await editFileTool.handle(cline, block as ToolUse<"edit_file">, {
 						askApproval,
 						handleError,
 						pushToolResult,
