@@ -870,9 +870,9 @@ export class ClineProvider
 			const modeExists = getModeBySlug(historyItem.mode, customModes) !== undefined
 
 			if (!modeExists) {
-				// Agent no longer exists, fall back to default mode.
+				// Mode no longer exists, fall back to default mode.
 				this.log(
-					`Agent '${historyItem.mode}' from history no longer exists. Falling back to default mode '${defaultModeSlug}'.`,
+					`Mode '${historyItem.mode}' from history no longer exists. Falling back to default mode '${defaultModeSlug}'.`,
 				)
 				historyItem.mode = defaultModeSlug
 			}
@@ -2269,7 +2269,7 @@ export class ClineProvider
 			currentApiConfigName: stateValues.currentApiConfigName ?? "default",
 			listApiConfigMeta: stateValues.listApiConfigMeta ?? [],
 			pinnedApiConfigs: stateValues.pinnedApiConfigs ?? {},
-			modeApiConfigs: stateValues.modeApiConfigs ?? ({} as Record<Agent, string>),
+			modeApiConfigs: stateValues.modeApiConfigs ?? ({} as Record<Mode, string>),
 			customModePrompts: stateValues.customModePrompts ?? {},
 			customSupportPrompts: stateValues.customSupportPrompts ?? {},
 			enhancementApiConfigId: stateValues.enhancementApiConfigId,

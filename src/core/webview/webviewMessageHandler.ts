@@ -1479,7 +1479,7 @@ export const webviewMessageHandler = async (
 			break
 
 		case "mode":
-			await provider.handleModeSwitch(message.text as Agent)
+			await provider.handleModeSwitch(message.text as Mode)
 			break
 		case "updatePrompt":
 			if (message.promptMode && message.customPrompt !== undefined) {

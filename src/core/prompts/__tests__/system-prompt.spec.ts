@@ -97,7 +97,7 @@ __setMockImplementation(
 
 		// Add mode-specific instructions after
 		if (modeCustomInstructions?.trim()) {
-			sections.push(`Agent-specific Instructions:\n${modeCustomInstructions}`)
+			sections.push(`Mode-specific Instructions:\n${modeCustomInstructions}`)
 		}
 
 		// Add rules
@@ -486,7 +486,7 @@ describe("SYSTEM_PROMPT", () => {
 		const customModes: ModeConfig[] = [
 			{
 				slug: "custom-mode",
-				name: "Custom Agent",
+				name: "Custom Mode",
 				roleDefinition: "Custom role definition",
 				customInstructions: modeCustomInstructions,
 				groups: ["read"] as const,
@@ -538,7 +538,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug as Agent, // mode
+			defaultModeSlug as Mode, // mode
 			customModePrompts, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -571,7 +571,7 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // mcpHub
 			undefined, // diffStrategy
 			undefined, // browserViewportSize
-			defaultModeSlug as Agent, // mode
+			defaultModeSlug as Mode, // mode
 			customModePrompts, // customModePrompts
 			undefined, // customModes
 			undefined, // globalCustomInstructions
@@ -618,7 +618,7 @@ describe("SYSTEM_PROMPT", () => {
 
 		// Should not contain the tool description
 		expect(prompt).not.toContain("## update_todo_list")
-		// Agent instructions will still reference the tool with a fallback to markdown
+		// Mode instructions will still reference the tool with a fallback to markdown
 	})
 
 	it("should include update_todo_list tool when todoListEnabled is true", async () => {
