@@ -6,7 +6,7 @@ vi.mock("fs/promises")
 import type { Mock } from "vitest"
 import path from "path"
 import { readFile } from "fs/promises"
-import type { Agent } from "../../../../shared/modes" // Type-only import
+import type { Mode } from "../../../../shared/modes" // Type-only import
 import { loadSystemPromptFile, PromptVariables } from "../custom-system-prompt"
 
 // Cast the mocked readFile to the correct Mock type
