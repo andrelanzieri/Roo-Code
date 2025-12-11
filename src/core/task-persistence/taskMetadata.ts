@@ -110,7 +110,7 @@ export async function taskMetadata({
 		size: taskDirSize,
 		workspace,
 		mode,
-		apiConfigName,
+		...(typeof apiConfigName === "string" && apiConfigName.length > 0 ? { apiConfigName } : {}),
 		...(initialStatus && { status: initialStatus }),
 	}
 
