@@ -21,10 +21,10 @@ export function hasConsent(): boolean {
 /**
  * Dispatch a consent change event
  */
-export function dispatchConsentEvent(consented: boolean): void {
+export function dispatchConsentEvent(granted: boolean): void {
 	if (typeof window !== "undefined") {
 		const event = new CustomEvent(CONSENT_EVENT, {
-			detail: { consented },
+			detail: { granted },
 		})
 		window.dispatchEvent(event)
 	}
@@ -33,14 +33,14 @@ export function dispatchConsentEvent(consented: boolean): void {
 /**
  * Listen for consent changes
  */
-export function onConsentChange(callback: (consented: boolean) => void): () => void {
+export function onConsentChange(callback: (granted: boolean) => void): () => void {
 	if (typeof window === "undefined") {
 		return () => {}
 	}
 
 	const handler = (event: Event) => {
-		const customEvent = event as CustomEvent<{ consented: boolean }>
-		callback(customEvent.detail.consented)
+		const customEvent = event as CustomEvent<{ granted: boolean }>
+		callback(customEvent.detail.granted)
 	}
 
 	window.addEventListener(CONSENT_EVENT, handler)
