@@ -9,6 +9,7 @@ import { convertToOpenAiMessages } from "../transform/openai-format"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
+import { handleOpenAIError } from "./utils/openai-error-handler"
 
 export class SambaNovaHandler extends BaseOpenAiCompatibleProvider<SambaNovaModelId> {
 	constructor(options: ApiHandlerOptions) {
@@ -64,6 +65,10 @@ export class SambaNovaHandler extends BaseOpenAiCompatibleProvider<SambaNovaMode
 			;(params as any).thinking = { type: "enabled" }
 		}
 
-		return this.client.chat.completions.create(params, requestOptions)
+		try {
+			return this.client.chat.completions.create(params, requestOptions)
+		} catch (error) {
+			throw handleOpenAIError(error, this.providerName)
+		}
 	}
 }
