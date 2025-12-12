@@ -14,7 +14,7 @@ vi.mock("@/i18n/TranslationContext", () => {
 	}
 })
 
-// Mock ExtensionState with browserToolEnabled = false to verify visibility gating
+// Mock ExtensionState with browserToolEnabled = false to verify disabled state
 vi.mock("@/context/ExtensionStateContext", () => {
 	return {
 		useExtensionState: () => ({ browserToolEnabled: false }),
@@ -22,7 +22,7 @@ vi.mock("@/context/ExtensionStateContext", () => {
 	}
 })
 
-describe("AutoApproveToggle - hidden Browser toggle when browser tool disabled", () => {
+describe("AutoApproveToggle - disabled Browser toggle when browser tool disabled", () => {
 	const initialProps = {
 		alwaysAllowReadOnly: true,
 		alwaysAllowWrite: false,
@@ -37,19 +37,21 @@ describe("AutoApproveToggle - hidden Browser toggle when browser tool disabled",
 		onToggle: vi.fn(),
 	}
 
-	test("does not render the Browser auto-approve toggle when browserToolEnabled is false", () => {
+	test("renders the Browser auto-approve toggle as disabled when browserToolEnabled is false", () => {
 		render(
 			<TranslationProvider>
 				<AutoApproveToggle {...initialProps} />
 			</TranslationProvider>,
 		)
 
-		// Browser toggle should be hidden
-		const browserToggle = screen.queryByTestId(autoApproveSettingsConfig.alwaysAllowBrowser.testId)
-		expect(browserToggle).toBeNull()
+		// Browser toggle should be present but disabled
+		const browserToggle = screen.getByTestId(autoApproveSettingsConfig.alwaysAllowBrowser.testId)
+		expect(browserToggle).toBeInTheDocument()
+		expect(browserToggle).toBeDisabled()
 
-		// A non-browser toggle should still be present to ensure the component renders others
+		// A non-browser toggle should still be present and enabled
 		const readOnlyToggle = screen.getByTestId(autoApproveSettingsConfig.alwaysAllowReadOnly.testId)
 		expect(readOnlyToggle).toBeInTheDocument()
+		expect(readOnlyToggle).not.toBeDisabled()
 	})
 })

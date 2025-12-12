@@ -2,14 +2,21 @@ import React from "react"
 import { ListChecks, LayoutList, Settings, CheckCheck, X } from "lucide-react"
 
 import { vscode } from "@/utils/vscode"
+
 import { cn } from "@/lib/utils"
+
 import { useExtensionState } from "@/context/ExtensionStateContext"
+
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
-import { Popover, PopoverContent, PopoverTrigger, StandardTooltip, ToggleSwitch } from "@/components/ui"
-import { AutoApproveSetting, autoApproveSettingsConfig } from "../settings/AutoApproveToggle"
+
 import { useAutoApprovalToggles } from "@/hooks/useAutoApprovalToggles"
 import { useAutoApprovalState } from "@/hooks/useAutoApprovalState"
+
+import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
+
+import { Popover, PopoverContent, PopoverTrigger, StandardTooltip, ToggleSwitch, Button } from "@/components/ui"
+
+import { AutoApproveSetting, autoApproveSettingsConfig } from "../settings/AutoApproveToggle"
 
 interface AutoApproveDropdownProps {
 	disabled?: boolean
@@ -40,7 +47,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 
 	const baseToggles = useAutoApprovalToggles()
 
-	// Include alwaysApproveResubmit in addition to the base toggles
+	// Include alwaysApproveResubmit in addition to the base toggles.
 	const toggles = React.useMemo(
 		() => ({
 			...baseToggles,
@@ -51,9 +58,8 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 
 	const onAutoApproveToggle = React.useCallback(
 		(key: AutoApproveSetting, value: boolean) => {
-			vscode.postMessage({ type: key, bool: value })
+			vscode.postMessage({ type: "updateSettings", updatedSettings: { [key]: value } })
 
-			// Update the specific toggle state
 			switch (key) {
 				case "alwaysAllowReadOnly":
 					setAlwaysAllowReadOnly(value)
@@ -87,7 +93,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 					break
 			}
 
-			// If enabling any option, ensure autoApprovalEnabled is true
+			// If enabling any option, ensure autoApprovalEnabled is true.
 			if (value && !autoApprovalEnabled) {
 				setAutoApprovalEnabled(true)
 				vscode.postMessage({ type: "autoApprovalEnabled", bool: true })
@@ -110,10 +116,10 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 	)
 
 	const handleSelectAll = React.useCallback(() => {
-		// Enable all visible options based on current browser tool setting
-		const keys = browserToolEnabled
-			? Object.keys(autoApproveSettingsConfig)
-			: Object.keys(autoApproveSettingsConfig).filter((k) => k !== "alwaysAllowBrowser")
+		// Enable all toggleable options (skip Browser toggle when browser tool is disabled)
+		const keys = Object.keys(autoApproveSettingsConfig).filter(
+			(k) => browserToolEnabled || k !== "alwaysAllowBrowser",
+		)
 
 		keys.forEach((key) => {
 			onAutoApproveToggle(key as AutoApproveSetting, true)
@@ -126,10 +132,10 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 	}, [onAutoApproveToggle, autoApprovalEnabled, setAutoApprovalEnabled, browserToolEnabled])
 
 	const handleSelectNone = React.useCallback(() => {
-		// Disable all visible options based on current browser tool setting
-		const keys = browserToolEnabled
-			? Object.keys(autoApproveSettingsConfig)
-			: Object.keys(autoApproveSettingsConfig).filter((k) => k !== "alwaysAllowBrowser")
+		// Disable all toggleable options (skip Browser toggle when browser tool is disabled)
+		const keys = Object.keys(autoApproveSettingsConfig).filter(
+			(k) => browserToolEnabled || k !== "alwaysAllowBrowser",
+		)
 
 		keys.forEach((key) => {
 			onAutoApproveToggle(key as AutoApproveSetting, false)
@@ -149,24 +155,22 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 		vscode.postMessage({ type: "autoApprovalEnabled", bool: newValue })
 	}, [autoApprovalEnabled, setAutoApprovalEnabled])
 
-	// Filter out Browser toggle when browser tool is disabled
-	const visibleSettingsArray = React.useMemo(
-		() =>
-			Object.values(autoApproveSettingsConfig).filter(
-				(s) => browserToolEnabled || s.key !== "alwaysAllowBrowser",
-			),
-		[browserToolEnabled],
+	// Show all settings but track which are toggleable (Browser is disabled when browser tool is off)
+	const allSettingsArray = React.useMemo(() => Object.values(autoApproveSettingsConfig), [])
+
+	// Keys that are toggleable (exclude Browser when browser tool is disabled)
+	const toggleableKeys = React.useMemo(
+		() => allSettingsArray.filter((s) => browserToolEnabled || s.key !== "alwaysAllowBrowser").map((s) => s.key),
+		[allSettingsArray, browserToolEnabled],
 	)
 
-	const visibleKeys = React.useMemo(() => visibleSettingsArray.map((s) => s.key), [visibleSettingsArray])
-
 	const enabledCount = React.useMemo(() => {
-		return visibleKeys.filter((key) => !!toggles[key as keyof typeof toggles]).length
-	}, [visibleKeys, toggles])
+		return toggleableKeys.filter((key) => !!toggles[key as keyof typeof toggles]).length
+	}, [toggleableKeys, toggles])
 
 	const totalCount = React.useMemo(() => {
-		return visibleKeys.length
-	}, [visibleKeys])
+		return toggleableKeys.length
+	}, [toggleableKeys])
 
 	const { effectiveAutoApprovalEnabled } = useAutoApprovalState(toggles, autoApprovalEnabled)
 
@@ -174,8 +178,11 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 		!effectiveAutoApprovalEnabled || enabledCount === 0
 			? t("chat:autoApprove.tooltipManage")
 			: t("chat:autoApprove.tooltipStatus", {
-					toggles: visibleSettingsArray
-						.filter((setting) => toggles[setting.key])
+					toggles: allSettingsArray
+						.filter(
+							(setting) =>
+								toggles[setting.key] && (browserToolEnabled || setting.key !== "alwaysAllowBrowser"),
+						)
 						.map((setting) => t(setting.labelKey))
 						.join(", "),
 				})
@@ -190,6 +197,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 						"inline-flex items-center gap-1.5 relative whitespace-nowrap px-1.5 py-1 text-xs",
 						"bg-transparent border border-[rgba(255,255,255,0.08)] rounded-md text-vscode-foreground",
 						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
+						"max-[300px]:shrink-0",
 						disabled
 							? "opacity-50 cursor-not-allowed"
 							: "opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)] cursor-pointer",
@@ -201,12 +209,19 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 						<CheckCheck className="size-3 flex-shrink-0" />
 					)}
 
-					<span className="truncate min-w-0">
+					<span className="hidden min-[300px]:inline truncate min-w-0">
 						{!effectiveAutoApprovalEnabled
 							? t("chat:autoApprove.triggerLabelOff")
 							: enabledCount === totalCount
 								? t("chat:autoApprove.triggerLabelAll")
 								: t("chat:autoApprove.triggerLabel", { count: enabledCount })}
+					</span>
+					<span className="inline min-[300px]:hidden min-w-0">
+						{!effectiveAutoApprovalEnabled
+							? t("chat:autoApprove.triggerLabelOffShort")
+							: enabledCount === totalCount
+								? t("chat:autoApprove.triggerLabelAll")
+								: enabledCount}
 					</span>
 				</PopoverTrigger>
 			</StandardTooltip>
@@ -233,28 +248,32 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 						</p>
 					</div>
 					<div className="grid grid-cols-1 min-[340px]:grid-cols-2 gap-x-2 gap-y-2 p-3">
-						{visibleSettingsArray.map(({ key, labelKey, descriptionKey, icon }) => {
+						{allSettingsArray.map(({ key, labelKey, descriptionKey, icon }) => {
 							const isEnabled = toggles[key]
+							const isBrowserToggleDisabled = key === "alwaysAllowBrowser" && !browserToolEnabled
+							const isDisabled = !effectiveAutoApprovalEnabled || isBrowserToggleDisabled
 							return (
-								<StandardTooltip key={key} content={t(descriptionKey)}>
-									<button
+								<StandardTooltip
+									key={key}
+									content={
+										isBrowserToggleDisabled
+											? t("settings:autoApprove.browser.disabledTooltip")
+											: t(descriptionKey)
+									}>
+									<Button
+										variant={isEnabled && !isBrowserToggleDisabled ? "primary" : "secondary"}
 										onClick={() => onAutoApproveToggle(key, !isEnabled)}
 										className={cn(
-											"flex items-center gap-2 px-2 py-2 rounded text-sm text-left",
+											"flex items-center gap-2 px-2 py-2 text-sm text-left justify-start h-auto",
 											"transition-all duration-150",
-											"opacity-100 hover:opacity-70",
-											"cursor-pointer",
-											!effectiveAutoApprovalEnabled &&
-												"opacity-50 cursor-not-allowed hover:opacity-50",
-											isEnabled
-												? "bg-vscode-button-background text-vscode-button-foreground"
-												: "bg-vscode-button-background/15 text-vscode-foreground hover:bg-vscode-list-hoverBackground",
+											isDisabled && "opacity-50 cursor-not-allowed hover:opacity-50",
+											(!isEnabled || isBrowserToggleDisabled) && "bg-vscode-button-background/15",
 										)}
-										disabled={!effectiveAutoApprovalEnabled}
+										disabled={isDisabled}
 										data-testid={`auto-approve-${key}`}>
 										<span className={`codicon codicon-${icon} text-sm flex-shrink-0`} />
 										<span className="flex-1 truncate">{t(labelKey)}</span>
-									</button>
+									</Button>
 								</StandardTooltip>
 							)
 						})}
@@ -263,44 +282,32 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 					{/* Bottom bar with Select All/None buttons */}
 					<div className="flex flex-row items-center justify-between px-2 py-2 border-t border-vscode-dropdown-border">
 						<div className="flex flex-row gap-1">
-							<button
+							<Button
+								variant="ghost"
+								size="sm"
 								aria-label={t("chat:autoApprove.selectAll")}
 								onClick={handleSelectAll}
 								disabled={!effectiveAutoApprovalEnabled}
 								className={cn(
-									"relative inline-flex items-center justify-center gap-1",
-									"bg-transparent border-none px-2 py-1",
-									"rounded-md text-base font-bold",
-									"text-vscode-foreground",
-									"transition-all duration-150",
-									"hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)]",
-									"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-									"active:bg-[rgba(255,255,255,0.1)]",
-									"cursor-pointer",
+									"gap-1 px-2 py-1 text-base font-bold h-auto",
 									!effectiveAutoApprovalEnabled && "opacity-50 hover:opacity-50 cursor-not-allowed",
 								)}>
 								<ListChecks className="w-3.5 h-3.5" />
 								<span>{t("chat:autoApprove.all")}</span>
-							</button>
-							<button
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
 								aria-label={t("chat:autoApprove.selectNone")}
 								onClick={handleSelectNone}
 								disabled={!effectiveAutoApprovalEnabled}
 								className={cn(
-									"relative inline-flex items-center justify-center gap-1",
-									"bg-transparent border-none px-2 py-1",
-									"rounded-md text-base font-bold",
-									"text-vscode-foreground",
-									"transition-all duration-150",
-									"hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)]",
-									"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-									"active:bg-[rgba(255,255,255,0.1)]",
-									"cursor-pointer",
+									"gap-1 px-2 py-1 text-base font-bold h-auto",
 									!effectiveAutoApprovalEnabled && "opacity-50 hover:opacity-50 cursor-not-allowed",
 								)}>
 								<LayoutList className="w-3.5 h-3.5" />
 								<span>{t("chat:autoApprove.none")}</span>
-							</button>
+							</Button>
 						</div>
 
 						<label

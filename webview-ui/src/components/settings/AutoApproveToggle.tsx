@@ -110,29 +110,41 @@ export const AutoApproveToggle = ({ onToggle, ...props }: AutoApproveToggleProps
 	const { t } = useAppTranslation()
 	const { browserToolEnabled } = useExtensionState()
 
-	const visibleConfigs = Object.values(autoApproveSettingsConfig).filter(
-		(cfg) => browserToolEnabled || cfg.key !== "alwaysAllowBrowser",
-	)
+	// Show all configs, but Browser toggle will be disabled when browserToolEnabled is false
+	const allConfigs = Object.values(autoApproveSettingsConfig)
 
 	return (
 		<div className={cn("flex flex-row flex-wrap gap-2 py-2")}>
-			{visibleConfigs.map(({ key, descriptionKey, labelKey, icon, testId }) => (
-				<StandardTooltip key={key} content={t(descriptionKey || "")}>
-					<Button
-						variant={props[key] ? "default" : "outline"}
-						onClick={() => onToggle(key, !props[key])}
-						aria-label={t(labelKey)}
-						aria-pressed={!!props[key]}
-						data-testid={testId}
-						className={cn(
-							"h-7 px-2 rounded-md flex items-center gap-1.5 text-xs whitespace-nowrap",
-							!props[key] && "opacity-50",
-						)}>
-						<span className={`codicon codicon-${icon} text-sm`} />
-						<span>{t(labelKey)}</span>
-					</Button>
-				</StandardTooltip>
-			))}
+			{allConfigs.map(({ key, descriptionKey, labelKey, icon, testId }) => {
+				const isBrowserToggleDisabled = key === "alwaysAllowBrowser" && !browserToolEnabled
+				const isDisabled = isBrowserToggleDisabled
+				return (
+					<StandardTooltip
+						key={key}
+						content={
+							isBrowserToggleDisabled
+								? t("settings:autoApprove.browser.disabledTooltip")
+								: t(descriptionKey || "")
+						}>
+						<Button
+							variant={props[key] && !isBrowserToggleDisabled ? "primary" : "secondary"}
+							onClick={() => onToggle(key, !props[key])}
+							aria-label={t(labelKey)}
+							aria-pressed={!!props[key]}
+							aria-disabled={isDisabled}
+							data-testid={testId}
+							disabled={isDisabled}
+							className={cn(
+								"gap-1.5 text-xs whitespace-nowrap",
+								(!props[key] || isBrowserToggleDisabled) && "opacity-50",
+								isDisabled && "cursor-not-allowed",
+							)}>
+							<span className={`codicon codicon-${icon} text-sm`} />
+							<span>{t(labelKey)}</span>
+						</Button>
+					</StandardTooltip>
+				)
+			})}
 		</div>
 	)
 }

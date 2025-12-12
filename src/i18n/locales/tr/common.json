@@ -29,6 +29,12 @@
 		"checkpoint_timeout": "Kontrol noktasını geri yüklemeye çalışırken zaman aşımına uğradı.",
 		"checkpoint_failed": "Kontrol noktası geri yüklenemedi.",
 		"git_not_installed": "Kontrol noktaları özelliği için Git gereklidir. Kontrol noktalarını etkinleştirmek için lütfen Git'i yükleyin.",
+		"checkpoint_no_first": "Karşılaştırılacak ilk kontrol noktası yok.",
+		"checkpoint_no_previous": "Karşılaştırılacak önceki kontrol noktası yok.",
+		"checkpoint_no_changes": "Değişiklik bulunamadı.",
+		"checkpoint_diff_with_next": "Sonraki kontrol noktasıyla karşılaştırılan değişiklikler",
+		"checkpoint_diff_since_first": "İlk kontrol noktasından bu yana yapılan değişiklikler",
+		"checkpoint_diff_to_current": "Mevcut çalışma alanındaki değişiklikler",
 		"nested_git_repos_warning": "{{path}} konumunda iç içe git deposu tespit edildiği için kontrol noktaları devre dışı bırakıldı. Kontrol noktalarını kullanmak için lütfen bu iç içe git deposunu kaldırın veya taşıyın.",
 		"no_workspace": "Lütfen önce bir proje klasörü açın",
 		"update_support_prompt": "Destek istemi güncellenemedi",
@@ -100,7 +106,11 @@
 		"gemini": {
 			"generate_stream": "Gemini oluşturma bağlam akışı hatası: {{error}}",
 			"generate_complete_prompt": "Gemini tamamlama hatası: {{error}}",
-			"sources": "Kaynaklar:"
+			"sources": "Kaynaklar:",
+			"thinking_complete_no_output": "(Düşünme tamamlandı, ancak çıktı oluşturulmadı.)",
+			"thinking_complete_truncated": "(Düşünme tamamlandı, ancak çıktı jeton sınırı nedeniyle kesildi.)",
+			"thinking_complete_safety": "(Düşünme tamamlandı, ancak çıktı güvenlik ayarları nedeniyle engellendi.)",
+			"thinking_complete_recitation": "(Düşünme tamamlandı, ancak çıktı okuma kontrolü nedeniyle engellendi.)"
 		},
 		"cerebras": {
 			"authenticationFailed": "Cerebras API kimlik doğrulama başarısız oldu. API anahtarınızın geçerli olduğunu ve süresi dolmadığını kontrol edin.",

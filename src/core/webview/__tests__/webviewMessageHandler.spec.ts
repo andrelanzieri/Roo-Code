@@ -187,7 +187,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			apiConfiguration: {
 				openRouterApiKey: "openrouter-key",
 				requestyApiKey: "requesty-key",
-				glamaApiKey: "glama-key",
 				unboundApiKey: "unbound-key",
 				litellmApiKey: "litellm-key",
 				litellmBaseUrl: "http://localhost:4000",
@@ -218,12 +217,17 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		})
 
 		// Verify getModels was called for each provider
-		expect(mockGetModels).toHaveBeenCalledWith({ provider: "deepinfra" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "openrouter" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "requesty", apiKey: "requesty-key" })
-		expect(mockGetModels).toHaveBeenCalledWith({ provider: "glama" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "unbound", apiKey: "unbound-key" })
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "vercel-ai-gateway" })
+		expect(mockGetModels).toHaveBeenCalledWith({ provider: "deepinfra" })
+		expect(mockGetModels).toHaveBeenCalledWith(
+			expect.objectContaining({
+				provider: "roo",
+				baseUrl: expect.any(String),
+			}),
+		)
 		expect(mockGetModels).toHaveBeenCalledWith({
 			provider: "litellm",
 			apiKey: "litellm-key",
@@ -239,15 +243,17 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
-				glama: mockModels,
 				unbound: mockModels,
 				litellm: mockModels,
+				roo: mockModels,
+				chutes: mockModels,
 				ollama: {},
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
 				huggingface: {},
 				"io-intelligence": {},
 			},
+			values: undefined,
 		})
 	})
 
@@ -256,7 +262,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			apiConfiguration: {
 				openRouterApiKey: "openrouter-key",
 				requestyApiKey: "requesty-key",
-				glamaApiKey: "glama-key",
 				unboundApiKey: "unbound-key",
 				// Missing litellm config
 			},
@@ -294,7 +299,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			apiConfiguration: {
 				openRouterApiKey: "openrouter-key",
 				requestyApiKey: "requesty-key",
-				glamaApiKey: "glama-key",
 				unboundApiKey: "unbound-key",
 				// Missing litellm config
 			},
@@ -330,8 +334,9 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				deepinfra: mockModels,
 				openrouter: mockModels,
 				requesty: mockModels,
-				glama: mockModels,
 				unbound: mockModels,
+				roo: mockModels,
+				chutes: mockModels,
 				litellm: {},
 				ollama: {},
 				lmstudio: {},
@@ -339,6 +344,7 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				huggingface: {},
 				"io-intelligence": {},
 			},
+			values: undefined,
 		})
 	})
 
@@ -356,35 +362,18 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		mockGetModels
 			.mockResolvedValueOnce(mockModels) // openrouter
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
-			.mockResolvedValueOnce(mockModels) // glama
 			.mockRejectedValueOnce(new Error("Unbound API error")) // unbound
 			.mockResolvedValueOnce(mockModels) // vercel-ai-gateway
 			.mockResolvedValueOnce(mockModels) // deepinfra
+			.mockResolvedValueOnce(mockModels) // roo
+			.mockRejectedValueOnce(new Error("Chutes API error")) // chutes
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
 			type: "requestRouterModels",
 		})
 
-		// Verify successful providers are included
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "routerModels",
-			routerModels: {
-				deepinfra: mockModels,
-				openrouter: mockModels,
-				requesty: {},
-				glama: mockModels,
-				unbound: {},
-				litellm: {},
-				ollama: {},
-				lmstudio: {},
-				"vercel-ai-gateway": mockModels,
-				huggingface: {},
-				"io-intelligence": {},
-			},
-		})
-
-		// Verify error messages were sent for failed providers
+		// Verify error messages were sent for failed providers (these come first)
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "singleRouterModelFetchResponse",
 			success: false,
@@ -402,8 +391,35 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "singleRouterModelFetchResponse",
 			success: false,
+			error: "Chutes API error",
+			values: { provider: "chutes" },
+		})
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "singleRouterModelFetchResponse",
+			success: false,
 			error: "LiteLLM connection failed",
 			values: { provider: "litellm" },
+		})
+
+		// Verify final routerModels response includes successful providers and empty objects for failed ones
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "routerModels",
+			routerModels: {
+				deepinfra: mockModels,
+				openrouter: mockModels,
+				requesty: {},
+				unbound: {},
+				roo: mockModels,
+				chutes: {},
+				litellm: {},
+				ollama: {},
+				lmstudio: {},
+				"vercel-ai-gateway": mockModels,
+				huggingface: {},
+				"io-intelligence": {},
+			},
+			values: undefined,
 		})
 	})
 
@@ -412,10 +428,11 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		mockGetModels
 			.mockRejectedValueOnce(new Error("Structured error message")) // openrouter
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
-			.mockRejectedValueOnce(new Error("Glama API error")) // glama
 			.mockRejectedValueOnce(new Error("Unbound API error")) // unbound
 			.mockRejectedValueOnce(new Error("Vercel AI Gateway error")) // vercel-ai-gateway
 			.mockRejectedValueOnce(new Error("DeepInfra API error")) // deepinfra
+			.mockRejectedValueOnce(new Error("Roo API error")) // roo
+			.mockRejectedValueOnce(new Error("Chutes API error")) // chutes
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
@@ -440,13 +457,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
 			type: "singleRouterModelFetchResponse",
 			success: false,
-			error: "Glama API error",
-			values: { provider: "glama" },
-		})
-
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "singleRouterModelFetchResponse",
-			success: false,
 			error: "Unbound API error",
 			values: { provider: "unbound" },
 		})
@@ -456,6 +466,27 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			success: false,
 			error: "DeepInfra API error",
 			values: { provider: "deepinfra" },
+		})
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "singleRouterModelFetchResponse",
+			success: false,
+			error: "Vercel AI Gateway error",
+			values: { provider: "vercel-ai-gateway" },
+		})
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "singleRouterModelFetchResponse",
+			success: false,
+			error: "Roo API error",
+			values: { provider: "roo" },
+		})
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "singleRouterModelFetchResponse",
+			success: false,
+			error: "Chutes API error",
+			values: { provider: "chutes" },
 		})
 
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
@@ -674,8 +705,8 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 
 	it("delegates enable=true to McpHub and posts updated state", async () => {
 		await webviewMessageHandler(mockClineProvider, {
-			type: "mcpEnabled",
-			bool: true,
+			type: "updateSettings",
+			updatedSettings: { mcpEnabled: true },
 		})
 
 		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
@@ -686,8 +717,8 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 
 	it("delegates enable=false to McpHub and posts updated state", async () => {
 		await webviewMessageHandler(mockClineProvider, {
-			type: "mcpEnabled",
-			bool: false,
+			type: "updateSettings",
+			updatedSettings: { mcpEnabled: false },
 		})
 
 		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
@@ -700,8 +731,8 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 		;(mockClineProvider as any).getMcpHub = vi.fn().mockReturnValue(undefined)
 
 		await webviewMessageHandler(mockClineProvider, {
-			type: "mcpEnabled",
-			bool: true,
+			type: "updateSettings",
+			updatedSettings: { mcpEnabled: true },
 		})
 
 		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)

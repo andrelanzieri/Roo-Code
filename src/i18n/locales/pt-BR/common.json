@@ -33,6 +33,12 @@
 		"checkpoint_timeout": "Tempo esgotado ao tentar restaurar o ponto de verificação.",
 		"checkpoint_failed": "Falha ao restaurar o ponto de verificação.",
 		"git_not_installed": "O Git é necessário para o recurso de checkpoints. Por favor, instale o Git para habilitar os checkpoints.",
+		"checkpoint_no_first": "Nenhum primeiro ponto de verificação para comparar.",
+		"checkpoint_no_previous": "Nenhum ponto de verificação anterior para comparar.",
+		"checkpoint_no_changes": "Nenhuma alteração encontrada.",
+		"checkpoint_diff_with_next": "Alterações comparadas com o próximo ponto de verificação",
+		"checkpoint_diff_since_first": "Alterações desde o primeiro ponto de verificação",
+		"checkpoint_diff_to_current": "Alterações no espaço de trabalho atual",
 		"nested_git_repos_warning": "Os checkpoints estão desabilitados porque um repositório git aninhado foi detectado em: {{path}}. Para usar checkpoints, por favor remova ou realoque este repositório git aninhado.",
 		"no_workspace": "Por favor, abra primeiro uma pasta de projeto",
 		"update_support_prompt": "Falha ao atualizar o prompt de suporte",
@@ -104,7 +110,11 @@
 		"gemini": {
 			"generate_stream": "Erro de fluxo de contexto de geração do Gemini: {{error}}",
 			"generate_complete_prompt": "Erro de conclusão do Gemini: {{error}}",
-			"sources": "Fontes:"
+			"sources": "Fontes:",
+			"thinking_complete_no_output": "(Pensamento concluído, mas nenhuma saída foi gerada.)",
+			"thinking_complete_truncated": "(Pensamento concluído, mas a saída foi truncada devido ao limite de tokens.)",
+			"thinking_complete_safety": "(Pensamento concluído, mas a saída foi bloqueada devido às configurações de segurança.)",
+			"thinking_complete_recitation": "(Pensamento concluído, mas a saída foi bloqueada devido à verificação de recitação.)"
 		},
 		"cerebras": {
 			"authenticationFailed": "Falha na autenticação da API Cerebras. Verifique se sua chave de API é válida e não expirou.",

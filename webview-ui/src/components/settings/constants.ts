@@ -14,13 +14,13 @@ import {
 	vertexModels,
 	xaiModels,
 	groqModels,
-	chutesModels,
 	sambaNovaModels,
 	doubaoModels,
 	internationalZAiModels,
 	fireworksModels,
-	rooModels,
 	featherlessModels,
+	minimaxModels,
+	basetenModels,
 } from "@roo-code/types"
 
 export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = {
@@ -38,12 +38,12 @@ export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, Mod
 	vertex: vertexModels,
 	xai: xaiModels,
 	groq: groqModels,
-	chutes: chutesModels,
 	sambanova: sambaNovaModels,
 	zai: internationalZAiModels,
 	fireworks: fireworksModels,
-	roo: rooModels,
 	featherless: featherlessModels,
+	minimax: minimaxModels,
+	baseten: basetenModels,
 }
 
 export const PROVIDERS = [
@@ -61,7 +61,6 @@ export const PROVIDERS = [
 	{ value: "qwen-code", label: "Qwen Code" },
 	{ value: "vertex", label: "GCP Vertex AI" },
 	{ value: "bedrock", label: "Amazon Bedrock" },
-	{ value: "glama", label: "Glama" },
 	{ value: "vscode-lm", label: "VS Code LM API" },
 	{ value: "mistral", label: "Mistral" },
 	{ value: "lmstudio", label: "LM Studio" },
@@ -75,10 +74,12 @@ export const PROVIDERS = [
 	{ value: "chutes", label: "Chutes AI" },
 	{ value: "litellm", label: "LiteLLM" },
 	{ value: "sambanova", label: "SambaNova" },
-	{ value: "zai", label: "Z AI" },
+	{ value: "zai", label: "Z.ai" },
 	{ value: "fireworks", label: "Fireworks AI" },
 	{ value: "featherless", label: "Featherless AI" },
 	{ value: "io-intelligence", label: "IO Intelligence" },
 	{ value: "roo", label: "Roo Code Cloud" },
 	{ value: "vercel-ai-gateway", label: "Vercel AI Gateway" },
+	{ value: "minimax", label: "MiniMax" },
+	{ value: "baseten", label: "Baseten" },
 ].sort((a, b) => a.label.localeCompare(b.label))

@@ -29,6 +29,12 @@
 		"checkpoint_timeout": "Expiration du délai lors de la tentative de rétablissement du checkpoint.",
 		"checkpoint_failed": "Échec du rétablissement du checkpoint.",
 		"git_not_installed": "Git est requis pour la fonctionnalité des points de contrôle. Veuillez installer Git pour activer les points de contrôle.",
+		"checkpoint_no_first": "Aucun premier point de contrôle à comparer.",
+		"checkpoint_no_previous": "Aucun point de contrôle précédent à comparer.",
+		"checkpoint_no_changes": "Aucun changement trouvé.",
+		"checkpoint_diff_with_next": "Modifications comparées au prochain point de contrôle",
+		"checkpoint_diff_since_first": "Modifications depuis le premier point de contrôle",
+		"checkpoint_diff_to_current": "Modifications de l'espace de travail actuel",
 		"nested_git_repos_warning": "Les points de contrôle sont désactivés car un dépôt git imbriqué a été détecté à : {{path}}. Pour utiliser les points de contrôle, veuillez supprimer ou déplacer ce dépôt git imbriqué.",
 		"no_workspace": "Veuillez d'abord ouvrir un espace de travail",
 		"update_support_prompt": "Erreur lors de la mise à jour du prompt de support",
@@ -100,7 +106,11 @@
 		"gemini": {
 			"generate_stream": "Erreur du flux de contexte de génération Gemini : {{error}}",
 			"generate_complete_prompt": "Erreur d'achèvement de Gemini : {{error}}",
-			"sources": "Sources :"
+			"sources": "Sources :",
+			"thinking_complete_no_output": "(Réflexion terminée, mais aucune sortie générée.)",
+			"thinking_complete_truncated": "(Réflexion terminée, mais la sortie a été tronquée en raison de la limite de jetons.)",
+			"thinking_complete_safety": "(Réflexion terminée, mais la sortie a été bloquée en raison des paramètres de sécurité.)",
+			"thinking_complete_recitation": "(Réflexion terminée, mais la sortie a été bloquée en raison de la vérification de récitation.)"
 		},
 		"cerebras": {
 			"authenticationFailed": "Échec de l'authentification de l'API Cerebras. Vérifiez que votre clé API est valide et n'a pas expiré.",
