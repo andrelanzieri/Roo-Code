@@ -136,27 +136,29 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [sendingDisabled, setSendingDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
+	const selectedImagesRef = useRef(selectedImages)
+	const draftHydratedRef = useRef(false)
+
+	type SaveDraftFn = (text: string, images: string[]) => void
+	type SaveDraftDebouncedFn = debounce.DebouncedFunction<SaveDraftFn>
 
 	// Debounced draft save to prevent excessive writes
-	const saveDraftDebounced = useMemo(
-		() =>
-			debounce((text: string, images: string[]) => {
-				vscode.postMessage({ type: "saveDraftMessage", text, images })
-			}, 500),
-		[],
-	)
+	const saveDraftDebounced: SaveDraftDebouncedFn = useMemo(() => {
+		return debounce((text: string, images: string[]) => {
+			vscode.postMessage({ type: "saveDraftMessage", text, images })
+		}, 500)
+	}, [])
 
 	// Cleanup debounce on unmount
 	useEffect(() => {
 		return () => {
-			if (saveDraftDebounced && typeof (saveDraftDebounced as any).clear === "function") {
-				;(saveDraftDebounced as any).clear()
-			}
+			saveDraftDebounced.clear()
 		}
 	}, [saveDraftDebounced])
 
 	// Request saved draft on mount
 	useEffect(() => {
+		draftHydratedRef.current = false
 		vscode.postMessage({ type: "getDraftMessage" })
 	}, [])
 
@@ -211,6 +213,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	useEffect(() => {
 		inputValueRef.current = inputValue
 	}, [inputValue])
+
+	useEffect(() => {
+		selectedImagesRef.current = selectedImages
+	}, [selectedImages])
 
 	useEffect(() => {
 		isMountedRef.current = true
@@ -594,6 +600,14 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[selectedImages, saveDraftDebounced],
 	)
 
+	// Persist drafts when images change (e.g., image-only drafts)
+	useEffect(() => {
+		if (!draftHydratedRef.current) {
+			return
+		}
+		saveDraftDebounced(inputValueRef.current, selectedImages)
+	}, [selectedImages, saveDraftDebounced])
+
 	/**
 	 * Handles sending messages to the extension
 	 * @param text - The message text to send
@@ -876,15 +890,16 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					playSound("notification")
 					break
 				case "draftMessage":
-					// Only restore draft if there's no active task input
-					if (messagesRef.current.length === 0 || clineAskRef.current === undefined) {
-						if (message.text) {
+					// Avoid overwriting local input; only restore into an empty composer.
+					if (inputValueRef.current.trim() === "" && selectedImagesRef.current.length === 0) {
+						if (message.text !== undefined) {
 							setInputValue(message.text)
 						}
-						if (message.images && message.images.length > 0) {
+						if (message.images !== undefined) {
 							setSelectedImages(message.images)
 						}
 					}
+					draftHydratedRef.current = true
 					break
 			}
 			// textAreaRef.current is not explicitly required here since React
