@@ -7,8 +7,13 @@ import {
 
 describe("kimi-tool-call-extractor", () => {
 	describe("hasKimiEmbeddedToolCalls", () => {
-		it("should return true when content contains tool call markers", () => {
+		it("should return true when content contains tool call markers with delimiters", () => {
 			const content = "Some reasoning <|tool_calls_section_begin|> stuff <|tool_calls_section_end|>"
+			expect(hasKimiEmbeddedToolCalls(content)).toBe(true)
+		})
+
+		it("should return true when content contains tool call markers without delimiters", () => {
+			const content = "Some reasoning tool_calls_section_begin stuff tool_calls_section_end"
 			expect(hasKimiEmbeddedToolCalls(content)).toBe(true)
 		})
 
@@ -23,7 +28,7 @@ describe("kimi-tool-call-extractor", () => {
 	})
 
 	describe("extractKimiToolCalls", () => {
-		it("should extract single tool call from reasoning content", () => {
+		it("should extract single tool call from reasoning content with delimiters", () => {
 			const content = `Some reasoning here
 <|tool_calls_section_begin|>
 <|tool_call_begin|>functions.read_file:0<|tool_call_argument_begin|>{"files":[{"path":"test.txt"}]}<|tool_call_end|>
@@ -41,7 +46,30 @@ More content after`
 					arguments: '{"files":[{"path":"test.txt"}]}',
 				},
 			})
-			expect(result.cleanedReasoningContent).not.toContain("<|tool_calls_section_begin|>")
+			expect(result.cleanedReasoningContent).not.toContain("tool_calls_section_begin")
+			expect(result.cleanedReasoningContent).toContain("Some reasoning here")
+			expect(result.cleanedReasoningContent).toContain("More content after")
+		})
+
+		it("should extract single tool call from reasoning content without delimiters", () => {
+			const content = `Some reasoning here
+tool_calls_section_begin
+tool_call_begin functions.read_file:0 tool_call_argument_begin {"files":[{"path":"test.txt"}]} tool_call_end
+tool_calls_section_end
+More content after`
+
+			const result = extractKimiToolCalls(content)
+
+			expect(result.toolCalls).toHaveLength(1)
+			expect(result.toolCalls[0]).toEqual({
+				id: "kimi-functions.read_file:0",
+				type: "function",
+				function: {
+					name: "read_file",
+					arguments: '{"files":[{"path":"test.txt"}]}',
+				},
+			})
+			expect(result.cleanedReasoningContent).not.toContain("tool_calls_section_begin")
 			expect(result.cleanedReasoningContent).toContain("Some reasoning here")
 			expect(result.cleanedReasoningContent).toContain("More content after")
 		})
@@ -110,9 +138,9 @@ More content after`
 			const result = extractKimiToolCalls(content)
 
 			// The cleaned content should not contain tool call markers
-			expect(result.cleanedReasoningContent).not.toContain("<|tool_calls_section_begin|>")
-			expect(result.cleanedReasoningContent).not.toContain("<|tool_calls_section_end|>")
-			expect(result.cleanedReasoningContent).not.toContain("<|tool_call_begin|>")
+			expect(result.cleanedReasoningContent).not.toContain("tool_calls_section_begin")
+			expect(result.cleanedReasoningContent).not.toContain("tool_calls_section_end")
+			expect(result.cleanedReasoningContent).not.toContain("tool_call_begin")
 			expect(result.cleanedReasoningContent).toContain("Before tool calls")
 			expect(result.cleanedReasoningContent).toContain("After tool calls")
 		})
@@ -146,6 +174,18 @@ End reasoning`
 			expect(result.toolCalls).toHaveLength(2)
 			expect(result.toolCalls[0].function.name).toBe("tool1")
 			expect(result.toolCalls[1].function.name).toBe("tool2")
+		})
+
+		it("should handle markers without delimiters", () => {
+			const content = `Some reasoning
+tool_calls_section_begin
+tool_call_begin functions.read_file:0 tool_call_argument_begin {"path":"test.txt"} tool_call_end
+tool_calls_section_end`
+
+			const result = extractKimiToolCalls(content)
+
+			expect(result.toolCalls).toHaveLength(1)
+			expect(result.toolCalls[0].function.name).toBe("read_file")
 		})
 	})
 

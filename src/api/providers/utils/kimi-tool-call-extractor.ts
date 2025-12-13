@@ -6,6 +6,9 @@
  * - <|tool_call_begin|> ... <|tool_call_end|> wraps each individual tool call
  * - <|tool_call_argument_begin|> marks the start of arguments JSON
  *
+ * Note: The model may output these markers with or without the <| |> delimiters,
+ * so patterns are designed to handle both formats.
+ *
  * Format example:
  * <|tool_calls_section_begin|>
  * <|tool_call_begin|>functions.read_file:0<|tool_call_argument_begin|>{"files":[{"path":"test.txt"}]}<|tool_call_end|>
@@ -36,9 +39,11 @@ export interface KimiToolCallExtractionResult {
 
 /**
  * Checks if the content contains Kimi K2 Thinking model's embedded tool call markers.
+ * Note: The model may output markers with or without <| |> delimiters, so we check
+ * for the core marker text only.
  */
 export function hasKimiEmbeddedToolCalls(content: string): boolean {
-	return content.includes("<|tool_calls_section_begin|>")
+	return content.includes("tool_calls_section_begin")
 }
 
 /**
@@ -58,7 +63,8 @@ export function extractKimiToolCalls(content: string): KimiToolCallExtractionRes
 	const toolCalls: KimiToolCall[] = []
 
 	// Pattern to match tool call sections
-	const sectionPattern = /<\|tool_calls_section_begin\|>(.*?)<\|tool_calls_section_end\|>/gs
+	// Note: Handles both <|marker|> and marker formats (delimiters are optional)
+	const sectionPattern = /(?:<\|)?tool_calls_section_begin(?:\|>)?(.*?)(?:<\|)?tool_calls_section_end(?:\|>)?/gs
 	const toolCallSections = content.match(sectionPattern)
 
 	if (!toolCallSections || toolCallSections.length === 0) {
@@ -70,8 +76,9 @@ export function extractKimiToolCalls(content: string): KimiToolCallExtractionRes
 
 	// Pattern to extract individual tool calls
 	// Format: <|tool_call_begin|>functions.tool_name:index<|tool_call_argument_begin|>JSON_ARGS<|tool_call_end|>
+	// Note: Handles both <|marker|> and marker formats (delimiters are optional)
 	const funcCallPattern =
-		/<\|tool_call_begin\|>\s*([\w.]+:\d+)\s*<\|tool_call_argument_begin\|>\s*(.*?)\s*<\|tool_call_end\|>/gs
+		/(?:<\|)?tool_call_begin(?:\|>)?\s*([\w.]+:\d+)\s*(?:<\|)?tool_call_argument_begin(?:\|>)?\s*(.*?)\s*(?:<\|)?tool_call_end(?:\|>)?/gs
 
 	for (const section of toolCallSections) {
 		let match
