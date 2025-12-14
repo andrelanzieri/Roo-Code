@@ -110,13 +110,13 @@ describe("ClaudeCodeHandler", () => {
 
 		// Verify createStreamingMessage was called with correct parameters
 		// Default model has reasoning effort of "medium" so thinking should be enabled
-		// With interleaved thinking, maxTokens comes from model definition, not reasoning config
+		// With interleaved thinking, maxTokens comes from model definition (32768 for claude-sonnet-4-5)
 		expect(mockCreateStreamingMessage).toHaveBeenCalledWith({
 			accessToken: "test-access-token",
 			model: "claude-sonnet-4-5",
 			systemPrompt,
 			messages,
-			maxTokens: 16384, // model's maxTokens (interleaved thinking uses context window)
+			maxTokens: 32768, // model's maxTokens from claudeCodeModels definition
 			thinking: {
 				type: "enabled",
 				budget_tokens: 32000, // medium reasoning budget_tokens
@@ -159,7 +159,7 @@ describe("ClaudeCodeHandler", () => {
 			model: "claude-sonnet-4-5",
 			systemPrompt,
 			messages,
-			maxTokens: 16384, // model default maxTokens
+			maxTokens: 32768, // model maxTokens from claudeCodeModels definition
 			thinking: { type: "disabled" },
 			tools: undefined,
 			toolChoice: undefined,
@@ -194,13 +194,13 @@ describe("ClaudeCodeHandler", () => {
 		await iterator.next()
 
 		// Verify createStreamingMessage was called with high thinking config
-		// With interleaved thinking, maxTokens comes from model definition, not reasoning config
+		// With interleaved thinking, maxTokens comes from model definition (32768 for claude-sonnet-4-5)
 		expect(mockCreateStreamingMessage).toHaveBeenCalledWith({
 			accessToken: "test-access-token",
 			model: "claude-sonnet-4-5",
 			systemPrompt,
 			messages,
-			maxTokens: 16384, // model's maxTokens (interleaved thinking uses context window)
+			maxTokens: 32768, // model's maxTokens from claudeCodeModels definition
 			thinking: {
 				type: "enabled",
 				budget_tokens: 64000, // high reasoning budget_tokens
