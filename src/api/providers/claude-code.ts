@@ -8,7 +8,7 @@ import {
 	type ClaudeCodeReasoningLevel,
 	type ModelInfo,
 } from "@roo-code/types"
-import { type ApiHandler, ApiHandlerCreateMessageMetadata } from ".."
+import { type ApiHandler, ApiHandlerCreateMessageMetadata, type SingleCompletionHandler } from ".."
 import { ApiStreamUsageChunk, type ApiStream } from "../transform/stream"
 import { claudeCodeOAuthManager, generateUserId } from "../../integrations/claude-code/oauth"
 import {
@@ -64,7 +64,7 @@ function convertOpenAIToolChoice(
 	return { type: "auto", disable_parallel_tool_use: disableParallelToolUse }
 }
 
-export class ClaudeCodeHandler implements ApiHandler {
+export class ClaudeCodeHandler implements ApiHandler, SingleCompletionHandler {
 	private options: ApiHandlerOptions
 	/**
 	 * Store the last thinking block signature for interleaved thinking with tool use.
@@ -287,5 +287,68 @@ export class ClaudeCodeHandler implements ApiHandler {
 			return 0
 		}
 		return countTokens(content, { useWorker: true })
+	}
+
+	/**
+	 * Completes a prompt using the Claude Code API.
+	 * This is used for context condensing and prompt enhancement.
+	 * The Claude Code branding is automatically prepended by createStreamingMessage.
+	 */
+	async completePrompt(prompt: string): Promise<string> {
+		// Get access token from OAuth manager
+		const accessToken = await claudeCodeOAuthManager.getAccessToken()
+
+		if (!accessToken) {
+			throw new Error(
+				t("common:errors.claudeCode.notAuthenticated", {
+					defaultValue:
+						"Not authenticated with Claude Code. Please sign in using the Claude Code OAuth flow.",
+				}),
+			)
+		}
+
+		// Get user email for generating user_id metadata
+		const email = await claudeCodeOAuthManager.getEmail()
+
+		const model = this.getModel()
+
+		// Validate that the model ID is a valid ClaudeCodeModelId
+		const modelId = model.id in claudeCodeModels ? (model.id as ClaudeCodeModelId) : claudeCodeDefaultModelId
+
+		// Generate user_id metadata in the format required by Claude Code API
+		const userId = generateUserId(email || undefined)
+
+		// Use maxTokens from model info for completion
+		const maxTokens = model.info.maxTokens ?? 16384
+
+		// Create streaming request using OAuth
+		// The system prompt is empty here since the prompt itself contains all context
+		// createStreamingMessage will still prepend the Claude Code branding
+		const stream = createStreamingMessage({
+			accessToken,
+			model: modelId,
+			systemPrompt: "", // Empty system prompt - the prompt text contains all necessary context
+			messages: [{ role: "user", content: prompt }],
+			maxTokens,
+			thinking: { type: "disabled" }, // No thinking for simple completions
+			metadata: {
+				user_id: userId,
+			},
+		})
+
+		// Collect all text chunks into a single response
+		let result = ""
+
+		for await (const chunk of stream) {
+			switch (chunk.type) {
+				case "text":
+					result += chunk.text
+					break
+				case "error":
+					throw new Error(chunk.error)
+			}
+		}
+
+		return result
 	}
 }

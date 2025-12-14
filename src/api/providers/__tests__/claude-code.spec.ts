@@ -24,6 +24,7 @@ const { claudeCodeOAuthManager } = await import("../../../integrations/claude-co
 const { createStreamingMessage } = await import("../../../integrations/claude-code/streaming-client")
 
 const mockGetAccessToken = vi.mocked(claudeCodeOAuthManager.getAccessToken)
+const mockGetEmail = vi.mocked(claudeCodeOAuthManager.getEmail)
 const mockCreateStreamingMessage = vi.mocked(createStreamingMessage)
 
 describe("ClaudeCodeHandler", () => {
@@ -482,5 +483,115 @@ describe("ClaudeCodeHandler", () => {
 				accessToken: "refreshed-token",
 			}),
 		)
+	})
+
+	describe("completePrompt", () => {
+		test("should throw error when not authenticated", async () => {
+			mockGetAccessToken.mockResolvedValue(null)
+
+			await expect(handler.completePrompt("Test prompt")).rejects.toThrow(/not authenticated/i)
+		})
+
+		test("should complete prompt and return text response", async () => {
+			mockGetAccessToken.mockResolvedValue("test-access-token")
+			mockGetEmail.mockResolvedValue("test@example.com")
+
+			// Mock async generator that yields text chunks
+			const mockGenerator = async function* (): AsyncGenerator<StreamChunk> {
+				yield { type: "text", text: "Hello " }
+				yield { type: "text", text: "world!" }
+				yield { type: "usage", inputTokens: 10, outputTokens: 5 }
+			}
+
+			mockCreateStreamingMessage.mockReturnValue(mockGenerator())
+
+			const result = await handler.completePrompt("Say hello")
+
+			expect(result).toBe("Hello world!")
+		})
+
+		test("should call createStreamingMessage with empty system prompt and thinking disabled", async () => {
+			mockGetAccessToken.mockResolvedValue("test-access-token")
+			mockGetEmail.mockResolvedValue("test@example.com")
+
+			// Mock empty async generator
+			const mockGenerator = async function* (): AsyncGenerator<StreamChunk> {
+				yield { type: "text", text: "Response" }
+			}
+
+			mockCreateStreamingMessage.mockReturnValue(mockGenerator())
+
+			await handler.completePrompt("Test prompt")
+
+			// Verify createStreamingMessage was called with correct parameters
+			// System prompt is empty because the prompt text contains all context
+			// createStreamingMessage will still prepend the Claude Code branding
+			expect(mockCreateStreamingMessage).toHaveBeenCalledWith({
+				accessToken: "test-access-token",
+				model: "claude-sonnet-4-5",
+				systemPrompt: "", // Empty - branding is added by createStreamingMessage
+				messages: [{ role: "user", content: "Test prompt" }],
+				maxTokens: 32768,
+				thinking: { type: "disabled" }, // No thinking for simple completions
+				metadata: {
+					user_id: "user_abc123_account_def456_session_ghi789",
+				},
+			})
+		})
+
+		test("should handle API errors from streaming", async () => {
+			mockGetAccessToken.mockResolvedValue("test-access-token")
+			mockGetEmail.mockResolvedValue("test@example.com")
+
+			// Mock async generator that yields an error
+			const mockGenerator = async function* (): AsyncGenerator<StreamChunk> {
+				yield { type: "error", error: "API rate limit exceeded" }
+			}
+
+			mockCreateStreamingMessage.mockReturnValue(mockGenerator())
+
+			await expect(handler.completePrompt("Test prompt")).rejects.toThrow("API rate limit exceeded")
+		})
+
+		test("should return empty string when no text chunks received", async () => {
+			mockGetAccessToken.mockResolvedValue("test-access-token")
+			mockGetEmail.mockResolvedValue("test@example.com")
+
+			// Mock async generator that only yields usage
+			const mockGenerator = async function* (): AsyncGenerator<StreamChunk> {
+				yield { type: "usage", inputTokens: 10, outputTokens: 0 }
+			}
+
+			mockCreateStreamingMessage.mockReturnValue(mockGenerator())
+
+			const result = await handler.completePrompt("Test prompt")
+
+			expect(result).toBe("")
+		})
+
+		test("should use opus model maxTokens when configured", async () => {
+			const options: ApiHandlerOptions = {
+				apiModelId: "claude-opus-4-5",
+			}
+			const handlerOpus = new ClaudeCodeHandler(options)
+
+			mockGetAccessToken.mockResolvedValue("test-access-token")
+			mockGetEmail.mockResolvedValue("test@example.com")
+
+			const mockGenerator = async function* (): AsyncGenerator<StreamChunk> {
+				yield { type: "text", text: "Response" }
+			}
+
+			mockCreateStreamingMessage.mockReturnValue(mockGenerator())
+
+			await handlerOpus.completePrompt("Test prompt")
+
+			expect(mockCreateStreamingMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: "claude-opus-4-5",
+					maxTokens: 32768, // opus model maxTokens
+				}),
+			)
+		})
 	})
 })
