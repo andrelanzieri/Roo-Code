@@ -115,6 +115,31 @@ describe("FireworksHandler", () => {
 		)
 	})
 
+	it("should return Kimi K2 Thinking model with correct configuration", () => {
+		const testModelId: FireworksModelId = "accounts/fireworks/models/kimi-k2-thinking"
+		const handlerWithModel = new FireworksHandler({
+			apiModelId: testModelId,
+			fireworksApiKey: "test-fireworks-api-key",
+		})
+		const model = handlerWithModel.getModel()
+		expect(model.id).toBe(testModelId)
+		expect(model.info).toEqual(
+			expect.objectContaining({
+				maxTokens: 16384,
+				contextWindow: 128000,
+				supportsImages: false,
+				supportsPromptCache: false,
+				supportsNativeTools: true,
+				defaultToolProtocol: "native",
+				supportsReasoningEffort: ["low", "medium", "high"],
+				reasoningEffort: "medium",
+				inputPrice: 0.6,
+				outputPrice: 2.5,
+				description: expect.stringContaining("Kimi K2 Thinking is a reasoning-enhanced version"),
+			}),
+		)
+	})
+
 	it("should return MiniMax M2 model with correct configuration", () => {
 		const testModelId: FireworksModelId = "accounts/fireworks/models/minimax-m2"
 		const handlerWithModel = new FireworksHandler({

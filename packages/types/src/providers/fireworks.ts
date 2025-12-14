@@ -3,6 +3,7 @@ import type { ModelInfo } from "../model.js"
 export type FireworksModelId =
 	| "accounts/fireworks/models/kimi-k2-instruct"
 	| "accounts/fireworks/models/kimi-k2-instruct-0905"
+	| "accounts/fireworks/models/kimi-k2-thinking"
 	| "accounts/fireworks/models/minimax-m2"
 	| "accounts/fireworks/models/qwen3-235b-a22b-instruct-2507"
 	| "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct"
@@ -41,6 +42,20 @@ export const fireworksModels = {
 		outputPrice: 2.5,
 		description:
 			"Kimi K2 is a state-of-the-art mixture-of-experts (MoE) language model with 32 billion activated parameters and 1 trillion total parameters. Trained with the Muon optimizer, Kimi K2 achieves exceptional performance across frontier knowledge, reasoning, and coding tasks while being meticulously optimized for agentic capabilities.",
+	},
+	"accounts/fireworks/models/kimi-k2-thinking": {
+		maxTokens: 16384,
+		contextWindow: 128000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		supportsNativeTools: true,
+		defaultToolProtocol: "native",
+		supportsReasoningEffort: ["low", "medium", "high"],
+		reasoningEffort: "medium",
+		inputPrice: 0.6,
+		outputPrice: 2.5,
+		description:
+			"Kimi K2 Thinking is a reasoning-enhanced version of the Kimi K2 model with built-in thinking/reasoning capabilities. Features state-of-the-art MoE architecture with 32B activated parameters and 1T total parameters, optimized for complex reasoning and agentic tasks.",
 	},
 	"accounts/fireworks/models/minimax-m2": {
 		maxTokens: 4096,
