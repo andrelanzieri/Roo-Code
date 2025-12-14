@@ -3342,8 +3342,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const { profileThresholds = {} } = state ?? {}
 
 		const { contextTokens } = this.getTokenUsage()
-		// Get the current model info from the API handler to ensure we have the correct context window
-		// This is important for Bedrock models with 1M context enabled
+		// Store model reference once to avoid redundant getModel() calls
 		const currentModel = this.api.getModel()
 		const modelInfo = currentModel.info
 
@@ -3490,8 +3489,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const { contextTokens } = this.getTokenUsage()
 
 		if (contextTokens) {
-			// Get the current model info from the API handler to ensure we have the correct context window
-			// This is important for Bedrock models with 1M context enabled
+			// Store model reference once to avoid redundant getModel() calls
 			const currentModel = this.api.getModel()
 			const modelInfo = currentModel.info
 
