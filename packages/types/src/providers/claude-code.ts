@@ -1,5 +1,41 @@
 import type { ModelInfo } from "../model.js"
-import { anthropicModels } from "./anthropic.js"
+
+/**
+ * Rate limit information from Claude Code API
+ */
+export interface ClaudeCodeRateLimitInfo {
+	// 5-hour limit info
+	fiveHour: {
+		status: string
+		utilization: number
+		resetTime: number // Unix timestamp
+	}
+	// 7-day (weekly) limit info (Sonnet-specific)
+	weekly?: {
+		status: string
+		utilization: number
+		resetTime: number // Unix timestamp
+	}
+	// 7-day unified limit info
+	weeklyUnified?: {
+		status: string
+		utilization: number
+		resetTime: number // Unix timestamp
+	}
+	// Representative claim type
+	representativeClaim?: string
+	// Overage status
+	overage?: {
+		status: string
+		disabledReason?: string
+	}
+	// Fallback percentage
+	fallbackPercentage?: number
+	// Organization ID
+	organizationId?: string
+	// Timestamp when this was fetched
+	fetchedAt: number
+}
 
 // Regex pattern to match 8-digit date at the end of model names
 const VERTEX_DATE_PATTERN = /-(\d{8})$/
@@ -19,10 +55,28 @@ export function convertModelNameForVertex(modelName: string): string {
 	return modelName.replace(VERTEX_DATE_PATTERN, "@$1")
 }
 
-// Claude Code
+// Claude Code - Only models that work with Claude Code OAuth tokens
 export type ClaudeCodeModelId = keyof typeof claudeCodeModels
 export const claudeCodeDefaultModelId: ClaudeCodeModelId = "claude-sonnet-4-5"
 export const CLAUDE_CODE_DEFAULT_MAX_OUTPUT_TOKENS = 16000
+
+/**
+ * Reasoning effort configuration for Claude Code thinking mode.
+ * Maps reasoning effort level to budget_tokens for the thinking process.
+ *
+ * Note: With interleaved thinking (enabled via beta header), budget_tokens
+ * can exceed max_tokens as the token limit becomes the entire context window.
+ * The max_tokens is drawn from the model's maxTokens definition.
+ *
+ * @see https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#interleaved-thinking
+ */
+export const claudeCodeReasoningConfig = {
+	low: { budgetTokens: 16_000 },
+	medium: { budgetTokens: 32_000 },
+	high: { budgetTokens: 64_000 },
+} as const
+
+export type ClaudeCodeReasoningLevel = keyof typeof claudeCodeReasoningConfig
 
 /**
  * Gets the appropriate model ID based on whether Vertex AI is being used.
@@ -39,116 +93,41 @@ export function getClaudeCodeModelId(baseModelId: ClaudeCodeModelId, useVertex =
 	return useVertex ? convertModelNameForVertex(baseModelId) : baseModelId
 }
 
+// Models that work with Claude Code OAuth tokens
+// See: https://docs.anthropic.com/en/docs/claude-code
+// NOTE: Claude Code is subscription-based with no per-token cost - pricing fields are 0
 export const claudeCodeModels = {
+	"claude-haiku-4-5": {
+		maxTokens: 32768,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsNativeTools: true,
+		defaultToolProtocol: "native",
+		supportsReasoningEffort: ["disable", "low", "medium", "high"],
+		reasoningEffort: "medium",
+		description: "Claude Haiku 4.5 - Fast and efficient with thinking",
+	},
 	"claude-sonnet-4-5": {
-		...anthropicModels["claude-sonnet-4-5"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
+		maxTokens: 32768,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsNativeTools: true,
+		defaultToolProtocol: "native",
+		supportsReasoningEffort: ["disable", "low", "medium", "high"],
+		reasoningEffort: "medium",
+		description: "Claude Sonnet 4.5 - Balanced performance with thinking",
 	},
-	"claude-sonnet-4-5-20250929[1m]": {
-		...anthropicModels["claude-sonnet-4-5"],
-		contextWindow: 1_000_000, // 1M token context window (requires [1m] suffix)
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
-	},
-	"claude-sonnet-4-20250514": {
-		...anthropicModels["claude-sonnet-4-20250514"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
-	},
-	"claude-opus-4-5-20251101": {
-		...anthropicModels["claude-opus-4-5-20251101"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
-	},
-	"claude-opus-4-1-20250805": {
-		...anthropicModels["claude-opus-4-1-20250805"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
-	},
-	"claude-opus-4-20250514": {
-		...anthropicModels["claude-opus-4-20250514"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
-	},
-	"claude-3-7-sonnet-20250219": {
-		...anthropicModels["claude-3-7-sonnet-20250219"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
-	},
-	"claude-3-5-sonnet-20241022": {
-		...anthropicModels["claude-3-5-sonnet-20241022"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
-	},
-	"claude-3-5-haiku-20241022": {
-		...anthropicModels["claude-3-5-haiku-20241022"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
-	},
-	"claude-haiku-4-5-20251001": {
-		...anthropicModels["claude-haiku-4-5-20251001"],
-		supportsImages: false,
-		supportsPromptCache: true, // Claude Code does report cache tokens
-		supportsReasoningEffort: false,
-		supportsReasoningBudget: false,
-		requiredReasoningBudget: false,
-		// Claude Code manages its own tools and temperature via the CLI
-		supportsNativeTools: false,
-		supportsTemperature: false,
+	"claude-opus-4-5": {
+		maxTokens: 32768,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsNativeTools: true,
+		defaultToolProtocol: "native",
+		supportsReasoningEffort: ["disable", "low", "medium", "high"],
+		reasoningEffort: "medium",
+		description: "Claude Opus 4.5 - Most capable with thinking",
 	},
 } as const satisfies Record<string, ModelInfo>

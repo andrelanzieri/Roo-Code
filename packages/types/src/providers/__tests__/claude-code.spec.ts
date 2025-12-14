@@ -23,18 +23,20 @@ describe("convertModelNameForVertex", () => {
 
 describe("getClaudeCodeModelId", () => {
 	test("should return original model when useVertex is false", () => {
-		expect(getClaudeCodeModelId("claude-sonnet-4-20250514", false)).toBe("claude-sonnet-4-20250514")
-		expect(getClaudeCodeModelId("claude-opus-4-20250514", false)).toBe("claude-opus-4-20250514")
-		expect(getClaudeCodeModelId("claude-3-7-sonnet-20250219", false)).toBe("claude-3-7-sonnet-20250219")
+		// Use valid ClaudeCodeModelId values - they don't have date suffixes
+		expect(getClaudeCodeModelId("claude-sonnet-4-5", false)).toBe("claude-sonnet-4-5")
+		expect(getClaudeCodeModelId("claude-opus-4-5", false)).toBe("claude-opus-4-5")
+		expect(getClaudeCodeModelId("claude-haiku-4-5", false)).toBe("claude-haiku-4-5")
 	})
 
-	test("should return converted model when useVertex is true", () => {
-		expect(getClaudeCodeModelId("claude-sonnet-4-20250514", true)).toBe("claude-sonnet-4@20250514")
-		expect(getClaudeCodeModelId("claude-opus-4-20250514", true)).toBe("claude-opus-4@20250514")
-		expect(getClaudeCodeModelId("claude-3-7-sonnet-20250219", true)).toBe("claude-3-7-sonnet@20250219")
+	test("should return same model when useVertex is true (no date suffix to convert)", () => {
+		// Valid ClaudeCodeModelIds don't have 8-digit date suffixes, so no conversion happens
+		expect(getClaudeCodeModelId("claude-sonnet-4-5", true)).toBe("claude-sonnet-4-5")
+		expect(getClaudeCodeModelId("claude-opus-4-5", true)).toBe("claude-opus-4-5")
+		expect(getClaudeCodeModelId("claude-haiku-4-5", true)).toBe("claude-haiku-4-5")
 	})
 
 	test("should default to useVertex false when parameter not provided", () => {
-		expect(getClaudeCodeModelId("claude-sonnet-4-20250514")).toBe("claude-sonnet-4-20250514")
+		expect(getClaudeCodeModelId("claude-sonnet-4-5")).toBe("claude-sonnet-4-5")
 	})
 })
