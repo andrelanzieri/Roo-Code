@@ -136,7 +136,8 @@ const MODEL_FAMILY_PATTERNS: Array<{ pattern: RegExp; target: ClaudeCodeModelId 
  */
 export function normalizeClaudeCodeModelId(modelId: string): ClaudeCodeModelId {
 	// If already a valid model ID, return as-is
-	if (modelId in claudeCodeModels) {
+	// Use Object.hasOwn() instead of 'in' operator to avoid matching inherited properties like 'toString'
+	if (Object.hasOwn(claudeCodeModels, modelId)) {
 		return modelId as ClaudeCodeModelId
 	}
 
@@ -144,7 +145,7 @@ export function normalizeClaudeCodeModelId(modelId: string): ClaudeCodeModelId {
 	const withoutDate = modelId.replace(DATE_SUFFIX_PATTERN, "")
 
 	// Check if stripping the date makes it valid
-	if (withoutDate in claudeCodeModels) {
+	if (Object.hasOwn(claudeCodeModels, withoutDate)) {
 		return withoutDate as ClaudeCodeModelId
 	}
 
