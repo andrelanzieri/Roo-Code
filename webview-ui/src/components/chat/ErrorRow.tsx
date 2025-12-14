@@ -225,7 +225,11 @@ export const ErrorRow = memo(
 											e.preventDefault()
 											// Handle internal navigation to settings
 											if (docsURL.startsWith("roocode://settings")) {
-												vscode.postMessage({ type: "switchTab", tab: "settings" })
+												vscode.postMessage({
+													type: "switchTab",
+													tab: "settings",
+													values: { section: "providers" },
+												})
 											} else {
 												vscode.postMessage({ type: "openExternal", url: docsURL })
 											}
