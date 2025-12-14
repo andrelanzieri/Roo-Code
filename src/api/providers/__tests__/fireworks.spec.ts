@@ -214,6 +214,8 @@ describe("FireworksHandler", () => {
 				contextWindow: 163840,
 				supportsImages: false,
 				supportsPromptCache: false,
+				supportsReasoningEffort: ["low", "medium", "high"],
+				reasoningEffort: "medium",
 				inputPrice: 0.56,
 				outputPrice: 1.68,
 				description: expect.stringContaining("DeepSeek v3.1 is an improved version"),
@@ -235,12 +237,77 @@ describe("FireworksHandler", () => {
 				contextWindow: 163840,
 				supportsImages: false,
 				supportsPromptCache: false,
-				supportsReasoningBinary: true,
+				supportsReasoningEffort: ["low", "medium", "high"],
+				reasoningEffort: "medium",
 				inputPrice: 0.56,
 				outputPrice: 1.68,
 				description: expect.stringContaining("DeepSeek v3.2 is the latest version"),
 			}),
 		)
+	})
+
+	it("should include reasoning_effort parameter for DeepSeek V3.2 when reasoning is enabled", async () => {
+		const testModelId: FireworksModelId = "accounts/fireworks/models/deepseek-v3p2"
+		const handlerWithModel = new FireworksHandler({
+			apiModelId: testModelId,
+			fireworksApiKey: "test-fireworks-api-key",
+			enableReasoningEffort: true,
+			reasoningEffort: "high",
+		})
+
+		mockCreate.mockImplementationOnce(() => {
+			return {
+				[Symbol.asyncIterator]: () => ({
+					async next() {
+						return { done: true }
+					},
+				}),
+			}
+		})
+
+		const systemPrompt = "Test system prompt"
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
+
+		const messageGenerator = handlerWithModel.createMessage(systemPrompt, messages)
+		await messageGenerator.next()
+
+		// Check that reasoning_effort was included in the request
+		expect(mockCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				model: testModelId,
+				reasoning_effort: "high",
+			}),
+			undefined,
+		)
+	})
+
+	it("should not include reasoning_effort parameter when reasoning is disabled", async () => {
+		const testModelId: FireworksModelId = "accounts/fireworks/models/deepseek-v3p2"
+		const handlerWithModel = new FireworksHandler({
+			apiModelId: testModelId,
+			fireworksApiKey: "test-fireworks-api-key",
+			enableReasoningEffort: false,
+		})
+
+		mockCreate.mockImplementationOnce(() => {
+			return {
+				[Symbol.asyncIterator]: () => ({
+					async next() {
+						return { done: true }
+					},
+				}),
+			}
+		})
+
+		const systemPrompt = "Test system prompt"
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Test message" }]
+
+		const messageGenerator = handlerWithModel.createMessage(systemPrompt, messages)
+		await messageGenerator.next()
+
+		// Check that reasoning_effort was NOT included in the request
+		const callArgs = mockCreate.mock.calls[0][0]
+		expect(callArgs.reasoning_effort).toBeUndefined()
 	})
 
 	it("should return GLM-4.5 model with correct configuration", () => {

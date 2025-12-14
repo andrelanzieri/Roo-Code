@@ -101,6 +101,8 @@ export const fireworksModels = {
 		supportsImages: false,
 		supportsPromptCache: false,
 		supportsNativeTools: true,
+		supportsReasoningEffort: ["low", "medium", "high"],
+		reasoningEffort: "medium",
 		inputPrice: 0.56,
 		outputPrice: 1.68,
 		description:
@@ -112,7 +114,8 @@ export const fireworksModels = {
 		supportsImages: false,
 		supportsPromptCache: false,
 		supportsNativeTools: true,
-		supportsReasoningBinary: true,
+		supportsReasoningEffort: ["low", "medium", "high"],
+		reasoningEffort: "medium",
 		inputPrice: 0.56,
 		outputPrice: 1.68,
 		description:
