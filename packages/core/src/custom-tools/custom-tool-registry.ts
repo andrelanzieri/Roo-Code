@@ -15,28 +15,9 @@ import os from "os"
 
 import { build } from "esbuild"
 
-import type {
-	CustomToolDefinition,
-	SerializedCustomToolDefinition,
-	CustomToolParametersSchema,
-	CustomToolContext,
-} from "@roo-code/types"
+import type { CustomToolDefinition, SerializedCustomToolDefinition, CustomToolParametersSchema } from "@roo-code/types"
 
 import { serializeCustomTool } from "./serialize.js"
-
-/**
- * Default subdirectory name for custom tools within a .roo directory.
- * Tools placed in `{rooDir}/tools/` will be automatically discovered and loaded.
- *
- * @example
- * ```ts
- * // Typical usage with getRooDirectoriesForCwd from roo-config:
- * for (const rooDir of getRooDirectoriesForCwd(cwd)) {
- *   await registry.loadFromDirectory(path.join(rooDir, TOOLS_DIR_NAME))
- * }
- * ```
- */
-export const TOOLS_DIR_NAME = "tools"
 
 export interface LoadResult {
 	loaded: string[]
@@ -69,18 +50,6 @@ export class CustomToolRegistry {
 	 *
 	 * @param toolDir - Absolute path to the tools directory
 	 * @returns LoadResult with lists of loaded and failed tools
-	 *
-	 * @example
-	 * ```ts
-	 * // Load tools from multiple .roo directories (global and project):
-	 * import { getRooDirectoriesForCwd } from "../services/roo-config"
-	 * import { CustomToolRegistry, TOOLS_DIR_NAME } from "@roo-code/core"
-	 *
-	 * const registry = new CustomToolRegistry()
-	 * for (const rooDir of getRooDirectoriesForCwd(cwd)) {
-	 *   await registry.loadFromDirectory(path.join(rooDir, TOOLS_DIR_NAME))
-	 * }
-	 * ```
 	 */
 	async loadFromDirectory(toolDir: string): Promise<LoadResult> {
 		const result: LoadResult = { loaded: [], failed: [] }
@@ -97,10 +66,10 @@ export class CustomToolRegistry {
 
 				try {
 					console.log(`[CustomToolRegistry] importing tool from ${filePath}`)
-					const mod = await this.importTypeScript(filePath)
+					const mod = await this.import(filePath)
 
 					for (const [exportName, value] of Object.entries(mod)) {
-						const def = this.validateToolDefinition(exportName, value)
+						const def = this.validate(exportName, value)
 
 						if (!def) {
 							continue
@@ -112,7 +81,7 @@ export class CustomToolRegistry {
 					}
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error)
-					console.error(`[CustomToolRegistry] importTypeScript(${filePath}) failed: ${message}`)
+					console.error(`[CustomToolRegistry] import(${filePath}) failed: ${message}`)
 					result.failed.push({ file, error: message })
 				}
 			}
@@ -125,7 +94,6 @@ export class CustomToolRegistry {
 	}
 
 	async loadFromDirectoryIfStale(toolDir: string): Promise<LoadResult> {
-		// Return empty result if directory doesn't exist
 		if (!fs.existsSync(toolDir)) {
 			return { loaded: [], failed: [] }
 		}
@@ -147,7 +115,7 @@ export class CustomToolRegistry {
 	 */
 	register(definition: CustomToolDefinition): void {
 		const { name: id } = definition
-		const validated = this.validateToolDefinition(id, definition)
+		const validated = this.validate(id, definition)
 
 		if (!validated) {
 			throw new Error(`Invalid tool definition for '${id}'`)
@@ -191,6 +159,9 @@ export class CustomToolRegistry {
 		return Array.from(this.tools.values())
 	}
 
+	/**
+	 * Get all registered tools in the serialized format.
+	 */
 	getAllSerialized(): SerializedCustomToolDefinition[] {
 		return this.getAll().map(serializeCustomTool)
 	}
@@ -200,24 +171,6 @@ export class CustomToolRegistry {
 	 */
 	get size(): number {
 		return this.tools.size
-	}
-
-	/**
-	 * Execute a tool with given arguments.
-	 */
-	async execute(toolId: string, args: unknown, context: CustomToolContext): Promise<string> {
-		const tool = this.tools.get(toolId)
-
-		if (!tool) {
-			throw new Error(`Tool not found: ${toolId}`)
-		}
-
-		// Validate args against schema if available.
-		if (tool.parameters && "parse" in tool.parameters) {
-			;(tool.parameters as { parse: (args: unknown) => void }).parse(args)
-		}
-
-		return tool.execute(args, context)
 	}
 
 	/**
@@ -233,7 +186,6 @@ export class CustomToolRegistry {
 	clearCache(): void {
 		this.tsCache.clear()
 
-		// Also remove compiled files from disk
 		if (fs.existsSync(this.cacheDir)) {
 			try {
 				const files = fs.readdirSync(this.cacheDir)
@@ -243,8 +195,9 @@ export class CustomToolRegistry {
 					}
 				}
 			} catch (error) {
-				// Silently ignore cleanup errors
-				console.error(`[CustomToolRegistry] clearCache failed to clean disk cache: ${error}`)
+				console.error(
+					`[CustomToolRegistry] clearCache failed to clean disk cache: ${error instanceof Error ? error.message : String(error)}`,
+				)
 			}
 		}
 	}
@@ -253,7 +206,7 @@ export class CustomToolRegistry {
 	 * Dynamically import a TypeScript or JavaScript file.
 	 * TypeScript files are transpiled on-the-fly using esbuild.
 	 */
-	private async importTypeScript(filePath: string): Promise<Record<string, CustomToolDefinition>> {
+	private async import(filePath: string): Promise<Record<string, CustomToolDefinition>> {
 		const absolutePath = path.resolve(filePath)
 		const ext = path.extname(absolutePath)
 
@@ -311,7 +264,7 @@ export class CustomToolRegistry {
 	 * Validate a tool definition and return a typed result.
 	 * Returns null for non-tool exports, throws for invalid tools.
 	 */
-	private validateToolDefinition(exportName: string, value: unknown): CustomToolDefinition | null {
+	private validate(exportName: string, value: unknown): CustomToolDefinition | null {
 		// Quick pre-check to filter out non-objects.
 		if (!value || typeof value !== "object") {
 			return null

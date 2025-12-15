@@ -1,23 +1,13 @@
 import path from "path"
 import { fileURLToPath } from "url"
 
-import {
-	type CustomToolDefinition,
-	type CustomToolContext,
-	type TaskLike,
-	parametersSchema as z,
-} from "@roo-code/types"
+import { type CustomToolDefinition, parametersSchema as z } from "@roo-code/types"
 
 import { CustomToolRegistry } from "../custom-tool-registry.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const TEST_FIXTURES_DIR = path.join(__dirname, "fixtures")
-
-const testContext: CustomToolContext = {
-	mode: "code",
-	task: { taskId: "test-task-id" } as unknown as TaskLike,
-}
 
 describe("CustomToolRegistry", () => {
 	let registry: CustomToolRegistry
@@ -214,65 +204,6 @@ describe("CustomToolRegistry", () => {
 		})
 	})
 
-	describe("execute", () => {
-		it("should execute a tool with arguments", async () => {
-			registry.register({
-				name: "greeter",
-				description: "Greets someone",
-				parameters: z.object({ name: z.string() }),
-				execute: async (args) => `Hello, ${(args as { name: string }).name}!`,
-			})
-
-			const result = await registry.execute("greeter", { name: "World" }, testContext)
-
-			expect(result).toBe("Hello, World!")
-		})
-
-		it("should throw for non-existent tool", async () => {
-			await expect(registry.execute("nonexistent", {}, testContext)).rejects.toThrow(
-				"Tool not found: nonexistent",
-			)
-		})
-
-		it("should validate arguments against Zod schema", async () => {
-			registry.register({
-				name: "typed_tool",
-				description: "Tool with validation",
-				parameters: z.object({
-					count: z.number().min(0),
-				}),
-				execute: async (args) => `Count: ${(args as { count: number }).count}`,
-			})
-
-			// Valid args.
-			const result = await registry.execute("typed_tool", { count: 5 }, testContext)
-			expect(result).toBe("Count: 5")
-
-			// Invalid args - negative number.
-			await expect(registry.execute("typed_tool", { count: -1 }, testContext)).rejects.toThrow()
-
-			// Invalid args - wrong type.
-			await expect(registry.execute("typed_tool", { count: "five" }, testContext)).rejects.toThrow()
-		})
-
-		it("should pass context to execute function", async () => {
-			let receivedContext: CustomToolContext | null = null
-
-			registry.register({
-				name: "context_checker",
-				description: "Checks context",
-				execute: async (_args, ctx) => {
-					receivedContext = ctx
-					return "done"
-				},
-			})
-
-			await registry.execute("context_checker", {}, testContext)
-
-			expect(receivedContext).toEqual(testContext)
-		})
-	})
-
 	describe("clear", () => {
 		it("should remove all registered tools", () => {
 			registry.register({ name: "tool1", description: "1", execute: async () => "1" })
@@ -321,7 +252,7 @@ describe("CustomToolRegistry", () => {
 			const result = await registry.loadFromDirectory(TEST_FIXTURES_DIR)
 
 			expect(result.loaded).toContain("mixed_validTool")
-			// The non-tool exports should not appear in loaded or failed
+			// The non-tool exports should not appear in loaded or failed.
 			expect(result.loaded).not.toContain("mixed_someString")
 			expect(result.loaded).not.toContain("mixed_someNumber")
 			expect(result.loaded).not.toContain("mixed_someObject")
