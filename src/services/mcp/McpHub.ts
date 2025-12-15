@@ -34,6 +34,7 @@ import { arePathsEqual, getWorkspacePath } from "../../utils/path"
 import { injectVariables } from "../../utils/config"
 import { safeWriteJson } from "../../utils/safeWriteJson"
 import { sanitizeMcpName } from "../../utils/mcp-name"
+import { normalizeSchemaForStrictMode } from "../../utils/schema"
 
 // Discriminated union for connection states
 export type ConnectedMcpConnection = {
@@ -976,8 +977,10 @@ export class McpHub {
 			}
 
 			// Mark tools as always allowed and enabled for prompt based on settings
+			// Also normalize inputSchema to ensure OpenAI strict mode compatibility
 			const tools = (response?.tools || []).map((tool) => ({
 				...tool,
+				inputSchema: normalizeSchemaForStrictMode(tool.inputSchema as Record<string, unknown>),
 				alwaysAllow: alwaysAllowConfig.includes(tool.name),
 				enabledForPrompt: !disabledToolsList.includes(tool.name),
 			}))
