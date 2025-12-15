@@ -1,6 +1,11 @@
+// Hoist mock functions so they can be used in vi.mock factories
+const { mockCreate, mockComplete, mockCaptureException } = vi.hoisted(() => ({
+	mockCreate: vi.fn(),
+	mockComplete: vi.fn(),
+	mockCaptureException: vi.fn(),
+}))
+
 // Mock Mistral client - must come before other imports
-const mockCreate = vi.fn()
-const mockComplete = vi.fn()
 vi.mock("@mistralai/mistralai", () => {
 	return {
 		Mistral: vi.fn().mockImplementation(() => ({
@@ -38,8 +43,18 @@ vi.mock("@mistralai/mistralai", () => {
 	}
 })
 
+// Mock TelemetryService
+vi.mock("@roo-code/telemetry", () => ({
+	TelemetryService: {
+		instance: {
+			captureException: mockCaptureException,
+		},
+	},
+}))
+
 import type { Anthropic } from "@anthropic-ai/sdk"
 import type OpenAI from "openai"
+import { ApiProviderError } from "@roo-code/types"
 import { MistralHandler } from "../mistral"
 import type { ApiHandlerOptions } from "../../../shared/api"
 import type { ApiHandlerCreateMessageMetadata } from "../../index"
@@ -59,6 +74,7 @@ describe("MistralHandler", () => {
 		handler = new MistralHandler(mockOptions)
 		mockCreate.mockClear()
 		mockComplete.mockClear()
+		mockCaptureException.mockClear()
 	})
 
 	describe("constructor", () => {
@@ -135,7 +151,24 @@ describe("MistralHandler", () => {
 
 		it("should handle errors gracefully", async () => {
 			mockCreate.mockRejectedValueOnce(new Error("API Error"))
-			await expect(handler.createMessage(systemPrompt, messages).next()).rejects.toThrow("API Error")
+			await expect(handler.createMessage(systemPrompt, messages).next()).rejects.toThrow(
+				"Mistral completion error: API Error",
+			)
+		})
+
+		it("should capture telemetry exception on createMessage error", async () => {
+			mockCreate.mockRejectedValueOnce(new Error("API Error"))
+
+			await expect(handler.createMessage(systemPrompt, messages).next()).rejects.toThrow()
+
+			expect(mockCaptureException).toHaveBeenCalledTimes(1)
+			expect(mockCaptureException).toHaveBeenCalledWith(expect.any(ApiProviderError))
+
+			const capturedError = mockCaptureException.mock.calls[0][0] as ApiProviderError
+			expect(capturedError.message).toBe("API Error")
+			expect(capturedError.provider).toBe("Mistral")
+			expect(capturedError.modelId).toBe("codestral-latest")
+			expect(capturedError.operation).toBe("createMessage")
 		})
 
 		it("should handle thinking content as reasoning chunks", async () => {
@@ -482,6 +515,21 @@ describe("MistralHandler", () => {
 		it("should handle errors in completePrompt", async () => {
 			mockComplete.mockRejectedValueOnce(new Error("API Error"))
 			await expect(handler.completePrompt("Test prompt")).rejects.toThrow("Mistral completion error: API Error")
+		})
+
+		it("should capture telemetry exception on completePrompt error", async () => {
+			mockComplete.mockRejectedValueOnce(new Error("API Error"))
+
+			await expect(handler.completePrompt("Test prompt")).rejects.toThrow()
+
+			expect(mockCaptureException).toHaveBeenCalledTimes(1)
+			expect(mockCaptureException).toHaveBeenCalledWith(expect.any(ApiProviderError))
+
+			const capturedError = mockCaptureException.mock.calls[0][0] as ApiProviderError
+			expect(capturedError.message).toBe("API Error")
+			expect(capturedError.provider).toBe("Mistral")
+			expect(capturedError.modelId).toBe("codestral-latest")
+			expect(capturedError.operation).toBe("completePrompt")
 		})
 	})
 })
