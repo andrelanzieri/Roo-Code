@@ -21,30 +21,36 @@
  * ```
  */
 
-// Re-export Zod for convenient parameter schema definition
-export { z } from "zod"
-export type { ZodType, ZodObject, ZodRawShape } from "zod"
-
 import type { ZodType, infer as ZodInfer } from "zod"
+
+import { TaskLike } from "./task.js"
 
 /**
  * Context provided to tool execute functions.
  */
 export interface CustomToolContext {
-	/** Unique identifier for the current session */
-	sessionID: string
-	/** Unique identifier for the current message */
-	messageID: string
-	/** The agent/mode that invoked the tool */
-	agent: string
+	mode: string
+	task: TaskLike
+}
+
+/**
+ * A Zod-like schema interface. We use this instead of ZodType directly
+ * to avoid TypeScript's excessive type instantiation (TS2589).
+ */
+export interface ZodLikeSchema {
+	_def: unknown
+	parse: (data: unknown) => unknown
+	safeParse: (data: unknown) => { success: boolean; data?: unknown; error?: unknown }
 }
 
 /**
  * Definition structure for a custom tool.
  *
- * @template T - The Zod schema type for parameters
+ * Note: This interface uses simple types to avoid TypeScript performance issues
+ * with Zod's complex type inference. For type-safe parameter inference, use
+ * the `defineCustomTool` helper function instead of annotating with this interface.
  */
-export interface CustomToolDefinition<T extends ZodType = ZodType> {
+export interface CustomToolDefinition {
 	/**
 	 * The name of the tool.
 	 * This is used to identify the tool in the prompt and in the tool registry.
@@ -61,16 +67,29 @@ export interface CustomToolDefinition<T extends ZodType = ZodType> {
 	 * Optional Zod schema defining the tool's parameters.
 	 * Use `z.object({})` to define the shape of arguments.
 	 */
-	parameters?: T
+	parameters?: ZodLikeSchema
 
 	/**
 	 * The function that executes the tool.
 	 *
-	 * @param args - The validated arguments (typed based on the parameters schema)
+	 * @param args - The validated arguments
 	 * @param context - Execution context with session and message info
 	 * @returns A string result to return to the AI
 	 */
-	execute: (args: T extends ZodType ? ZodInfer<T> : unknown, context: CustomToolContext) => Promise<string>
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	execute: (args: any, context: CustomToolContext) => Promise<string>
+}
+
+/**
+ * Type-safe definition structure for a custom tool with inferred parameter types.
+ * Use this with `defineCustomTool` for full type inference.
+ *
+ * @template T - The Zod schema type for parameters
+ */
+export interface TypedCustomToolDefinition<T extends ZodType>
+	extends Omit<CustomToolDefinition, "execute" | "parameters"> {
+	parameters?: T
+	execute: (args: ZodInfer<T>, context: CustomToolContext) => Promise<string>
 }
 
 /**
@@ -84,6 +103,7 @@ export interface CustomToolDefinition<T extends ZodType = ZodType> {
  * import { z, defineCustomTool } from "@roo-code/types"
  *
  * export default defineCustomTool({
+ *   name: "add_numbers",
  *   description: "Add two numbers",
  *   parameters: z.object({
  *     a: z.number().describe("First number"),
@@ -95,6 +115,13 @@ export interface CustomToolDefinition<T extends ZodType = ZodType> {
  * })
  * ```
  */
-export function defineCustomTool<T extends ZodType>(definition: CustomToolDefinition<T>): CustomToolDefinition<T> {
+export function defineCustomTool<T extends ZodType>(
+	definition: TypedCustomToolDefinition<T>,
+): TypedCustomToolDefinition<T> {
 	return definition
 }
+
+// Re-export Zod for convenient parameter schema definition.
+export { z as parametersSchema, z } from "zod"
+
+export type { ZodType, ZodObject, ZodRawShape } from "zod"

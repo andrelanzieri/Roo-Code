@@ -1,4 +1,4 @@
-import { z, defineCustomTool } from "@roo-code/types"
+import { defineCustomTool, parametersSchema } from "@roo-code/types"
 
 /**
  * A simple custom tool that returns the current date and time in a friendly format.
@@ -7,12 +7,14 @@ import { z, defineCustomTool } from "@roo-code/types"
  * 1. Install @roo-code/types: npm install @roo-code/types
  * 2. Create a .ts file in .roo/tools/
  * 3. Export a default tool definition using defineCustomTool()
+ *
+ * Note that `parametersSchema` is just an alias for `z` (from zod).
  */
 export default defineCustomTool({
 	name: "system-time",
 	description: "Returns the current system date and time in a friendly, human-readable format.",
-	parameters: z.object({
-		timezone: z
+	parameters: parametersSchema.object({
+		timezone: parametersSchema
 			.string()
 			.optional()
 			.describe("Optional timezone to display the time in (e.g., 'America/New_York', 'Europe/London')"),

@@ -2,22 +2,17 @@ import { z } from "zod"
 import path from "path"
 import { fileURLToPath } from "url"
 
-import {
-	type ToolContext,
-	type ToolDefinition,
-	CustomToolRegistry,
-	ToolDefinitionSchema,
-	isZodSchema,
-} from "../custom-tool-registry.js"
+import { type CustomToolDefinition, type CustomToolContext, type TaskLike } from "@roo-code/types"
+
+import { CustomToolRegistry } from "../custom-tool-registry.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const TEST_FIXTURES_DIR = path.join(__dirname, "fixtures")
 
-const testContext: ToolContext = {
-	sessionID: "test-session",
-	messageID: "test-message",
-	agent: "test-agent",
+const testContext: CustomToolContext = {
+	mode: "code",
+	task: { taskId: "test-task-id" } as unknown as TaskLike,
 }
 
 describe("CustomToolRegistry", () => {
@@ -27,79 +22,86 @@ describe("CustomToolRegistry", () => {
 		registry = new CustomToolRegistry()
 	})
 
-	describe("isZodSchema", () => {
-		it("should return true for Zod schemas", () => {
-			expect(isZodSchema(z.string())).toBe(true)
-			expect(isZodSchema(z.number())).toBe(true)
-			expect(isZodSchema(z.object({ foo: z.string() }))).toBe(true)
-			expect(isZodSchema(z.array(z.number()))).toBe(true)
-		})
-
-		it("should return false for non-Zod values", () => {
-			expect(isZodSchema(null)).toBe(false)
-			expect(isZodSchema(undefined)).toBe(false)
-			expect(isZodSchema("string")).toBe(false)
-			expect(isZodSchema(123)).toBe(false)
-			expect(isZodSchema({})).toBe(false)
-			expect(isZodSchema({ _def: "not an object" })).toBe(false)
-			expect(isZodSchema([])).toBe(false)
-		})
-	})
-
-	describe("ToolDefinitionSchema", () => {
-		it("should validate a correct tool definition", () => {
+	describe("validation", () => {
+		it("should accept a valid tool definition", () => {
 			const validTool = {
+				name: "valid_tool",
 				description: "A valid tool",
 				parameters: z.object({ name: z.string() }),
 				execute: async () => "result",
 			}
 
-			const result = ToolDefinitionSchema.safeParse(validTool)
-			expect(result.success).toBe(true)
+			expect(() => registry.register(validTool)).not.toThrow()
+			expect(registry.has("valid_tool")).toBe(true)
 		})
 
 		it("should reject empty description", () => {
 			const invalidTool = {
+				name: "invalid_tool",
 				description: "",
 				parameters: z.object({}),
 				execute: async () => "result",
 			}
 
-			const result = ToolDefinitionSchema.safeParse(invalidTool)
-			expect(result.success).toBe(false)
+			expect(() => registry.register(invalidTool as CustomToolDefinition)).toThrow(/Invalid tool definition/)
 		})
 
 		it("should reject non-Zod parameters", () => {
 			const invalidTool = {
+				name: "bad_params_tool",
 				description: "Tool with bad params",
 				parameters: { foo: "bar" },
 				execute: async () => "result",
 			}
 
-			const result = ToolDefinitionSchema.safeParse(invalidTool)
-			expect(result.success).toBe(false)
+			expect(() => registry.register(invalidTool as unknown as CustomToolDefinition)).toThrow(
+				/Invalid tool definition/,
+			)
 		})
 
 		it("should allow missing parameters", () => {
 			const toolWithoutParams = {
+				name: "no_params_tool",
 				description: "Tool without parameters",
 				execute: async () => "result",
 			}
 
-			const result = ToolDefinitionSchema.safeParse(toolWithoutParams)
-			expect(result.success).toBe(true)
+			expect(() => registry.register(toolWithoutParams)).not.toThrow()
+			expect(registry.has("no_params_tool")).toBe(true)
+		})
+
+		it("should reject empty name", () => {
+			const invalidTool = {
+				name: "",
+				description: "Tool with empty name",
+				execute: async () => "result",
+			}
+
+			expect(() => registry.register(invalidTool as CustomToolDefinition)).toThrow(/Invalid tool definition/)
+		})
+
+		it("should reject missing name", () => {
+			const invalidTool = {
+				description: "Tool without name",
+				execute: async () => "result",
+			}
+
+			expect(() => registry.register(invalidTool as unknown as CustomToolDefinition)).toThrow(
+				/Invalid tool definition/,
+			)
 		})
 	})
 
 	describe("register", () => {
 		it("should register a valid tool", () => {
-			const tool: ToolDefinition = {
+			const tool: CustomToolDefinition = {
+				name: "test_tool",
 				description: "Test tool",
 				parameters: z.object({ input: z.string() }),
-				execute: async (args) => `Processed: ${(args as { input: string }).input}`,
+				execute: async (args: { input: string }) => `Processed: ${args.input}`,
 			}
 
-			registry.register("test_tool", tool)
+			registry.register(tool)
 
 			expect(registry.has("test_tool")).toBe(true)
 			expect(registry.size).toBe(1)
@@ -107,28 +109,29 @@ describe("CustomToolRegistry", () => {
 
 		it("should throw for invalid tool definition", () => {
 			const invalidTool = {
+				name: "bad_tool",
 				description: "",
 				execute: async () => "result",
 			}
 
-			expect(() => registry.register("bad_tool", invalidTool as ToolDefinition)).toThrow(
-				/Invalid tool definition/,
-			)
+			expect(() => registry.register(invalidTool as CustomToolDefinition)).toThrow(/Invalid tool definition/)
 		})
 
 		it("should overwrite existing tool with same id", () => {
-			const tool1: ToolDefinition = {
+			const tool1: CustomToolDefinition = {
+				name: "tool",
 				description: "First version",
 				execute: async () => "v1",
 			}
 
-			const tool2: ToolDefinition = {
+			const tool2: CustomToolDefinition = {
+				name: "tool",
 				description: "Second version",
 				execute: async () => "v2",
 			}
 
-			registry.register("tool", tool1)
-			registry.register("tool", tool2)
+			registry.register(tool1)
+			registry.register(tool2)
 
 			expect(registry.size).toBe(1)
 			expect(registry.get("tool")?.description).toBe("Second version")
@@ -137,7 +140,8 @@ describe("CustomToolRegistry", () => {
 
 	describe("unregister", () => {
 		it("should remove a registered tool", () => {
-			registry.register("tool", {
+			registry.register({
+				name: "tool",
 				description: "Test",
 				execute: async () => "result",
 			})
@@ -156,7 +160,8 @@ describe("CustomToolRegistry", () => {
 
 	describe("get", () => {
 		it("should return registered tool", () => {
-			registry.register("my_tool", {
+			registry.register({
+				name: "my_tool",
 				description: "My tool",
 				execute: async () => "result",
 			})
@@ -164,7 +169,7 @@ describe("CustomToolRegistry", () => {
 			const tool = registry.get("my_tool")
 
 			expect(tool).toBeDefined()
-			expect(tool?.id).toBe("my_tool")
+			expect(tool?.name).toBe("my_tool")
 			expect(tool?.description).toBe("My tool")
 		})
 
@@ -175,9 +180,9 @@ describe("CustomToolRegistry", () => {
 
 	describe("list", () => {
 		it("should return all tool IDs", () => {
-			registry.register("tool_a", { description: "A", execute: async () => "a" })
-			registry.register("tool_b", { description: "B", execute: async () => "b" })
-			registry.register("tool_c", { description: "C", execute: async () => "c" })
+			registry.register({ name: "tool_a", description: "A", execute: async () => "a" })
+			registry.register({ name: "tool_b", description: "B", execute: async () => "b" })
+			registry.register({ name: "tool_c", description: "C", execute: async () => "c" })
 
 			const ids = registry.list()
 
@@ -193,25 +198,22 @@ describe("CustomToolRegistry", () => {
 	})
 
 	describe("getAll", () => {
-		it("should return a copy of all tools", () => {
-			registry.register("tool1", { description: "Tool 1", execute: async () => "1" })
-			registry.register("tool2", { description: "Tool 2", execute: async () => "2" })
+		it("should return all tools as array", () => {
+			registry.register({ name: "tool1", description: "Tool 1", execute: async () => "1" })
+			registry.register({ name: "tool2", description: "Tool 2", execute: async () => "2" })
 
 			const all = registry.getAll()
 
-			expect(all.size).toBe(2)
-			expect(all.get("tool1")?.description).toBe("Tool 1")
-			expect(all.get("tool2")?.description).toBe("Tool 2")
-
-			// Verify it's a copy
-			all.delete("tool1")
-			expect(registry.has("tool1")).toBe(true)
+			expect(all).toHaveLength(2)
+			expect(all.find((t) => t.name === "tool1")?.description).toBe("Tool 1")
+			expect(all.find((t) => t.name === "tool2")?.description).toBe("Tool 2")
 		})
 	})
 
 	describe("execute", () => {
 		it("should execute a tool with arguments", async () => {
-			registry.register("greeter", {
+			registry.register({
+				name: "greeter",
 				description: "Greets someone",
 				parameters: z.object({ name: z.string() }),
 				execute: async (args) => `Hello, ${(args as { name: string }).name}!`,
@@ -229,7 +231,8 @@ describe("CustomToolRegistry", () => {
 		})
 
 		it("should validate arguments against Zod schema", async () => {
-			registry.register("typed_tool", {
+			registry.register({
+				name: "typed_tool",
 				description: "Tool with validation",
 				parameters: z.object({
 					count: z.number().min(0),
@@ -249,9 +252,10 @@ describe("CustomToolRegistry", () => {
 		})
 
 		it("should pass context to execute function", async () => {
-			let receivedContext: ToolContext | null = null
+			let receivedContext: CustomToolContext | null = null
 
-			registry.register("context_checker", {
+			registry.register({
+				name: "context_checker",
 				description: "Checks context",
 				execute: async (_args, ctx) => {
 					receivedContext = ctx
@@ -265,38 +269,10 @@ describe("CustomToolRegistry", () => {
 		})
 	})
 
-	describe("toJsonSchema", () => {
-		it("should generate JSON schema for all tools", () => {
-			registry.register("tool1", {
-				description: "First tool",
-				parameters: z.object({ a: z.string() }),
-				execute: async () => "1",
-			})
-
-			registry.register("tool2", {
-				description: "Second tool",
-				execute: async () => "2",
-			})
-
-			const schemas = registry.toJsonSchema()
-
-			expect(schemas).toHaveLength(2)
-
-			const tool1Schema = schemas.find((s) => s.name === "tool1")
-			expect(tool1Schema).toBeDefined()
-			expect(tool1Schema?.description).toBe("First tool")
-			expect(tool1Schema?.parameters.note).toBe("(Zod schema - would be converted to JSON Schema)")
-
-			const tool2Schema = schemas.find((s) => s.name === "tool2")
-			expect(tool2Schema).toBeDefined()
-			expect(tool2Schema?.description).toBe("Second tool")
-		})
-	})
-
 	describe("clear", () => {
 		it("should remove all registered tools", () => {
-			registry.register("tool1", { description: "1", execute: async () => "1" })
-			registry.register("tool2", { description: "2", execute: async () => "2" })
+			registry.register({ name: "tool1", description: "1", execute: async () => "1" })
+			registry.register({ name: "tool2", description: "2", execute: async () => "2" })
 
 			expect(registry.size).toBe(2)
 

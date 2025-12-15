@@ -1,4 +1,5 @@
-import { z, defineCustomTool, type CustomToolDefinition, type CustomToolContext } from "../custom-tool.js"
+import { type CustomToolDefinition, type CustomToolContext, defineCustomTool, z } from "../custom-tool.js"
+import type { TaskLike } from "../task.js"
 
 describe("custom-tool utilities", () => {
 	describe("z (Zod re-export)", () => {
@@ -59,9 +60,8 @@ describe("custom-tool utilities", () => {
 			})
 
 			const context: CustomToolContext = {
-				sessionID: "test-session",
-				messageID: "test-message",
-				agent: "test-agent",
+				mode: "code",
+				task: { taskId: "test-task-id" } as unknown as TaskLike,
 			}
 
 			const result = await tool.execute({ name: "World", count: 42 }, context)

@@ -3,7 +3,7 @@
  *
  * Features:
  * - Dynamic TypeScript/JavaScript tool loading with esbuild transpilation.
- * - Zod-based validation of tool definitions.
+ * - Runtime validation of tool definitions.
  * - Tool execution with context.
  * - JSON Schema generation for LLM integration.
  */
@@ -14,7 +14,8 @@ import { createHash } from "crypto"
 import os from "os"
 
 import { build } from "esbuild"
-import { z, type ZodType } from "zod"
+
+import { type CustomToolContext, type CustomToolDefinition, type ZodLikeSchema } from "@roo-code/types"
 
 /**
  * Default subdirectory name for custom tools within a .roo directory.
@@ -30,69 +31,10 @@ import { z, type ZodType } from "zod"
  */
 export const TOOLS_DIR_NAME = "tools"
 
-export interface ToolContext {
-	sessionID: string
-	messageID: string
-	agent: string
-}
-
-export interface ToolDefinition {
-	description: string
-	parameters?: ZodType
-	args?: ZodType
-	execute: (args: unknown, context: ToolContext) => Promise<string>
-}
-
-export interface RegisteredTool {
-	id: string
-	description: string
-	parameters?: ZodType
-	execute: (args: unknown, context: ToolContext) => Promise<string>
-}
-
-export interface ToolSchema {
-	name: string
-	description: string
-	parameters: {
-		type: string
-		properties: Record<string, unknown>
-		required: string[]
-		note?: string
-	}
-}
-
 export interface LoadResult {
 	loaded: string[]
 	failed: Array<{ file: string; error: string }>
 }
-
-/**
- * Check if a value is a Zod schema by looking for the _def property
- * which is present on all Zod types.
- */
-function isZodSchema(value: unknown): value is ZodType {
-	return (
-		value !== null &&
-		typeof value === "object" &&
-		"_def" in value &&
-		typeof (value as Record<string, unknown>)._def === "object"
-	)
-}
-
-/**
- * Zod schema to validate the shape of imported tool definitions.
- * This ensures tools have the required structure before registration.
- */
-const ToolDefinitionSchema = z.object({
-	description: z.string().min(1, "Tool must have a non-empty description"),
-	parameters: z.custom<ZodType>(isZodSchema, "parameters must be a Zod schema").optional(),
-	args: z.custom<ZodType>(isZodSchema, "args must be a Zod schema").optional(),
-	execute: z
-		.function()
-		.args(z.unknown(), z.unknown())
-		.returns(z.promise(z.string()))
-		.describe("Async function that executes the tool"),
-})
 
 export interface RegistryOptions {
 	/** Directory for caching compiled TypeScript files. */
@@ -102,10 +44,11 @@ export interface RegistryOptions {
 }
 
 export class CustomToolRegistry {
-	private tools = new Map<string, RegisteredTool>()
+	private tools = new Map<string, CustomToolDefinition>()
 	private tsCache = new Map<string, string>()
 	private cacheDir: string
 	private nodePaths: string[]
+	private lastLoaded: Map<string, number> = new Map()
 
 	constructor(options?: RegistryOptions) {
 		this.cacheDir = options?.cacheDir ?? path.join(os.tmpdir(), "dynamic-tools-cache")
@@ -143,24 +86,19 @@ export class CustomToolRegistry {
 
 		for (const file of files) {
 			const filePath = path.join(toolDir, file)
-			const namespace = path.basename(file, path.extname(file))
 
 			try {
 				const mod = await this.importTypeScript(filePath)
 
 				for (const [exportName, value] of Object.entries(mod)) {
 					const def = this.validateToolDefinition(exportName, value)
-					if (!def) continue
 
-					const toolId = exportName === "default" ? namespace : `${namespace}_${exportName}`
-					this.tools.set(toolId, {
-						id: toolId,
-						description: def.description,
-						parameters: def.parameters || def.args,
-						execute: def.execute,
-					})
+					if (!def) {
+						continue
+					}
 
-					result.loaded.push(toolId)
+					this.tools.set(def.name, def)
+					result.loaded.push(def.name)
 				}
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error)
@@ -171,21 +109,30 @@ export class CustomToolRegistry {
 		return result
 	}
 
+	async loadFromDirectoryIfStale(toolDir: string): Promise<LoadResult> {
+		const lastLoaded = this.lastLoaded.get(toolDir)
+		const stat = fs.statSync(toolDir)
+		const isStale = lastLoaded ? stat.mtimeMs > lastLoaded : true
+
+		if (isStale) {
+			return this.loadFromDirectory(toolDir)
+		}
+
+		return { loaded: this.list(), failed: [] }
+	}
+
 	/**
 	 * Register a tool directly (without loading from file).
 	 */
-	register(id: string, definition: ToolDefinition): void {
+	register(definition: CustomToolDefinition): void {
+		const { name: id } = definition
 		const validated = this.validateToolDefinition(id, definition)
+
 		if (!validated) {
 			throw new Error(`Invalid tool definition for '${id}'`)
 		}
 
-		this.tools.set(id, {
-			id,
-			description: validated.description,
-			parameters: validated.parameters || validated.args,
-			execute: validated.execute,
-		})
+		this.tools.set(id, validated)
 	}
 
 	/**
@@ -198,7 +145,7 @@ export class CustomToolRegistry {
 	/**
 	 * Get a tool by ID.
 	 */
-	get(id: string): RegisteredTool | undefined {
+	get(id: string): CustomToolDefinition | undefined {
 		return this.tools.get(id)
 	}
 
@@ -219,8 +166,8 @@ export class CustomToolRegistry {
 	/**
 	 * Get all registered tools.
 	 */
-	getAll(): Map<string, RegisteredTool> {
-		return new Map(this.tools)
+	getAll(): CustomToolDefinition[] {
+		return Array.from(this.tools.values())
 	}
 
 	/**
@@ -233,45 +180,19 @@ export class CustomToolRegistry {
 	/**
 	 * Execute a tool with given arguments.
 	 */
-	async execute(toolId: string, args: unknown, context: ToolContext): Promise<string> {
+	async execute(toolId: string, args: unknown, context: CustomToolContext): Promise<string> {
 		const tool = this.tools.get(toolId)
+
 		if (!tool) {
 			throw new Error(`Tool not found: ${toolId}`)
 		}
 
-		// Validate args against schema if available
+		// Validate args against schema if available.
 		if (tool.parameters && "parse" in tool.parameters) {
 			;(tool.parameters as { parse: (args: unknown) => void }).parse(args)
 		}
 
 		return tool.execute(args, context)
-	}
-
-	/**
-	 * Generate JSON schema representation of all tools (for LLM integration).
-	 */
-	toJsonSchema(): ToolSchema[] {
-		const schemas: ToolSchema[] = []
-
-		for (const [id, tool] of this.tools) {
-			const schema: ToolSchema = {
-				name: id,
-				description: tool.description,
-				parameters: {
-					type: "object",
-					properties: {},
-					required: [],
-				},
-			}
-
-			if (tool.parameters && "_def" in tool.parameters) {
-				schema.parameters.note = "(Zod schema - would be converted to JSON Schema)"
-			}
-
-			schemas.push(schema)
-		}
-
-		return schemas
 	}
 
 	/**
@@ -292,7 +213,7 @@ export class CustomToolRegistry {
 	 * Dynamically import a TypeScript or JavaScript file.
 	 * TypeScript files are transpiled on-the-fly using esbuild.
 	 */
-	private async importTypeScript(filePath: string): Promise<Record<string, ToolDefinition>> {
+	private async importTypeScript(filePath: string): Promise<Record<string, CustomToolDefinition>> {
 		const absolutePath = path.resolve(filePath)
 		const ext = path.extname(absolutePath)
 
@@ -334,10 +255,23 @@ export class CustomToolRegistry {
 	}
 
 	/**
+	 * Check if a value is a Zod schema by looking for the _def property
+	 * which is present on all Zod types.
+	 */
+	private isZodSchema(value: unknown): value is ZodLikeSchema {
+		return (
+			value !== null &&
+			typeof value === "object" &&
+			"_def" in value &&
+			typeof (value as Record<string, unknown>)._def === "object"
+		)
+	}
+
+	/**
 	 * Validate a tool definition and return a typed result.
 	 * Returns null for non-tool exports, throws for invalid tools.
 	 */
-	private validateToolDefinition(exportName: string, value: unknown): ToolDefinition | null {
+	private validateToolDefinition(exportName: string, value: unknown): CustomToolDefinition | null {
 		// Quick pre-check to filter out non-objects.
 		if (!value || typeof value !== "object") {
 			return null
@@ -348,15 +282,34 @@ export class CustomToolRegistry {
 			return null
 		}
 
-		const result = ToolDefinitionSchema.safeParse(value)
+		const obj = value as Record<string, unknown>
+		const errors: string[] = []
 
-		if (!result.success) {
-			const errors = result.error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")
-			throw new Error(`Invalid tool definition for '${exportName}': ${errors}`)
+		// Validate name.
+		if (typeof obj.name !== "string") {
+			errors.push("name: Expected string")
+		} else if (obj.name.length === 0) {
+			errors.push("name: Tool must have a non-empty name")
 		}
 
-		return result.data as ToolDefinition
+		// Validate description.
+		if (typeof obj.description !== "string") {
+			errors.push("description: Expected string")
+		} else if (obj.description.length === 0) {
+			errors.push("description: Tool must have a non-empty description")
+		}
+
+		// Validate parameters (optional).
+		if (obj.parameters !== undefined && !this.isZodSchema(obj.parameters)) {
+			errors.push("parameters: parameters must be a Zod schema")
+		}
+
+		if (errors.length > 0) {
+			throw new Error(`Invalid tool definition for '${exportName}': ${errors.join(", ")}`)
+		}
+
+		return value as CustomToolDefinition
 	}
 }
 
-export { isZodSchema, ToolDefinitionSchema }
+export const customToolRegistry = new CustomToolRegistry()
