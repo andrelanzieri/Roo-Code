@@ -828,5 +828,85 @@ describe("AwsBedrockHandler", () => {
 			expect(model1.id).toBe(model2.id)
 			expect(model2.id).toBe(model3.id)
 		})
+
+		describe("getModelById 1M context support (prompt router path)", () => {
+			it("should apply 1M context window when getModelById is called with 1M context enabled", () => {
+				const handler = new AwsBedrockHandler({
+					apiModelId: "some-prompt-router",
+					awsAccessKey: "test",
+					awsSecretKey: "test",
+					awsRegion: "us-east-1",
+					awsBedrock1MContext: true,
+				})
+
+				// Access getModelById using type casting (it's a public method but used internally)
+				const modelById = handler.getModelById(BEDROCK_1M_CONTEXT_MODEL_IDS[0])
+
+				// Should have 1M context window when 1M context is enabled
+				expect(modelById.info.contextWindow).toBe(1_000_000)
+			})
+
+			it("should not apply 1M context window when getModelById is called with 1M context disabled", () => {
+				const handler = new AwsBedrockHandler({
+					apiModelId: "some-prompt-router",
+					awsAccessKey: "test",
+					awsSecretKey: "test",
+					awsRegion: "us-east-1",
+					awsBedrock1MContext: false,
+				})
+
+				const modelById = handler.getModelById(BEDROCK_1M_CONTEXT_MODEL_IDS[0])
+
+				// Should use default context window (200k)
+				expect(modelById.info.contextWindow).toBe(200_000)
+			})
+
+			it("should not apply 1M context window for non-Claude Sonnet 4 models via getModelById", () => {
+				const handler = new AwsBedrockHandler({
+					apiModelId: "some-prompt-router",
+					awsAccessKey: "test",
+					awsSecretKey: "test",
+					awsRegion: "us-east-1",
+					awsBedrock1MContext: true,
+				})
+
+				const modelById = handler.getModelById("anthropic.claude-3-5-sonnet-20241022-v2:0")
+
+				// Should use default context window for non-Sonnet 4 models
+				expect(modelById.info.contextWindow).toBe(200_000)
+			})
+
+			it("should apply 1M context window with cross-region prefix in getModelById", () => {
+				const handler = new AwsBedrockHandler({
+					apiModelId: "some-prompt-router",
+					awsAccessKey: "test",
+					awsSecretKey: "test",
+					awsRegion: "us-east-1",
+					awsBedrock1MContext: true,
+				})
+
+				// Test with cross-region prefixed model ID (as would come from prompt router)
+				const modelById = handler.getModelById(`us.${BEDROCK_1M_CONTEXT_MODEL_IDS[0]}`)
+
+				// Should still apply 1M context window (parseBaseModelId strips the prefix)
+				expect(modelById.info.contextWindow).toBe(1_000_000)
+			})
+
+			it("should allow user override of context window even with 1M context enabled in getModelById", () => {
+				const handler = new AwsBedrockHandler({
+					apiModelId: "some-prompt-router",
+					awsAccessKey: "test",
+					awsSecretKey: "test",
+					awsRegion: "us-east-1",
+					awsBedrock1MContext: true,
+					awsModelContextWindow: 500_000, // User override
+				})
+
+				const modelById = handler.getModelById(BEDROCK_1M_CONTEXT_MODEL_IDS[0])
+
+				// User override should take precedence
+				expect(modelById.info.contextWindow).toBe(500_000)
+			})
+		})
 	})
 })
