@@ -866,8 +866,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Validate and fix tool_result IDs against the previous assistant message
 		const validatedMessage = validateAndFixToolResultIds(userMessage, this.apiConversationHistory)
-		const userMessageWithTs = { ...validatedMessage, ts: Date.now() }
+		// Use pendingUserMessageTs if set (for file context tracking coordination)
+		// This ensures the message timestamp matches what was set during tool execution
+		const messageTs = this.pendingUserMessageTs ?? Date.now()
+		const userMessageWithTs = { ...validatedMessage, ts: messageTs }
 		this.apiConversationHistory.push(userMessageWithTs as ApiMessage)
+
+		// Clear the pending timestamp and message context after use
+		if (this.pendingUserMessageTs) {
+			this.pendingUserMessageTs = null
+			this.fileContextTracker.clearCurrentMessageContext()
+		}
 
 		await this.saveApiConversationHistory()
 
