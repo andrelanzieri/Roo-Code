@@ -1,5 +1,6 @@
 import type { ToolName, ModeConfig, ExperimentId, GroupOptions, GroupEntry } from "@roo-code/types"
 import { toolNames as validToolNames } from "@roo-code/types"
+import { customToolRegistry } from "@roo-code/core"
 
 import { type Mode, FileRestrictionError, getModeBySlug, getGroupName } from "../../shared/modes"
 import { EXPERIMENT_IDS } from "../../shared/experiments"
@@ -13,6 +14,10 @@ import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS } from "../../shared/tools"
 export function isValidToolName(toolName: string): toolName is ToolName {
 	// Check if it's a valid static tool
 	if ((validToolNames as readonly string[]).includes(toolName)) {
+		return true
+	}
+
+	if (customToolRegistry.has(toolName)) {
 		return true
 	}
 
@@ -84,6 +89,12 @@ export function isToolAllowedForMode(
 ): boolean {
 	// Always allow these tools
 	if (ALWAYS_AVAILABLE_TOOLS.includes(tool as any)) {
+		return true
+	}
+
+	// For now, allow all custom tools in any mode.
+	// As a follow-up we should expand the custom tool definition to include mode restrictions.
+	if (customToolRegistry.has(tool)) {
 		return true
 	}
 

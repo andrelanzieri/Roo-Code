@@ -4,6 +4,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ToolName, ClineAsk, ToolProgressStatus } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
+import { customToolRegistry } from "@roo-code/core"
 
 import { t } from "../../i18n"
 
@@ -1045,9 +1046,8 @@ export async function presentAssistantMessage(cline: Task) {
 					})
 					break
 				default: {
-					// Handle unknown/invalid tool names
+					// Handle unknown/invalid tool names OR custom tools
 					// This is critical for native protocol where every tool_use MUST have a tool_result
-					// Note: This case should rarely be reached since validateToolUse now checks for unknown tools
 
 					// CRITICAL: Don't process partial blocks for unknown tools - just let them stream in.
 					// If we try to show errors for partial blocks, we'd show the error on every streaming chunk,
@@ -1056,6 +1056,45 @@ export async function presentAssistantMessage(cline: Task) {
 						break
 					}
 
+					const customTool = customToolRegistry.get(block.name)
+
+					if (customTool) {
+						try {
+							console.log(`executing customTool -> ${JSON.stringify(customTool, null, 2)}`)
+							let customToolArgs
+
+							if (customTool.parameters) {
+								try {
+									customToolArgs = customTool.parameters.parse(block.nativeArgs || block.params || {})
+									console.log(`customToolArgs -> ${JSON.stringify(customToolArgs, null, 2)}`)
+								} catch (parseParamsError) {
+									const message = `Custom tool "${block.name}" argument validation failed: ${parseParamsError.message}`
+									console.error(message)
+									cline.consecutiveMistakeCount++
+									await cline.say("error", message)
+									pushToolResult(formatResponse.toolError(message, toolProtocol))
+									break
+								}
+							}
+
+							console.log(`${customTool.name}.execute() -> ${JSON.stringify(customToolArgs, null, 2)}`)
+
+							const result = await customTool.execute(customToolArgs, {
+								mode: mode ?? defaultModeSlug,
+								task: cline,
+							})
+
+							pushToolResult(result)
+							cline.consecutiveMistakeCount = 0
+						} catch (executionError: any) {
+							cline.consecutiveMistakeCount++
+							await handleError(`executing custom tool "${block.name}"`, executionError)
+						}
+
+						break
+					}
+
+					// Not a custom tool - handle as unknown tool error
 					const errorMessage = `Unknown tool "${block.name}". This tool does not exist. Please use one of the available tools.`
 					cline.consecutiveMistakeCount++
 					cline.recordToolError(block.name as ToolName, errorMessage)
