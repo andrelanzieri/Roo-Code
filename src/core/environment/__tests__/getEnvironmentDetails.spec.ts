@@ -194,6 +194,30 @@ describe("getEnvironmentDetails", () => {
 		expect(formatResponse.formatFilesList).not.toHaveBeenCalled()
 	})
 
+	it("should use folders-only mode when workspaceFilesMode is 'folders'", async () => {
+		mockProvider.getState.mockResolvedValue({
+			...mockState,
+			workspaceFilesMode: "folders",
+		})
+
+		const result = await getEnvironmentDetails(mockCline as Task, true)
+
+		expect(result).toContain("# Current Workspace Directory")
+		expect(result).toContain("Folder Structure")
+
+		expect(listFiles).toHaveBeenCalledWith(mockCwd, true, 50, true)
+
+		expect(formatResponse.formatFilesList).toHaveBeenCalledWith(
+			mockCwd,
+			["file1.ts", "file2.ts"],
+			false,
+			mockCline.rooIgnoreController,
+			false,
+			undefined,
+			true,
+		)
+	})
+
 	it("should handle desktop directory specially", async () => {
 		;(arePathsEqual as Mock).mockReturnValue(true)
 		const result = await getEnvironmentDetails(mockCline as Task, true)
