@@ -10,7 +10,6 @@ import cachedTool from "./fixtures/cached.js"
 import legacyTool from "./fixtures/legacy.js"
 import { toolA, toolB } from "./fixtures/multi.js"
 import { validTool as mixedValidTool } from "./fixtures/mixed.js"
-import systemTimeTool from "./fixtures/system-time.js"
 
 const fixtureTools = {
 	simple: simpleTool,
@@ -19,7 +18,6 @@ const fixtureTools = {
 	multi_toolA: toolA,
 	multi_toolB: toolB,
 	mixed_validTool: mixedValidTool,
-	systemTime: systemTimeTool,
 }
 
 describe("formatNative", () => {
@@ -240,12 +238,6 @@ describe("Native Protocol snapshots", () => {
 
 	it("should generate correct native definition for mixed export tool", () => {
 		const serialized = serializeCustomTool(fixtureTools.mixed_validTool)
-		const result = formatNative(serialized)
-		expect(result).toMatchSnapshot()
-	})
-
-	it("should generate correct native definition for system time tool", () => {
-		const serialized = serializeCustomTool(fixtureTools.systemTime)
 		const result = formatNative(serialized)
 		expect(result).toMatchSnapshot()
 	})

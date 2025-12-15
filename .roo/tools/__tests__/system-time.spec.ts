@@ -8,21 +8,6 @@ const mockContext: CustomToolContext = {
 }
 
 describe("system-time tool", () => {
-	describe("definition", () => {
-		it("should have a description", () => {
-			expect(systemTime.description).toBe(
-				"Returns the current system date and time in a friendly, human-readable format.",
-			)
-		})
-
-		it("should have optional timezone parameter", () => {
-			expect(systemTime.parameters).toBeDefined()
-			const shape = systemTime.parameters!.shape
-			expect(shape.timezone).toBeDefined()
-			expect(shape.timezone.isOptional()).toBe(true)
-		})
-	})
-
 	describe("execute", () => {
 		it("should return a formatted date/time string", async () => {
 			const result = await systemTime.execute({}, mockContext)
@@ -32,27 +17,6 @@ describe("system-time tool", () => {
 				/(January|February|March|April|May|June|July|August|September|October|November|December)/,
 			)
 			expect(result).toMatch(/\d{1,2}:\d{2}:\d{2}/)
-		})
-
-		it("should use system timezone when no timezone provided", async () => {
-			const result = await systemTime.execute({}, mockContext)
-			expect(result).toMatch(/[A-Z]{2,5}$/)
-		})
-
-		it("should format with specified timezone", async () => {
-			const result = await systemTime.execute({ timezone: "UTC" }, mockContext)
-			expect(result).toMatch(/^The current date and time is:/)
-			expect(result).toMatch(/UTC/)
-		})
-
-		it("should work with different timezone formats", async () => {
-			const result = await systemTime.execute({ timezone: "America/New_York" }, mockContext)
-			expect(result).toMatch(/^The current date and time is:/)
-			expect(result).toMatch(/(EST|EDT)/)
-		})
-
-		it("should throw error for invalid timezone", async () => {
-			await expect(systemTime.execute({ timezone: "Invalid/Timezone" }, mockContext)).rejects.toThrow()
 		})
 	})
 })

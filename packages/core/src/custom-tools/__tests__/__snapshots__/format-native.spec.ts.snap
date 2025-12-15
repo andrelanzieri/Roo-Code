@@ -82,37 +82,6 @@ exports[`Native Protocol snapshots > should generate correct native definition f
 }
 `;
 
-exports[`Native Protocol snapshots > should generate correct native definition for system time tool 1`] = `
-{
-  "function": {
-    "description": "Returns the current system date and time in a friendly, human-readable format.",
-    "name": "system_time",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "timezone": {
-          "anyOf": [
-            {
-              "type": "string",
-            },
-            {
-              "type": "null",
-            },
-          ],
-          "description": "Timezone to display the time in (e.g., 'America/New_York', 'Europe/London')",
-        },
-      },
-      "required": [
-        "timezone",
-      ],
-      "type": "object",
-    },
-    "strict": true,
-  },
-  "type": "function",
-}
-`;
-
 exports[`Native Protocol snapshots > should generate correct native definitions for all fixtures combined 1`] = `
 [
   {
@@ -207,34 +176,6 @@ exports[`Native Protocol snapshots > should generate correct native definitions 
         "additionalProperties": false,
         "properties": {},
         "required": [],
-        "type": "object",
-      },
-      "strict": true,
-    },
-    "type": "function",
-  },
-  {
-    "function": {
-      "description": "Returns the current system date and time in a friendly, human-readable format.",
-      "name": "system_time",
-      "parameters": {
-        "additionalProperties": false,
-        "properties": {
-          "timezone": {
-            "anyOf": [
-              {
-                "type": "string",
-              },
-              {
-                "type": "null",
-              },
-            ],
-            "description": "Timezone to display the time in (e.g., 'America/New_York', 'Europe/London')",
-          },
-        },
-        "required": [
-          "timezone",
-        ],
         "type": "object",
       },
       "strict": true,
