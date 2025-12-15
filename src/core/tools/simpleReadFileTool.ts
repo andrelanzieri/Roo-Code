@@ -7,7 +7,12 @@ import { formatResponse } from "../prompts/responses"
 import { t } from "../../i18n"
 import { ToolUse, AskApproval, HandleError, PushToolResult, RemoveClosingTag } from "../../shared/tools"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
-import { checkFileContextStatus, getReReadNotice } from "../context-tracking/FileContextStatusChecker"
+import {
+	checkFileContextStatus,
+	getReReadNotice,
+	FileContextStatus,
+} from "../context-tracking/FileContextStatusChecker"
+import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { getReadablePath } from "../../utils/path"
 import { countFileLines } from "../../integrations/misc/line-counter"
@@ -86,15 +91,30 @@ export async function simpleReadFileTool(
 			return
 		}
 
-		// Check if file needs to be re-read based on context status
-		const metadata = await cline.fileContextTracker.getTaskMetadata(cline.taskId)
-		const contextStatus = await checkFileContextStatus(relPath, fullPath, metadata, cline.apiConversationHistory)
+		// Check if smart context tracking experiment is enabled
+		const state = await cline.providerRef.deref()?.getState()
+		const isSmartContextTrackingEnabled = experiments.isEnabled(
+			state?.experiments ?? {},
+			EXPERIMENT_IDS.SMART_CONTEXT_TRACKING,
+		)
 
-		// If we need to re-read, get the notice explaining why (for later use)
-		const reReadNotice = getReReadNotice(contextStatus.reason)
+		// Check if file needs to be re-read based on context status (only if experiment enabled)
+		let contextStatus: FileContextStatus = {
+			shouldReRead: true,
+			reason: "never_read",
+		}
+		let reReadNotice: string | undefined = undefined
+
+		if (isSmartContextTrackingEnabled) {
+			const metadata = await cline.fileContextTracker.getTaskMetadata(cline.taskId)
+			contextStatus = await checkFileContextStatus(relPath, fullPath, metadata, cline.apiConversationHistory)
+
+			// If we need to re-read, get the notice explaining why (for later use)
+			reReadNotice = getReReadNotice(contextStatus.reason)
+		}
 
 		// Get max read file line setting
-		const { maxReadFileLine = -1 } = (await cline.providerRef.deref()?.getState()) ?? {}
+		const { maxReadFileLine = -1 } = state ?? {}
 
 		// Create approval message
 		const isOutsideWorkspace = isPathOutsideWorkspace(fullPath)

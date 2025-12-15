@@ -9,7 +9,12 @@ import { formatResponse } from "../prompts/responses"
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { t } from "../../i18n"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
-import { checkFileContextStatus, getReReadNotice } from "../context-tracking/FileContextStatusChecker"
+import {
+	checkFileContextStatus,
+	getReReadNotice,
+	FileContextStatus,
+} from "../context-tracking/FileContextStatusChecker"
+import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { getReadablePath } from "../../utils/path"
 import { countFileLines } from "../../integrations/misc/line-counter"
@@ -142,6 +147,13 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		try {
 			const filesToApprove: FileResult[] = []
 
+			// Check if smart context tracking experiment is enabled
+			const experimentState = await task.providerRef.deref()?.getState()
+			const isSmartContextTrackingEnabled = experiments.isEnabled(
+				experimentState?.experiments ?? {},
+				EXPERIMENT_IDS.SMART_CONTEXT_TRACKING,
+			)
+
 			for (const fileResult of fileResults) {
 				const relPath = fileResult.path
 				const fullPath = path.resolve(task.cwd, relPath)
@@ -191,9 +203,12 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 						continue
 					}
 
-					// Check if file needs to be re-read based on context status
+					// Check if file needs to be re-read based on context status (only if experiment enabled)
 					// Skip this check for line range requests as those always need fresh content
-					if (!fileResult.lineRanges || fileResult.lineRanges.length === 0) {
+					if (
+						isSmartContextTrackingEnabled &&
+						(!fileResult.lineRanges || fileResult.lineRanges.length === 0)
+					) {
 						const metadata = await task.fileContextTracker.getTaskMetadata(task.taskId)
 						const contextStatus = await checkFileContextStatus(
 							relPath,
