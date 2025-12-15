@@ -175,13 +175,15 @@ describe("getEnvironmentDetails", () => {
 		expect(result).toContain("# Current Workspace Directory")
 		expect(result).toContain("Files")
 
-		expect(listFiles).toHaveBeenCalledWith(mockCwd, true, 50)
+		expect(listFiles).toHaveBeenCalledWith(mockCwd, true, 50, false)
 
 		expect(formatResponse.formatFilesList).toHaveBeenCalledWith(
 			mockCwd,
 			["file1.ts", "file2.ts"],
 			false,
 			mockCline.rooIgnoreController,
+			false,
+			undefined,
 			false,
 		)
 	})

@@ -284,7 +284,9 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 	}
 
 	if (includeFileDetails) {
-		details += `\n\n# Current Workspace Directory (${cline.cwd.toPosix()}) Files\n`
+		const workspaceFilesMode = state?.workspaceFilesMode ?? "files"
+		const headerText = workspaceFilesMode === "folders" ? "Folder Structure" : "Files"
+		details += `\n\n# Current Workspace Directory (${cline.cwd.toPosix()}) ${headerText}\n`
 		const isDesktop = arePathsEqual(cline.cwd, path.join(os.homedir(), "Desktop"))
 
 		if (isDesktop) {
@@ -298,7 +300,8 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 			if (maxFiles === 0) {
 				details += "(Workspace files context disabled. Use list_files to explore if needed.)"
 			} else {
-				const [files, didHitLimit] = await listFiles(cline.cwd, true, maxFiles)
+				const foldersOnly = workspaceFilesMode === "folders"
+				const [files, didHitLimit] = await listFiles(cline.cwd, true, maxFiles, foldersOnly)
 				const { showRooIgnoredFiles = false } = state ?? {}
 
 				const result = formatResponse.formatFilesList(
@@ -307,6 +310,8 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 					didHitLimit,
 					cline.rooIgnoreController,
 					showRooIgnoredFiles,
+					undefined,
+					foldersOnly,
 				)
 
 				details += result
