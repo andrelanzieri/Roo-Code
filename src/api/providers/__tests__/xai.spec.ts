@@ -11,6 +11,16 @@ vitest.mock("openai", () => {
 	}
 })
 
+const mockCaptureException = vitest.fn()
+
+vitest.mock("@roo-code/telemetry", () => ({
+	TelemetryService: {
+		instance: {
+			captureException: (...args: unknown[]) => mockCaptureException(...args),
+		},
+	},
+}))
+
 import OpenAI from "openai"
 import type { Anthropic } from "@anthropic-ai/sdk"
 
@@ -25,6 +35,7 @@ describe("XAIHandler", () => {
 		// Reset all mocks
 		vi.clearAllMocks()
 		mockCreate.mockClear()
+		mockCaptureException.mockClear()
 
 		// Create handler with mock
 		handler = new XAIHandler({})
@@ -138,6 +149,66 @@ describe("XAIHandler", () => {
 		mockCreate.mockRejectedValueOnce(new Error(errorMessage))
 
 		await expect(handler.completePrompt("test prompt")).rejects.toThrow(`xAI completion error: ${errorMessage}`)
+	})
+
+	describe("Telemetry Error Capture", () => {
+		it("captures telemetry when createMessage throws an exception", async () => {
+			const errorMessage = "Connection failed"
+			mockCreate.mockRejectedValueOnce(new Error(errorMessage))
+
+			const generator = handler.createMessage("test prompt", [])
+			await expect(generator.next()).rejects.toThrow()
+
+			expect(mockCaptureException).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: errorMessage,
+					provider: "xAI",
+					modelId: xaiDefaultModelId,
+					operation: "createMessage",
+				}),
+			)
+		})
+
+		it("captures telemetry when completePrompt throws an exception", async () => {
+			const errorMessage = "API error"
+			mockCreate.mockRejectedValueOnce(new Error(errorMessage))
+
+			await expect(handler.completePrompt("test prompt")).rejects.toThrow()
+
+			expect(mockCaptureException).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: errorMessage,
+					provider: "xAI",
+					modelId: xaiDefaultModelId,
+					operation: "completePrompt",
+				}),
+			)
+		})
+
+		it("captures telemetry with correct model ID when using a specific model", async () => {
+			const specificModelHandler = new XAIHandler({ apiModelId: "grok-3" })
+			const errorMessage = "Model error"
+			mockCreate.mockRejectedValueOnce(new Error(errorMessage))
+
+			await expect(specificModelHandler.completePrompt("test prompt")).rejects.toThrow()
+
+			expect(mockCaptureException).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: errorMessage,
+					provider: "xAI",
+					modelId: "grok-3",
+					operation: "completePrompt",
+				}),
+			)
+		})
+
+		it("captures telemetry and still re-throws the error", async () => {
+			const errorMessage = "Network error"
+			mockCreate.mockRejectedValueOnce(new Error(errorMessage))
+
+			await expect(handler.completePrompt("test prompt")).rejects.toThrow(`xAI completion error: ${errorMessage}`)
+			expect(mockCaptureException).toHaveBeenCalledTimes(1)
+		})
 	})
 
 	it("createMessage should yield text content from stream", async () => {
