@@ -1,26 +1,3 @@
-/**
- * Custom Tool Definition Utilities
- *
- * This module provides utilities for defining custom tools that can be
- * loaded by the Roo Code extension. Install @roo-code/types in your
- * project to use these utilities.
- *
- * @example
- * ```ts
- * import { z, defineCustomTool } from "@roo-code/types"
- *
- * export default defineCustomTool({
- *   description: "Greets a user by name",
- *   parameters: z.object({
- *     name: z.string().describe("The name to greet"),
- *   }),
- *   async execute(args) {
- *     return `Hello, ${args.name}!`
- *   }
- * })
- * ```
- */
-
 import type { ZodType, z } from "zod/v4"
 
 import { TaskLike } from "./task.js"
