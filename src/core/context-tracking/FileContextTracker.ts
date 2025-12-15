@@ -30,9 +30,35 @@ export class FileContextTracker {
 	private recentlyEditedByRoo = new Set<string>()
 	private checkpointPossibleFiles = new Set<string>()
 
+	// Message context tracking - tracks which API message the current tool results will be part of
+	private currentMessageTs: number | null = null
+
 	constructor(provider: ClineProvider, taskId: string) {
 		this.providerRef = new WeakRef(provider)
 		this.taskId = taskId
+	}
+
+	/**
+	 * Sets the timestamp of the current API message being built.
+	 * Should be called before tool execution starts for each message.
+	 */
+	setCurrentMessageContext(messageTs: number): void {
+		this.currentMessageTs = messageTs
+	}
+
+	/**
+	 * Clears the current message context.
+	 * Should be called after tool execution completes.
+	 */
+	clearCurrentMessageContext(): void {
+		this.currentMessageTs = null
+	}
+
+	/**
+	 * Gets the current message timestamp context.
+	 */
+	getCurrentMessageContext(): number | null {
+		return this.currentMessageTs
 	}
 
 	// Gets the current working directory or returns undefined if it cannot be determined
@@ -168,6 +194,8 @@ export class FileContextTracker {
 				roo_read_date: getLatestDateForField(filePath, "roo_read_date"),
 				roo_edit_date: getLatestDateForField(filePath, "roo_edit_date"),
 				user_edit_date: getLatestDateForField(filePath, "user_edit_date"),
+				// Track the API message containing this file's content (for context status checking)
+				containingMessageTs: this.currentMessageTs,
 			}
 
 			switch (source) {
@@ -181,6 +209,7 @@ export class FileContextTracker {
 				case "roo_edited":
 					newEntry.roo_read_date = now
 					newEntry.roo_edit_date = now
+					newEntry.containingMessageTs = this.currentMessageTs
 					this.checkpointPossibleFiles.add(filePath)
 					this.markFileAsEditedByRoo(filePath)
 					break
@@ -189,6 +218,7 @@ export class FileContextTracker {
 				case "read_tool":
 				case "file_mentioned":
 					newEntry.roo_read_date = now
+					newEntry.containingMessageTs = this.currentMessageTs
 					break
 			}
 

@@ -9,6 +9,7 @@ import { formatResponse } from "../prompts/responses"
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { t } from "../../i18n"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
+import { checkFileContextStatus, getReReadNotice } from "../context-tracking/FileContextStatusChecker"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { getReadablePath } from "../../utils/path"
 import { countFileLines } from "../../integrations/misc/line-counter"
@@ -32,7 +33,7 @@ import type { ToolUse } from "../../shared/tools"
 
 interface FileResult {
 	path: string
-	status: "approved" | "denied" | "blocked" | "error" | "pending"
+	status: "approved" | "denied" | "blocked" | "error" | "pending" | "unchanged"
 	content?: string
 	error?: string
 	notice?: string
@@ -42,6 +43,7 @@ interface FileResult {
 	imageDataUrl?: string
 	feedbackText?: string
 	feedbackImages?: any[]
+	reReadNotice?: string // Notice explaining why file is being re-read (condensation/truncation)
 }
 
 export class ReadFileTool extends BaseTool<"read_file"> {
@@ -187,6 +189,36 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 							nativeContent: `File: ${relPath}\nError: ${errorMsg}`,
 						})
 						continue
+					}
+
+					// Check if file needs to be re-read based on context status
+					// Skip this check for line range requests as those always need fresh content
+					if (!fileResult.lineRanges || fileResult.lineRanges.length === 0) {
+						const metadata = await task.fileContextTracker.getTaskMetadata(task.taskId)
+						const contextStatus = await checkFileContextStatus(
+							relPath,
+							fullPath,
+							metadata,
+							task.apiConversationHistory,
+						)
+
+						if (!contextStatus.shouldReRead) {
+							// File unchanged - store info for later, but still show in approval UI
+							const lastReadTime = contextStatus.lastReadDate
+								? new Date(contextStatus.lastReadDate).toISOString()
+								: "unknown"
+							const notice = `File content unchanged since last read (${lastReadTime}). Content is already in your current context.`
+							updateFileResult(relPath, {
+								notice, // Store the notice for use after approval
+							})
+							// Continue to filesToApprove - we'll handle unchanged after approval
+						} else {
+							// Store the re-read notice for later use
+							const reReadNotice = getReReadNotice(contextStatus.reason)
+							if (reReadNotice) {
+								updateFileResult(relPath, { reReadNotice })
+							}
+						}
 					}
 
 					filesToApprove.push(fileResult)
@@ -335,6 +367,16 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 
 				const relPath = fileResult.path
 				const fullPath = path.resolve(task.cwd, relPath)
+
+				// Handle unchanged files - return short response after approval was shown in UI
+				if (fileResult.notice && fileResult.notice.includes("unchanged")) {
+					updateFileResult(relPath, {
+						status: "unchanged",
+						xmlContent: `<file><path>${relPath}</path><status>unchanged</status><notice>${fileResult.notice}</notice></file>`,
+						nativeContent: `File: ${relPath}\nStatus: unchanged\nNote: ${fileResult.notice}`,
+					})
+					continue
+				}
 
 				try {
 					const [totalLines, isBinary] = await Promise.all([countFileLines(fullPath), isBinaryFile(fullPath)])
@@ -572,6 +614,12 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 								nativeInfo = `Lines 1-${result.lineCount}:\n${content}`
 							}
 						}
+					}
+
+					// Add re-read notice if content was condensed/truncated
+					if (fileResult.reReadNotice) {
+						xmlInfo += `<notice>${fileResult.reReadNotice}</notice>\n`
+						nativeInfo += `\n\nNote: ${fileResult.reReadNotice}`
 					}
 
 					await task.fileContextTracker.trackFileContext(relPath, "read_tool" as RecordSource)

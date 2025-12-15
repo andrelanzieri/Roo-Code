@@ -7,6 +7,7 @@ import { formatResponse } from "../prompts/responses"
 import { t } from "../../i18n"
 import { ToolUse, AskApproval, HandleError, PushToolResult, RemoveClosingTag } from "../../shared/tools"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
+import { checkFileContextStatus, getReReadNotice } from "../context-tracking/FileContextStatusChecker"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { getReadablePath } from "../../utils/path"
 import { countFileLines } from "../../integrations/misc/line-counter"
@@ -85,6 +86,13 @@ export async function simpleReadFileTool(
 			return
 		}
 
+		// Check if file needs to be re-read based on context status
+		const metadata = await cline.fileContextTracker.getTaskMetadata(cline.taskId)
+		const contextStatus = await checkFileContextStatus(relPath, fullPath, metadata, cline.apiConversationHistory)
+
+		// If we need to re-read, get the notice explaining why (for later use)
+		const reReadNotice = getReReadNotice(contextStatus.reason)
+
 		// Get max read file line setting
 		const { maxReadFileLine = -1 } = (await cline.providerRef.deref()?.getState()) ?? {}
 
@@ -123,6 +131,25 @@ export async function simpleReadFileTool(
 		// Handle approval with feedback
 		if (text) {
 			await cline.say("user_feedback", text, images)
+		}
+
+		// If file is unchanged and content is still in context, return short response
+		if (!contextStatus.shouldReRead) {
+			const lastReadTime = contextStatus.lastReadDate
+				? new Date(contextStatus.lastReadDate).toISOString()
+				: "unknown"
+			const notice = `File content unchanged since last read (${lastReadTime}). Content is already in your current context.`
+			if (text) {
+				const statusMessage = formatResponse.toolApprovedWithFeedback(text)
+				pushToolResult(
+					`${statusMessage}\n<file><path>${relPath}</path><status>unchanged</status><notice>${notice}</notice></file>`,
+				)
+			} else {
+				pushToolResult(
+					`<file><path>${relPath}</path><status>unchanged</status><notice>${notice}</notice></file>`,
+				)
+			}
+			return
 		}
 
 		// Process the file
@@ -255,6 +282,11 @@ export async function simpleReadFileTool(
 
 		if (totalLines === 0) {
 			xmlInfo += `<notice>File is empty</notice>\n`
+		}
+
+		// Add re-read notice if content was condensed/truncated
+		if (reReadNotice) {
+			xmlInfo += `<notice>${reReadNotice}</notice>\n`
 		}
 
 		// Track file read
