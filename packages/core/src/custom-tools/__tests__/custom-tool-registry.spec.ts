@@ -1,8 +1,12 @@
-import { z } from "zod"
 import path from "path"
 import { fileURLToPath } from "url"
 
-import { type CustomToolDefinition, type CustomToolContext, type TaskLike } from "@roo-code/types"
+import {
+	type CustomToolDefinition,
+	type CustomToolContext,
+	type TaskLike,
+	parametersSchema as z,
+} from "@roo-code/types"
 
 import { CustomToolRegistry } from "../custom-tool-registry.js"
 

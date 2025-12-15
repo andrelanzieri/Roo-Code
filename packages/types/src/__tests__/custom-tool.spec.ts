@@ -1,4 +1,9 @@
-import { type CustomToolDefinition, type CustomToolContext, defineCustomTool, z } from "../custom-tool.js"
+import {
+	type CustomToolDefinition,
+	type CustomToolContext,
+	defineCustomTool,
+	parametersSchema as z,
+} from "../custom-tool.js"
 import type { TaskLike } from "../task.js"
 
 describe("custom-tool utilities", () => {

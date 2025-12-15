@@ -1,9 +1,9 @@
-import { z, defineCustomTool } from "@roo-code/types"
+import { parametersSchema, defineCustomTool } from "@roo-code/types"
 
 export default defineCustomTool({
 	name: "cached",
 	description: "Cached tool",
-	parameters: z.object({}),
+	parameters: parametersSchema.object({}),
 	async execute() {
 		return "cached"
 	},

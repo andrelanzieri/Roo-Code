@@ -15,7 +15,14 @@ import os from "os"
 
 import { build } from "esbuild"
 
-import { type CustomToolContext, type CustomToolDefinition, type ZodLikeSchema } from "@roo-code/types"
+import type {
+	CustomToolDefinition,
+	SerializedCustomToolDefinition,
+	CustomToolParametersSchema,
+	CustomToolContext,
+} from "@roo-code/types"
+
+import { serializeCustomTool } from "./serialize.js"
 
 /**
  * Default subdirectory name for custom tools within a .roo directory.
@@ -123,6 +130,7 @@ export class CustomToolRegistry {
 		const isStale = lastLoaded ? stat.mtimeMs > lastLoaded : true
 
 		if (isStale) {
+			this.lastLoaded.set(toolDir, stat.mtimeMs)
 			return this.loadFromDirectory(toolDir)
 		}
 
@@ -176,6 +184,10 @@ export class CustomToolRegistry {
 	 */
 	getAll(): CustomToolDefinition[] {
 		return Array.from(this.tools.values())
+	}
+
+	getAllSerialized(): SerializedCustomToolDefinition[] {
+		return this.getAll().map(serializeCustomTool)
 	}
 
 	/**
@@ -266,7 +278,7 @@ export class CustomToolRegistry {
 	 * Check if a value is a Zod schema by looking for the _def property
 	 * which is present on all Zod types.
 	 */
-	private isZodSchema(value: unknown): value is ZodLikeSchema {
+	private isParametersSchema(value: unknown): value is CustomToolParametersSchema {
 		return (
 			value !== null &&
 			typeof value === "object" &&
@@ -308,7 +320,7 @@ export class CustomToolRegistry {
 		}
 
 		// Validate parameters (optional).
-		if (obj.parameters !== undefined && !this.isZodSchema(obj.parameters)) {
+		if (obj.parameters !== undefined && !this.isParametersSchema(obj.parameters)) {
 			errors.push("parameters: parameters must be a Zod schema")
 		}
 

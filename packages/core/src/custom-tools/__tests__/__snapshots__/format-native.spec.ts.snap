@@ -1,0 +1,270 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Native Protocol snapshots > should generate correct native definition for cached tool 1`] = `
+{
+  "function": {
+    "description": "Cached tool",
+    "name": "cached",
+    "parameters": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+  },
+  "type": "function",
+}
+`;
+
+exports[`Native Protocol snapshots > should generate correct native definition for legacy tool (using args) 1`] = `
+{
+  "function": {
+    "description": "Legacy tool using args",
+    "name": "legacy",
+    "parameters": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "input": {
+          "description": "The input string",
+          "type": "string",
+        },
+      },
+      "required": [
+        "input",
+      ],
+      "type": "object",
+    },
+  },
+  "type": "function",
+}
+`;
+
+exports[`Native Protocol snapshots > should generate correct native definition for mixed export tool 1`] = `
+{
+  "function": {
+    "description": "Valid",
+    "name": "mixed_validTool",
+    "parameters": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object",
+    },
+  },
+  "type": "function",
+}
+`;
+
+exports[`Native Protocol snapshots > should generate correct native definition for simple tool 1`] = `
+{
+  "function": {
+    "description": "Simple tool",
+    "name": "simple",
+    "parameters": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "description": "The input value",
+          "type": "string",
+        },
+      },
+      "required": [
+        "value",
+      ],
+      "type": "object",
+    },
+  },
+  "type": "function",
+}
+`;
+
+exports[`Native Protocol snapshots > should generate correct native definition for system time tool 1`] = `
+{
+  "function": {
+    "description": "Returns the current system date and time in a friendly, human-readable format.",
+    "name": "system_time",
+    "parameters": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "timezone": {
+          "anyOf": [
+            {
+              "type": "string",
+            },
+            {
+              "type": "null",
+            },
+          ],
+          "description": "Timezone to display the time in (e.g., 'America/New_York', 'Europe/London')",
+        },
+      },
+      "required": [
+        "timezone",
+      ],
+      "type": "object",
+    },
+  },
+  "type": "function",
+}
+`;
+
+exports[`Native Protocol snapshots > should generate correct native definitions for all fixtures combined 1`] = `
+[
+  {
+    "function": {
+      "description": "Simple tool",
+      "name": "simple",
+      "parameters": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "description": "The input value",
+            "type": "string",
+          },
+        },
+        "required": [
+          "value",
+        ],
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+  {
+    "function": {
+      "description": "Cached tool",
+      "name": "cached",
+      "parameters": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+  {
+    "function": {
+      "description": "Legacy tool using args",
+      "name": "legacy",
+      "parameters": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "description": "The input string",
+            "type": "string",
+          },
+        },
+        "required": [
+          "input",
+        ],
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+  {
+    "function": {
+      "description": "Tool A",
+      "name": "multi_toolA",
+      "parameters": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+  {
+    "function": {
+      "description": "Tool B",
+      "name": "multi_toolB",
+      "parameters": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+  {
+    "function": {
+      "description": "Valid",
+      "name": "mixed_validTool",
+      "parameters": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+  {
+    "function": {
+      "description": "Returns the current system date and time in a friendly, human-readable format.",
+      "name": "system_time",
+      "parameters": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string",
+              },
+              {
+                "type": "null",
+              },
+            ],
+            "description": "Timezone to display the time in (e.g., 'America/New_York', 'Europe/London')",
+          },
+        },
+        "required": [
+          "timezone",
+        ],
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+]
+`;
+
+exports[`Native Protocol snapshots > should generate correct native definitions for multi export tools 1`] = `
+[
+  {
+    "function": {
+      "description": "Tool A",
+      "name": "multi_toolA",
+      "parameters": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+  {
+    "function": {
+      "description": "Tool B",
+      "name": "multi_toolB",
+      "parameters": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object",
+      },
+    },
+    "type": "function",
+  },
+]
+`;

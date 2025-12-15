@@ -1,10 +1,10 @@
-import { z, defineCustomTool } from "@roo-code/types"
+import { parametersSchema, defineCustomTool } from "@roo-code/types"
 
 // This is a valid tool.
 export const validTool = defineCustomTool({
 	name: "mixed_validTool",
 	description: "Valid",
-	parameters: z.object({}),
+	parameters: parametersSchema.object({}),
 	async execute() {
 		return "valid"
 	},

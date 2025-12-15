@@ -1,9 +1,9 @@
-import { z, defineCustomTool } from "@roo-code/types"
+import { parametersSchema, defineCustomTool } from "@roo-code/types"
 
 export default defineCustomTool({
 	name: "legacy",
 	description: "Legacy tool using args",
-	parameters: z.object({ input: z.string().describe("The input string") }),
+	parameters: parametersSchema.object({ input: parametersSchema.string().describe("The input string") }),
 	async execute(args: { input: string }) {
 		return args.input
 	},

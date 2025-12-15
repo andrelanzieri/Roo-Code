@@ -21,9 +21,17 @@
  * ```
  */
 
-import type { ZodType, infer as ZodInfer } from "zod"
+import type { ZodType, infer as ZodInfer, z } from "zod/v4"
 
 import { TaskLike } from "./task.js"
+
+// Re-export from Zod for convenience.
+
+export { z as parametersSchema } from "zod/v4"
+
+export type CustomToolParametersSchema = ZodType
+
+export type SerializedCustomToolParameters = z.core.JSONSchema.JSONSchema
 
 /**
  * Context provided to tool execute functions.
@@ -31,16 +39,6 @@ import { TaskLike } from "./task.js"
 export interface CustomToolContext {
 	mode: string
 	task: TaskLike
-}
-
-/**
- * A Zod-like schema interface. We use this instead of ZodType directly
- * to avoid TypeScript's excessive type instantiation (TS2589).
- */
-export interface ZodLikeSchema {
-	_def: unknown
-	parse: (data: unknown) => unknown
-	safeParse: (data: unknown) => { success: boolean; data?: unknown; error?: unknown }
 }
 
 /**
@@ -67,7 +65,7 @@ export interface CustomToolDefinition {
 	 * Optional Zod schema defining the tool's parameters.
 	 * Use `z.object({})` to define the shape of arguments.
 	 */
-	parameters?: ZodLikeSchema
+	parameters?: CustomToolParametersSchema
 
 	/**
 	 * The function that executes the tool.
@@ -80,13 +78,19 @@ export interface CustomToolDefinition {
 	execute: (args: any, context: CustomToolContext) => Promise<string>
 }
 
+export interface SerializedCustomToolDefinition {
+	name: string
+	description: string
+	parameters?: SerializedCustomToolParameters
+}
+
 /**
  * Type-safe definition structure for a custom tool with inferred parameter types.
  * Use this with `defineCustomTool` for full type inference.
  *
  * @template T - The Zod schema type for parameters
  */
-export interface TypedCustomToolDefinition<T extends ZodType>
+export interface TypedCustomToolDefinition<T extends CustomToolParametersSchema>
 	extends Omit<CustomToolDefinition, "execute" | "parameters"> {
 	parameters?: T
 	execute: (args: ZodInfer<T>, context: CustomToolContext) => Promise<string>
@@ -115,13 +119,8 @@ export interface TypedCustomToolDefinition<T extends ZodType>
  * })
  * ```
  */
-export function defineCustomTool<T extends ZodType>(
+export function defineCustomTool<T extends CustomToolParametersSchema>(
 	definition: TypedCustomToolDefinition<T>,
 ): TypedCustomToolDefinition<T> {
 	return definition
 }
-
-// Re-export Zod for convenient parameter schema definition.
-export { z as parametersSchema, z } from "zod"
-
-export type { ZodType, ZodObject, ZodRawShape } from "zod"
