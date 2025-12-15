@@ -621,7 +621,6 @@ describe("Context Management", () => {
 				true,
 				undefined, // customCondensingPrompt
 				undefined, // condensingApiHandler
-				undefined, // useNativeTools
 			)
 
 			// Verify the result contains the summary information
@@ -797,7 +796,6 @@ describe("Context Management", () => {
 				true,
 				undefined, // customCondensingPrompt
 				undefined, // condensingApiHandler
-				undefined, // useNativeTools
 			)
 
 			// Verify the result contains the summary information

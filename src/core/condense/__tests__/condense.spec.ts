@@ -92,7 +92,9 @@ describe("Condense", () => {
 			// Use getEffectiveApiHistory to verify the effective view matches the old behavior
 			expect(result.messages.length).toBe(messages.length + 1) // All original messages + summary
 			const effectiveHistory = getEffectiveApiHistory(result.messages)
-			expect(effectiveHistory.length).toBe(1 + 1 + N_MESSAGES_TO_KEEP) // first + summary + last N
+			// first + summary + extended kept messages (when first kept is user, we extend to include preceding assistant)
+			// The new behavior keeps 1 extra message to preserve tool_use/tool_result pairs
+			expect(effectiveHistory.length).toBe(1 + 1 + N_MESSAGES_TO_KEEP + 1) // first + summary + last N + 1 extended
 
 			// Verify the last N messages are preserved (same messages by reference)
 			const lastMessages = result.messages.slice(-N_MESSAGES_TO_KEEP)

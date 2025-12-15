@@ -219,7 +219,6 @@ export type ContextManagementOptions = {
 	condensingApiHandler?: ApiHandler
 	profileThresholds: Record<string, number>
 	currentProfileId: string
-	useNativeTools?: boolean
 }
 
 export type ContextManagementResult = SummarizeResponse & {
@@ -249,7 +248,6 @@ export async function manageContext({
 	condensingApiHandler,
 	profileThresholds,
 	currentProfileId,
-	useNativeTools,
 }: ContextManagementOptions): Promise<ContextManagementResult> {
 	let error: string | undefined
 	let cost = 0
@@ -303,7 +301,6 @@ export async function manageContext({
 				true, // automatic trigger
 				customCondensingPrompt,
 				condensingApiHandler,
-				useNativeTools,
 			)
 			if (result.error) {
 				error = result.error

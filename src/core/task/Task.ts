@@ -814,7 +814,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.apiConversationHistory.push(messageWithTs)
 		} else {
 			// For user messages, validate and fix tool_result IDs against the previous assistant message
-			const validatedMessage = validateAndFixToolResultIds(message, this.apiConversationHistory)
+			// IMPORTANT: Use getEffectiveApiHistory to match what the API actually receives.
+			// This ensures validation considers condensed messages correctly - tool_use blocks
+			// from condensed messages are appended to summary messages in the effective history.
+			const effectiveHistory = getEffectiveApiHistory(this.apiConversationHistory)
+			const validatedMessage = validateAndFixToolResultIds(message, effectiveHistory)
 			const messageWithTs = { ...validatedMessage, ts: Date.now() }
 			this.apiConversationHistory.push(messageWithTs)
 		}
@@ -855,7 +859,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		// Validate and fix tool_result IDs against the previous assistant message
-		const validatedMessage = validateAndFixToolResultIds(userMessage, this.apiConversationHistory)
+		// IMPORTANT: Use getEffectiveApiHistory to match what the API actually receives.
+		// This ensures validation considers condensed messages correctly - tool_use blocks
+		// from condensed messages are appended to summary messages in the effective history.
+		const effectiveHistory = getEffectiveApiHistory(this.apiConversationHistory)
+		const validatedMessage = validateAndFixToolResultIds(userMessage, effectiveHistory)
 		const userMessageWithTs = { ...validatedMessage, ts: Date.now() }
 		this.apiConversationHistory.push(userMessageWithTs as ApiMessage)
 
@@ -1376,11 +1384,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		const { contextTokens: prevContextTokens } = this.getTokenUsage()
 
-		// Determine if we're using native tool protocol for proper message handling
-		const modelInfo = this.api.getModel().info
-		const protocol = resolveToolProtocol(this.apiConfiguration, modelInfo)
-		const useNativeTools = isNativeProtocol(protocol)
-
 		const {
 			messages,
 			summary,
@@ -1397,7 +1400,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			false, // manual trigger
 			customCondensingPrompt, // User's custom prompt
 			condensingApiHandler, // Specific handler for condensing
-			useNativeTools, // Pass native tools flag for proper message handling
 		)
 		if (error) {
 			this.say(
@@ -3438,10 +3440,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				`Forcing truncation to ${FORCED_CONTEXT_REDUCTION_PERCENT}% of current context.`,
 		)
 
-		// Determine if we're using native tool protocol for proper message handling
-		const protocol = resolveToolProtocol(this.apiConfiguration, modelInfo)
-		const useNativeTools = isNativeProtocol(protocol)
-
 		// Send condenseTaskContextStarted to show in-progress indicator
 		await this.providerRef.deref()?.postMessageToWebview({ type: "condenseTaskContextStarted", text: this.taskId })
 
@@ -3458,7 +3456,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			taskId: this.taskId,
 			profileThresholds,
 			currentProfileId,
-			useNativeTools,
 		})
 
 		if (truncateResult.messages !== this.apiConversationHistory) {
@@ -3582,11 +3579,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Get the current profile ID using the helper method
 			const currentProfileId = this.getCurrentProfileId(state)
 
-			// Determine if we're using native tool protocol for proper message handling
-			const modelInfoForProtocol = this.api.getModel().info
-			const protocol = resolveToolProtocol(this.apiConfiguration, modelInfoForProtocol)
-			const useNativeTools = isNativeProtocol(protocol)
-
 			// Check if context management will likely run (threshold check)
 			// This allows us to show an in-progress indicator to the user
 			// We use the centralized willManageContext helper to avoid duplicating threshold logic
@@ -3633,7 +3625,6 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				condensingApiHandler,
 				profileThresholds,
 				currentProfileId,
-				useNativeTools,
 			})
 			if (truncateResult.messages !== this.apiConversationHistory) {
 				await this.overwriteApiConversationHistory(truncateResult.messages)

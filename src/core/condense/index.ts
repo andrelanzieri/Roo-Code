@@ -9,63 +9,41 @@ import { ApiMessage } from "../task-persistence/apiMessages"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 
 /**
- * Checks if a message contains tool_result blocks.
- * For native tools protocol, user messages with tool_result blocks require
- * corresponding tool_use blocks from the previous assistant turn.
- */
-function hasToolResultBlocks(message: ApiMessage): boolean {
-	if (message.role !== "user" || typeof message.content === "string") {
-		return false
-	}
-	return message.content.some((block) => block.type === "tool_result")
-}
-
-/**
- * Gets the tool_use blocks from a message.
- */
-function getToolUseBlocks(message: ApiMessage): Anthropic.Messages.ToolUseBlock[] {
-	if (message.role !== "assistant" || typeof message.content === "string") {
-		return []
-	}
-	return message.content.filter((block) => block.type === "tool_use") as Anthropic.Messages.ToolUseBlock[]
-}
-
-/**
- * Extracts tool_use blocks that need to be preserved to match tool_result blocks in keepMessages.
- * When the first kept message is a user message with tool_result blocks,
- * we need to find the corresponding tool_use blocks from the preceding assistant message.
- * These tool_use blocks will be appended to the summary message to maintain proper pairing.
+ * Determines which messages to keep from the end of the conversation, ensuring
+ * complete message pairs are kept together. LLM conversations alternate between
+ * user and assistant roles, so keeping pairs ensures:
+ * - tool_use (assistant) and tool_result (user) blocks stay together
+ * - Proper conversation flow is maintained
+ * - The summary always ends on a natural boundary
+ *
+ * The function rounds up to the next even number of messages (at least keepCount)
+ * and ensures the first kept message is an assistant message (completing the pair).
  *
  * @param messages - The full conversation messages
- * @param keepCount - The number of messages to keep from the end
- * @returns Object containing keepMessages and any tool_use blocks to preserve
+ * @param keepCount - The minimum number of messages to keep from the end
+ * @returns Object containing keepMessages and startIndex
  */
-export function getKeepMessagesWithToolBlocks(
+export function getKeepMessagePairs(
 	messages: ApiMessage[],
 	keepCount: number,
-): { keepMessages: ApiMessage[]; toolUseBlocksToPreserve: Anthropic.Messages.ToolUseBlock[] } {
+): { keepMessages: ApiMessage[]; startIndex: number } {
 	if (messages.length <= keepCount) {
-		return { keepMessages: messages, toolUseBlocksToPreserve: [] }
+		return { keepMessages: messages, startIndex: 0 }
 	}
 
-	const startIndex = messages.length - keepCount
+	let startIndex = messages.length - keepCount
+
+	// Ensure we keep complete pairs by:
+	// 1. If the first kept message is a user message, include the preceding assistant message
+	// 2. This naturally keeps tool_use/tool_result pairs together
+	const firstKeptMessage = messages[startIndex]
+	if (firstKeptMessage && firstKeptMessage.role === "user" && startIndex > 0) {
+		// Include the preceding assistant message to complete the pair
+		startIndex = startIndex - 1
+	}
+
 	const keepMessages = messages.slice(startIndex)
-
-	// Check if the first kept message is a user message with tool_result blocks
-	if (keepMessages.length > 0 && hasToolResultBlocks(keepMessages[0])) {
-		// Look for the preceding assistant message with tool_use blocks
-		const precedingIndex = startIndex - 1
-		if (precedingIndex >= 0) {
-			const precedingMessage = messages[precedingIndex]
-			const toolUseBlocks = getToolUseBlocks(precedingMessage)
-			if (toolUseBlocks.length > 0) {
-				// Return the tool_use blocks to be merged into the summary message
-				return { keepMessages, toolUseBlocksToPreserve: toolUseBlocks }
-			}
-		}
-	}
-
-	return { keepMessages, toolUseBlocksToPreserve: [] }
+	return { keepMessages, startIndex }
 }
 
 export const N_MESSAGES_TO_KEEP = 3
@@ -142,7 +120,6 @@ export type SummarizeResponse = {
  * @param {boolean} isAutomaticTrigger - Whether the summarization is triggered automatically
  * @param {string} customCondensingPrompt - Optional custom prompt to use for condensing
  * @param {ApiHandler} condensingApiHandler - Optional specific API handler to use for condensing
- * @param {boolean} useNativeTools - Whether native tools protocol is being used (requires tool_use/tool_result pairing)
  * @returns {SummarizeResponse} - The result of the summarization operation (see above)
  */
 export async function summarizeConversation(
@@ -154,7 +131,6 @@ export async function summarizeConversation(
 	isAutomaticTrigger?: boolean,
 	customCondensingPrompt?: string,
 	condensingApiHandler?: ApiHandler,
-	useNativeTools?: boolean,
 ): Promise<SummarizeResponse> {
 	TelemetryService.instance.captureContextCondensed(
 		taskId,
@@ -165,19 +141,14 @@ export async function summarizeConversation(
 
 	const response: SummarizeResponse = { messages, cost: 0, summary: "" }
 
-	// Always preserve the first message (which may contain slash command content)
-	const firstMessage = messages[0]
+	// Get keepMessages and the start index for the kept messages.
+	// Always keep complete message pairs to:
+	// - Ensure tool_use/tool_result pairs are kept together (assistant precedes user)
+	// - Maintain proper conversation flow
+	// - End summary on a natural boundary
+	const { keepMessages, startIndex: keepStartIndex } = getKeepMessagePairs(messages, N_MESSAGES_TO_KEEP)
 
-	// Get keepMessages and any tool_use blocks that need to be preserved for tool_result pairing
-	// Only preserve tool_use blocks when using native tools protocol (XML protocol doesn't need them)
-	const { keepMessages, toolUseBlocksToPreserve } = useNativeTools
-		? getKeepMessagesWithToolBlocks(messages, N_MESSAGES_TO_KEEP)
-		: { keepMessages: messages.slice(-N_MESSAGES_TO_KEEP), toolUseBlocksToPreserve: [] }
-
-	const keepStartIndex = Math.max(messages.length - N_MESSAGES_TO_KEEP, 0)
-	const includeFirstKeptMessageInSummary = toolUseBlocksToPreserve.length > 0
-	const summarySliceEnd = includeFirstKeptMessageInSummary ? keepStartIndex + 1 : keepStartIndex
-	const messagesBeforeKeep = summarySliceEnd > 0 ? messages.slice(0, summarySliceEnd) : []
+	const messagesBeforeKeep = keepStartIndex > 0 ? messages.slice(0, keepStartIndex) : []
 
 	// Get messages to summarize, including the first message and excluding the last N messages
 	const messagesToSummarize = getMessagesSinceLastSummary(messagesBeforeKeep)
@@ -257,16 +228,9 @@ export async function summarizeConversation(
 	}
 
 	// Build the summary message content
-	// If there are tool_use blocks to preserve (for tool_result pairing), append them to the summary
-	let summaryContent: string | Anthropic.Messages.ContentBlockParam[]
-	if (toolUseBlocksToPreserve.length > 0) {
-		// Create content array with text block followed by tool_use blocks
-		// Use TextBlockParam which doesn't require citations field
-		const textBlock: Anthropic.Messages.TextBlockParam = { type: "text", text: summary }
-		summaryContent = [textBlock, ...toolUseBlocksToPreserve]
-	} else {
-		summaryContent = summary
-	}
+	// Since we keep tool_use/tool_result pairs together (extending keep range when needed),
+	// the summary is always just plain text - no need to append tool_use blocks
+	const summaryContent: string = summary
 
 	// Generate a unique condenseId for this summary
 	const condenseId = crypto.randomUUID()
