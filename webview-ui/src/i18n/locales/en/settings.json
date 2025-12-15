@@ -833,8 +833,8 @@
 			"description": "When enabled, the native protocol can execute multiple tools in a single assistant message turn."
 		},
 		"SMART_READ": {
-			"name": "Smart file context tracking",
-			"description": "When enabled, Roo will skip re-reading files that are already in the conversation context. This reduces token usage and speeds up responses when working with files you've recently viewed."
+			"name": "Smart File Reads",
+			"description": "When enabled, Roo will skip re-reading files that are already in the conversation's effective context and have not been modified since their last read. This reduces token usage and speeds up responses when working with files you've recently viewed."
 		}
 	},
 	"promptCaching": {
