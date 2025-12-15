@@ -240,7 +240,7 @@ describe("mergeExtensionState", () => {
 				runSlashCommand: false,
 				nativeToolCalling: false,
 				multipleNativeToolCalls: false,
-				smartContextTracking: false,
+				smartRead: false,
 			} as Record<ExperimentId, boolean>,
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS + 5,
 		}
@@ -264,7 +264,7 @@ describe("mergeExtensionState", () => {
 			runSlashCommand: false,
 			nativeToolCalling: false,
 			multipleNativeToolCalls: false,
-			smartContextTracking: false,
+			smartRead: false,
 		})
 	})
 })

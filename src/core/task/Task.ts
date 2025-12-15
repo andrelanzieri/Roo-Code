@@ -2257,12 +2257,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}),
 			)
 
-			const {
-				showRooIgnoredFiles = false,
-				includeDiagnosticMessages = true,
-				maxDiagnosticMessages = 50,
-				maxReadFileLine = -1,
-			} = (await this.providerRef.deref()?.getState()) ?? {}
+			const providerState = await this.providerRef.deref()?.getState()
+			const showRooIgnoredFiles = providerState?.showRooIgnoredFiles ?? false
+			const includeDiagnosticMessages = providerState?.includeDiagnosticMessages ?? true
+			const maxDiagnosticMessages = providerState?.maxDiagnosticMessages ?? 50
+			const maxReadFileLine = providerState?.maxReadFileLine ?? -1
+			const experimentsConfig = providerState?.experiments
 
 			const parsedUserContent = await processUserContentMentions({
 				userContent: currentUserContent,
@@ -2274,6 +2274,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				includeDiagnosticMessages,
 				maxDiagnosticMessages,
 				maxReadFileLine,
+				experiments: experimentsConfig,
+				apiConversationHistory: this.apiConversationHistory,
 			})
 
 			const environmentDetails = await getEnvironmentDetails(this, currentIncludeFileDetails)

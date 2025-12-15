@@ -147,11 +147,11 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		try {
 			const filesToApprove: FileResult[] = []
 
-			// Check if smart context tracking experiment is enabled
+			// Check if smart read experiment is enabled
 			const experimentState = await task.providerRef.deref()?.getState()
-			const isSmartContextTrackingEnabled = experiments.isEnabled(
+			const isSmartReadEnabled = experiments.isEnabled(
 				experimentState?.experiments ?? {},
-				EXPERIMENT_IDS.SMART_CONTEXT_TRACKING,
+				EXPERIMENT_IDS.SMART_READ,
 			)
 
 			for (const fileResult of fileResults) {
@@ -205,10 +205,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 
 					// Check if file needs to be re-read based on context status (only if experiment enabled)
 					// Skip this check for line range requests as those always need fresh content
-					if (
-						isSmartContextTrackingEnabled &&
-						(!fileResult.lineRanges || fileResult.lineRanges.length === 0)
-					) {
+					if (isSmartReadEnabled && (!fileResult.lineRanges || fileResult.lineRanges.length === 0)) {
 						const metadata = await task.fileContextTracker.getTaskMetadata(task.taskId)
 						const contextStatus = await checkFileContextStatus(
 							relPath,

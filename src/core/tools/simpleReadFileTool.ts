@@ -91,12 +91,9 @@ export async function simpleReadFileTool(
 			return
 		}
 
-		// Check if smart context tracking experiment is enabled
+		// Check if smart read experiment is enabled
 		const state = await cline.providerRef.deref()?.getState()
-		const isSmartContextTrackingEnabled = experiments.isEnabled(
-			state?.experiments ?? {},
-			EXPERIMENT_IDS.SMART_CONTEXT_TRACKING,
-		)
+		const isSmartReadEnabled = experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.SMART_READ)
 
 		// Check if file needs to be re-read based on context status (only if experiment enabled)
 		let contextStatus: FileContextStatus = {
@@ -105,7 +102,7 @@ export async function simpleReadFileTool(
 		}
 		let reReadNotice: string | undefined = undefined
 
-		if (isSmartContextTrackingEnabled) {
+		if (isSmartReadEnabled) {
 			const metadata = await cline.fileContextTracker.getTaskMetadata(cline.taskId)
 			contextStatus = await checkFileContextStatus(relPath, fullPath, metadata, cline.apiConversationHistory)
 
