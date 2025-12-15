@@ -1,9 +1,10 @@
-import { z } from "zod"
+import { z, defineCustomTool } from "@roo-code/types"
 
-export default {
+export default defineCustomTool({
+	name: "simple",
 	description: "Simple tool",
-	parameters: z.object({ value: z.string() }),
+	parameters: z.object({ value: z.string().describe("The input value") }),
 	async execute(args: { value: string }) {
 		return "Result: " + args.value
 	},
-}
+})

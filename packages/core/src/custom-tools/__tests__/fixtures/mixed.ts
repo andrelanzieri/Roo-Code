@@ -1,13 +1,14 @@
-import { z } from "zod"
+import { z, defineCustomTool } from "@roo-code/types"
 
 // This is a valid tool.
-export const validTool = {
+export const validTool = defineCustomTool({
+	name: "mixed_validTool",
 	description: "Valid",
 	parameters: z.object({}),
 	async execute() {
 		return "valid"
 	},
-}
+})
 
 // These should be silently skipped.
 export const someString = "not a tool"

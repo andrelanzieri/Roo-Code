@@ -1,9 +1,10 @@
-import { z } from "zod"
+import { z, defineCustomTool } from "@roo-code/types"
 
-export default {
+export default defineCustomTool({
+	name: "cached",
 	description: "Cached tool",
 	parameters: z.object({}),
 	async execute() {
 		return "cached"
 	},
-}
+})

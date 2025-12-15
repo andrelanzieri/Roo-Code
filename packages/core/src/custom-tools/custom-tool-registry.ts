@@ -16,6 +16,20 @@ import os from "os"
 import { build } from "esbuild"
 import { z, type ZodType } from "zod"
 
+/**
+ * Default subdirectory name for custom tools within a .roo directory.
+ * Tools placed in `{rooDir}/tools/` will be automatically discovered and loaded.
+ *
+ * @example
+ * ```ts
+ * // Typical usage with getRooDirectoriesForCwd from roo-config:
+ * for (const rooDir of getRooDirectoriesForCwd(cwd)) {
+ *   await registry.loadFromDirectory(path.join(rooDir, TOOLS_DIR_NAME))
+ * }
+ * ```
+ */
+export const TOOLS_DIR_NAME = "tools"
+
 export interface ToolContext {
 	sessionID: string
 	messageID: string
@@ -102,6 +116,21 @@ export class CustomToolRegistry {
 	/**
 	 * Load all tools from a directory.
 	 * Supports both .ts and .js files.
+	 *
+	 * @param toolDir - Absolute path to the tools directory
+	 * @returns LoadResult with lists of loaded and failed tools
+	 *
+	 * @example
+	 * ```ts
+	 * // Load tools from multiple .roo directories (global and project):
+	 * import { getRooDirectoriesForCwd } from "../services/roo-config"
+	 * import { CustomToolRegistry, TOOLS_DIR_NAME } from "@roo-code/core"
+	 *
+	 * const registry = new CustomToolRegistry()
+	 * for (const rooDir of getRooDirectoriesForCwd(cwd)) {
+	 *   await registry.loadFromDirectory(path.join(rooDir, TOOLS_DIR_NAME))
+	 * }
+	 * ```
 	 */
 	async loadFromDirectory(toolDir: string): Promise<LoadResult> {
 		const result: LoadResult = { loaded: [], failed: [] }
