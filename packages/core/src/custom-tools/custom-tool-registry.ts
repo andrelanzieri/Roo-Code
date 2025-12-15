@@ -78,32 +78,40 @@ export class CustomToolRegistry {
 	async loadFromDirectory(toolDir: string): Promise<LoadResult> {
 		const result: LoadResult = { loaded: [], failed: [] }
 
-		if (!fs.existsSync(toolDir)) {
-			return result
-		}
-
-		const files = fs.readdirSync(toolDir).filter((f) => f.endsWith(".ts") || f.endsWith(".js"))
-
-		for (const file of files) {
-			const filePath = path.join(toolDir, file)
-
-			try {
-				const mod = await this.importTypeScript(filePath)
-
-				for (const [exportName, value] of Object.entries(mod)) {
-					const def = this.validateToolDefinition(exportName, value)
-
-					if (!def) {
-						continue
-					}
-
-					this.tools.set(def.name, def)
-					result.loaded.push(def.name)
-				}
-			} catch (error) {
-				const message = error instanceof Error ? error.message : String(error)
-				result.failed.push({ file, error: message })
+		try {
+			if (!fs.existsSync(toolDir)) {
+				return result
 			}
+
+			const files = fs.readdirSync(toolDir).filter((f) => f.endsWith(".ts") || f.endsWith(".js"))
+
+			for (const file of files) {
+				const filePath = path.join(toolDir, file)
+
+				try {
+					console.log(`[CustomToolRegistry] importing tool from ${filePath}`)
+					const mod = await this.importTypeScript(filePath)
+
+					for (const [exportName, value] of Object.entries(mod)) {
+						const def = this.validateToolDefinition(exportName, value)
+
+						if (!def) {
+							continue
+						}
+
+						this.tools.set(def.name, def)
+						console.log(`[CustomToolRegistry] loaded tool ${def.name} from ${filePath}`)
+						result.loaded.push(def.name)
+					}
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error)
+					console.error(`[CustomToolRegistry] importTypeScript(${filePath}) failed: ${message}`)
+					result.failed.push({ file, error: message })
+				}
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error)
+			console.error(`[CustomToolRegistry] loadFromDirectory(${toolDir}) failed: ${message}`)
 		}
 
 		return result
