@@ -20,7 +20,7 @@ export const deepSeekModels = {
 		description: `DeepSeek-V3.2 (Non-thinking Mode) achieves a significant breakthrough in inference speed over previous models. It tops the leaderboard among open-source models and rivals the most advanced closed-source models globally. Supports JSON output, tool calls, chat prefix completion (beta), and FIM completion (beta).`,
 	},
 	"deepseek-reasoner": {
-		maxTokens: 8192, // 8K max output
+		maxTokens: 65_536, // 64K max output (default 32K) - https://api-docs.deepseek.com/zh-cn/quick_start/pricing
 		contextWindow: 128_000,
 		supportsImages: false,
 		supportsPromptCache: true,
@@ -30,7 +30,7 @@ export const deepSeekModels = {
 		outputPrice: 0.42, // $0.42 per million tokens - Updated Dec 9, 2025
 		cacheWritesPrice: 0.28, // $0.28 per million tokens (cache miss) - Updated Dec 9, 2025
 		cacheReadsPrice: 0.028, // $0.028 per million tokens (cache hit) - Updated Dec 9, 2025
-		description: `DeepSeek-V3.2 (Thinking Mode) achieves performance comparable to OpenAI-o1 across math, code, and reasoning tasks. Supports Chain of Thought reasoning with up to 8K output tokens. Supports JSON output, tool calls, and chat prefix completion (beta).`,
+		description: `DeepSeek-V3.2 (Thinking Mode) achieves performance comparable to OpenAI-o1 across math, code, and reasoning tasks. Supports Chain of Thought reasoning with up to 64K output tokens. Supports JSON output, tool calls, and chat prefix completion (beta).`,
 	},
 } as const satisfies Record<string, ModelInfo>
 
