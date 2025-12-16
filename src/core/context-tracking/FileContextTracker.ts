@@ -61,6 +61,56 @@ export class FileContextTracker {
 		return this.currentMessageTs
 	}
 
+	/**
+	 * Rewinds the file context metadata to a specific timestamp.
+	 * This should be called when the conversation is rewound (messages deleted)
+	 * to ensure file context tracking stays in sync with the conversation state.
+	 *
+	 * - Removes all entries where containingMessageTs >= cutoffTs
+	 * - Restores the newest "stale" entry to "active" for files that lost their active entry
+	 *
+	 * @param cutoffTs - The timestamp cutoff. Entries with containingMessageTs >= this value are removed.
+	 */
+	async rewindToTimestamp(cutoffTs: number): Promise<void> {
+		try {
+			const metadata = await this.getTaskMetadata(this.taskId)
+
+			// Track which files had entries removed
+			const affectedFiles = new Set<string>()
+
+			// Filter out entries where containingMessageTs >= cutoffTs
+			const filteredEntries = metadata.files_in_context.filter((entry) => {
+				if (entry.containingMessageTs && entry.containingMessageTs >= cutoffTs) {
+					affectedFiles.add(entry.path)
+					return false
+				}
+				return true
+			})
+
+			// For affected files, check if we need to restore a stale entry to active
+			for (const filePath of affectedFiles) {
+				const fileEntries = filteredEntries.filter((e) => e.path === filePath)
+				const hasActiveEntry = fileEntries.some((e) => e.record_state === "active")
+
+				if (!hasActiveEntry && fileEntries.length > 0) {
+					// Find the newest stale entry (by roo_read_date) and restore it to active
+					const staleEntries = fileEntries
+						.filter((e) => e.record_state === "stale" && e.roo_read_date)
+						.sort((a, b) => (b.roo_read_date ?? 0) - (a.roo_read_date ?? 0))
+
+					if (staleEntries.length > 0) {
+						staleEntries[0].record_state = "active"
+					}
+				}
+			}
+
+			metadata.files_in_context = filteredEntries
+			await this.saveTaskMetadata(this.taskId, metadata)
+		} catch (error) {
+			console.error("Failed to rewind file context metadata:", error)
+		}
+	}
+
 	// Gets the current working directory or returns undefined if it cannot be determined
 	private getCwd(): string | undefined {
 		const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0)
