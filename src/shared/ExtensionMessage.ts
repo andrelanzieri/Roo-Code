@@ -14,6 +14,7 @@ import type {
 	OrganizationAllowList,
 	ShareVisibility,
 	QueuedMessage,
+	CodeSnippet,
 } from "@roo-code/types"
 
 import { GitCommit } from "../utils/git"
@@ -149,7 +150,13 @@ export interface ExtensionMessage {
 		| "focusInput"
 		| "switchTab"
 		| "toggleAutoApprove"
-	invoke?: "newChat" | "sendMessage" | "primaryButtonClick" | "secondaryButtonClick" | "setChatBoxMessage"
+	invoke?:
+		| "newChat"
+		| "sendMessage"
+		| "primaryButtonClick"
+		| "secondaryButtonClick"
+		| "setChatBoxMessage"
+		| "addCodeSnippet"
 	state?: ExtensionState
 	images?: string[]
 	filePaths?: string[]
@@ -217,6 +224,7 @@ export interface ExtensionMessage {
 	browserSessionMessages?: ClineMessage[] // For browser session panel updates
 	isBrowserSessionActive?: boolean // For browser session panel updates
 	stepIndex?: number // For browserSessionNavigate: the target step index to display
+	codeSnippet?: CodeSnippet // For addCodeSnippet: the code snippet to add
 }
 
 export type ExtensionState = Pick<
