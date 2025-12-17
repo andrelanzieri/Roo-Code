@@ -33,7 +33,6 @@ const FILE_ENCODING_TO_BUFFER_ENCODING: Record<FileEncoding, BufferEncodingLike>
 
 function getVscodeConfigurationValue<T>(section: string, key: string, defaultValue: T): T {
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		const vscode = require("vscode") as any
 		const config = vscode?.workspace?.getConfiguration?.(section)
 		const value = config?.get?.(key, defaultValue)
