@@ -14,6 +14,7 @@ import { ClineSayTool } from "../../shared/ExtensionMessage"
 import { Task } from "../../core/task/Task"
 import { DEFAULT_WRITE_DELAY_MS, isNativeProtocol } from "@roo-code/types"
 import { resolveToolProtocol } from "../../utils/resolveToolProtocol"
+import { getFileEncodingAsBufferEncoding } from "../../utils/encoding"
 
 import { DecorationController } from "./DecorationController"
 
@@ -69,7 +70,7 @@ export class DiffViewProvider {
 		this.preDiagnostics = vscode.languages.getDiagnostics()
 
 		if (fileExists) {
-			this.originalContent = await fs.readFile(absolutePath, "utf-8")
+			this.originalContent = await fs.readFile(absolutePath, getFileEncodingAsBufferEncoding())
 		} else {
 			this.originalContent = ""
 		}
@@ -692,7 +693,7 @@ export class DiffViewProvider {
 
 		// Write the content directly to the file
 		await createDirectoriesForFile(absolutePath)
-		await fs.writeFile(absolutePath, content, "utf-8")
+		await fs.writeFile(absolutePath, content, getFileEncodingAsBufferEncoding())
 
 		// Open the document to ensure diagnostics are loaded
 		// When openFile is false (PREVENT_FOCUS_DISRUPTION enabled), we only open in memory

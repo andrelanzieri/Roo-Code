@@ -3,6 +3,7 @@ import * as os from "os"
 import * as vscode from "vscode"
 import { arePathsEqual, getWorkspacePath } from "../../utils/path"
 import { t } from "../../i18n"
+import { getFileEncodingAsBufferEncoding } from "../../utils/encoding"
 
 interface OpenFileOptions {
 	create?: boolean
@@ -104,7 +105,10 @@ export async function openFile(filePath: string, options: OpenFileOptions = {}) 
 
 				uriToProcess = vscode.Uri.file(pathToCreateAt)
 				const contentToCreate = options.content || ""
-				await vscode.workspace.fs.writeFile(uriToProcess, Buffer.from(contentToCreate, "utf8"))
+				await vscode.workspace.fs.writeFile(
+					uriToProcess,
+					Buffer.from(contentToCreate, getFileEncodingAsBufferEncoding()),
+				)
 				// File is now created, uriToProcess points to it.
 			} else {
 				// Not creating, or it's a directory-like path that doesn't exist.

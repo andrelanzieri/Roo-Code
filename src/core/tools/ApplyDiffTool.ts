@@ -15,6 +15,7 @@ import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { computeDiffStats, sanitizeUnifiedDiff } from "../diff/stats"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
+import { getFileEncodingAsBufferEncoding } from "../../utils/encoding"
 
 interface ApplyDiffParams {
 	path: string
@@ -75,7 +76,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 				return
 			}
 
-			const originalContent: string = await fs.readFile(absolutePath, "utf-8")
+			const originalContent: string = await fs.readFile(absolutePath, getFileEncodingAsBufferEncoding())
 
 			// Apply the diff to the original content
 			const diffResult = (await task.diffStrategy?.applyDiff(

@@ -13,6 +13,7 @@ import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { sanitizeUnifiedDiff, computeDiffStats } from "../diff/stats"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
+import { getFileEncodingAsBufferEncoding } from "../../utils/encoding"
 
 interface SearchReplaceParams {
 	file_path: string
@@ -104,7 +105,7 @@ export class SearchReplaceTool extends BaseTool<"search_replace"> {
 
 			let fileContent: string
 			try {
-				fileContent = await fs.readFile(absolutePath, "utf8")
+				fileContent = await fs.readFile(absolutePath, getFileEncodingAsBufferEncoding())
 			} catch (error) {
 				task.consecutiveMistakeCount++
 				task.recordToolError("search_replace")
