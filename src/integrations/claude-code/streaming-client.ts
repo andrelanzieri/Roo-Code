@@ -1,6 +1,6 @@
 import type { Anthropic } from "@anthropic-ai/sdk"
 import type { ClaudeCodeRateLimitInfo } from "@roo-code/types"
-import * as os from "os"
+import { Package } from "../../shared/package"
 
 /**
  * Set of content block types that are valid for Anthropic API.
@@ -253,39 +253,8 @@ export const CLAUDE_CODE_API_CONFIG = {
 		"interleaved-thinking-2025-05-14",
 		"fine-grained-tool-streaming-2025-05-14",
 	],
-	userAgent: "claude-cli/1.0.83 (external, cli)",
+	userAgent: `Roo-Code/${Package.version}`,
 } as const
-
-/**
- * Get Claude Code CLI headers - includes Stainless SDK headers and special CLI headers
- */
-function getClaudeCodeCliHeaders(): Record<string, string> {
-	const arch = os.arch()
-	const platform = os.platform()
-
-	// Map platform to OS name - must match Claude CLI format exactly
-	const osMap: Record<string, string> = {
-		darwin: "MacOS", // Note: Claude CLI uses "MacOS" not "macOS"
-		linux: "Linux",
-		win32: "Windows",
-	}
-
-	return {
-		// Claude Code specific headers
-		"Anthropic-Dangerous-Direct-Browser-Access": "true",
-		"X-App": "cli",
-		// Stainless SDK headers as used by Claude CLI
-		"X-Stainless-Lang": "js",
-		"X-Stainless-Package-Version": "0.55.1",
-		"X-Stainless-OS": osMap[platform] || platform,
-		"X-Stainless-Arch": arch,
-		"X-Stainless-Runtime": "node",
-		"X-Stainless-Runtime-Version": "v24.3.0",
-		"X-Stainless-Helper-Method": "stream",
-		"X-Stainless-Timeout": "60",
-		Connection: "keep-alive",
-	}
-}
 
 /**
  * SSE Event types from Anthropic streaming API
@@ -540,16 +509,14 @@ export async function* createStreamingMessage(options: StreamMessageOptions): As
 		body.tool_choice = toolChoice
 	}
 
-	// Build headers - match Claude Code CLI exactly
+	// Build minimal headers
 	const headers: Record<string, string> = {
 		Authorization: `Bearer ${accessToken}`,
 		"Content-Type": "application/json",
 		"Anthropic-Version": CLAUDE_CODE_API_CONFIG.version,
 		"Anthropic-Beta": CLAUDE_CODE_API_CONFIG.defaultBetas.join(","),
 		Accept: "text/event-stream",
-		"Accept-Encoding": "gzip, deflate, br, zstd",
 		"User-Agent": CLAUDE_CODE_API_CONFIG.userAgent,
-		...getClaudeCodeCliHeaders(),
 	}
 
 	// Make the request
@@ -844,14 +811,13 @@ export async function fetchRateLimitInfo(accessToken: string): Promise<ClaudeCod
 		messages: [{ role: "user", content: "hi" }],
 	}
 
-	// Build headers - match Claude Code CLI exactly
+	// Build minimal headers
 	const headers: Record<string, string> = {
 		Authorization: `Bearer ${accessToken}`,
 		"Content-Type": "application/json",
 		"Anthropic-Version": CLAUDE_CODE_API_CONFIG.version,
 		"Anthropic-Beta": CLAUDE_CODE_API_CONFIG.defaultBetas.join(","),
 		"User-Agent": CLAUDE_CODE_API_CONFIG.userAgent,
-		...getClaudeCodeCliHeaders(),
 	}
 
 	// Make the request
