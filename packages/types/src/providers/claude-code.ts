@@ -37,26 +37,8 @@ export interface ClaudeCodeRateLimitInfo {
 	fetchedAt: number
 }
 
-// Regex pattern to match 8-digit date at the end of model names
-const VERTEX_DATE_PATTERN = /-(\d{8})$/
-
 // Regex pattern to strip date suffix from model names
 const DATE_SUFFIX_PATTERN = /-\d{8}$/
-
-/**
- * Converts Claude model names from hyphen-date format to Vertex AI's @-date format.
- *
- * @param modelName - The original model name (e.g., "claude-sonnet-4-20250514")
- * @returns The converted model name for Vertex AI (e.g., "claude-sonnet-4@20250514")
- *
- * @example
- * convertModelNameForVertex("claude-sonnet-4-20250514") // returns "claude-sonnet-4@20250514"
- * convertModelNameForVertex("claude-model") // returns "claude-model" (no change)
- */
-export function convertModelNameForVertex(modelName: string): string {
-	// Convert hyphen-date format to @date format for Vertex AI
-	return modelName.replace(VERTEX_DATE_PATTERN, "@$1")
-}
 
 // Models that work with Claude Code OAuth tokens
 // See: https://docs.anthropic.com/en/docs/claude-code
@@ -100,7 +82,6 @@ export const claudeCodeModels = {
 // Claude Code - Only models that work with Claude Code OAuth tokens
 export type ClaudeCodeModelId = keyof typeof claudeCodeModels
 export const claudeCodeDefaultModelId: ClaudeCodeModelId = "claude-sonnet-4-5"
-export const CLAUDE_CODE_DEFAULT_MAX_OUTPUT_TOKENS = 16000
 
 /**
  * Model family patterns for normalization.
@@ -177,18 +158,3 @@ export const claudeCodeReasoningConfig = {
 } as const
 
 export type ClaudeCodeReasoningLevel = keyof typeof claudeCodeReasoningConfig
-
-/**
- * Gets the appropriate model ID based on whether Vertex AI is being used.
- *
- * @param baseModelId - The base Claude Code model ID
- * @param useVertex - Whether to format the model ID for Vertex AI (default: false)
- * @returns The model ID, potentially formatted for Vertex AI
- *
- * @example
- * getClaudeCodeModelId("claude-sonnet-4-20250514", true) // returns "claude-sonnet-4@20250514"
- * getClaudeCodeModelId("claude-sonnet-4-20250514", false) // returns "claude-sonnet-4-20250514"
- */
-export function getClaudeCodeModelId(baseModelId: ClaudeCodeModelId, useVertex = false): string {
-	return useVertex ? convertModelNameForVertex(baseModelId) : baseModelId
-}
