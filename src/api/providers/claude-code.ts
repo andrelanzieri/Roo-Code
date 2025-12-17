@@ -140,7 +140,7 @@ export class ClaudeCodeHandler implements ApiHandler, SingleCompletionHandler {
 		const model = this.getModel()
 
 		// Validate that the model ID is a valid ClaudeCodeModelId
-		const modelId = model.id in claudeCodeModels ? (model.id as ClaudeCodeModelId) : claudeCodeDefaultModelId
+const modelId = Object.hasOwn(claudeCodeModels, model.id) ? (model.id as ClaudeCodeModelId) : claudeCodeDefaultModelId
 
 		// Generate user_id metadata in the format required by Claude Code API
 		const userId = generateUserId(email || undefined)
