@@ -407,7 +407,7 @@ describe("useSelectedModel", () => {
 	})
 
 	describe("claude-code provider", () => {
-		it("should return claude-code model with supportsImages disabled", () => {
+		it("should return claude-code model with correct model info", () => {
 			mockUseRouterModels.mockReturnValue({
 				data: {
 					openrouter: {},
@@ -428,19 +428,19 @@ describe("useSelectedModel", () => {
 
 			const apiConfiguration: ProviderSettings = {
 				apiProvider: "claude-code",
-				apiModelId: "claude-sonnet-4-20250514",
+				apiModelId: "claude-sonnet-4-5", // Use valid claude-code model ID
 			}
 
 			const wrapper = createWrapper()
 			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
 
 			expect(result.current.provider).toBe("claude-code")
-			expect(result.current.id).toBe("claude-sonnet-4-20250514")
+			expect(result.current.id).toBe("claude-sonnet-4-5")
 			expect(result.current.info).toBeDefined()
-			expect(result.current.info?.supportsImages).toBe(false)
+			expect(result.current.info?.supportsImages).toBe(true) // Claude Code now supports images
 			expect(result.current.info?.supportsPromptCache).toBe(true) // Claude Code now supports prompt cache
-			// Verify it inherits other properties from anthropic models
-			expect(result.current.info?.maxTokens).toBe(64_000)
+			// Verify it inherits other properties from claude-code models
+			expect(result.current.info?.maxTokens).toBe(32768)
 			expect(result.current.info?.contextWindow).toBe(200_000)
 		})
 
@@ -473,7 +473,7 @@ describe("useSelectedModel", () => {
 			expect(result.current.provider).toBe("claude-code")
 			expect(result.current.id).toBe("claude-sonnet-4-5") // Default model
 			expect(result.current.info).toBeDefined()
-			expect(result.current.info?.supportsImages).toBe(false)
+			expect(result.current.info?.supportsImages).toBe(true) // Claude Code now supports images
 		})
 	})
 
@@ -616,7 +616,7 @@ describe("useSelectedModel", () => {
 			expect(result.current.info?.supportsNativeTools).toBe(true)
 		})
 
-		it("should use model info from routerModels when model exists", () => {
+		it("should merge only native tool defaults with routerModels when model exists", () => {
 			const customModelInfo: ModelInfo = {
 				maxTokens: 16384,
 				contextWindow: 128000,
@@ -650,9 +650,15 @@ describe("useSelectedModel", () => {
 
 			expect(result.current.provider).toBe("litellm")
 			expect(result.current.id).toBe("custom-model")
-			// Should use the model info from routerModels, not the fallback
-			expect(result.current.info).toEqual(customModelInfo)
+			// Should only merge native tool defaults, not prices or other model-specific info
+			// Router model values override the defaults
+			const nativeToolDefaults = {
+				supportsNativeTools: litellmDefaultModelInfo.supportsNativeTools,
+				defaultToolProtocol: litellmDefaultModelInfo.defaultToolProtocol,
+			}
+			expect(result.current.info).toEqual({ ...nativeToolDefaults, ...customModelInfo })
 			expect(result.current.info?.supportsNativeTools).toBe(true)
+			expect(result.current.info?.defaultToolProtocol).toBe("native")
 		})
 	})
 })

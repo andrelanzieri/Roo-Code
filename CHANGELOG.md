@@ -1,5 +1,37 @@
 # Roo Code Changelog
 
+## [3.36.13] - 2025-12-18
+
+![3.36.13 Release - Native Tool Protocol](/releases/3.36.13-release.png)
+
+- Change default tool protocol from XML to native for improved reliability and performance (PR #10186 by @mrubens)
+- Add native tool support for VS Code Language Model API providers (PR #10191 by @daniel-lxs)
+- Lock task tool protocol for consistent task resumption, ensuring tasks resume with the same protocol they started with (PR #10192 by @daniel-lxs)
+- Replace edit_file tool alias with actual edit_file tool for improved diff editing capabilities (PR #9983 by @hannesrudolph)
+- Fix LiteLLM router models by merging default model info for native tool calling support (PR #10187 by @daniel-lxs)
+- Add PostHog exception tracking for consecutive mistake errors to improve error monitoring (PR #10193 by @daniel-lxs)
+
+## [3.36.12] - 2025-12-18
+
+![3.36.12 Release - Better telemetry and Bedrock fixes](/releases/3.36.12-release.png)
+
+- Fix: Add userAgentAppId to Bedrock embedder for code indexing (#10165 by @jackrein, PR #10166 by @roomote)
+- Update OpenAI and Gemini tool preferences for improved model behavior (PR #10170 by @hannesrudolph)
+- Extract error messages from JSON payloads for better PostHog error grouping (PR #10163 by @daniel-lxs)
+
+## [3.36.11] - 2025-12-17
+
+![3.36.11 Release - Native Tool Calling Enhancements](/releases/3.36.11-release.png)
+
+- Add support for Claude Code Provider native tool calling, improving tool execution performance and reliability (PR #10077 by @hannesrudolph)
+- Enable native tool calling by default for Z.ai models for better model compatibility (PR #10158 by @app/roomote)
+- Enable native tools by default for OpenAI compatible provider to improve tool calling support (PR #10159 by @daniel-lxs)
+- Fix: Normalize MCP tool schemas for Bedrock and OpenAI strict mode to ensure proper tool compatibility (PR #10148 by @daniel-lxs)
+- Fix: Remove dots and colons from MCP tool names for Bedrock compatibility (PR #10152 by @daniel-lxs)
+- Fix: Convert tool_result to XML text when native tools disabled for Bedrock (PR #10155 by @daniel-lxs)
+- Fix: Refresh Roo models cache with session token on auth state change to resolve model list refresh issues (PR #10156 by @daniel-lxs)
+- Fix: Support AWS GovCloud and China region ARNs in Bedrock provider for expanded regional support (PR #10157 by @app/roomote)
+
 ## [3.36.10] - 2025-12-17
 
 ![3.36.10 Release - Gemini 3 Flash Preview](/releases/3.36.10-release.png)
