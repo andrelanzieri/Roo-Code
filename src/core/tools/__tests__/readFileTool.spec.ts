@@ -380,9 +380,9 @@ describe("read_file tool with maxReadFileLine setting", () => {
 			// Execute
 			const result = await executeReadFileTool({}, { maxReadFileLine: -1 })
 
-			// Verify - just check that the result contains the expected elements
-			expect(result).toContain(`<file><path>${testFilePath}</path>`)
-			expect(result).toContain(`<content lines="1-5">`)
+			// Verify - check that the result contains the expected native format elements
+			expect(result).toContain(`File: ${testFilePath}`)
+			expect(result).toContain(`Lines 1-5:`)
 		})
 
 		it("should not show line snippet in approval message when maxReadFileLine is -1", async () => {
@@ -418,17 +418,14 @@ describe("read_file tool with maxReadFileLine setting", () => {
 				},
 			)
 
-			// Verify
-			expect(result).toContain(`<file><path>${testFilePath}</path>`)
-			expect(result).toContain(`<list_code_definition_names>`)
+			// Verify - native format
+			expect(result).toContain(`File: ${testFilePath}`)
+			expect(result).toContain(`Code Definitions:`)
 
-			// Verify XML structure
-			expect(result).toContain("<notice>Showing only 0 of 5 total lines")
-			expect(result).toContain("</notice>")
-			expect(result).toContain("<list_code_definition_names>")
+			// Verify native structure
+			expect(result).toContain("Note: Showing only 0 of 5 total lines")
 			expect(result).toContain(sourceCodeDef.trim())
-			expect(result).toContain("</list_code_definition_names>")
-			expect(result).not.toContain("<content") // No content when maxReadFileLine is 0
+			expect(result).not.toContain("Lines 1-") // No content when maxReadFileLine is 0
 		})
 	})
 
@@ -446,11 +443,11 @@ describe("read_file tool with maxReadFileLine setting", () => {
 			// Execute
 			const result = await executeReadFileTool({}, { maxReadFileLine: 3 })
 
-			// Verify - just check that the result contains the expected elements
-			expect(result).toContain(`<file><path>${testFilePath}</path>`)
-			expect(result).toContain(`<content lines="1-3">`)
-			expect(result).toContain(`<list_code_definition_names>`)
-			expect(result).toContain("<notice>Showing only 3 of 5 total lines")
+			// Verify - native format
+			expect(result).toContain(`File: ${testFilePath}`)
+			expect(result).toContain(`Lines 1-3:`)
+			expect(result).toContain(`Code Definitions:`)
+			expect(result).toContain("Note: Showing only 3 of 5 total lines")
 		})
 
 		it("should truncate code definitions when file exceeds maxReadFileLine", async () => {
@@ -471,17 +468,17 @@ describe("read_file tool with maxReadFileLine setting", () => {
 			// Execute with maxReadFileLine = 30
 			const result = await executeReadFileTool({}, { maxReadFileLine: 30, totalLines: 100 })
 
-			// Verify that only definitions within the first 30 lines are included
-			expect(result).toContain(`<file><path>${testFilePath}</path>`)
-			expect(result).toContain(`<content lines="1-30">`)
-			expect(result).toContain(`<list_code_definition_names>`)
+			// Verify - native format
+			expect(result).toContain(`File: ${testFilePath}`)
+			expect(result).toContain(`Lines 1-30:`)
+			expect(result).toContain(`Code Definitions:`)
 
 			// Should include foo (starts at line 10) but not bar (starts at line 50) or baz (starts at line 80)
 			expect(result).toContain("10--20 | function foo()")
 			expect(result).not.toContain("50--60 | function bar()")
 			expect(result).not.toContain("80--90 | function baz()")
 
-			expect(result).toContain("<notice>Showing only 30 of 100 total lines")
+			expect(result).toContain("Note: Showing only 30 of 100 total lines")
 		})
 
 		it("should handle truncation when all definitions are beyond the line limit", async () => {
@@ -499,10 +496,10 @@ describe("read_file tool with maxReadFileLine setting", () => {
 			// Execute with maxReadFileLine = 30
 			const result = await executeReadFileTool({}, { maxReadFileLine: 30, totalLines: 100 })
 
-			// Verify that only the header is included (all definitions filtered out)
-			expect(result).toContain(`<file><path>${testFilePath}</path>`)
-			expect(result).toContain(`<content lines="1-30">`)
-			expect(result).toContain(`<list_code_definition_names>`)
+			// Verify - native format
+			expect(result).toContain(`File: ${testFilePath}`)
+			expect(result).toContain(`Lines 1-30:`)
+			expect(result).toContain(`Code Definitions:`)
 			expect(result).toContain("# file.txt")
 			expect(result).not.toContain("50--60 | function foo()")
 			expect(result).not.toContain("80--90 | function bar()")
@@ -518,9 +515,9 @@ describe("read_file tool with maxReadFileLine setting", () => {
 			// Execute
 			const result = await executeReadFileTool({}, { maxReadFileLine: 10, totalLines: 5 })
 
-			// Verify - just check that the result contains the expected elements
-			expect(result).toContain(`<file><path>${testFilePath}</path>`)
-			expect(result).toContain(`<content lines="1-5">`)
+			// Verify - native format
+			expect(result).toContain(`File: ${testFilePath}`)
+			expect(result).toContain(`Lines 1-5:`)
 		})
 
 		it("should read with extractTextFromFile when file has few lines", async () => {
@@ -540,9 +537,9 @@ describe("read_file tool with maxReadFileLine setting", () => {
 			// Execute
 			const result = await executeReadFileTool({}, { maxReadFileLine: 5, totalLines: 3 })
 
-			// Verify - just check that the result contains the expected elements
-			expect(result).toContain(`<file><path>${testFilePath}</path>`)
-			expect(result).toContain(`<content lines="1-3">`)
+			// Verify - native format
+			expect(result).toContain(`File: ${testFilePath}`)
+			expect(result).toContain(`Lines 1-3:`)
 		})
 	})
 
@@ -556,8 +553,8 @@ describe("read_file tool with maxReadFileLine setting", () => {
 			// Execute
 			const result = await executeReadFileTool({}, { maxReadFileLine: 3, totalLines: 3 })
 
-			// Verify - just check basic structure, the actual binary handling may vary
-			expect(result).toContain(`<file><path>${testFilePath}</path>`)
+			// Verify - native format for binary files
+			expect(result).toContain(`File: ${testFilePath}`)
 			expect(typeof result).toBe("string")
 		})
 	})
@@ -576,14 +573,14 @@ describe("read_file tool with maxReadFileLine setting", () => {
 				},
 			)
 
-			// Verify - just check that the result contains the expected elements
-			expect(rangeResult).toContain(`<file><path>${testFilePath}</path>`)
-			expect(rangeResult).toContain(`<content lines="2-4">`)
+			// Verify - native format
+			expect(rangeResult).toContain(`File: ${testFilePath}`)
+			expect(rangeResult).toContain(`Lines 2-4:`)
 		})
 	})
 })
 
-describe("read_file tool XML output structure", () => {
+describe("read_file tool output structure", () => {
 	// Test basic XML structure
 	const testFilePath = "test/file.txt"
 	const absoluteFilePath = "/test/file.txt"
@@ -691,8 +688,8 @@ describe("read_file tool XML output structure", () => {
 		return toolResult
 	}
 
-	describe("Basic XML Structure Tests", () => {
-		it("should produce XML output with no unnecessary indentation", async () => {
+	describe("Basic Structure Tests", () => {
+		it("should produce native output with proper format", async () => {
 			// Setup
 			const numberedContent = "1 | Line 1\n2 | Line 2\n3 | Line 3\n4 | Line 4\n5 | Line 5"
 
@@ -713,24 +710,19 @@ describe("read_file tool XML output structure", () => {
 			// Execute
 			const result = await executeReadFileTool()
 
-			// Verify
-			expect(result).toBe(
-				`<files>\n<file><path>${testFilePath}</path>\n<content lines="1-5">\n${numberedContent}</content>\n</file>\n</files>`,
-			)
+			// Verify native format
+			expect(result).toBe(`File: ${testFilePath}\nLines 1-5:\n${numberedContent}`)
 		})
 
-		it("should follow the correct XML structure format", async () => {
+		it("should follow the correct native structure format", async () => {
 			// Setup
 			mockInputContent = fileContent
 			// Execute
 			const result = await executeReadFileTool({}, { maxReadFileLine: -1 })
 
-			// Verify using regex to check structure
-			const xmlStructureRegex = new RegExp(
-				`^<files>\\n<file><path>${testFilePath}</path>\\n<content lines="1-5">\\n.*</content>\\n</file>\\n</files>$`,
-				"s",
-			)
-			expect(result).toMatch(xmlStructureRegex)
+			// Verify using regex to check native structure
+			const nativeStructureRegex = new RegExp(`^File: ${testFilePath}\\nLines 1-5:\\n.*$`, "s")
+			expect(result).toMatch(nativeStructureRegex)
 		})
 
 		it("should handle empty files correctly", async () => {
@@ -754,10 +746,8 @@ describe("read_file tool XML output structure", () => {
 			// Execute
 			const result = await executeReadFileTool({}, { totalLines: 0 })
 
-			// Verify
-			expect(result).toBe(
-				`<files>\n<file><path>${testFilePath}</path>\n<content/><notice>File is empty</notice>\n</file>\n</files>`,
-			)
+			// Verify native format for empty file
+			expect(result).toBe(`File: ${testFilePath}\nNote: File is empty`)
 		})
 
 		describe("Total Image Memory Limit", () => {
@@ -1406,7 +1396,7 @@ describe("read_file tool XML output structure", () => {
 	})
 
 	describe("Error Handling Tests", () => {
-		it("should include error tag for invalid path", async () => {
+		it("should include error in output for invalid path", async () => {
 			// Setup - missing path parameter
 			const toolUse: ReadFileToolUse = {
 				type: "tool_use",
@@ -1426,17 +1416,17 @@ describe("read_file tool XML output structure", () => {
 				toolProtocol: "xml",
 			})
 
-			// Verify
-			expect(toolResult).toBe(`<files><error>Missing required parameter</error></files>`)
+			// Verify - native format for error
+			expect(toolResult).toBe(`Error: Missing required parameter`)
 		})
 
-		it("should include error tag for RooIgnore error", async () => {
+		it("should include error for RooIgnore error", async () => {
 			// Execute - skip addLineNumbers check as it returns early with an error
 			const result = await executeReadFileTool({}, { validateAccess: false })
 
-			// Verify
+			// Verify - native format for error
 			expect(result).toBe(
-				`<files>\n<file><path>${testFilePath}</path><error>Access to ${testFilePath} is blocked by the .rooignore file settings. You must try to continue in the task without using this file, or ask the user to update the .rooignore file.</error></file>\n</files>`,
+				`File: ${testFilePath}\nError: Access to ${testFilePath} is blocked by the .rooignore file settings. You must try to continue in the task without using this file, or ask the user to update the .rooignore file.`,
 			)
 		})
 	})
@@ -1548,10 +1538,10 @@ describe("read_file tool with image support", () => {
 			const textPart = (result as any[]).find((p) => p.type === "text")?.text
 			const imagePart = (result as any[]).find((p) => p.type === "image")
 
-			// Verify text part
-			expect(textPart).toContain(`<file><path>${imagePath}</path>`)
+			// Verify text part - native format
+			expect(textPart).toContain(`File: ${imagePath}`)
 			expect(textPart).not.toContain("<image_data>")
-			expect(textPart).toContain(`<notice>Image file`)
+			expect(textPart).toContain(`Note: Image file`)
 
 			// Verify image part
 			expect(imagePart).toBeDefined()
@@ -1570,10 +1560,10 @@ describe("read_file tool with image support", () => {
 			const textPart = (result as any[]).find((p) => p.type === "text")?.text
 			const imagePart = (result as any[]).find((p) => p.type === "image")
 
-			// Verify text part
-			expect(textPart).toContain(`<file><path>${testImagePath}</path>`)
+			// Verify text part - native format
+			expect(textPart).toContain(`File: ${testImagePath}`)
 			expect(textPart).not.toContain(`<image_data>`)
-			expect(textPart).toContain(`<notice>Image file`)
+			expect(textPart).toContain(`Note: Image file`)
 
 			// Verify image part
 			expect(imagePart).toBeDefined()
@@ -1591,7 +1581,8 @@ describe("read_file tool with image support", () => {
 			const textArg = callArgs[0]
 			const imagesArg = callArgs[1]
 
-			expect(textArg).toContain(`<file><path>${testImagePath}</path>`)
+			// Native format
+			expect(textArg).toContain(`File: ${testImagePath}`)
 			expect(imagesArg).toBeDefined()
 			expect(imagesArg).toBeInstanceOf(Array)
 			expect(imagesArg!.length).toBe(1)
@@ -1622,11 +1613,12 @@ describe("read_file tool with image support", () => {
 			// Execute
 			const result = await executeReadImageTool()
 
-			// When images are not supported, the tool should return just XML (not call formatResponse.toolResult)
+			// When images are not supported, the tool should return just text (not call formatResponse.toolResult)
 			expect(toolResultMock).not.toHaveBeenCalled()
 			expect(typeof result).toBe("string")
-			expect(result).toContain(`<file><path>${testImagePath}</path>`)
-			expect(result).toContain(`<notice>Image file`)
+			// Native format
+			expect(result).toContain(`File: ${testImagePath}`)
+			expect(result).toContain(`Note: Image file`)
 		})
 
 		it("should include images when model supports images", async () => {
@@ -1642,7 +1634,8 @@ describe("read_file tool with image support", () => {
 			const textArg = callArgs[0]
 			const imagesArg = callArgs[1]
 
-			expect(textArg).toContain(`<file><path>${testImagePath}</path>`)
+			// Native format
+			expect(textArg).toContain(`File: ${testImagePath}`)
 			expect(imagesArg).toBeDefined() // Images should be included
 			expect(imagesArg).toBeInstanceOf(Array)
 			expect(imagesArg!.length).toBe(1)
@@ -1656,11 +1649,12 @@ describe("read_file tool with image support", () => {
 			// Execute
 			const result = await executeReadImageTool()
 
-			// When supportsImages is undefined, should default to false and return just XML
+			// When supportsImages is undefined, should default to false and return just text
 			expect(toolResultMock).not.toHaveBeenCalled()
 			expect(typeof result).toBe("string")
-			expect(result).toContain(`<file><path>${testImagePath}</path>`)
-			expect(result).toContain(`<notice>Image file`)
+			// Native format
+			expect(result).toContain(`File: ${testImagePath}`)
+			expect(result).toContain(`Note: Image file`)
 		})
 
 		it("should handle errors when reading image files", async () => {
@@ -1686,8 +1680,8 @@ describe("read_file tool with image support", () => {
 				toolProtocol: "xml",
 			})
 
-			// Verify error handling
-			expect(toolResult).toContain("<error>Error reading image file: Failed to read image</error>")
+			// Verify error handling - native format
+			expect(toolResult).toContain("Error: Error reading image file: Failed to read image")
 			// Verify that say was called to show error to user
 			expect(localMockCline.say).toHaveBeenCalledWith("error", expect.stringContaining("Failed to read image"))
 		})
@@ -1722,9 +1716,9 @@ describe("read_file tool with image support", () => {
 			// Execute
 			const result = await executeReadImageTool(binaryPath)
 
-			// Verify
+			// Verify - native format for binary files
 			expect(result).not.toContain("<image_data>")
-			expect(result).toContain('<binary_file format="bin"')
+			expect(result).toContain("Binary file (bin)")
 		})
 	})
 
@@ -1775,5 +1769,190 @@ describe("read_file tool with image support", () => {
 			expect(imagePart.source.media_type).toBe("image/png")
 			expect(imagePart.source.data).toBe("")
 		})
+	})
+})
+
+describe("read_file tool concurrent file reads limit", () => {
+	const mockedCountFileLines = vi.mocked(countFileLines)
+	const mockedIsBinaryFile = vi.mocked(isBinaryFile)
+	const mockedPathResolve = vi.mocked(path.resolve)
+
+	let mockCline: any
+	let mockProvider: any
+	let toolResult: ToolResponse | undefined
+
+	beforeEach(() => {
+		// Clear specific mocks
+		mockedCountFileLines.mockClear()
+		mockedIsBinaryFile.mockClear()
+		mockedPathResolve.mockClear()
+		addLineNumbersMock.mockClear()
+		toolResultMock.mockClear()
+
+		// Use shared mock setup function
+		const mocks = createMockCline()
+		mockCline = mocks.mockCline
+		mockProvider = mocks.mockProvider
+
+		// Disable image support for these tests
+		setImageSupport(mockCline, false)
+
+		mockedPathResolve.mockImplementation((cwd, relPath) => `/${relPath}`)
+		mockedIsBinaryFile.mockResolvedValue(false)
+		mockedCountFileLines.mockResolvedValue(10)
+
+		toolResult = undefined
+	})
+
+	async function executeReadFileToolWithLimit(
+		fileCount: number,
+		maxConcurrentFileReads: number,
+	): Promise<ToolResponse | undefined> {
+		// Setup provider state with the specified limit
+		mockProvider.getState.mockResolvedValue({
+			maxReadFileLine: -1,
+			maxConcurrentFileReads,
+			maxImageFileSize: 20,
+			maxTotalImageSize: 20,
+		})
+
+		// Create args with the specified number of files
+		const files = Array.from({ length: fileCount }, (_, i) => `<file><path>file${i + 1}.txt</path></file>`)
+		const argsContent = files.join("")
+
+		const toolUse: ReadFileToolUse = {
+			type: "tool_use",
+			name: "read_file",
+			params: { args: argsContent },
+			partial: false,
+		}
+
+		// Configure mocks for successful file reads
+		mockReadFileWithTokenBudget.mockResolvedValue({
+			content: "test content",
+			tokenCount: 10,
+			lineCount: 1,
+			complete: true,
+		})
+
+		await readFileTool.handle(mockCline, toolUse, {
+			askApproval: mockCline.ask,
+			handleError: vi.fn(),
+			pushToolResult: (result: ToolResponse) => {
+				toolResult = result
+			},
+			removeClosingTag: (_: ToolParamName, content?: string) => content ?? "",
+			toolProtocol: "xml",
+		})
+
+		return toolResult
+	}
+
+	it("should reject when file count exceeds maxConcurrentFileReads", async () => {
+		// Try to read 6 files when limit is 5
+		const result = await executeReadFileToolWithLimit(6, 5)
+
+		// Verify error result
+		expect(result).toContain("Error: Too many files requested")
+		expect(result).toContain("You attempted to read 6 files")
+		expect(result).toContain("but the concurrent file reads limit is 5")
+		expect(result).toContain("Please read files in batches of 5 or fewer")
+
+		// Verify error tracking
+		expect(mockCline.say).toHaveBeenCalledWith("error", expect.stringContaining("Too many files requested"))
+	})
+
+	it("should allow reading files when count equals maxConcurrentFileReads", async () => {
+		// Try to read exactly 5 files when limit is 5
+		const result = await executeReadFileToolWithLimit(5, 5)
+
+		// Should not contain error
+		expect(result).not.toContain("Error: Too many files requested")
+
+		// Should contain file results
+		expect(typeof result === "string" ? result : JSON.stringify(result)).toContain("file1.txt")
+	})
+
+	it("should allow reading files when count is below maxConcurrentFileReads", async () => {
+		// Try to read 3 files when limit is 5
+		const result = await executeReadFileToolWithLimit(3, 5)
+
+		// Should not contain error
+		expect(result).not.toContain("Error: Too many files requested")
+
+		// Should contain file results
+		expect(typeof result === "string" ? result : JSON.stringify(result)).toContain("file1.txt")
+	})
+
+	it("should respect custom maxConcurrentFileReads value of 1", async () => {
+		// Try to read 2 files when limit is 1
+		const result = await executeReadFileToolWithLimit(2, 1)
+
+		// Verify error result with limit of 1
+		expect(result).toContain("Error: Too many files requested")
+		expect(result).toContain("You attempted to read 2 files")
+		expect(result).toContain("but the concurrent file reads limit is 1")
+	})
+
+	it("should allow single file read when maxConcurrentFileReads is 1", async () => {
+		// Try to read 1 file when limit is 1
+		const result = await executeReadFileToolWithLimit(1, 1)
+
+		// Should not contain error
+		expect(result).not.toContain("Error: Too many files requested")
+
+		// Should contain file result
+		expect(typeof result === "string" ? result : JSON.stringify(result)).toContain("file1.txt")
+	})
+
+	it("should respect higher maxConcurrentFileReads value", async () => {
+		// Try to read 15 files when limit is 10
+		const result = await executeReadFileToolWithLimit(15, 10)
+
+		// Verify error result
+		expect(result).toContain("Error: Too many files requested")
+		expect(result).toContain("You attempted to read 15 files")
+		expect(result).toContain("but the concurrent file reads limit is 10")
+	})
+
+	it("should use default value of 5 when maxConcurrentFileReads is not set", async () => {
+		// Setup provider state without maxConcurrentFileReads
+		mockProvider.getState.mockResolvedValue({
+			maxReadFileLine: -1,
+			maxImageFileSize: 20,
+			maxTotalImageSize: 20,
+		})
+
+		// Create args with 6 files
+		const files = Array.from({ length: 6 }, (_, i) => `<file><path>file${i + 1}.txt</path></file>`)
+		const argsContent = files.join("")
+
+		const toolUse: ReadFileToolUse = {
+			type: "tool_use",
+			name: "read_file",
+			params: { args: argsContent },
+			partial: false,
+		}
+
+		mockReadFileWithTokenBudget.mockResolvedValue({
+			content: "test content",
+			tokenCount: 10,
+			lineCount: 1,
+			complete: true,
+		})
+
+		await readFileTool.handle(mockCline, toolUse, {
+			askApproval: mockCline.ask,
+			handleError: vi.fn(),
+			pushToolResult: (result: ToolResponse) => {
+				toolResult = result
+			},
+			removeClosingTag: (_: ToolParamName, content?: string) => content ?? "",
+			toolProtocol: "xml",
+		})
+
+		// Should use default limit of 5 and reject 6 files
+		expect(toolResult).toContain("Error: Too many files requested")
+		expect(toolResult).toContain("but the concurrent file reads limit is 5")
 	})
 })
