@@ -26,6 +26,14 @@ vi.mock("delay", () => ({
 
 import delay from "delay"
 
+vi.mock("uuid", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("uuid")>()
+	return {
+		...actual,
+		v7: vi.fn(() => "00000000-0000-7000-8000-000000000000"),
+	}
+})
+
 vi.mock("execa", () => ({
 	execa: vi.fn(),
 }))
@@ -274,6 +282,7 @@ describe("Cline", () => {
 		// Mock provider methods
 		mockProvider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
 		mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+		mockProvider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
 		mockProvider.getTaskWithId = vi.fn().mockImplementation(async (id) => ({
 			historyItem: {
 				id,
@@ -875,7 +884,7 @@ describe("Cline", () => {
 			})
 
 			describe("processUserContentMentions", () => {
-				it("should process mentions in task and feedback tags", async () => {
+				it("should process mentions in user_message tags", async () => {
 					const [cline, task] = Task.create({
 						provider: mockProvider,
 						apiConfiguration: mockApiConfig,
@@ -889,7 +898,7 @@ describe("Cline", () => {
 						} as const,
 						{
 							type: "text",
-							text: "<task>Text with 'some/path' (see below for file content) in task tags</task>",
+							text: "<user_message>Text with 'some/path' (see below for file content) in user_message tags</user_message>",
 						} as const,
 						{
 							type: "tool_result",
@@ -897,7 +906,7 @@ describe("Cline", () => {
 							content: [
 								{
 									type: "text",
-									text: "<feedback>Check 'some/path' (see below for file content)</feedback>",
+									text: "<user_message>Check 'some/path' (see below for file content)</user_message>",
 								},
 							],
 						} as Anthropic.ToolResultBlockParam,
@@ -925,18 +934,18 @@ describe("Cline", () => {
 						"Regular text with 'some/path' (see below for file content)",
 					)
 
-					// Text within task tags should be processed
+					// Text within user_message tags should be processed
 					expect((processedContent[1] as Anthropic.TextBlockParam).text).toContain("processed:")
 					expect((processedContent[1] as Anthropic.TextBlockParam).text).toContain(
-						"<task>Text with 'some/path' (see below for file content) in task tags</task>",
+						"<user_message>Text with 'some/path' (see below for file content) in user_message tags</user_message>",
 					)
 
-					// Feedback tag content should be processed
+					// user_message tag content should be processed
 					const toolResult1 = processedContent[2] as Anthropic.ToolResultBlockParam
 					const content1 = Array.isArray(toolResult1.content) ? toolResult1.content[0] : toolResult1.content
 					expect((content1 as Anthropic.TextBlockParam).text).toContain("processed:")
 					expect((content1 as Anthropic.TextBlockParam).text).toContain(
-						"<feedback>Check 'some/path' (see below for file content)</feedback>",
+						"<user_message>Check 'some/path' (see below for file content)</user_message>",
 					)
 
 					// Regular tool result should not be processed
@@ -979,6 +988,7 @@ describe("Cline", () => {
 					getSkillsManager: vi.fn().mockReturnValue(undefined),
 					say: vi.fn(),
 					postStateToWebview: vi.fn().mockResolvedValue(undefined),
+					postStateToWebviewWithoutTaskHistory: vi.fn().mockResolvedValue(undefined),
 					postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 					updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 				}
@@ -1041,6 +1051,9 @@ describe("Cline", () => {
 					startTask: false,
 				})
 
+				// Spy on child.say to verify the emitted message type
+				const saySpy = vi.spyOn(child, "say")
+
 				// Mock the child's API stream
 				const childMockStream = {
 					async *[Symbol.asyncIterator]() {
@@ -1067,6 +1080,17 @@ describe("Cline", () => {
 				// Verify rate limiting was applied
 				expect(mockDelay).toHaveBeenCalledTimes(mockApiConfig.rateLimitSeconds)
 				expect(mockDelay).toHaveBeenCalledWith(1000)
+
+				// Verify we used the non-error rate-limit wait message type (JSON format)
+				expect(saySpy).toHaveBeenCalledWith(
+					"api_req_rate_limit_wait",
+					expect.stringMatching(/\{"seconds":\d+\}/),
+					undefined,
+					true,
+				)
+
+				// Verify the wait message was finalized
+				expect(saySpy).toHaveBeenCalledWith("api_req_rate_limit_wait", undefined, undefined, false)
 			}, 10000) // Increase timeout to 10 seconds
 
 			it("should not apply rate limiting if enough time has passed", async () => {
@@ -1879,6 +1903,7 @@ describe("Queued message processing after condense", () => {
 		const provider = new ClineProvider(ctx, output as any, "sidebar", new ContextProxy(ctx)) as any
 		provider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
 		provider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+		provider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
 		provider.getState = vi.fn().mockResolvedValue({})
 		return provider
 	}
@@ -1961,5 +1986,208 @@ describe("Queued message processing after condense", () => {
 
 		expect(spyB).toHaveBeenCalledWith("B message", undefined)
 		expect(taskB.messageQueueService.isEmpty()).toBe(true)
+	})
+})
+
+describe("pushToolResultToUserContent", () => {
+	let mockProvider: any
+	let mockApiConfig: ProviderSettings
+
+	beforeEach(() => {
+		mockApiConfig = {
+			apiProvider: "anthropic",
+			apiModelId: "claude-3-5-sonnet-20241022",
+			apiKey: "test-api-key",
+		}
+
+		const storageUri = { fsPath: path.join(os.tmpdir(), "test-storage") }
+		const mockExtensionContext = {
+			globalState: {
+				get: vi.fn().mockImplementation((_key: keyof GlobalState) => undefined),
+				update: vi.fn().mockResolvedValue(undefined),
+				keys: vi.fn().mockReturnValue([]),
+			},
+			globalStorageUri: storageUri,
+			workspaceState: {
+				get: vi.fn().mockImplementation((_key) => undefined),
+				update: vi.fn().mockResolvedValue(undefined),
+				keys: vi.fn().mockReturnValue([]),
+			},
+			secrets: {
+				get: vi.fn().mockResolvedValue(undefined),
+				store: vi.fn().mockResolvedValue(undefined),
+				delete: vi.fn().mockResolvedValue(undefined),
+			},
+			extensionUri: { fsPath: "/mock/extension/path" },
+			extension: { packageJSON: { version: "1.0.0" } },
+		} as unknown as vscode.ExtensionContext
+
+		const mockOutputChannel = {
+			name: "test-output",
+			appendLine: vi.fn(),
+			append: vi.fn(),
+			replace: vi.fn(),
+			clear: vi.fn(),
+			show: vi.fn(),
+			hide: vi.fn(),
+			dispose: vi.fn(),
+		}
+
+		mockProvider = new ClineProvider(
+			mockExtensionContext,
+			mockOutputChannel,
+			"sidebar",
+			new ContextProxy(mockExtensionContext),
+		) as any
+
+		mockProvider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
+		mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+		mockProvider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
+	})
+
+	it("should add tool_result when not a duplicate", () => {
+		const task = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			startTask: false,
+		})
+
+		const toolResult: Anthropic.ToolResultBlockParam = {
+			type: "tool_result",
+			tool_use_id: "test-id-1",
+			content: "Test result",
+		}
+
+		const added = task.pushToolResultToUserContent(toolResult)
+
+		expect(added).toBe(true)
+		expect(task.userMessageContent).toHaveLength(1)
+		expect(task.userMessageContent[0]).toEqual(toolResult)
+	})
+
+	it("should prevent duplicate tool_result with same tool_use_id", () => {
+		const task = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			startTask: false,
+		})
+
+		const toolResult1: Anthropic.ToolResultBlockParam = {
+			type: "tool_result",
+			tool_use_id: "duplicate-id",
+			content: "First result",
+		}
+
+		const toolResult2: Anthropic.ToolResultBlockParam = {
+			type: "tool_result",
+			tool_use_id: "duplicate-id",
+			content: "Second result (should be skipped)",
+		}
+
+		// Spy on console.warn to verify warning is logged
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+		// Add first result - should succeed
+		const added1 = task.pushToolResultToUserContent(toolResult1)
+		expect(added1).toBe(true)
+		expect(task.userMessageContent).toHaveLength(1)
+
+		// Add second result with same ID - should be skipped
+		const added2 = task.pushToolResultToUserContent(toolResult2)
+		expect(added2).toBe(false)
+		expect(task.userMessageContent).toHaveLength(1)
+
+		// Verify only the first result is in the array
+		expect(task.userMessageContent[0]).toEqual(toolResult1)
+
+		// Verify warning was logged
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Skipping duplicate tool_result for tool_use_id: duplicate-id"),
+		)
+
+		warnSpy.mockRestore()
+	})
+
+	it("should allow different tool_use_ids to be added", () => {
+		const task = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			startTask: false,
+		})
+
+		const toolResult1: Anthropic.ToolResultBlockParam = {
+			type: "tool_result",
+			tool_use_id: "id-1",
+			content: "Result 1",
+		}
+
+		const toolResult2: Anthropic.ToolResultBlockParam = {
+			type: "tool_result",
+			tool_use_id: "id-2",
+			content: "Result 2",
+		}
+
+		const added1 = task.pushToolResultToUserContent(toolResult1)
+		const added2 = task.pushToolResultToUserContent(toolResult2)
+
+		expect(added1).toBe(true)
+		expect(added2).toBe(true)
+		expect(task.userMessageContent).toHaveLength(2)
+		expect(task.userMessageContent[0]).toEqual(toolResult1)
+		expect(task.userMessageContent[1]).toEqual(toolResult2)
+	})
+
+	it("should handle tool_result with is_error flag", () => {
+		const task = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			startTask: false,
+		})
+
+		const errorResult: Anthropic.ToolResultBlockParam = {
+			type: "tool_result",
+			tool_use_id: "error-id",
+			content: "Error message",
+			is_error: true,
+		}
+
+		const added = task.pushToolResultToUserContent(errorResult)
+
+		expect(added).toBe(true)
+		expect(task.userMessageContent).toHaveLength(1)
+		expect(task.userMessageContent[0]).toEqual(errorResult)
+	})
+
+	it("should not interfere with other content types in userMessageContent", () => {
+		const task = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			startTask: false,
+		})
+
+		// Add text and image blocks manually
+		task.userMessageContent.push(
+			{ type: "text", text: "Some text" },
+			{ type: "image", source: { type: "base64", media_type: "image/png", data: "base64data" } },
+		)
+
+		const toolResult: Anthropic.ToolResultBlockParam = {
+			type: "tool_result",
+			tool_use_id: "test-id",
+			content: "Result",
+		}
+
+		const added = task.pushToolResultToUserContent(toolResult)
+
+		expect(added).toBe(true)
+		expect(task.userMessageContent).toHaveLength(3)
+		expect(task.userMessageContent[0].type).toBe("text")
+		expect(task.userMessageContent[1].type).toBe("image")
+		expect(task.userMessageContent[2]).toEqual(toolResult)
 	})
 })
